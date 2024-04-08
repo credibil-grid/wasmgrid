@@ -1,0 +1,3 @@
+# https://doc.rust-lang.org/stable/clippy/index.html
+
+doc-valid-idents = ["OAuth", "OpenID", "OpenID4VCI", "OpenID4VP", "SIOPv2", "TypeScript", "VC_DATA", "VC_DATA_2.0", "VC_Data_Integrity"]
