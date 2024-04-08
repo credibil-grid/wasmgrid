@@ -12,10 +12,8 @@ use crate::bindings::wasi::messaging::producer::{self, Channel};
 struct MessagingGuest;
 
 impl messaging_guest::Guest for MessagingGuest {
-    // This function will be called by the host, who will be maintaining a
-    // long-lived client connection to a broker or other messaging system.
-    // The client will be subscribed to channels a, b, and c) with no extra configuration.
-    // As soon as configuration is set, the host should kill the Wasm instance.
+    // Called by the host in order to subscribe the guest to the specified channels.
+    // As soon as configuration is set, the host will kill the Wasm instance.
     fn configure() -> Result<GuestConfiguration, Error> {
         Ok(GuestConfiguration {
             channels: vec!["a".to_string(), "b".to_string(), "c".to_string()],
