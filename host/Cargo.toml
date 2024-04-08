@@ -10,7 +10,9 @@ name = "host"
 
 [dependencies]
 anyhow = "1.0.81"
+async-nats = "0.34.0"
 async-trait = "0.1.79"
+bytes = "1.6.0"
 clap = { version = "4.5.4", features = ["derive"] }
 iroh = "0.13.0"
 tokio = "1.37.0"
@@ -18,3 +20,4 @@ wasmtime = { version = "19.0.1", features = ["component-model"] }
 wasmtime-wasi = "19.0.1"
 wit-bindgen-rt = "0.24.0"
 wit-component = "0.202.0"
+futures-util = "0.3.30"

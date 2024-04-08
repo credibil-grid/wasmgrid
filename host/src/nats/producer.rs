@@ -1,3 +1,5 @@
+use anyhow::anyhow;
+use bytes::Bytes;
 use wasmtime::component::Resource;
 
 use crate::wasi::messaging::messaging_types::{Client, Error, Message};
@@ -8,6 +10,9 @@ impl producer::Host for super::NatsHost {
     async fn send(
         &mut self, client: Resource<Client>, ch: String, msg: Vec<Message>,
     ) -> wasmtime::Result<anyhow::Result<(), Resource<Error>>> {
-        todo!("Implement send for {client:?} on channel {ch} with message {msg:?}")
+        println!("client: {client:?}");
+        
+        let data = Bytes::from(msg[0].data.clone());
+        self.client.publish(ch, data).await.map_or_else(|e| Err(anyhow!(e)), |_| Ok(Ok(())))
     }
 }

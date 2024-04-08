@@ -1,3 +1,5 @@
+use anyhow::anyhow;
+use futures_util::stream::StreamExt;
 use wasmtime::component::Resource;
 
 use crate::wasi::messaging::consumer;
@@ -8,7 +10,18 @@ impl consumer::Host for super::NatsHost {
     async fn subscribe_try_receive(
         &mut self, client: Resource<Client>, ch: String, t_milliseconds: u32,
     ) -> wasmtime::Result<anyhow::Result<Option<Vec<Message>>, Resource<Error>>> {
-        todo!("Implement subscribe_try_receive for {client:?} on channel {ch} with timeout {t_milliseconds}")
+        println!("client: {client:?}");
+
+        // self.client.subscribe(ch).await.map_or_else(|e| Err(anyhow!(e)), |_| Ok(Ok(None)))?;
+        let Some(subscriber) = self.subscriber.as_mut() else {
+            return Err(anyhow!("No subscriber found"));
+        };
+
+        while let Some(message) = subscriber.next().await {
+            println!("received message: {:?}", message);
+        }
+
+        Ok(Ok(None))
     }
 
     async fn subscribe_receive(
