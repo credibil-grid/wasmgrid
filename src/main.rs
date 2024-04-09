@@ -2,12 +2,11 @@ mod nats;
 
 // use anyhow::{anyhow, bail, Context};
 use clap::Parser;
-use futures_util::stream::StreamExt;
 use wasmtime::component::{bindgen, Component, Linker};
 use wasmtime::{AsContextMut, Config, Engine, Store};
 use wasmtime_wasi::command;
 
-bindgen!({ path: "../wit", world: "messaging", async: true });
+bindgen!({ path: "wit", world: "messaging", async: true });
 use wasi::messaging::messaging_types::{FormatSpec, Message};
 
 use crate::nats::HostState;
@@ -26,7 +25,7 @@ struct Args {
 pub async fn main() -> wasmtime::Result<()> {
     // let args = Args::parse();
     // let file = "target/wasm32-wasi/release/guest.wasm";
-    let wasm = include_bytes!("../../target/wasm32-wasi/release/guest.wasm");
+    let wasm = include_bytes!("../target/wasm32-wasi/release/guest.wasm");
     let host_state = HostState::new().await?;
 
     let mut config = Config::new();
