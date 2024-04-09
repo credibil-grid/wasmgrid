@@ -6,20 +6,22 @@ use crate::wasi::messaging::consumer;
 use crate::wasi::messaging::messaging_types::{Client, Error, GuestConfiguration, Message};
 
 #[async_trait::async_trait]
-impl consumer::Host for super::NatsHost {
+impl consumer::Host for super::HostState {
     async fn subscribe_try_receive(
-        &mut self, client: Resource<Client>, ch: String, t_milliseconds: u32,
+        &mut self, client: Resource<Client>, ch: String, _t_milliseconds: u32,
     ) -> wasmtime::Result<anyhow::Result<Option<Vec<Message>>, Resource<Error>>> {
-        println!("client: {client:?}");
+        println!("subscribe_try_receive: ch: {ch}");
 
-        // self.client.subscribe(ch).await.map_or_else(|e| Err(anyhow!(e)), |_| Ok(Ok(None)))?;
-        let Some(subscriber) = self.subscriber.as_mut() else {
-            return Err(anyhow!("No subscriber found"));
+        let mut subscriber = match self.client.subscribe(ch).await {
+            Ok(sub) => sub,
+            Err(e) => return Err(anyhow!(e)),
         };
 
-        while let Some(message) = subscriber.next().await {
-            println!("received message: {:?}", message);
-        }
+        let _handle = tokio::spawn(async move {
+            while let Some(message) = subscriber.next().await {
+                println!("received message: {:?}", message);
+            }
+        });
 
         Ok(Ok(None))
     }
@@ -33,13 +35,25 @@ impl consumer::Host for super::NatsHost {
     async fn update_guest_configuration(
         &mut self, gc: GuestConfiguration,
     ) -> wasmtime::Result<anyhow::Result<(), Resource<Error>>> {
-        todo!("Implement update_guest_configuration {gc:?} ")
+        for ch in &gc.channels {
+            let subscriber = match self.client.subscribe(ch.to_owned()).await {
+                Ok(sub) => sub,
+                Err(e) => return Err(anyhow!(e)),
+            };
+
+            self.subscribers.push(subscriber);
+        }
+
+        Ok(Ok(()))
+        // todo!("Implement update_guest_configuration {gc:?} ")
     }
 
     async fn complete_message(
         &mut self, msg: Message,
     ) -> wasmtime::Result<anyhow::Result<(), Resource<Error>>> {
-        todo!("Implement complete_message for message {msg:?} ")
+        // todo!("Implement complete_message for message {msg:?} ")
+        println!("complete_message: {msg:?}");
+        Ok(Ok(()))
     }
 
     async fn abandon_message(

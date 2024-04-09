@@ -1,46 +1,59 @@
 mod consumer;
 mod producer;
 
+use anyhow::anyhow;
 use wasmtime::component::Resource;
 use wasmtime_wasi::{ResourceTable, WasiCtx, WasiCtxBuilder, WasiView};
 
+use crate::wasi::messaging::consumer::Host;
 use crate::wasi::messaging::messaging_types;
-use crate::wasi::messaging::messaging_types::{Client, Error};
+use crate::wasi::messaging::messaging_types::{Client, Error, GuestConfiguration};
 
-pub struct NatsHost {
+pub struct HostState {
     client: async_nats::Client,
-    subscriber: Option<async_nats::Subscriber>,
+    pub subscribers: Vec<async_nats::Subscriber>,
     table: ResourceTable,
     ctx: WasiCtx,
-    // limits: StoreLimits,
 }
 
-#[allow(clippy::module_name_repetitions)]
-impl NatsHost {
+impl HostState {
     pub async fn new() -> anyhow::Result<Self> {
         let client = async_nats::connect("demo.nats.io").await?;
 
         Ok(Self {
             client,
-            subscriber: None,
+            subscribers: Vec::new(),
             table: ResourceTable::new(),
             ctx: WasiCtxBuilder::new().inherit_env().build(),
-            // limits: StoreLimits::default(),
         })
+    }
+
+    pub async fn init(&mut self, gc: GuestConfiguration) -> anyhow::Result<()> {
+        match self.update_guest_configuration(gc).await {
+            Ok(Ok(_)) => Ok(()),
+            Ok(Err(e)) => Err(anyhow!("{:?}", e)),
+            Err(e) => Err(e),
+        }
     }
 }
 
-impl messaging_types::Host for super::NatsHost {}
+impl messaging_types::Host for HostState {}
 
 #[async_trait::async_trait]
-impl messaging_types::HostClient for super::NatsHost {
+impl messaging_types::HostClient for HostState {
     async fn connect(
-        &mut self, ch: String,
+        &mut self, name: String,
     ) -> wasmtime::Result<anyhow::Result<Resource<Client>, Resource<Error>>> {
-        let subscriber = self.client.subscribe(ch).await?;
-        self.subscriber = Some(subscriber);
+        println!("connect client: {name}");
 
-        Ok(Ok(Resource::new_own(1)))
+        let client = async_nats::connect("demo.nats.io").await?;
+        self.client = client;
+
+        // let client2 = self.table.push(test).unwrap();
+        // self.table.push(client2);
+        // let res = self.table.push_child(client, &client2).unwrap();
+
+        Ok(Ok(Resource::new_own(0)))
     }
 
     fn drop(&mut self, client: Resource<Client>) -> wasmtime::Result<()> {
@@ -49,7 +62,7 @@ impl messaging_types::HostClient for super::NatsHost {
 }
 
 #[async_trait::async_trait]
-impl messaging_types::HostError for super::NatsHost {
+impl messaging_types::HostError for HostState {
     async fn trace(&mut self) -> wasmtime::Result<String> {
         todo!("Implement trace")
     }
@@ -59,7 +72,7 @@ impl messaging_types::HostError for super::NatsHost {
     }
 }
 
-impl WasiView for NatsHost {
+impl WasiView for HostState {
     fn table(&mut self) -> &mut ResourceTable {
         &mut self.table
     }

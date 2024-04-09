@@ -50,8 +50,7 @@ impl messaging_guest::Guest for MessagingGuest {
                                     return consumer::abandon_message(&m);
                                 }
                                 "b" => {
-                                    // handle message from channel b
-                                    // [...]
+                                    // handle channel b message
 
                                     // request-reply from channel d
                                     let client = Client::connect("some-broker").unwrap();
@@ -61,12 +60,6 @@ impl messaging_guest::Guest for MessagingGuest {
                                         100,
                                     )
                                     .unwrap();
-
-                                    // do something with msgs
-                                    // [...]
-
-                                    // disconnect client
-                                    // disconnect(client);
 
                                     // complete message
                                     return consumer::complete_message(&m);

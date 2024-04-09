@@ -6,7 +6,7 @@ use crate::wasi::messaging::messaging_types::{Client, Error, Message};
 use crate::wasi::messaging::producer;
 
 #[async_trait::async_trait]
-impl producer::Host for super::NatsHost {
+impl producer::Host for super::HostState {
     async fn send(
         &mut self, client: Resource<Client>, ch: String, msg: Vec<Message>,
     ) -> wasmtime::Result<anyhow::Result<(), Resource<Error>>> {
