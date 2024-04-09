@@ -13,8 +13,11 @@ version = "0.1.0"
 authors.workspace = true
 edition.workspace = true
 
-# [[bin]]
-# name = "host"
+# [[example]]
+# name = "guest"
+# path = "examples/guest"
+# crate-type = ["cdylib"]
+# targets = ["wasm32-wasi"]
 
 [dependencies]
 anyhow = "1.0.81"
