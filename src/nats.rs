@@ -1,28 +1,34 @@
 mod consumer;
 mod producer;
 
+use std::pin::Pin;
+
 use anyhow::anyhow;
 use wasmtime::component::Resource;
+use wasmtime::{AsContextMut, Config, Engine, Store};
 use wasmtime_wasi::{ResourceTable, WasiCtx, WasiCtxBuilder, WasiView};
 
+// use crate::Messaging;
+use crate::exports::wasi::messaging::messaging_guest::Guest;
 use crate::wasi::messaging::consumer::Host;
 use crate::wasi::messaging::messaging_types;
 use crate::wasi::messaging::messaging_types::{Client, Error, GuestConfiguration};
 
+
 pub struct HostState {
-    client: async_nats::Client,
-    pub subscribers: Vec<async_nats::Subscriber>,
+    pub guest: Option<Guest>,
+    pub store: Option<Box<Store<HostState>>>,
+    pub client: async_nats::Client,
     table: ResourceTable,
     ctx: WasiCtx,
 }
 
 impl HostState {
     pub async fn new() -> anyhow::Result<Self> {
-        let client = async_nats::connect("demo.nats.io").await?;
-
         Ok(Self {
-            client,
-            subscribers: Vec::new(),
+            guest: None,
+            store: None,
+            client: async_nats::connect("demo.nats.io").await?,
             table: ResourceTable::new(),
             ctx: WasiCtxBuilder::new().inherit_env().build(),
         })
