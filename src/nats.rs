@@ -4,12 +4,16 @@ mod producer;
 use std::collections::HashMap;
 
 use async_nats::Client;
+use futures::stream::{self, StreamExt};
 // use tracing::{event, span, Level};
 use wasmtime::component::Resource;
-use wasmtime_wasi::{ResourceTable, WasiCtx, WasiCtxBuilder, WasiView};
+use wasmtime::component::{Component, Linker};
+use wasmtime::{AsContextMut, Engine, Store};
+use wasmtime_wasi::{command, ResourceTable, WasiCtx, WasiCtxBuilder, WasiView};
 
-use crate::wasi::messaging::messaging_types;
 use crate::wasi::messaging::messaging_types::Error; //GuestConfiguration
+use crate::wasi::messaging::messaging_types::{FormatSpec, Message};
+use crate::wasi::messaging::{self, messaging_types};
 
 pub struct HostState {
     keys: HashMap<String, u32>,
@@ -26,8 +30,40 @@ impl HostState {
         }
     }
 
-    pub fn client(&self, client: &Resource<Client>) -> anyhow::Result<Client> {
-        Ok(self.table.get(client)?.clone())
+    pub async fn run(
+        self, engine: &Engine, component: &Component, client: &Resource<Client>,
+    ) -> wasmtime::Result<()> {
+        let client = self.table.get(client)?.clone();
+
+        let mut store = Store::new(&engine, self);
+        let mut linker = Linker::new(&engine);
+        command::add_to_linker(&mut linker)?;
+        messaging_types::add_to_linker(&mut linker, |t| t)?;
+        messaging::producer::add_to_linker(&mut linker, |t| t)?;
+        messaging::consumer::add_to_linker(&mut linker, |t| t)?;
+
+        let (messaging, _instance) =
+            crate::Messaging::instantiate_async(&mut store, &component, &linker).await?;
+
+        let guest = messaging.wasi_messaging_messaging_guest();
+        let gc = guest.call_configure(store.as_context_mut()).await?;
+        let mut subscribers = vec![];
+        for ch in &gc.unwrap().channels {
+            let subscriber = client.subscribe(ch.to_owned()).await?;
+            subscribers.push(subscriber);
+        }
+
+        let mut messages = stream::select_all(subscribers);
+        while let Some(message) = messages.next().await {
+            let msg = Message {
+                data: message.payload.to_vec(),
+                metadata: Some(vec![(String::from("channel"), message.subject.to_string())]),
+                format: FormatSpec::Raw,
+            };
+            let _ = guest.call_handler(store.as_context_mut(), &[msg]).await?;
+        }
+
+        Ok(())
     }
 }
 
