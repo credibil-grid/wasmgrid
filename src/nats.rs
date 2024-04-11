@@ -33,15 +33,16 @@ impl HostState {
     pub async fn run(
         self, engine: &Engine, component: &Component, client: &Resource<Client>,
     ) -> wasmtime::Result<()> {
+        
         let client = self.table.get(client)?.clone();
 
-        let mut store = Store::new(&engine, self);
         let mut linker = Linker::new(&engine);
         command::add_to_linker(&mut linker)?;
         messaging_types::add_to_linker(&mut linker, |t| t)?;
         messaging::producer::add_to_linker(&mut linker, |t| t)?;
         messaging::consumer::add_to_linker(&mut linker, |t| t)?;
 
+        let mut store = Store::new(&engine, self);
         let (messaging, _instance) =
             crate::Messaging::instantiate_async(&mut store, &component, &linker).await?;
 
