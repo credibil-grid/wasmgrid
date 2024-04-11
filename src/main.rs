@@ -1,10 +1,10 @@
 mod nats;
 
-use anyhow::{Error, Result};
+use anyhow::Error;
 pub use async_nats::Client;
 use clap::Parser;
 use futures::stream::StreamExt;
-use tokio::signal::unix::{signal, SignalKind};
+// use tokio::signal::unix::{signal, SignalKind};
 use wasi::messaging::messaging_types::HostClient;
 use wasmtime::component::{bindgen, Component, Linker};
 use wasmtime::{AsContextMut, Config, Engine, Store};
@@ -52,10 +52,6 @@ pub async fn main() -> wasmtime::Result<()> {
     config.wasm_component_model(true);
     config.async_support(true);
     let engine = Engine::new(&config)?;
-
-    // let component = Component::from_file(&engine, file)?;
-    let component = Component::from_binary(&engine, wasm)?;
-    let mut store = Store::new(&engine, host_state);
     let mut linker = Linker::new(&engine);
 
     command::add_to_linker(&mut linker)?;
@@ -63,6 +59,10 @@ pub async fn main() -> wasmtime::Result<()> {
     producer::add_to_linker(&mut linker, |t| t)?;
     consumer::add_to_linker(&mut linker, |t| t)?;
 
+    // let component = Component::from_file(&engine, file)?;
+    let component = Component::from_binary(&engine, wasm)?;
+
+    let mut store = Store::new(&engine, host_state);
     let (messaging, _instance) =
         Messaging::instantiate_async(&mut store, &component, &linker).await?;
     let guest = messaging.wasi_messaging_messaging_guest();
@@ -71,74 +71,40 @@ pub async fn main() -> wasmtime::Result<()> {
     // N.B. As soon as configuration is retrieved, we should kill the wasm instance.
     let gc = guest.call_configure(store.as_context_mut()).await?;
 
-    // subscribe to channels
     let mut subscribers = vec![];
     for ch in &gc.unwrap().channels {
         let subscriber = client.subscribe(ch.to_owned()).await?;
         subscribers.push(subscriber);
     }
 
-    //-------------------------------------------------------------------------
-    // NATS
-    //-------------------------------------------------------------------------
-    tokio::spawn({
-        let client = client.clone();
-        async move {
-            for i in 0..100 {
-                client.publish("a", format!("car number {i}").into()).await?;
-            }
-            Ok::<(), Error>(())
-        }
-    });
-    tokio::spawn({
-        let client = client.clone();
-        async move {
-            for i in 0..100 {
-                client.publish("b", format!("ship number {i}").into()).await?;
-            }
-            Ok::<(), Error>(())
-        }
-    });
-    tokio::spawn({
-        let client = client.clone();
-        async move {
-            for i in 0..100 {
-                client.publish("c", format!("plane number {i}").into()).await?;
-            }
-            Ok::<(), Error>(())
-        }
-    });
+    let mut messages = futures::stream::select_all(subscribers);
 
-    tokio::spawn(async move {
-        let mut messages = futures::stream::select_all(subscribers).take(300);
-
-        while let Some(message) = messages.next().await {
-            let msg = Message {
-                data: message.payload.to_vec(),
-                metadata: Some(vec![(String::from("channel"), message.subject.to_string())]),
-                format: FormatSpec::Raw,
-            };
-            let _ = messaging
-                .wasi_messaging_messaging_guest()
-                .call_handler(store.as_context_mut(), &[msg])
-                .await?;
-        }
-
-        Ok::<(), Error>(())
-    });
-
-    shutdown().await
-}
-
-// Wait for shutdown signal
-async fn shutdown() -> Result<(), Error> {
-    let mut sigint = signal(SignalKind::interrupt())?;
-    let mut sigterm = signal(SignalKind::terminate())?;
-    let mut sigquit = signal(SignalKind::quit())?;
-
-    tokio::select! {
-        _ = sigint.recv() => Ok(()),
-        _ = sigterm.recv() => Ok(()),
-        _ = sigquit.recv() => Ok(()),
+    while let Some(message) = messages.next().await {
+        let msg = Message {
+            data: message.payload.to_vec(),
+            metadata: Some(vec![(String::from("channel"), message.subject.to_string())]),
+            format: FormatSpec::Raw,
+        };
+        let _ = messaging
+            .wasi_messaging_messaging_guest()
+            .call_handler(store.as_context_mut(), &[msg])
+            .await?;
     }
+
+    Ok::<(), Error>(())
+
+    // shutdown().await
 }
+
+// // Wait for shutdown signal
+// async fn shutdown() -> Result<(), Error> {
+//     let mut sigint = signal(SignalKind::interrupt())?;
+//     let mut sigterm = signal(SignalKind::terminate())?;
+//     let mut sigquit = signal(SignalKind::quit())?;
+
+//     tokio::select! {
+//         _ = sigint.recv() => Ok(()),
+//         _ = sigterm.recv() => Ok(()),
+//         _ = sigquit.recv() => Ok(()),
+//     }
+// }

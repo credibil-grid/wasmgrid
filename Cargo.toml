@@ -20,9 +20,9 @@ edition.workspace = true
 # targets = ["wasm32-wasi"]
 
 [dependencies]
-anyhow = "1.0.81"
+anyhow = "1.0.82"
 async-nats = "0.34.0"
-async-trait = "0.1.79"
+async-trait = "0.1.80"
 bytes = "1.6.0"
 clap = { version = "4.5.4", features = ["derive"] }
 futures = "0.3.30"
@@ -30,8 +30,8 @@ iroh = "0.13.0"
 log = "0.4.21"
 tokio = "1.37.0"
 tracing = "0.1.40"
-wasmtime = { version = "19.0.1", features = ["component-model"] }
-wasmtime-wasi = "19.0.1"
+wasmtime = { version = "19.0.2", features = ["component-model"] }
+wasmtime-wasi = "19.0.2"
 wit-bindgen-rt = "0.24.0"
 wit-component = "0.202.0"
 
