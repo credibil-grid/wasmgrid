@@ -39,13 +39,13 @@ pub async fn main() -> wasmtime::Result<()> {
     // let args = Args::parse();
     // let file = "target/wasm32-wasi/release/guest.wasm";
     let wasm = include_bytes!("../target/wasm32-wasi/release/guest.wasm");
-    let mut host_state = HostState::new().await?;
+    let mut host_state = HostState::new()?;
 
     // ---------------------------------------------------------------------
     // TODO: move to nats package
     // ---------------------------------------------------------------------
     let client = host_state.connect("demo.nats.io".to_string()).await?.unwrap();
-    let client = host_state.client(client).await?;
+    let client = host_state.client(client)?;
     // ---------------------------------------------------------------------
 
     let mut config = Config::new();

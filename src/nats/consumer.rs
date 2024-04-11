@@ -6,7 +6,9 @@ use tokio::time::{sleep, Duration};
 use wasmtime::component::Resource;
 
 use crate::wasi::messaging::consumer;
-use crate::wasi::messaging::messaging_types::{Client, Error, GuestConfiguration, Message};
+use crate::wasi::messaging::messaging_types::{
+    Client, Error, FormatSpec, GuestConfiguration, Message,
+};
 
 #[async_trait::async_trait]
 impl consumer::Host for super::HostState {
@@ -14,20 +16,28 @@ impl consumer::Host for super::HostState {
         &mut self, client: Resource<Client>, ch: String, t_milliseconds: u32,
     ) -> wasmtime::Result<anyhow::Result<Option<Vec<Message>>, Resource<Error>>> {
         // subscribe to channel
-        let client = self.table.get(&client).unwrap();
-
+        let client = self.table.get(&client)?;
         let mut subscriber = match client.subscribe(ch).await {
-            Ok(sub) => sub,
+            Ok(s) => s,
             Err(e) => return Err(anyhow!(e)),
         };
 
+        // TODO: remove spawn task
         let _result = tokio::spawn(async move {
             let stream =
                 subscriber.by_ref().take_until(sleep(Duration::from_millis(t_milliseconds as u64)));
-            let messages = stream.collect::<Vec<_>>().await;
+            let messages = stream
+                .map(|m| Message {
+                    data: m.payload.to_vec(),
+                    metadata: Some(vec![(String::from("channel"), m.subject.to_string())]),
+                    format: FormatSpec::Raw,
+                })
+                .collect::<Vec<_>>()
+                .await;
+
             let _ = subscriber.unsubscribe().await;
 
-            Ok::<Vec<async_nats::Message>, Error>(messages)
+            Ok::<Vec<Message>, Error>(messages)
         });
 
         Ok(Ok(None))
@@ -36,7 +46,26 @@ impl consumer::Host for super::HostState {
     async fn subscribe_receive(
         &mut self, client: Resource<Client>, ch: String,
     ) -> wasmtime::Result<anyhow::Result<Vec<Message>, Resource<Error>>> {
-        todo!("Implement subscribe_receive for {client:?} on channel {ch}")
+        let client = self.table.get(&client)?;
+        let mut subscriber = match client.subscribe(ch).await {
+            Ok(s) => s,
+            Err(e) => return Err(anyhow!(e)),
+        };
+
+        let messages = subscriber
+            .by_ref()
+            .take(1)
+            .map(|m| Message {
+                data: m.payload.to_vec(),
+                metadata: Some(vec![(String::from("channel"), m.subject.to_string())]),
+                format: FormatSpec::Raw,
+            })
+            .collect::<Vec<_>>()
+            .await;
+
+        let _ = subscriber.unsubscribe().await;
+
+        Ok(Ok(messages))
     }
 
     async fn update_guest_configuration(

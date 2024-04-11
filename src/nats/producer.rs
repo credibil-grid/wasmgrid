@@ -1,4 +1,3 @@
-use anyhow::anyhow;
 use bytes::Bytes;
 use wasmtime::component::Resource;
 
@@ -11,9 +10,11 @@ impl producer::Host for super::HostState {
         &mut self, client: Resource<Client>, ch: String, msg: Vec<Message>,
     ) -> wasmtime::Result<anyhow::Result<(), Resource<Error>>> {
         println!("send: ch: {ch}");
-        let client = self.table.get(&client).unwrap();
 
         let data = Bytes::from(msg[0].data.clone());
-        client.publish(ch, data).await.map_or_else(|e| Err(anyhow!(e)), |_| Ok(Ok(())))
+        let client = self.table.get(&client)?;
+        client.publish(ch, data).await?;
+
+        Ok(Ok(()))
     }
 }
