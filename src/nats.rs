@@ -18,17 +18,16 @@ pub struct HostState {
 }
 
 impl HostState {
-    pub fn new() -> anyhow::Result<Self> {
-        Ok(Self {
+    pub fn new() -> Self {
+        Self {
             keys: HashMap::new(),
             table: ResourceTable::new(),
             ctx: WasiCtxBuilder::new().inherit_env().build(),
-        })
+        }
     }
 
-    pub fn client(&self, client: Resource<Client>) -> anyhow::Result<Client> {
-        let client = self.table.get(&client).unwrap();
-        Ok(client.clone())
+    pub fn client(&self, client: &Resource<Client>) -> anyhow::Result<Client> {
+        Ok(self.table.get(client)?.clone())
     }
 }
 
@@ -41,20 +40,17 @@ impl messaging_types::HostClient for HostState {
     ) -> wasmtime::Result<anyhow::Result<Resource<Client>, Resource<Error>>> {
         // get existing resource entries
 
-        let resource = match self.keys.get(&name) {
-            Some(key) => {
-                // Get an existing connection by key
-                // let any = self.table.get_any_mut(*key).unwrap();
-                // Resource::try_from_resource_any(any, store).unwrap()
-                Resource::new_own(*key)
-            }
-            None => {
-                // Create a new connection
-                let client = async_nats::connect("demo.nats.io").await?;
-                let resource = self.table.push(client)?;
-                self.keys.insert(name, resource.rep());
-                resource
-            }
+        let resource = if let Some(key) = self.keys.get(&name) {
+            // Get an existing connection by key
+            // let any = self.table.get_any_mut(*key).unwrap();
+            // Resource::try_from_resource_any(any, store).unwrap()
+            Resource::new_own(*key)
+        } else {
+            // Create a new connection
+            let client = async_nats::connect("demo.nats.io").await?;
+            let resource = self.table.push(client)?;
+            self.keys.insert(name, resource.rep());
+            resource
         };
 
         Ok(Ok(resource))

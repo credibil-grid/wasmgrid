@@ -24,8 +24,9 @@ impl consumer::Host for super::HostState {
 
         // TODO: remove spawn task
         let _result = tokio::spawn(async move {
-            let stream =
-                subscriber.by_ref().take_until(sleep(Duration::from_millis(t_milliseconds as u64)));
+            let stream = subscriber
+                .by_ref()
+                .take_until(sleep(Duration::from_millis(u64::from(t_milliseconds))));
             let messages = stream
                 .map(|m| Message {
                     data: m.payload.to_vec(),
