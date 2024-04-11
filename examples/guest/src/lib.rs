@@ -21,78 +21,51 @@ impl messaging_guest::Guest for MessagingGuest {
         })
     }
 
-    fn handler(ms: Vec<Message>) -> Result<(), Error> {
-        // Whenever a message is received on a subscribed channel (from configure()),
-        // the host will call this function. Once the message has been handled,
-        // the host is expected to kill the Wasm instance.
+    // Whenever a message is received on a subscribed channel, the host will call this
+    // function. Once the message has been handled, the host should kill the Wasm
+    // instance.
+    fn handler(msgs: Vec<Message>) -> Result<(), Error> {
+        for msg in msgs {
+            // get channel
+            let Some(metadata) = &msg.metadata else {
+                return Ok(());
+            };
+            let Some((_, channel)) = metadata.iter().find(|(k, _)| k == "channel") else {
+                return Ok(());
+            };
 
-        println!("handler: {:?}", ms);
-
-        for m in ms {
-            // match on message metadata for channel name
-            match &m.metadata {
-                Some(metadata) => {
-                    for (k, v) in metadata {
-                        if k == "channel" {
-                            match v.as_str() {
-                                "a" => {
-                                    // handle message from channel a
-                                    // [...]
-
-                                    // unsubscribe from channel a
-                                    consumer::update_guest_configuration(&GuestConfiguration {
-                                        channels: vec!["b".to_string(), "c".to_string()],
-                                        extensions: None,
-                                    })
-                                    .unwrap();
-
-                                    // abandon message
-                                    return consumer::abandon_message(&m);
-                                }
-                                "b" => {
-                                    // handle channel b message
-
-                                    // request-reply from channel d
-                                    let client = Client::connect("some-broker").unwrap();
-                                    let _msgs = consumer::subscribe_try_receive(
-                                        client,
-                                        &Channel::from("d"),
-                                        100,
-                                    )
-                                    .unwrap();
-
-                                    // complete message
-                                    return consumer::complete_message(&m);
-                                }
-                                "c" => {
-                                    // handle message from channel c
-                                    // [...]
-
-                                    // send message to channel d
-                                    let client = Client::connect("some-broker").unwrap();
-                                    let message = Message {
-                                        data: "hello from guest".as_bytes().to_vec(),
-                                        format: messaging_types::FormatSpec::Raw,
-                                        metadata: None,
-                                    };
-
-                                    producer::send(client, &Channel::from("d"), &[message])
-                                        .unwrap();
-                                    // disconnect(client);
-
-                                    // complete message
-                                    return consumer::complete_message(&m);
-                                }
-                                _ => {
-                                    // handle message from unknown channel
-                                    return Ok(());
-                                }
-                            }
-                        }
-                    }
+            match channel.as_str() {
+                "a" => {
+                    // unsubscribe from channel
+                    consumer::update_guest_configuration(&GuestConfiguration {
+                        channels: vec!["b".to_string(), "c".to_string()],
+                        extensions: None,
+                    })?;
+                    return consumer::abandon_message(&msg);
                 }
-                None => {
-                    // handle message with no metadata
+                "b" => {
+                    // request-reply from channel d
+                    let client = Client::connect("some-broker").unwrap();
+                    let _msgs =
+                        consumer::subscribe_try_receive(client, &Channel::from("d"), 100).unwrap();
+                    return consumer::complete_message(&msg);
+                }
+                "c" => {
+                    // send message to temp channel d
+                    let mut resp = b"channel c: ".to_vec();
+                    resp.extend(msg.data.clone());
+
+                    let client = Client::connect("some-broker").unwrap();
+                    let message = Message {
+                        data: resp,
+                        format: messaging_types::FormatSpec::Raw,
+                        metadata: None,
+                    };
+                    producer::send(client, &Channel::from("d"), &[message]).unwrap();
+
+                    return consumer::complete_message(&msg);
+                }
+                _ => {
                     return Ok(());
                 }
             }

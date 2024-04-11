@@ -33,6 +33,7 @@ wasmtime = { version = "19.0.1", features = ["component-model"] }
 wasmtime-wasi = "19.0.1"
 wit-bindgen-rt = "0.24.0"
 wit-component = "0.202.0"
+tracing = "0.1.40"
 
 [package.metadata.component.target]
 path = "wit"

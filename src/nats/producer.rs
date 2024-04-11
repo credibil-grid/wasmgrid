@@ -10,9 +10,10 @@ impl producer::Host for super::HostState {
     async fn send(
         &mut self, client: Resource<Client>, ch: String, msg: Vec<Message>,
     ) -> wasmtime::Result<anyhow::Result<(), Resource<Error>>> {
-        println!("client: {client:?}");
+        println!("send: ch: {ch}");
+        let client = self.table.get(&client).unwrap();
 
         let data = Bytes::from(msg[0].data.clone());
-        self.client.publish(ch, data).await.map_or_else(|e| Err(anyhow!(e)), |_| Ok(Ok(())))
+        client.publish(ch, data).await.map_or_else(|e| Err(anyhow!(e)), |_| Ok(Ok(())))
     }
 }

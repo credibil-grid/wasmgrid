@@ -1,24 +1,17 @@
 mod consumer;
 mod producer;
 
-use std::pin::Pin;
+use std::collections::HashMap;
 
-use anyhow::anyhow;
+use async_nats::Client;
 use wasmtime::component::Resource;
-use wasmtime::{AsContextMut, Config, Engine, Store};
 use wasmtime_wasi::{ResourceTable, WasiCtx, WasiCtxBuilder, WasiView};
 
-// use crate::Messaging;
-use crate::exports::wasi::messaging::messaging_guest::Guest;
-use crate::wasi::messaging::consumer::Host;
 use crate::wasi::messaging::messaging_types;
-use crate::wasi::messaging::messaging_types::{Client, Error, GuestConfiguration};
-
+use crate::wasi::messaging::messaging_types::Error; //GuestConfiguration
 
 pub struct HostState {
-    pub guest: Option<Guest>,
-    pub store: Option<Box<Store<HostState>>>,
-    pub client: async_nats::Client,
+    cnns: HashMap<String, u32>,
     table: ResourceTable,
     ctx: WasiCtx,
 }
@@ -26,21 +19,24 @@ pub struct HostState {
 impl HostState {
     pub async fn new() -> anyhow::Result<Self> {
         Ok(Self {
-            guest: None,
-            store: None,
-            client: async_nats::connect("demo.nats.io").await?,
+            cnns: HashMap::new(),
             table: ResourceTable::new(),
             ctx: WasiCtxBuilder::new().inherit_env().build(),
         })
     }
 
-    pub async fn init(&mut self, gc: GuestConfiguration) -> anyhow::Result<()> {
-        match self.update_guest_configuration(gc).await {
-            Ok(Ok(_)) => Ok(()),
-            Ok(Err(e)) => Err(anyhow!("{:?}", e)),
-            Err(e) => Err(e),
-        }
+    pub async fn client(&self, client: Resource<Client>) -> anyhow::Result<Client> {
+        let client = self.table.get(&client).unwrap();
+        Ok(client.clone())
     }
+
+    // pub async fn init(&mut self, gc: GuestConfiguration) -> anyhow::Result<()> {
+    //     match self.update_guest_configuration(gc).await {
+    //         Ok(Ok(_)) => Ok(()),
+    //         Ok(Err(e)) => Err(anyhow!("{:?}", e)),
+    //         Err(e) => Err(e),
+    //     }
+    // }
 }
 
 impl messaging_types::Host for HostState {}
@@ -50,16 +46,25 @@ impl messaging_types::HostClient for HostState {
     async fn connect(
         &mut self, name: String,
     ) -> wasmtime::Result<anyhow::Result<Resource<Client>, Resource<Error>>> {
-        println!("connect client: {name}");
+        // get existing resource entries
 
-        let client = async_nats::connect("demo.nats.io").await?;
-        self.client = client;
+        let resource = match self.cnns.get(&name) {
+            Some(key) => {
+                // Get existing connection by saved key
+                // let any = self.table.get_any_mut(*key).unwrap();
+                // Resource::try_from_resource_any(any, store).unwrap()
+                Resource::new_own(*key)
+            }
+            None => {
+                // Create new connection
+                let client = async_nats::connect("demo.nats.io").await?;
+                let resource = self.table.push(client)?;
+                self.cnns.insert(name, resource.rep());
+                resource
+            }
+        };
 
-        // let client2 = self.table.push(test).unwrap();
-        // self.table.push(client2);
-        // let res = self.table.push_child(client, &client2).unwrap();
-
-        Ok(Ok(Resource::new_own(0)))
+        Ok(Ok(resource))
     }
 
     fn drop(&mut self, client: Resource<Client>) -> wasmtime::Result<()> {

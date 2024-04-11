@@ -1766,6 +1766,7 @@ dependencies = [
  "iroh",
  "log",
  "tokio",
+ "tracing",
  "wasmtime",
  "wasmtime-wasi",
  "wit-bindgen-rt",

@@ -1,17 +1,26 @@
 mod nats;
 
-use std::str::from_utf8;
-
 use anyhow::{Error, Result};
+pub use async_nats::Client;
 use clap::Parser;
 use futures::stream::StreamExt;
 use tokio::signal::unix::{signal, SignalKind};
+use wasi::messaging::messaging_types::HostClient;
 use wasmtime::component::{bindgen, Component, Linker};
 use wasmtime::{AsContextMut, Config, Engine, Store};
 use wasmtime_wasi::command;
 
-bindgen!({ path: "wit", world: "messaging", async: true });
-// use wasi::messaging::messaging_types::{FormatSpec, Message};
+use crate::wasi::messaging::messaging_types::{FormatSpec, Message};
+
+bindgen!({
+    world: "messaging",
+    path: "wit",
+    tracing: true,
+    async: true,
+    with: {
+        "wasi:messaging/messaging-types/client": Client,
+    },
+});
 
 use crate::nats::HostState;
 use crate::wasi::messaging::{consumer, messaging_types, producer};
@@ -32,6 +41,13 @@ pub async fn main() -> wasmtime::Result<()> {
     let wasm = include_bytes!("../target/wasm32-wasi/release/guest.wasm");
     let mut host_state = HostState::new().await?;
 
+    // ---------------------------------------------------------------------
+    // TODO: move to nats package
+    // ---------------------------------------------------------------------
+    let client = host_state.connect("demo.nats.io".to_string()).await?.unwrap();
+    let client = host_state.client(client).await?;
+    // ---------------------------------------------------------------------
+
     let mut config = Config::new();
     config.wasm_component_model(true);
     config.async_support(true);
@@ -47,89 +63,81 @@ pub async fn main() -> wasmtime::Result<()> {
     producer::add_to_linker(&mut linker, |t| t)?;
     consumer::add_to_linker(&mut linker, |t| t)?;
 
-    let (messaging, _) = Messaging::instantiate_async(&mut store, &component, &linker).await?;
-
-    // host_state.store = Some(Box::new(store));
+    let (messaging, _instance) =
+        Messaging::instantiate_async(&mut store, &component, &linker).await?;
+    let guest = messaging.wasi_messaging_messaging_guest();
 
     // get channels guest wants to subscribe to
     // N.B. As soon as configuration is retrieved, we should kill the wasm instance.
-    let gc =
-        messaging.wasi_messaging_messaging_guest().call_configure(store.as_context_mut()).await?;
+    let gc = guest.call_configure(store.as_context_mut()).await?;
 
     // subscribe to channels
-    let hs = store.data_mut();
-    hs.init(gc.unwrap()).await?;
+    let mut subscribers = vec![];
+    for ch in &gc.unwrap().channels {
+        let subscriber = client.subscribe(ch.to_owned()).await?;
+        subscribers.push(subscriber);
+    }
 
     //-------------------------------------------------------------------------
     // NATS
     //-------------------------------------------------------------------------
-
     tokio::spawn({
-        let client = hs.client.clone();
+        let client = client.clone();
         async move {
             for i in 0..100 {
-                client.publish("b", format!("car number {i}").into()).await?;
+                client.publish("a", format!("car number {i}").into()).await?;
             }
             Ok::<(), Error>(())
         }
     });
     tokio::spawn({
-        let client = hs.client.clone();
+        let client = client.clone();
         async move {
             for i in 0..100 {
-                client.publish("c", format!("ship number {i}").into()).await?;
+                client.publish("b", format!("ship number {i}").into()).await?;
             }
             Ok::<(), Error>(())
         }
     });
     tokio::spawn({
-        let client = hs.client.clone();
+        let client = client.clone();
         async move {
             for i in 0..100 {
-                client.publish("d", format!("plane number {i}").into()).await?;
+                client.publish("c", format!("plane number {i}").into()).await?;
             }
             Ok::<(), Error>(())
         }
     });
 
-    await_shutdown().await?;
+    tokio::spawn(async move {
+        let mut messages = futures::stream::select_all(subscribers).take(300);
 
-    //-------------------------------------------------------------------------
-    //-------------------------------------------------------------------------
+        while let Some(message) = messages.next().await {
+            let msg = Message {
+                data: message.payload.to_vec(),
+                metadata: Some(vec![(String::from("channel"), message.subject.to_string())]),
+                format: FormatSpec::Raw,
+            };
+            let _ = messaging
+                .wasi_messaging_messaging_guest()
+                .call_handler(store.as_context_mut(), &[msg])
+                .await?;
+        }
 
-    // // send message to configured channel
-    // let msg = Message {
-    //     data: b"test".to_vec(),
-    //     metadata: Some(vec![(String::from("channel"), String::from("d"))]),
-    //     format: FormatSpec::Raw,
-    // };
-    // let result = messaging
-    //     .wasi_messaging_messaging_guest()
-    //     .call_handler(store.as_context_mut(), &[msg])
-    //     .await?;
-    // println!("call_handler {result:?}");
+        Ok::<(), Error>(())
+    });
 
-    // let msg = Message {
-    //     data: b"test 2".to_vec(),
-    //     metadata: Some(vec![(String::from("channel"), String::from("b"))]),
-    //     format: FormatSpec::Raw,
-    // };
-    // let result = messaging
-    //     .wasi_messaging_messaging_guest()
-    //     .call_handler(store.as_context_mut(), &[msg])
-    //     .await?;
-    // println!("call_handler {result:?}");
-
-    Ok(())
+    shutdown().await
 }
 
-async fn await_shutdown() -> Result<(), Error> {
+// Wait for shutdown signal
+async fn shutdown() -> Result<(), Error> {
     let mut sigint = signal(SignalKind::interrupt())?;
     let mut sigterm = signal(SignalKind::terminate())?;
     let mut sigquit = signal(SignalKind::quit())?;
 
     tokio::select! {
-        _ = sigint.recv() => Ok::<(), Error>(()),
+        _ = sigint.recv() => Ok(()),
         _ = sigterm.recv() => Ok(()),
         _ = sigquit.recv() => Ok(()),
     }
