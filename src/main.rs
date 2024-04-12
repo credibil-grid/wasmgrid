@@ -51,7 +51,7 @@ pub async fn main() -> wasmtime::Result<()> {
     // load wasm Guest
     let component = Component::from_file(&engine, args.wasm)?;
 
-    // start NATS messaging Host in non-blocking manner
+    // start messaging Host as non-blocking process
     let mut store = Store::new(&engine, Nats::default());
     let (messaging, _) = Messaging::instantiate_async(&mut store, &component, &linker).await?;
     tokio::spawn(

@@ -72,36 +72,7 @@ impl consumer::Host for super::Nats {
     async fn update_guest_configuration(
         &mut self, _gc: GuestConfiguration,
     ) -> wasmtime::Result<anyhow::Result<(), Resource<Error>>> {
-        // self.subscribers.clear();
-
-        // let mut subs = vec![];
-        // for ch in &gc.channels {
-        //     let subscriber = self.client.subscribe(ch.to_owned()).await.map_err(|e| anyhow!(e))?;
-        //     self.subscribers.push(subscriber);
-        // }
-
-        // tokio::spawn(async move {
-        //     let mut messages = futures::stream::select_all(subs).take(300);
-        //     while let Some(message) = messages.next().await {
-        //         println!(
-        //             "received message on subject {} with paylaod {}",
-        //             message.subject,
-        //             from_utf8(&message.payload).unwrap()
-        //         );
-
-        //         // send message to configured channel
-        //         let msg = Message {
-        //             data: b"test".to_vec(),
-        //             metadata: Some(vec![(String::from("channel"), message.subject.to_string())]),
-        //             format: FormatSpec::Raw,
-        //         };
-
-        //         // let result =
-        //         //     self.guest.unwrap().call_handler(store.as_context_mut(), &[msg]).await?;
-        //         // println!("call_handler {result:?}");
-        //     }
-        // });
-
+        // TODO: implement update_guest_configuration
         Ok(Ok(()))
     }
 
