@@ -7,21 +7,20 @@ use async_nats::Client;
 use futures::stream::{self, StreamExt};
 // use tracing::{event, span, Level};
 use wasmtime::component::Resource;
-use wasmtime::component::{Component, Linker};
-use wasmtime::{AsContextMut, Engine, Store};
-use wasmtime_wasi::{command, ResourceTable, WasiCtx, WasiCtxBuilder, WasiView};
+use wasmtime::{AsContextMut, Store};
+use wasmtime_wasi::{ResourceTable, WasiCtx, WasiCtxBuilder, WasiView};
 
+use crate::wasi::messaging::messaging_types;
 use crate::wasi::messaging::messaging_types::Error; //GuestConfiguration
 use crate::wasi::messaging::messaging_types::{FormatSpec, Message};
-use crate::wasi::messaging::{self, messaging_types};
 
-pub struct HostState {
+pub struct Nats {
     keys: HashMap<String, u32>,
     table: ResourceTable,
     ctx: WasiCtx,
 }
 
-impl HostState {
+impl Nats {
     pub fn new() -> Self {
         Self {
             keys: HashMap::new(),
@@ -31,20 +30,15 @@ impl HostState {
     }
 
     pub async fn run(
-        self, engine: &Engine, component: &Component, client: &Resource<Client>,
+        store: &mut Store<Nats>, messaging: &crate::Messaging,
     ) -> wasmtime::Result<()> {
-        
-        let client = self.table.get(client)?.clone();
+        let host_state = store.data_mut();
 
-        let mut linker = Linker::new(&engine);
-        command::add_to_linker(&mut linker)?;
-        messaging_types::add_to_linker(&mut linker, |t| t)?;
-        messaging::producer::add_to_linker(&mut linker, |t| t)?;
-        messaging::consumer::add_to_linker(&mut linker, |t| t)?;
-
-        let mut store = Store::new(&engine, self);
-        let (messaging, _instance) =
-            crate::Messaging::instantiate_async(&mut store, &component, &linker).await?;
+        let client: Resource<Client> =
+            messaging_types::HostClient::connect(host_state, "demo.nats.io".to_string())
+                .await?
+                .unwrap();
+        let client = host_state.table.get(&client)?.clone();
 
         let guest = messaging.wasi_messaging_messaging_guest();
         let gc = guest.call_configure(store.as_context_mut()).await?;
@@ -68,10 +62,10 @@ impl HostState {
     }
 }
 
-impl messaging_types::Host for HostState {}
+impl messaging_types::Host for Nats {}
 
 #[async_trait::async_trait]
-impl messaging_types::HostClient for HostState {
+impl messaging_types::HostClient for Nats {
     async fn connect(
         &mut self, name: String,
     ) -> wasmtime::Result<anyhow::Result<Resource<Client>, Resource<Error>>> {
@@ -101,7 +95,7 @@ impl messaging_types::HostClient for HostState {
 }
 
 #[async_trait::async_trait]
-impl messaging_types::HostError for HostState {
+impl messaging_types::HostError for Nats {
     async fn trace(&mut self) -> wasmtime::Result<String> {
         Ok(String::from("trace HostError"))
     }
@@ -112,7 +106,7 @@ impl messaging_types::HostError for HostState {
     }
 }
 
-impl WasiView for HostState {
+impl WasiView for Nats {
     fn table(&mut self) -> &mut ResourceTable {
         &mut self.table
     }

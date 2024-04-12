@@ -4,9 +4,9 @@ use anyhow::Error;
 pub use async_nats::Client;
 use clap::Parser;
 // use tokio::signal::unix::{signal, SignalKind};
-use wasi::messaging::messaging_types::HostClient;
-use wasmtime::component::{bindgen, Component};
-use wasmtime::{Config, Engine};
+use wasmtime::component::{bindgen, Component, Linker};
+use wasmtime::{Config, Engine, Store};
+use wasmtime_wasi::command;
 
 bindgen!({
     world: "messaging",
@@ -18,7 +18,8 @@ bindgen!({
     },
 });
 
-use crate::nats::HostState;
+use crate::nats::Nats;
+use crate::wasi::messaging::{self, messaging_types};
 
 /// Host wasm runtime for a vault service that stores signing keys and credentials for a Verifiable
 /// Credential wallet.
@@ -41,9 +42,16 @@ pub async fn main() -> wasmtime::Result<()> {
     let wasm = include_bytes!("../target/wasm32-wasi/release/guest.wasm");
     let component = Component::from_binary(&engine, wasm)?;
 
-    let mut host_state = HostState::new();
-    let client = host_state.connect("demo.nats.io".to_string()).await?.unwrap();
-    host_state.run(&engine, &component, &client).await?;
+    let mut linker = Linker::new(&engine);
+    command::add_to_linker(&mut linker)?;
+    messaging_types::add_to_linker(&mut linker, |t| t)?;
+    messaging::producer::add_to_linker(&mut linker, |t| t)?;
+    messaging::consumer::add_to_linker(&mut linker, |t| t)?;
+
+    let mut store = Store::new(&engine, Nats::new());
+    let (messaging, _) = Messaging::instantiate_async(&mut store, &component, &linker).await?;
+
+    Nats::run(&mut store, &messaging).await?;
 
     Ok::<(), Error>(())
 
