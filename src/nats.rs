@@ -5,15 +5,17 @@ use std::collections::HashMap;
 
 use async_nats::Client;
 use futures::stream::{self, StreamExt};
-// use tracing::{event, span, Level};
 use wasmtime::component::Resource;
-use wasmtime::{AsContextMut, Store};
+use wasmtime::Store;
 use wasmtime_wasi::{ResourceTable, WasiCtx, WasiCtxBuilder, WasiView};
 
-use crate::wasi::messaging::messaging_types;
-use crate::wasi::messaging::messaging_types::Error; //GuestConfiguration
-use crate::wasi::messaging::messaging_types::{FormatSpec, Message};
+use crate::exports::wasi::messaging::messaging_guest::Guest;
+use crate::wasi::messaging::messaging_types::{
+    Error, FormatSpec, Host, HostClient, HostError, Message,
+};
 
+/// Nats is the base type used to implement host messaging interfaces.
+/// In addition, it holds the "host-defined state" used by the wasm runtime [`Store`].
 pub struct Nats {
     keys: HashMap<String, u32>,
     table: ResourceTable,
@@ -21,33 +23,32 @@ pub struct Nats {
 }
 
 impl Nats {
-    pub fn new() -> Self {
+    /// Create a default instance of the host state for use in initialisng the [`Store`].
+    pub fn default() -> Self {
         Self {
-            keys: HashMap::new(),
-            table: ResourceTable::new(),
+            keys: HashMap::default(),
+            table: ResourceTable::default(),
             ctx: WasiCtxBuilder::new().inherit_env().build(),
         }
     }
 
-    pub async fn run(
-        store: &mut Store<Nats>, messaging: &crate::Messaging,
-    ) -> wasmtime::Result<()> {
+    /// Run the NATS messaging service. The method subscribes to configured channels and processes
+    /// messages blocking the current thread until terminated.
+    pub async fn run(store: &mut Store<Nats>, guest: &Guest) -> wasmtime::Result<()> {
+        // connect to NATS server
         let host_state = store.data_mut();
-
-        let client: Resource<Client> =
-            messaging_types::HostClient::connect(host_state, "demo.nats.io".to_string())
-                .await?
-                .unwrap();
+        let client = HostClient::connect(host_state, "demo.nats.io".to_string()).await?.unwrap();
         let client = host_state.table.get(&client)?.clone();
 
-        let guest = messaging.wasi_messaging_messaging_guest();
-        let gc = guest.call_configure(store.as_context_mut()).await?;
+        // subscribe to configured channels
+        let gc = guest.call_configure(&mut *store).await?;
         let mut subscribers = vec![];
         for ch in &gc.unwrap().channels {
             let subscriber = client.subscribe(ch.to_owned()).await?;
             subscribers.push(subscriber);
         }
 
+        // process messages until terminated
         let mut messages = stream::select_all(subscribers);
         while let Some(message) = messages.next().await {
             let msg = Message {
@@ -55,17 +56,18 @@ impl Nats {
                 metadata: Some(vec![(String::from("channel"), message.subject.to_string())]),
                 format: FormatSpec::Raw,
             };
-            let _ = guest.call_handler(store.as_context_mut(), &[msg]).await?;
+            let _ = guest.call_handler(&mut *store, &[msg]).await?;
         }
 
         Ok(())
     }
 }
 
-impl messaging_types::Host for Nats {}
+impl Host for Nats {}
 
 #[async_trait::async_trait]
-impl messaging_types::HostClient for Nats {
+impl HostClient for Nats {
+    /// Connect to the NATS server specified by `name` and return a client resource.
     async fn connect(
         &mut self, name: String,
     ) -> wasmtime::Result<anyhow::Result<Resource<Client>, Resource<Error>>> {
@@ -87,6 +89,7 @@ impl messaging_types::HostClient for Nats {
         Ok(Ok(resource))
     }
 
+    /// Drop the specified NATS client resource.
     fn drop(&mut self, client: Resource<Client>) -> wasmtime::Result<()> {
         self.keys.retain(|_, v| *v != client.rep());
         let _ = self.table.delete(client)?;
@@ -95,7 +98,7 @@ impl messaging_types::HostClient for Nats {
 }
 
 #[async_trait::async_trait]
-impl messaging_types::HostError for Nats {
+impl HostError for Nats {
     async fn trace(&mut self) -> wasmtime::Result<String> {
         Ok(String::from("trace HostError"))
     }
