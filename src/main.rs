@@ -3,7 +3,7 @@ mod nats;
 use anyhow::Error;
 pub use async_nats::Client;
 use clap::Parser;
-// use tokio::signal::unix::{signal, SignalKind};
+use tokio::signal::unix::{signal, SignalKind};
 use wasmtime::component::{bindgen, Component, Linker};
 use wasmtime::{Config, Engine, Store};
 use wasmtime_wasi::command;
@@ -51,22 +51,22 @@ pub async fn main() -> wasmtime::Result<()> {
     let mut store = Store::new(&engine, Nats::new());
     let (messaging, _) = Messaging::instantiate_async(&mut store, &component, &linker).await?;
 
-    Nats::run(&mut store, &messaging).await?;
+    tokio::spawn(async move {
+        Nats::run(&mut store, &messaging).await
+    });
 
-    Ok::<(), Error>(())
-
-    // shutdown().await
+    shutdown().await
 }
 
-// // Wait for shutdown signal
-// async fn shutdown() -> Result<(), Error> {
-//     let mut sigint = signal(SignalKind::interrupt())?;
-//     let mut sigterm = signal(SignalKind::terminate())?;
-//     let mut sigquit = signal(SignalKind::quit())?;
+// Wait for shutdown signal
+async fn shutdown() -> Result<(), Error> {
+    let mut sigint = signal(SignalKind::interrupt())?;
+    let mut sigterm = signal(SignalKind::terminate())?;
+    let mut sigquit = signal(SignalKind::quit())?;
 
-//     tokio::select! {
-//         _ = sigint.recv() => Ok(()),
-//         _ = sigterm.recv() => Ok(()),
-//         _ = sigquit.recv() => Ok(()),
-//     }
-// }
+    tokio::select! {
+        _ = sigint.recv() => Ok(()),
+        _ = sigterm.recv() => Ok(()),
+        _ = sigquit.recv() => Ok(()),
+    }
+}
