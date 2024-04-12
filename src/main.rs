@@ -34,23 +34,25 @@ struct Args {
 pub async fn main() -> wasmtime::Result<()> {
     let args = Args::parse();
 
-    // Initialise Engine (global context for compilation/management of wasm modules)
+    // initialise Engine (compilation/management of wasm modules)
     let mut config = Config::new();
     config.async_support(true);
-    // config.wasm_component_model(true);
     let engine = Engine::new(&config)?;
-    let mut linker = Linker::new(&engine);
 
-    // link dependencies — the wasmtime command and messaging types
+    // messaging state store
+    let mut store = Store::new(&engine, Nats::default());
+
+    // load wasm (Guest)
+    let component = Component::from_file(&engine, args.wasm)?;
+
+    // link dependencies
+    let mut linker = Linker::new(&engine);
     command::add_to_linker(&mut linker)?;
     Messaging::add_to_linker(&mut linker, |t| t)?;
 
-    // load wasm Guest
-    let component = Component::from_file(&engine, args.wasm)?;
-
-    // start messaging Host as non-blocking process
-    let mut store = Store::new(&engine, Nats::default());
     let (messaging, _) = Messaging::instantiate_async(&mut store, &component, &linker).await?;
+
+    // start Host as non-blocking process
     tokio::spawn(
         async move { Nats::run(&mut store, messaging.wasi_messaging_messaging_guest()).await },
     );
