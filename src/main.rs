@@ -27,12 +27,13 @@ use crate::wasi::messaging::{consumer, messaging_types, producer};
 #[command(version, about, long_about = None)]
 struct Args {
     /// The path to the wasm file to run.
-    wasm_file: String,
+    #[arg(short, long)]
+    wasm: String,
 }
 
 #[tokio::main]
 pub async fn main() -> wasmtime::Result<()> {
-    // let args = Args::parse();
+    let args = Args::parse();
 
     // Initialise Engine (global context for compilation/management of wasm modules)
     let mut config = Config::new();
@@ -48,8 +49,9 @@ pub async fn main() -> wasmtime::Result<()> {
     consumer::add_to_linker(&mut linker, |t| t)?;
 
     // load wasm Guest
-    let wasm = include_bytes!("../target/wasm32-wasi/release/guest.wasm");
-    let component = Component::from_binary(&engine, wasm)?;
+    // let wasm = include_bytes!("../target/wasm32-wasi/release/guest.wasm");
+    // let component = Component::from_binary(&engine, wasm)?;
+    let component = Component::from_file(&engine, args.wasm)?;
 
     // start NATS messaging Host
     let mut store = Store::new(&engine, Nats::default());
