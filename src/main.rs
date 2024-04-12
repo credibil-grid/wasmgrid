@@ -37,8 +37,8 @@ pub async fn main() -> wasmtime::Result<()> {
 
     // Initialise Engine (global context for compilation/management of wasm modules)
     let mut config = Config::new();
-    config.wasm_component_model(true);
     config.async_support(true);
+    // config.wasm_component_model(true);
     let engine = Engine::new(&config)?;
 
     // link dependencies — the wasmtime command and messaging types
@@ -49,15 +49,12 @@ pub async fn main() -> wasmtime::Result<()> {
     consumer::add_to_linker(&mut linker, |t| t)?;
 
     // load wasm Guest
-    // let wasm = include_bytes!("../target/wasm32-wasi/release/guest.wasm");
-    // let component = Component::from_binary(&engine, wasm)?;
     let component = Component::from_file(&engine, args.wasm)?;
 
-    // start NATS messaging Host
+    // start NATS messaging Host in non-blocking manner
     let mut store = Store::new(&engine, Nats::default());
     let (messaging, _) = Messaging::instantiate_async(&mut store, &component, &linker).await?;
     tokio::spawn(
-        // run in a non-blocking manner
         async move { Nats::run(&mut store, messaging.wasi_messaging_messaging_guest()).await },
     );
 

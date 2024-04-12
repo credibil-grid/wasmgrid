@@ -106,17 +106,16 @@ impl consumer::Host for super::Nats {
     }
 
     async fn complete_message(
-        &mut self, msg: Message,
+        &mut self, _msg: Message,
     ) -> wasmtime::Result<anyhow::Result<(), Resource<Error>>> {
-        // todo!("Implement complete_message for message {msg:?} ")
-        println!("complete_message: {msg:?}");
+        println!("Implement complete_message");
         Ok(Ok(()))
     }
 
     async fn abandon_message(
-        &mut self, msg: Message,
+        &mut self, _msg: Message,
     ) -> wasmtime::Result<anyhow::Result<(), Resource<Error>>> {
-        println!("Implement abandon_message for message {msg:?} ");
+        println!("Implement abandon_message");
         Ok(Ok(()))
     }
 }
