@@ -19,7 +19,6 @@ bindgen!({
 });
 
 use crate::nats::Nats;
-use crate::wasi::messaging::{consumer, messaging_types, producer};
 
 /// Host wasm runtime for a vault service that stores signing keys and credentials for a Verifiable
 /// Credential wallet.
@@ -40,13 +39,11 @@ pub async fn main() -> wasmtime::Result<()> {
     config.async_support(true);
     // config.wasm_component_model(true);
     let engine = Engine::new(&config)?;
+    let mut linker = Linker::new(&engine);
 
     // link dependencies — the wasmtime command and messaging types
-    let mut linker = Linker::new(&engine);
     command::add_to_linker(&mut linker)?;
-    messaging_types::add_to_linker(&mut linker, |t| t)?;
-    producer::add_to_linker(&mut linker, |t| t)?;
-    consumer::add_to_linker(&mut linker, |t| t)?;
+    Messaging::add_to_linker(&mut linker, |t| t)?;
 
     // load wasm Guest
     let component = Component::from_file(&engine, args.wasm)?;
