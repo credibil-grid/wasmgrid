@@ -4,9 +4,8 @@ use anyhow::Error;
 pub use async_nats::Client;
 use clap::Parser;
 use tokio::signal::unix::{signal, SignalKind};
-use wasmtime::component::{bindgen, Component, Linker};
-use wasmtime::{Config, Engine, Store};
-use wasmtime_wasi::command;
+use wasmtime::component::bindgen;
+use wasmtime::{Config, Engine};
 
 bindgen!({
     world: "messaging",
@@ -39,23 +38,8 @@ pub async fn main() -> wasmtime::Result<()> {
     config.async_support(true);
     let engine = Engine::new(&config)?;
 
-    // messaging state store
-    let mut store = Store::new(&engine, Nats::default());
-
-    // load wasm (Guest)
-    let component = Component::from_file(&engine, args.wasm)?;
-
-    // link dependencies
-    let mut linker = Linker::new(&engine);
-    command::add_to_linker(&mut linker)?;
-    Messaging::add_to_linker(&mut linker, |t| t)?;
-
-    let (messaging, _) = Messaging::instantiate_async(&mut store, &component, &linker).await?;
-
-    // start Host as non-blocking process
-    tokio::spawn(
-        async move { Nats::run(&mut store, messaging.wasi_messaging_messaging_guest()).await },
-    );
+    // start messaging Host as non-blocking process
+    tokio::spawn(async move { Nats::run(&engine, args.wasm).await });
 
     shutdown().await
 }

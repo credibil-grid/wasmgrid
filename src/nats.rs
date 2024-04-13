@@ -5,11 +5,10 @@ use std::collections::HashMap;
 
 use async_nats::Client;
 use futures::stream::{self, StreamExt};
-use wasmtime::component::Resource;
-use wasmtime::Store;
-use wasmtime_wasi::{ResourceTable, WasiCtx, WasiCtxBuilder, WasiView};
+use wasmtime::component::{Component, Linker, Resource};
+use wasmtime::{Engine, Store};
+use wasmtime_wasi::{command, ResourceTable, WasiCtx, WasiCtxBuilder, WasiView};
 
-use crate::exports::wasi::messaging::messaging_guest::Guest;
 use crate::wasi::messaging::messaging_types::{
     Error, FormatSpec, Host, HostClient, HostError, Message,
 };
@@ -34,14 +33,27 @@ impl Nats {
 
     /// Run the NATS messaging service. The method subscribes to configured channels and processes
     /// messages blocking the current thread until terminated.
-    pub async fn run(store: &mut Store<Nats>, guest: &Guest) -> wasmtime::Result<()> {
+    pub async fn run(engine: &Engine, wasm: String) -> wasmtime::Result<()> {
+
+        // messaging state store
+        let mut store = Store::new(&engine, Nats::default());
+        
+        let component = Component::from_file(&engine, wasm)?;
+        let mut linker = Linker::new(&engine);
+        command::add_to_linker(&mut linker)?;
+        crate::Messaging::add_to_linker(&mut linker, |t| t)?;
+
+        let (messaging, _) =
+            crate::Messaging::instantiate_async(&mut store, &component, &linker).await?;
+        let guest = messaging.wasi_messaging_messaging_guest();
+
         // connect to NATS server
         let host_state = store.data_mut();
         let client = HostClient::connect(host_state, "demo.nats.io".to_string()).await?.unwrap();
         let client = host_state.table.get(&client)?.clone();
+        let gc = guest.call_configure(&mut store).await?;
 
         // subscribe to configured channels
-        let gc = guest.call_configure(&mut *store).await?;
         let mut subscribers = vec![];
         for ch in &gc.unwrap().channels {
             let subscriber = client.subscribe(ch.to_owned()).await?;
@@ -56,7 +68,7 @@ impl Nats {
                 metadata: Some(vec![(String::from("channel"), message.subject.to_string())]),
                 format: FormatSpec::Raw,
             };
-            let _ = guest.call_handler(&mut *store, &[msg]).await?;
+            let _ = guest.call_handler(&mut store, &[msg]).await?;
         }
 
         Ok(())
