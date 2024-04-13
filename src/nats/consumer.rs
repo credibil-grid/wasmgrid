@@ -73,6 +73,7 @@ impl consumer::Host for super::Nats {
         &mut self, _gc: GuestConfiguration,
     ) -> wasmtime::Result<anyhow::Result<(), Resource<Error>>> {
         // TODO: implement update_guest_configuration
+        
         Ok(Ok(()))
     }
 

@@ -17,8 +17,6 @@ bindgen!({
     },
 });
 
-use crate::nats::Nats;
-
 /// Host wasm runtime for a vault service that stores signing keys and credentials for a Verifiable
 /// Credential wallet.
 #[derive(Parser, Debug)]
@@ -39,7 +37,8 @@ pub async fn main() -> wasmtime::Result<()> {
     let engine = Engine::new(&config)?;
 
     // start messaging Host as non-blocking process
-    tokio::spawn(async move { Nats::run(&engine, args.wasm).await });
+    let builder = nats::Builder::new().engine(engine.clone()).wasm(args.wasm);
+    tokio::spawn(async move { builder.run().await });
 
     shutdown().await
 }
