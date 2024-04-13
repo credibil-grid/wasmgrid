@@ -1,4 +1,4 @@
-mod nats;
+mod messaging;
 
 use anyhow::Error;
 pub use async_nats::Client;
@@ -38,7 +38,7 @@ pub async fn main() -> wasmtime::Result<()> {
 
     // start messaging Host as non-blocking process
     // let builder = nats::Builder::new().engine(engine.clone()).wasm(args.wasm);
-    let nats = nats::Nats::new(engine.clone(), args.wasm);
+    let mut nats = messaging::Host::new(engine.clone(), args.wasm);
     tokio::spawn(async move { nats.run().await });
 
     shutdown().await

@@ -11,7 +11,7 @@ use crate::wasi::messaging::messaging_types::{
 };
 
 #[async_trait::async_trait]
-impl consumer::Host for super::Nats {
+impl consumer::Host for super::Host {
     async fn subscribe_try_receive(
         &mut self, client: Resource<Client>, ch: String, t_milliseconds: u32,
     ) -> wasmtime::Result<anyhow::Result<Option<Vec<Message>>, Resource<Error>>> {
