@@ -1,0 +1,29 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug host",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=host",
+                    "--package=host"
+                ],
+                "filter": {
+                    "name": "host",
+                    "kind": "bin"
+                }
+            },
+            "args": [
+                "--wasm",
+                "./target/wasm32-wasi/release/guest.wasm"
+            ],
+            "cwd": "${workspaceFolder}"
+        },
+    ]
+}
