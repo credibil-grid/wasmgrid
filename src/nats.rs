@@ -19,39 +19,46 @@ pub struct Nats {
     keys: HashMap<String, u32>,
     table: ResourceTable,
     ctx: WasiCtx,
-
     engine: Engine,
     wasm: String,
 }
 
-impl Default for Nats {
-    /// Create a default instance of the host state for use in initialisng the [`Store`].
-    fn default() -> Self {
+// impl Default for Nats {
+//     /// Create a default instance of the host state for use in initialisng the [`Store`].
+//     fn default() -> Self {
+//         Self {
+//             keys: HashMap::default(),
+//             table: ResourceTable::default(),
+//             ctx: WasiCtxBuilder::new().inherit_env().build(),
+//             engine: Engine::default(),
+//             wasm: String::default(),
+//         }
+//     }
+// }
+
+impl Nats {
+    pub fn new(engine: Engine, wasm: String) -> Self {
         Self {
             keys: HashMap::default(),
             table: ResourceTable::default(),
             ctx: WasiCtxBuilder::new().inherit_env().build(),
-
-            engine: Engine::default(),
-            wasm: String::default(),
+            engine,
+            wasm,
         }
     }
-}
 
-impl Nats {
     /// Run the NATS messaging service. The method subscribes to configured channels and processes
     /// messages blocking the current thread until terminated.
-    async fn run(self) -> wasmtime::Result<()> {
-        // messaging state store
+    pub async fn run(self) -> wasmtime::Result<()> {
         let engine = self.engine.clone();
         let wasm = self.wasm.clone();
 
+        let mut store = Store::new(&engine, self);
         let component = Component::from_file(&engine, wasm)?;
+
         let mut linker = Linker::new(&engine);
         command::add_to_linker(&mut linker)?;
         crate::Messaging::add_to_linker(&mut linker, |t| t)?;
-
-        let mut store = Store::new(&engine, self);
 
         let (messaging, _) =
             crate::Messaging::instantiate_async(&mut store, &component, &linker).await?;
@@ -59,13 +66,19 @@ impl Nats {
 
         // connect to NATS server
         let host_state = store.data_mut();
-        let client = HostClient::connect(host_state, "demo.nats.io".to_string()).await?.unwrap();
+        let Ok(client) = HostClient::connect(host_state, "demo.nats.io".to_string()).await? else {
+            return Err(anyhow::anyhow!("Failed to connect to NATS server"));
+        };
         let client = host_state.table.get(&client)?.clone();
-        let gc = guest.call_configure(&mut store).await?;
 
-        // subscribe to configured channels
+        // get channels to subscribe to
+        let Ok(gc) = guest.call_configure(&mut store).await? else {
+            return Err(anyhow::anyhow!("Failed to configure NATS client"));
+        };
+
+        // subscribe to channels
         let mut subscribers = vec![];
-        for ch in &gc.unwrap().channels {
+        for ch in &gc.channels {
             let subscriber = client.subscribe(ch.to_owned()).await?;
             subscribers.push(subscriber);
         }
@@ -85,34 +98,33 @@ impl Nats {
     }
 }
 
-/// [`Builder`] is used to build and run [`Nats`] instance.
-#[derive(Default)]
-#[allow(clippy::module_name_repetitions)]
-pub struct Builder {
-    nats: Nats,
-}
+// /// [`Builder`] is used to build and run [`Nats`] instance.
+// #[allow(clippy::module_name_repetitions)]
+// pub struct Builder {
+//     nats: Nats,
+// }
 
-impl Builder {
-    /// Returns a new [`Builder`]
-    #[must_use]
-    pub fn new() -> Self {
-        Self::default()
-    }
+// impl Builder {
+//     /// Returns a new [`Builder`]
+//     #[must_use]
+//     pub fn new() -> Self {
+//         Self::default()
+//     }
 
-    pub fn engine(mut self, engine: Engine) -> Self {
-        self.nats.engine = engine;
-        self
-    }
+//     pub fn engine(mut self, engine: Engine) -> Self {
+//         self.nats.engine = engine;
+//         self
+//     }
 
-    pub fn wasm(mut self, wasm: String) -> Self {
-        self.nats.wasm = wasm;
-        self
-    }
+//     pub fn wasm(mut self, wasm: String) -> Self {
+//         self.nats.wasm = wasm;
+//         self
+//     }
 
-    pub async fn run(self) -> wasmtime::Result<()> {
-        self.nats.run().await
-    }
-}
+//     pub async fn run(self) -> wasmtime::Result<()> {
+//         self.nats.run().await
+//     }
+// }
 
 impl Host for Nats {}
 

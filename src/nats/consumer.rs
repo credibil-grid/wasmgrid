@@ -73,7 +73,10 @@ impl consumer::Host for super::Nats {
         &mut self, _gc: GuestConfiguration,
     ) -> wasmtime::Result<anyhow::Result<(), Resource<Error>>> {
         // TODO: implement update_guest_configuration
-        
+
+        // let builder = super::Builder::new().engine(self.engine.clone()).wasm(self.wasm.clone());
+        // tokio::spawn(async move { builder.run().await });
+
         Ok(Ok(()))
     }
 

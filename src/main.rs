@@ -37,8 +37,9 @@ pub async fn main() -> wasmtime::Result<()> {
     let engine = Engine::new(&config)?;
 
     // start messaging Host as non-blocking process
-    let builder = nats::Builder::new().engine(engine.clone()).wasm(args.wasm);
-    tokio::spawn(async move { builder.run().await });
+    // let builder = nats::Builder::new().engine(engine.clone()).wasm(args.wasm);
+    let nats = nats::Nats::new(engine.clone(), args.wasm);
+    tokio::spawn(async move { nats.run().await });
 
     shutdown().await
 }
