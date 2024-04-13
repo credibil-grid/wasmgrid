@@ -65,11 +65,11 @@ impl Nats {
         let guest = messaging.wasi_messaging_messaging_guest();
 
         // connect to NATS server
-        let host_state = store.data_mut();
-        let Ok(client) = HostClient::connect(host_state, "demo.nats.io".to_string()).await? else {
+        let nats = store.data_mut();
+        let Ok(client) = HostClient::connect(nats, "demo.nats.io".to_string()).await? else {
             return Err(anyhow::anyhow!("Failed to connect to NATS server"));
         };
-        let client = host_state.table.get(&client)?.clone();
+        let client = nats.table.get(&client)?.clone();
 
         // get channels to subscribe to
         let Ok(gc) = guest.call_configure(&mut store).await? else {
