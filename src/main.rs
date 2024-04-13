@@ -3,7 +3,6 @@ mod messaging;
 use anyhow::Error;
 pub use async_nats::Client;
 use clap::Parser;
-use tokio::signal::unix::{signal, SignalKind};
 use wasmtime::component::bindgen;
 use wasmtime::{Config, Engine};
 
@@ -37,22 +36,15 @@ pub async fn main() -> wasmtime::Result<()> {
     let engine = Engine::new(&config)?;
 
     // start messaging Host as non-blocking process
-    // let builder = nats::Builder::new().engine(engine.clone()).wasm(args.wasm);
-    let mut nats = messaging::Host::new(engine.clone(), args.wasm);
-    tokio::spawn(async move { nats.run().await });
+    let mut msg_host = messaging::Host::new(engine.clone(), args.wasm);
+    tokio::spawn(async move { msg_host.run().await });
 
     shutdown().await
 }
 
 // Wait for shutdown signal
 async fn shutdown() -> Result<(), Error> {
-    let mut sigint = signal(SignalKind::interrupt())?;
-    let mut sigterm = signal(SignalKind::terminate())?;
-    let mut sigquit = signal(SignalKind::quit())?;
-
     tokio::select! {
-        _ = sigint.recv() => Ok(()),
-        _ = sigterm.recv() => Ok(()),
-        _ = sigquit.recv() => Ok(()),
+        _ = tokio::signal::ctrl_c() => Ok(()),
     }
 }
