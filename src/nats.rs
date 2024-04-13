@@ -66,7 +66,7 @@ impl Nats {
 
         // connect to NATS server
         let nats = store.data_mut();
-        let Ok(client) = HostClient::connect(nats, "demo.nats.io".to_string()).await? else {
+        let Ok(client) = nats.connect("demo.nats.io".to_string()).await? else {
             return Err(anyhow::anyhow!("Failed to connect to NATS server"));
         };
         let client = nats.table.get(&client)?.clone();
@@ -134,8 +134,6 @@ impl HostClient for Nats {
     async fn connect(
         &mut self, name: String,
     ) -> wasmtime::Result<anyhow::Result<Resource<Client>, Resource<Error>>> {
-        // get existing resource entries
-
         let resource = if let Some(key) = self.keys.get(&name) {
             // Get an existing connection by key
             // let any = self.table.get_any_mut(*key).unwrap();
