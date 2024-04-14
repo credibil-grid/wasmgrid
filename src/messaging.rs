@@ -3,11 +3,27 @@ mod producer;
 
 use std::collections::HashMap;
 
-use async_nats::Client;
+use bytes::Bytes;
+// use async_nats::Client;
 use wasmtime::component::Resource;
 use wasmtime_wasi::{ResourceTable, WasiCtx, WasiCtxBuilder, WasiView};
 
 use crate::wasi::messaging::messaging_types::{self, Error, HostClient, HostError};
+
+#[derive(Clone)]
+pub struct Client {
+    inner: async_nats::Client,
+}
+
+impl Client {
+    pub async fn subscribe(&self, ch: String) -> anyhow::Result<async_nats::Subscriber> {
+        Ok(self.inner.subscribe(ch).await?)
+    }
+
+    pub async fn publish(&self, ch: String, data: Bytes) -> anyhow::Result<()> {
+        Ok(self.inner.publish(ch, data).await?)
+    }
+}
 
 /// Host is the base type used to implement host messaging interfaces.
 /// In addition, it holds the "host-defined state" used by the wasm runtime [`Store`].
@@ -30,11 +46,7 @@ impl Default for Host {
 
 impl Host {
     pub fn new() -> Self {
-        Self {
-            keys: HashMap::default(),
-            table: ResourceTable::default(),
-            ctx: WasiCtxBuilder::new().inherit_env().build(),
-        }
+        Self::default()
     }
 }
 
@@ -55,7 +67,8 @@ impl HostClient for Host {
         } else {
             // Create a new connection
             println!("New connection");
-            let client = async_nats::connect("demo.nats.io").await?;
+            let nats_client = async_nats::connect("demo.nats.io").await?;
+            let client = Client { inner: nats_client };
             let resource = self.table.push(client)?;
             self.keys.insert(name, resource.rep());
             resource

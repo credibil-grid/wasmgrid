@@ -12,7 +12,7 @@ bindgen!({
     tracing: true,
     async: true,
     with: {
-        "wasi:messaging/messaging-types/client": Client,
+        "wasi:messaging/messaging-types/client": messaging::Client,
     },
 });
 
@@ -21,7 +21,7 @@ bindgen!({
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct Args {
-    /// The path to the wasm file to run.
+    /// The path to the wasm file to serve.
     #[arg(short, long)]
     wasm: String,
 }
