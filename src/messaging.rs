@@ -4,109 +4,39 @@ mod producer;
 use std::collections::HashMap;
 
 use async_nats::Client;
-use futures::stream::{self, StreamExt};
-use wasmtime::component::{Component, Linker, Resource};
-use wasmtime::{Engine, Store};
-use wasmtime_wasi::{command, ResourceTable, WasiCtx, WasiCtxBuilder, WasiView};
+use wasmtime::component::Resource;
+use wasmtime_wasi::{ResourceTable, WasiCtx, WasiCtxBuilder, WasiView};
 
-use crate::wasi::messaging::messaging_types::{
-    self, Error, FormatSpec, HostClient, HostError, Message,
-};
+use crate::wasi::messaging::messaging_types::{self, Error, HostClient, HostError};
 
 /// Host is the base type used to implement host messaging interfaces.
 /// In addition, it holds the "host-defined state" used by the wasm runtime [`Store`].
 pub struct Host {
     keys: HashMap<String, u32>,
-    table: ResourceTable,
+    pub table: ResourceTable,
     ctx: WasiCtx,
-    engine: Engine,
-    wasm: String,
 }
 
 impl Default for Host {
     /// Create a default instance of the host state for use in initialisng the [`Store`].
     fn default() -> Self {
-        // let mut config = Config::new();
-        // config.async_support(true);
-        // let engine = Engine::new(&config).unwrap();
-
         Self {
             keys: HashMap::default(),
             table: ResourceTable::default(),
             ctx: WasiCtxBuilder::new().inherit_env().build(),
-            engine: Engine::default(),
-            wasm: String::default(),
         }
     }
 }
 
 impl Host {
-    pub fn new(engine: Engine, wasm: String) -> Self {
+    pub fn new() -> Self {
         Self {
             keys: HashMap::default(),
             table: ResourceTable::default(),
             ctx: WasiCtxBuilder::new().inherit_env().build(),
-            engine,
-            wasm,
         }
-    }
-
-    /// Run the NATS messaging service. The method subscribes to configured channels and processes
-    /// messages blocking the current thread until terminated.
-    pub async fn run(&mut self) -> wasmtime::Result<()> {
-        let mut store = Store::new(&self.engine, Host::default());
-        let component = Component::from_file(&self.engine, &self.wasm)?;
-
-        let mut linker = Linker::new(&self.engine);
-        command::add_to_linker(&mut linker)?;
-        crate::Messaging::add_to_linker(&mut linker, |t| t)?;
-
-        let (messaging, _) =
-            crate::Messaging::instantiate_async(&mut store, &component, &linker).await?;
-        let guest = messaging.wasi_messaging_messaging_guest();
-
-        // connect to NATS server
-        let host = store.data_mut();
-        let Ok(client) = host.connect("demo.nats.io".to_string()).await? else {
-            return Err(anyhow::anyhow!("Failed to connect to NATS server"));
-        };
-        let client = host.table.get(&client)?.clone();
-
-        // get channels to subscribe to
-        let Ok(gc) = guest.call_configure(&mut store).await? else {
-            return Err(anyhow::anyhow!("Failed to configure NATS client"));
-        };
-
-        // subscribe to channels
-        let mut subscribers = vec![];
-        for ch in &gc.channels {
-            let subscriber = client.subscribe(ch.to_owned()).await?;
-            subscribers.push(subscriber);
-        }
-
-        // process messages until terminated
-        let mut messages = stream::select_all(subscribers);
-        while let Some(message) = messages.next().await {
-            let msg = Message {
-                data: message.payload.to_vec(),
-                metadata: Some(vec![(String::from("channel"), message.subject.to_string())]),
-                format: FormatSpec::Raw,
-            };
-            let _ = guest.call_handler(&mut store, &[msg]).await?;
-        }
-
-        Ok(())
     }
 }
-
-// tokio::select! {
-//     _ = tokio::signal::ctrl_c() => {
-//         Ok::<_, anyhow::Error>(())
-//     }
-//     res = self.serve() => {
-//         res
-//     }
-// }
 
 impl messaging_types::Host for Host {}
 

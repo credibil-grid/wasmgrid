@@ -1,5 +1,5 @@
 mod messaging;
-
+mod nats;
 use anyhow::Error;
 pub use async_nats::Client;
 use clap::Parser;
@@ -36,8 +36,7 @@ pub async fn main() -> wasmtime::Result<()> {
     let engine = Engine::new(&config)?;
 
     // start messaging Host as non-blocking process
-    let mut msg_host = messaging::Host::new(engine.clone(), args.wasm);
-    tokio::spawn(async move { msg_host.run().await });
+    tokio::spawn(async move { nats::serve(&engine, args.wasm).await });
 
     shutdown().await
 }
