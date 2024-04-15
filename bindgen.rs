@@ -9,12 +9,13 @@ mod messaging {
         use futures::stream::StreamExt;
         use tokio::time::{sleep, Duration};
         use wasmtime::component::Resource;
-        use crate::messaging::types::WasiMessagingView;
+
+        use crate::messaging::types::MessagingView;
         use crate::wasi::messaging::consumer;
         use crate::wasi::messaging::messaging_types::{
             Client, Error, FormatSpec, GuestConfiguration, Message,
         };
-        impl<T: WasiMessagingView> consumer::Host for T {
+        impl<T: MessagingView> consumer::Host for T {
             #[allow(
                 clippy::async_yields_async,
                 clippy::diverging_sub_expression,
@@ -26,17 +27,15 @@ mod messaging {
                 clippy::used_underscore_binding
             )]
             fn subscribe_try_receive<'life0, 'async_trait>(
-                &'life0 mut self,
-                client: Resource<Client>,
-                ch: String,
-                t_milliseconds: u32,
+                &'life0 mut self, client: Resource<Client>, ch: String, t_milliseconds: u32,
             ) -> ::core::pin::Pin<
                 Box<
                     dyn ::core::future::Future<
-                        Output = wasmtime::Result<
-                            anyhow::Result<Option<Vec<Message>>, Resource<Error>>,
-                        >,
-                    > + ::core::marker::Send + 'async_trait,
+                            Output = wasmtime::Result<
+                                anyhow::Result<Option<Vec<Message>>, Resource<Error>>,
+                            >,
+                        > + ::core::marker::Send
+                        + 'async_trait,
                 >,
             >
             where
@@ -45,11 +44,10 @@ mod messaging {
             {
                 Box::pin(async move {
                     if let ::core::option::Option::Some(__ret) = ::core::option::Option::None::<
-                        wasmtime::Result<
-                            anyhow::Result<Option<Vec<Message>>, Resource<Error>>,
-                        >,
+                        wasmtime::Result<anyhow::Result<Option<Vec<Message>>, Resource<Error>>>,
                     > {
-                        #[allow(unreachable_code)] return __ret;
+                        #[allow(unreachable_code)]
+                        return __ret;
                     }
                     let mut __self = self;
                     let client = client;
@@ -62,34 +60,29 @@ mod messaging {
                         let mut subscriber = match client.subscribe(ch).await {
                             Ok(s) => s,
                             Err(e) => {
-                                return Err(
-                                    ::anyhow::__private::must_use({
-                                        use ::anyhow::__private::kind::*;
-                                        let error = match e {
-                                            error => (&error).anyhow_kind().new(error),
-                                        };
-                                        error
-                                    }),
-                                );
+                                return Err(::anyhow::__private::must_use({
+                                    use ::anyhow::__private::kind::*;
+                                    let error = match e {
+                                        error => (&error).anyhow_kind().new(error),
+                                    };
+                                    error
+                                }));
                             }
                         };
                         let _result = tokio::spawn(async move {
-                            let stream = subscriber
-                                .by_ref()
-                                .take_until(
-                                    sleep(Duration::from_millis(u64::from(t_milliseconds))),
-                                );
+                            let stream = subscriber.by_ref().take_until(sleep(
+                                Duration::from_millis(u64::from(t_milliseconds)),
+                            ));
                             let messages = stream
                                 .map(|m| Message {
                                     data: m.payload.to_vec(),
-                                    metadata: Some(
-                                        <[_]>::into_vec(
-                                            #[rustc_box]
-                                            ::alloc::boxed::Box::new([
-                                                (String::from("channel"), m.subject.to_string()),
-                                            ]),
-                                        ),
-                                    ),
+                                    metadata: Some(<[_]>::into_vec(
+                                        #[rustc_box]
+                                        ::alloc::boxed::Box::new([(
+                                            String::from("channel"),
+                                            m.subject.to_string(),
+                                        )]),
+                                    )),
                                     format: FormatSpec::Raw,
                                 })
                                 .collect::<Vec<_>>()
@@ -99,9 +92,11 @@ mod messaging {
                         });
                         Ok(Ok(None))
                     };
-                    #[allow(unreachable_code)] __ret
+                    #[allow(unreachable_code)]
+                    __ret
                 })
             }
+
             #[allow(
                 clippy::async_yields_async,
                 clippy::diverging_sub_expression,
@@ -113,16 +108,15 @@ mod messaging {
                 clippy::used_underscore_binding
             )]
             fn subscribe_receive<'life0, 'async_trait>(
-                &'life0 mut self,
-                client: Resource<Client>,
-                ch: String,
+                &'life0 mut self, client: Resource<Client>, ch: String,
             ) -> ::core::pin::Pin<
                 Box<
                     dyn ::core::future::Future<
-                        Output = wasmtime::Result<
-                            anyhow::Result<Vec<Message>, Resource<Error>>,
-                        >,
-                    > + ::core::marker::Send + 'async_trait,
+                            Output = wasmtime::Result<
+                                anyhow::Result<Vec<Message>, Resource<Error>>,
+                            >,
+                        > + ::core::marker::Send
+                        + 'async_trait,
                 >,
             >
             where
@@ -133,27 +127,24 @@ mod messaging {
                     if let ::core::option::Option::Some(__ret) = ::core::option::Option::None::<
                         wasmtime::Result<anyhow::Result<Vec<Message>, Resource<Error>>>,
                     > {
-                        #[allow(unreachable_code)] return __ret;
+                        #[allow(unreachable_code)]
+                        return __ret;
                     }
                     let mut __self = self;
                     let client = client;
                     let ch = ch;
-                    let __ret: wasmtime::Result<
-                        anyhow::Result<Vec<Message>, Resource<Error>>,
-                    > = {
+                    let __ret: wasmtime::Result<anyhow::Result<Vec<Message>, Resource<Error>>> = {
                         let client = __self.table().get(&client)?;
                         let mut subscriber = match client.subscribe(ch).await {
                             Ok(s) => s,
                             Err(e) => {
-                                return Err(
-                                    ::anyhow::__private::must_use({
-                                        use ::anyhow::__private::kind::*;
-                                        let error = match e {
-                                            error => (&error).anyhow_kind().new(error),
-                                        };
-                                        error
-                                    }),
-                                );
+                                return Err(::anyhow::__private::must_use({
+                                    use ::anyhow::__private::kind::*;
+                                    let error = match e {
+                                        error => (&error).anyhow_kind().new(error),
+                                    };
+                                    error
+                                }));
                             }
                         };
                         let messages = subscriber
@@ -161,14 +152,13 @@ mod messaging {
                             .take(1)
                             .map(|m| Message {
                                 data: m.payload.to_vec(),
-                                metadata: Some(
-                                    <[_]>::into_vec(
-                                        #[rustc_box]
-                                        ::alloc::boxed::Box::new([
-                                            (String::from("channel"), m.subject.to_string()),
-                                        ]),
-                                    ),
-                                ),
+                                metadata: Some(<[_]>::into_vec(
+                                    #[rustc_box]
+                                    ::alloc::boxed::Box::new([(
+                                        String::from("channel"),
+                                        m.subject.to_string(),
+                                    )]),
+                                )),
                                 format: FormatSpec::Raw,
                             })
                             .collect::<Vec<_>>()
@@ -176,9 +166,11 @@ mod messaging {
                         let _ = subscriber.unsubscribe().await;
                         Ok(Ok(messages))
                     };
-                    #[allow(unreachable_code)] __ret
+                    #[allow(unreachable_code)]
+                    __ret
                 })
             }
+
             #[allow(
                 clippy::async_yields_async,
                 clippy::diverging_sub_expression,
@@ -190,13 +182,13 @@ mod messaging {
                 clippy::used_underscore_binding
             )]
             fn update_guest_configuration<'life0, 'async_trait>(
-                &'life0 mut self,
-                _gc: GuestConfiguration,
+                &'life0 mut self, _gc: GuestConfiguration,
             ) -> ::core::pin::Pin<
                 Box<
                     dyn ::core::future::Future<
-                        Output = wasmtime::Result<anyhow::Result<(), Resource<Error>>>,
-                    > + ::core::marker::Send + 'async_trait,
+                            Output = wasmtime::Result<anyhow::Result<(), Resource<Error>>>,
+                        > + ::core::marker::Send
+                        + 'async_trait,
                 >,
             >
             where
@@ -207,16 +199,18 @@ mod messaging {
                     if let ::core::option::Option::Some(__ret) = ::core::option::Option::None::<
                         wasmtime::Result<anyhow::Result<(), Resource<Error>>>,
                     > {
-                        #[allow(unreachable_code)] return __ret;
+                        #[allow(unreachable_code)]
+                        return __ret;
                     }
                     let mut __self = self;
                     let _gc = _gc;
-                    let __ret: wasmtime::Result<anyhow::Result<(), Resource<Error>>> = {
-                        Ok(Ok(()))
-                    };
-                    #[allow(unreachable_code)] __ret
+                    let __ret: wasmtime::Result<anyhow::Result<(), Resource<Error>>> =
+                        { Ok(Ok(())) };
+                    #[allow(unreachable_code)]
+                    __ret
                 })
             }
+
             #[allow(
                 clippy::async_yields_async,
                 clippy::diverging_sub_expression,
@@ -228,13 +222,13 @@ mod messaging {
                 clippy::used_underscore_binding
             )]
             fn complete_message<'life0, 'async_trait>(
-                &'life0 mut self,
-                _msg: Message,
+                &'life0 mut self, _msg: Message,
             ) -> ::core::pin::Pin<
                 Box<
                     dyn ::core::future::Future<
-                        Output = wasmtime::Result<anyhow::Result<(), Resource<Error>>>,
-                    > + ::core::marker::Send + 'async_trait,
+                            Output = wasmtime::Result<anyhow::Result<(), Resource<Error>>>,
+                        > + ::core::marker::Send
+                        + 'async_trait,
                 >,
             >
             where
@@ -245,21 +239,22 @@ mod messaging {
                     if let ::core::option::Option::Some(__ret) = ::core::option::Option::None::<
                         wasmtime::Result<anyhow::Result<(), Resource<Error>>>,
                     > {
-                        #[allow(unreachable_code)] return __ret;
+                        #[allow(unreachable_code)]
+                        return __ret;
                     }
                     let mut __self = self;
                     let _msg = _msg;
                     let __ret: wasmtime::Result<anyhow::Result<(), Resource<Error>>> = {
                         {
-                            ::std::io::_print(
-                                format_args!("Implement complete_message\n"),
-                            );
+                            ::std::io::_print(format_args!("Implement complete_message\n"));
                         };
                         Ok(Ok(()))
                     };
-                    #[allow(unreachable_code)] __ret
+                    #[allow(unreachable_code)]
+                    __ret
                 })
             }
+
             #[allow(
                 clippy::async_yields_async,
                 clippy::diverging_sub_expression,
@@ -271,13 +266,13 @@ mod messaging {
                 clippy::used_underscore_binding
             )]
             fn abandon_message<'life0, 'async_trait>(
-                &'life0 mut self,
-                _msg: Message,
+                &'life0 mut self, _msg: Message,
             ) -> ::core::pin::Pin<
                 Box<
                     dyn ::core::future::Future<
-                        Output = wasmtime::Result<anyhow::Result<(), Resource<Error>>>,
-                    > + ::core::marker::Send + 'async_trait,
+                            Output = wasmtime::Result<anyhow::Result<(), Resource<Error>>>,
+                        > + ::core::marker::Send
+                        + 'async_trait,
                 >,
             >
             where
@@ -288,19 +283,19 @@ mod messaging {
                     if let ::core::option::Option::Some(__ret) = ::core::option::Option::None::<
                         wasmtime::Result<anyhow::Result<(), Resource<Error>>>,
                     > {
-                        #[allow(unreachable_code)] return __ret;
+                        #[allow(unreachable_code)]
+                        return __ret;
                     }
                     let mut __self = self;
                     let _msg = _msg;
                     let __ret: wasmtime::Result<anyhow::Result<(), Resource<Error>>> = {
                         {
-                            ::std::io::_print(
-                                format_args!("Implement abandon_message\n"),
-                            );
+                            ::std::io::_print(format_args!("Implement abandon_message\n"));
                         };
                         Ok(Ok(()))
                     };
-                    #[allow(unreachable_code)] __ret
+                    #[allow(unreachable_code)]
+                    __ret
                 })
             }
         }
@@ -308,10 +303,11 @@ mod messaging {
     mod producer {
         use bytes::Bytes;
         use wasmtime::component::Resource;
-        use crate::messaging::types::WasiMessagingView;
+
+        use crate::messaging::types::MessagingView;
         use crate::wasi::messaging::messaging_types::{Client, Error, Message};
         use crate::wasi::messaging::producer;
-        impl<T: WasiMessagingView> producer::Host for T {
+        impl<T: MessagingView> producer::Host for T {
             #[allow(
                 clippy::async_yields_async,
                 clippy::diverging_sub_expression,
@@ -323,15 +319,13 @@ mod messaging {
                 clippy::used_underscore_binding
             )]
             fn send<'life0, 'async_trait>(
-                &'life0 mut self,
-                client: Resource<Client>,
-                ch: String,
-                msg: Vec<Message>,
+                &'life0 mut self, client: Resource<Client>, ch: String, msg: Vec<Message>,
             ) -> ::core::pin::Pin<
                 Box<
                     dyn ::core::future::Future<
-                        Output = wasmtime::Result<anyhow::Result<(), Resource<Error>>>,
-                    > + ::core::marker::Send + 'async_trait,
+                            Output = wasmtime::Result<anyhow::Result<(), Resource<Error>>>,
+                        > + ::core::marker::Send
+                        + 'async_trait,
                 >,
             >
             where
@@ -342,7 +336,8 @@ mod messaging {
                     if let ::core::option::Option::Some(__ret) = ::core::option::Option::None::<
                         wasmtime::Result<anyhow::Result<(), Resource<Error>>>,
                     > {
-                        #[allow(unreachable_code)] return __ret;
+                        #[allow(unreachable_code)]
+                        return __ret;
                     }
                     let mut __self = self;
                     let client = client;
@@ -357,7 +352,8 @@ mod messaging {
                         client.publish(ch, data).await?;
                         Ok(Ok(()))
                     };
-                    #[allow(unreachable_code)] __ret
+                    #[allow(unreachable_code)]
+                    __ret
                 })
             }
         }
@@ -366,17 +362,16 @@ mod messaging {
         use bytes::Bytes;
         use wasmtime::component::Resource;
         use wasmtime_wasi::{ResourceTable, WasiCtx, WasiView};
-        pub trait WasiMessagingView: WasiView + Send {
+        pub trait MessagingView: WasiView + Send {
             #[must_use]
             #[allow(clippy::type_complexity, clippy::type_repetition_in_bounds)]
             fn connect<'life0, 'async_trait>(
-                &'life0 mut self,
-                name: String,
+                &'life0 mut self, name: String,
             ) -> ::core::pin::Pin<
                 Box<
-                    dyn ::core::future::Future<
-                        Output = anyhow::Result<Resource<Client>>,
-                    > + ::core::marker::Send + 'async_trait,
+                    dyn ::core::future::Future<Output = anyhow::Result<Resource<Client>>>
+                        + ::core::marker::Send
+                        + 'async_trait,
                 >,
             >
             where
@@ -384,12 +379,13 @@ mod messaging {
                 Self: 'async_trait;
         }
     }
-    use crate::wasi::messaging::Client;
     use wasmtime::component::Resource;
-    pub use crate::messaging::types::WasiMessagingView;
+
+    pub use crate::messaging::types::MessagingView;
     use crate::wasi::messaging::messaging_types::{self, Error, HostClient, HostError};
-    impl<T: WasiMessagingView> messaging_types::Host for T {}
-    impl<T: WasiMessagingView> HostClient for T {
+    use crate::wasi::messaging::Client;
+    impl<T: MessagingView> messaging_types::Host for T {}
+    impl<T: MessagingView> HostClient for T {
         /// Connect to the NATS server specified by `name` and return a client resource.
         #[allow(
             clippy::async_yields_async,
@@ -402,15 +398,15 @@ mod messaging {
             clippy::used_underscore_binding
         )]
         fn connect<'life0, 'async_trait>(
-            &'life0 mut self,
-            name: String,
+            &'life0 mut self, name: String,
         ) -> ::core::pin::Pin<
             Box<
                 dyn ::core::future::Future<
-                    Output = wasmtime::Result<
-                        anyhow::Result<Resource<Client>, Resource<Error>>,
-                    >,
-                > + ::core::marker::Send + 'async_trait,
+                        Output = wasmtime::Result<
+                            anyhow::Result<Resource<Client>, Resource<Error>>,
+                        >,
+                    > + ::core::marker::Send
+                    + 'async_trait,
             >,
         >
         where
@@ -421,26 +417,27 @@ mod messaging {
                 if let ::core::option::Option::Some(__ret) = ::core::option::Option::None::<
                     wasmtime::Result<anyhow::Result<Resource<Client>, Resource<Error>>>,
                 > {
-                    #[allow(unreachable_code)] return __ret;
+                    #[allow(unreachable_code)]
+                    return __ret;
                 }
                 let mut __self = self;
                 let name = name;
-                let __ret: wasmtime::Result<
-                    anyhow::Result<Resource<Client>, Resource<Error>>,
-                > = {
+                let __ret: wasmtime::Result<anyhow::Result<Resource<Client>, Resource<Error>>> = {
                     let resource = __self.connect(name).await?;
                     Ok(Ok(resource))
                 };
-                #[allow(unreachable_code)] __ret
+                #[allow(unreachable_code)]
+                __ret
             })
         }
+
         /// Drop the specified NATS client resource.
         fn drop(&mut self, client: Resource<Client>) -> wasmtime::Result<()> {
             let _ = self.table().delete(client)?;
             Ok(())
         }
     }
-    impl<T: WasiMessagingView> HostError for T {
+    impl<T: MessagingView> HostError for T {
         #[allow(
             clippy::async_yields_async,
             clippy::diverging_sub_expression,
@@ -455,9 +452,9 @@ mod messaging {
             &'life0 mut self,
         ) -> ::core::pin::Pin<
             Box<
-                dyn ::core::future::Future<
-                    Output = wasmtime::Result<String>,
-                > + ::core::marker::Send + 'async_trait,
+                dyn ::core::future::Future<Output = wasmtime::Result<String>>
+                    + ::core::marker::Send
+                    + 'async_trait,
             >,
         >
         where
@@ -465,18 +462,19 @@ mod messaging {
             Self: 'async_trait,
         {
             Box::pin(async move {
-                if let ::core::option::Option::Some(__ret) = ::core::option::Option::None::<
-                    wasmtime::Result<String>,
-                > {
-                    #[allow(unreachable_code)] return __ret;
+                if let ::core::option::Option::Some(__ret) =
+                    ::core::option::Option::None::<wasmtime::Result<String>>
+                {
+                    #[allow(unreachable_code)]
+                    return __ret;
                 }
                 let mut __self = self;
-                let __ret: wasmtime::Result<String> = {
-                    Ok(String::from("trace HostError"))
-                };
-                #[allow(unreachable_code)] __ret
+                let __ret: wasmtime::Result<String> = { Ok(String::from("trace HostError")) };
+                #[allow(unreachable_code)]
+                __ret
             })
         }
+
         fn drop(&mut self, err: Resource<Error>) -> wasmtime::Result<()> {
             {
                 ::std::io::_print(format_args!("Implement drop for {0:?}\n", err));
@@ -487,10 +485,12 @@ mod messaging {
 }
 mod nats {
     use std::collections::HashMap;
+
     use futures::stream::{self, StreamExt};
     use wasmtime::component::{Component, Linker, Resource};
     use wasmtime::{Engine, Store};
     use wasmtime_wasi::{command, ResourceTable, WasiCtx, WasiCtxBuilder, WasiView};
+
     use crate::messaging;
     use crate::wasi::messaging::messaging_types::{FormatSpec, Message};
     /// Host is the base type used to implement host messaging interfaces.
@@ -509,7 +509,7 @@ mod nats {
             }
         }
     }
-    impl messaging::WasiMessagingView for Host {
+    impl messaging::MessagingView for Host {
         #[allow(
             clippy::async_yields_async,
             clippy::diverging_sub_expression,
@@ -521,13 +521,12 @@ mod nats {
             clippy::used_underscore_binding
         )]
         fn connect<'life0, 'async_trait>(
-            &'life0 mut self,
-            name: String,
+            &'life0 mut self, name: String,
         ) -> ::core::pin::Pin<
             Box<
-                dyn ::core::future::Future<
-                    Output = anyhow::Result<Resource<Client>>,
-                > + ::core::marker::Send + 'async_trait,
+                dyn ::core::future::Future<Output = anyhow::Result<Resource<Client>>>
+                    + ::core::marker::Send
+                    + 'async_trait,
             >,
         >
         where
@@ -535,51 +534,61 @@ mod nats {
             Self: 'async_trait,
         {
             Box::pin(async move {
-                if let ::core::option::Option::Some(__ret) = ::core::option::Option::None::<
-                    anyhow::Result<Resource<Client>>,
-                > {
-                    #[allow(unreachable_code)] return __ret;
+                if let ::core::option::Option::Some(__ret) =
+                    ::core::option::Option::None::<anyhow::Result<Resource<Client>>>
+                {
+                    #[allow(unreachable_code)]
+                    return __ret;
                 }
                 let mut __self = self;
                 let name = name;
                 let __ret: anyhow::Result<Resource<Client>> = {
                     {
-                        ::core::panicking::panic_fmt(
-                            format_args!("not implemented: {0}", format_args!("connect")),
-                        );
+                        ::core::panicking::panic_fmt(format_args!(
+                            "not implemented: {0}",
+                            format_args!("connect")
+                        ));
                     }
                 };
-                #[allow(unreachable_code)] __ret
+                #[allow(unreachable_code)]
+                __ret
             })
         }
+
         fn ctx(&mut self) -> &mut WasiCtx {
             {
-                ::core::panicking::panic_fmt(
-                    format_args!("not implemented: {0}", format_args!("ctx")),
-                );
+                ::core::panicking::panic_fmt(format_args!(
+                    "not implemented: {0}",
+                    format_args!("ctx")
+                ));
             }
         }
+
         fn table(&mut self) -> &mut ResourceTable {
             {
-                ::core::panicking::panic_fmt(
-                    format_args!("not implemented: {0}", format_args!("table")),
-                );
+                ::core::panicking::panic_fmt(format_args!(
+                    "not implemented: {0}",
+                    format_args!("table")
+                ));
             }
         }
     }
     impl WasiView for Host {
         fn ctx(&mut self) -> &mut WasiCtx {
             {
-                ::core::panicking::panic_fmt(
-                    format_args!("not implemented: {0}", format_args!("ctx")),
-                );
+                ::core::panicking::panic_fmt(format_args!(
+                    "not implemented: {0}",
+                    format_args!("ctx")
+                ));
             }
         }
+
         fn table(&mut self) -> &mut ResourceTable {
             {
-                ::core::panicking::panic_fmt(
-                    format_args!("not implemented: {0}", format_args!("table")),
-                );
+                ::core::panicking::panic_fmt(format_args!(
+                    "not implemented: {0}",
+                    format_args!("table")
+                ));
             }
         }
     }
@@ -596,12 +605,10 @@ mod nats {
         }
     }
     impl Client {
-        pub async fn subscribe(
-            &self,
-            ch: String,
-        ) -> anyhow::Result<async_nats::Subscriber> {
+        pub async fn subscribe(&self, ch: String) -> anyhow::Result<async_nats::Subscriber> {
             Ok(self.inner.subscribe(ch).await?)
         }
+
         pub async fn publish(&self, ch: String, data: Bytes) -> anyhow::Result<()> {
             Ok(self.inner.publish(ch, data).await?)
         }
@@ -613,30 +620,25 @@ mod nats {
         command::add_to_linker(&mut linker)?;
         crate::Messaging::add_to_linker(&mut linker, |t| t)?;
         let instance_pre = linker.instantiate_pre(&component)?;
-        let (messaging, _) = crate::Messaging::instantiate_pre(&mut store, &instance_pre)
-            .await?;
+        let (messaging, _) = crate::Messaging::instantiate_pre(&mut store, &instance_pre).await?;
         let guest = messaging.wasi_messaging_messaging_guest();
         let host = store.data_mut();
         let Ok(client) = host.connect("demo.nats.io".to_string()).await? else {
-            return Err(
-                ::anyhow::__private::must_use({
-                    let error = ::anyhow::__private::format_err(
-                        format_args!("Failed to connect to NATS server"),
-                    );
-                    error
-                }),
-            );
+            return Err(::anyhow::__private::must_use({
+                let error = ::anyhow::__private::format_err(format_args!(
+                    "Failed to connect to NATS server"
+                ));
+                error
+            }));
         };
         let client = host.table.get(&client)?.clone();
         let Ok(gc) = guest.call_configure(&mut store).await? else {
-            return Err(
-                ::anyhow::__private::must_use({
-                    let error = ::anyhow::__private::format_err(
-                        format_args!("Failed to configure NATS client"),
-                    );
-                    error
-                }),
-            );
+            return Err(::anyhow::__private::must_use({
+                let error = ::anyhow::__private::format_err(format_args!(
+                    "Failed to configure NATS client"
+                ));
+                error
+            }));
         };
         let mut subscribers = ::alloc::vec::Vec::new();
         for ch in &gc.channels {
@@ -647,14 +649,13 @@ mod nats {
         while let Some(message) = messages.next().await {
             let msg = Message {
                 data: message.payload.to_vec(),
-                metadata: Some(
-                    <[_]>::into_vec(
-                        #[rustc_box]
-                        ::alloc::boxed::Box::new([
-                            (String::from("channel"), message.subject.to_string()),
-                        ]),
-                    ),
-                ),
+                metadata: Some(<[_]>::into_vec(
+                    #[rustc_box]
+                    ::alloc::boxed::Box::new([(
+                        String::from("channel"),
+                        message.subject.to_string(),
+                    )]),
+                )),
                 format: FormatSpec::Raw,
             };
             let _ = guest.call_handler(&mut store, &[msg]).await?;
@@ -679,8 +680,10 @@ const _: () = {
             get: impl Fn(&mut T) -> &mut U + Send + Sync + Copy + 'static,
         ) -> wasmtime::Result<()>
         where
-            U: wasi::messaging::messaging_types::Host + wasi::messaging::producer::Host
-                + wasi::messaging::consumer::Host + Send,
+            U: wasi::messaging::messaging_types::Host
+                + wasi::messaging::producer::Host
+                + wasi::messaging::consumer::Host
+                + Send,
             T: Send,
         {
             wasi::messaging::messaging_types::add_to_linker(linker, get)?;
@@ -688,17 +691,18 @@ const _: () = {
             wasi::messaging::consumer::add_to_linker(linker, get)?;
             Ok(())
         }
+
         /// Instantiates the provided `module` using the specified
         /// parameters, wrapping up the result in a structure that
         /// translates between wasm and the host.
         pub async fn instantiate_async<T: Send>(
             mut store: impl wasmtime::AsContextMut<Data = T>,
-            component: &wasmtime::component::Component,
-            linker: &wasmtime::component::Linker<T>,
+            component: &wasmtime::component::Component, linker: &wasmtime::component::Linker<T>,
         ) -> wasmtime::Result<(Self, wasmtime::component::Instance)> {
             let instance = linker.instantiate_async(&mut store, component).await?;
             Ok((Self::new(store, &instance)?, instance))
         }
+
         /// Instantiates a pre-instantiated module using the specified
         /// parameters, wrapping up the result in a structure that
         /// translates between wasm and the host.
@@ -709,6 +713,7 @@ const _: () = {
             let instance = instance_pre.instantiate_async(&mut store).await?;
             Ok((Self::new(store, &instance)?, instance))
         }
+
         /// Low-level creation wrapper for wrapping up the exports
         /// of the `instance` provided in this structure of wasm
         /// exports.
@@ -718,8 +723,7 @@ const _: () = {
         /// returned structure which can be used to interact with
         /// the wasm module.
         pub fn new(
-            mut store: impl wasmtime::AsContextMut,
-            instance: &wasmtime::component::Instance,
+            mut store: impl wasmtime::AsContextMut, instance: &wasmtime::component::Instance,
         ) -> wasmtime::Result<Self> {
             let mut store = store.as_context_mut();
             let mut exports = instance.exports(&mut store);
@@ -738,6 +742,7 @@ const _: () = {
             )?;
             Ok(Messaging { interface0 })
         }
+
         pub fn wasi_messaging_messaging_guest(
             &self,
         ) -> &exports::wasi::messaging::messaging_guest::Guest {
@@ -751,32 +756,32 @@ pub mod wasi {
         pub mod messaging_types {
             #[allow(unused_imports)]
             use wasmtime::component::__internal::anyhow;
+
             /// A connection to a message-exchange service (e.g., buffer, broker, etc.).
-            pub use super::super::super::Client as Client;
+            pub use super::super::super::Client;
             pub trait HostClient {
                 #[must_use]
                 #[allow(clippy::type_complexity, clippy::type_repetition_in_bounds)]
                 fn connect<'life0, 'async_trait>(
-                    &'life0 mut self,
-                    name: String,
+                    &'life0 mut self, name: String,
                 ) -> ::core::pin::Pin<
                     Box<
                         dyn ::core::future::Future<
-                            Output = wasmtime::Result<
-                                Result<
-                                    wasmtime::component::Resource<Client>,
-                                    wasmtime::component::Resource<Error>,
+                                Output = wasmtime::Result<
+                                    Result<
+                                        wasmtime::component::Resource<Client>,
+                                        wasmtime::component::Resource<Error>,
+                                    >,
                                 >,
-                            >,
-                        > + ::core::marker::Send + 'async_trait,
+                            > + ::core::marker::Send
+                            + 'async_trait,
                     >,
                 >
                 where
                     'life0: 'async_trait,
                     Self: 'async_trait;
                 fn drop(
-                    &mut self,
-                    rep: wasmtime::component::Resource<Client>,
+                    &mut self, rep: wasmtime::component::Resource<Client>,
                 ) -> wasmtime::Result<()>;
             }
             /// TODO(danbugs): This should be eventually extracted as an underlying type for other wasi-cloud-core interfaces.
@@ -788,17 +793,16 @@ pub mod wasi {
                     &'life0 mut self,
                 ) -> ::core::pin::Pin<
                     Box<
-                        dyn ::core::future::Future<
-                            Output = wasmtime::Result<String>,
-                        > + ::core::marker::Send + 'async_trait,
+                        dyn ::core::future::Future<Output = wasmtime::Result<String>>
+                            + ::core::marker::Send
+                            + 'async_trait,
                     >,
                 >
                 where
                     'life0: 'async_trait,
                     Self: 'async_trait;
                 fn drop(
-                    &mut self,
-                    rep: wasmtime::component::Resource<Error>,
+                    &mut self, rep: wasmtime::component::Resource<Error>,
                 ) -> wasmtime::Result<()>;
             }
             /// There are two types of channels:
@@ -841,32 +845,24 @@ pub mod wasi {
             unsafe impl wasmtime::component::Lower for GuestConfiguration {
                 #[inline]
                 fn lower<T>(
-                    &self,
-                    cx: &mut wasmtime::component::__internal::LowerContext<'_, T>,
+                    &self, cx: &mut wasmtime::component::__internal::LowerContext<'_, T>,
                     ty: wasmtime::component::__internal::InterfaceType,
                     dst: &mut std::mem::MaybeUninit<Self::Lower>,
                 ) -> wasmtime::component::__internal::anyhow::Result<()> {
                     let ty = match ty {
-                        wasmtime::component::__internal::InterfaceType::Record(i) => {
-                            &cx.types[i]
-                        }
+                        wasmtime::component::__internal::InterfaceType::Record(i) => &cx.types[i],
                         _ => wasmtime::component::__internal::bad_type_info(),
                     };
-                    wasmtime::component::Lower::lower(
-                        &self.channels,
-                        cx,
-                        ty.fields[0usize].ty,
+                    wasmtime::component::Lower::lower(&self.channels, cx, ty.fields[0usize].ty, {
+                        #[allow(unused_unsafe)]
                         {
-                            #[allow(unused_unsafe)]
-                            {
-                                unsafe {
-                                    use ::wasmtime::component::__internal::MaybeUninitExt;
-                                    let m: &mut std::mem::MaybeUninit<_> = dst;
-                                    m.map(|p| &raw mut (*p).channels)
-                                }
+                            unsafe {
+                                use ::wasmtime::component::__internal::MaybeUninitExt;
+                                let m: &mut std::mem::MaybeUninit<_> = dst;
+                                m.map(|p| &raw mut (*p).channels)
                             }
-                        },
-                    )?;
+                        }
+                    })?;
                     wasmtime::component::Lower::lower(
                         &self.extensions,
                         cx,
@@ -884,17 +880,16 @@ pub mod wasi {
                     )?;
                     Ok(())
                 }
+
                 #[inline]
                 fn store<T>(
-                    &self,
-                    cx: &mut wasmtime::component::__internal::LowerContext<'_, T>,
-                    ty: wasmtime::component::__internal::InterfaceType,
-                    mut offset: usize,
+                    &self, cx: &mut wasmtime::component::__internal::LowerContext<'_, T>,
+                    ty: wasmtime::component::__internal::InterfaceType, mut offset: usize,
                 ) -> wasmtime::component::__internal::anyhow::Result<()> {
                     if true {
                         if !(offset
-                            % (<Self as wasmtime::component::ComponentType>::ALIGN32
-                                as usize) == 0)
+                            % (<Self as wasmtime::component::ComponentType>::ALIGN32 as usize)
+                            == 0)
                         {
                             ::core::panicking::panic(
                                 "assertion failed: offset % (<Self as wasmtime::component::ComponentType>::ALIGN32 as usize) == 0",
@@ -902,9 +897,7 @@ pub mod wasi {
                         }
                     }
                     let ty = match ty {
-                        wasmtime::component::__internal::InterfaceType::Record(i) => {
-                            &cx.types[i]
-                        }
+                        wasmtime::component::__internal::InterfaceType::Record(i) => &cx.types[i],
                         _ => wasmtime::component::__internal::bad_type_info(),
                     };
                     wasmtime::component::Lower::store(
@@ -918,9 +911,7 @@ pub mod wasi {
                         &self.extensions,
                         cx,
                         ty.fields[1usize].ty,
-                        <Option<
-                            Vec<(String, String)>,
-                        > as wasmtime::component::ComponentType>::ABI
+                        <Option<Vec<(String, String)>> as wasmtime::component::ComponentType>::ABI
                             .next_field32_size(&mut offset),
                     )?;
                     Ok(())
@@ -930,48 +921,40 @@ pub mod wasi {
                 #[inline]
                 fn lift(
                     cx: &mut wasmtime::component::__internal::LiftContext<'_>,
-                    ty: wasmtime::component::__internal::InterfaceType,
-                    src: &Self::Lower,
+                    ty: wasmtime::component::__internal::InterfaceType, src: &Self::Lower,
                 ) -> wasmtime::component::__internal::anyhow::Result<Self> {
                     let ty = match ty {
-                        wasmtime::component::__internal::InterfaceType::Record(i) => {
-                            &cx.types[i]
-                        }
+                        wasmtime::component::__internal::InterfaceType::Record(i) => &cx.types[i],
                         _ => wasmtime::component::__internal::bad_type_info(),
                     };
                     Ok(Self {
-                        channels: <Vec<
-                            Channel,
-                        > as wasmtime::component::Lift>::lift(
+                        channels: <Vec<Channel> as wasmtime::component::Lift>::lift(
                             cx,
                             ty.fields[0usize].ty,
                             &src.channels,
                         )?,
-                        extensions: <Option<
-                            Vec<(String, String)>,
-                        > as wasmtime::component::Lift>::lift(
-                            cx,
-                            ty.fields[1usize].ty,
-                            &src.extensions,
-                        )?,
+                        extensions:
+                            <Option<Vec<(String, String)>> as wasmtime::component::Lift>::lift(
+                                cx,
+                                ty.fields[1usize].ty,
+                                &src.extensions,
+                            )?,
                     })
                 }
+
                 #[inline]
                 fn load(
                     cx: &mut wasmtime::component::__internal::LiftContext<'_>,
-                    ty: wasmtime::component::__internal::InterfaceType,
-                    bytes: &[u8],
+                    ty: wasmtime::component::__internal::InterfaceType, bytes: &[u8],
                 ) -> wasmtime::component::__internal::anyhow::Result<Self> {
                     let ty = match ty {
-                        wasmtime::component::__internal::InterfaceType::Record(i) => {
-                            &cx.types[i]
-                        }
+                        wasmtime::component::__internal::InterfaceType::Record(i) => &cx.types[i],
                         _ => wasmtime::component::__internal::bad_type_info(),
                     };
                     if true {
                         if !((bytes.as_ptr() as usize)
-                            % (<Self as wasmtime::component::ComponentType>::ALIGN32
-                                as usize) == 0)
+                            % (<Self as wasmtime::component::ComponentType>::ALIGN32 as usize)
+                            == 0)
                         {
                             ::core::panicking::panic(
                                 "assertion failed: (bytes.as_ptr() as usize) %\n        (<Self as wasmtime::component::ComponentType>::ALIGN32 as usize) == 0",
@@ -1020,10 +1003,9 @@ pub mod wasi {
                     _align: [wasmtime::ValRaw; 0],
                 }
                 #[automatically_derived]
-                impl<
-                    T0: ::core::clone::Clone + Copy,
-                    T1: ::core::clone::Clone + Copy,
-                > ::core::clone::Clone for LowerGuestConfiguration<T0, T1> {
+                impl<T0: ::core::clone::Clone + Copy, T1: ::core::clone::Clone + Copy>
+                    ::core::clone::Clone for LowerGuestConfiguration<T0, T1>
+                {
                     #[inline]
                     fn clone(&self) -> LowerGuestConfiguration<T0, T1> {
                         LowerGuestConfiguration {
@@ -1034,10 +1016,10 @@ pub mod wasi {
                     }
                 }
                 #[automatically_derived]
-                impl<
-                    T0: ::core::marker::Copy + Copy,
-                    T1: ::core::marker::Copy + Copy,
-                > ::core::marker::Copy for LowerGuestConfiguration<T0, T1> {}
+                impl<T0: ::core::marker::Copy + Copy, T1: ::core::marker::Copy + Copy>
+                    ::core::marker::Copy for LowerGuestConfiguration<T0, T1>
+                {
+                }
                 unsafe impl wasmtime::component::ComponentType for GuestConfiguration {
                     type Lower = LowerGuestConfiguration<
                         <Vec<Channel> as wasmtime::component::ComponentType>::Lower,
@@ -1045,6 +1027,7 @@ pub mod wasi {
                             Vec<(String, String)>,
                         > as wasmtime::component::ComponentType>::Lower,
                     >;
+
                     const ABI: wasmtime::component::__internal::CanonicalAbiInfo = wasmtime::component::__internal::CanonicalAbiInfo::record_static(
                         &[
                             <Vec<Channel> as wasmtime::component::ComponentType>::ABI,
@@ -1053,6 +1036,7 @@ pub mod wasi {
                             > as wasmtime::component::ComponentType>::ABI,
                         ],
                     );
+
                     #[inline]
                     fn typecheck(
                         ty: &wasmtime::component::__internal::InterfaceType,
@@ -1088,16 +1072,12 @@ pub mod wasi {
                 }
             }
             const _: () = {
-                if !(20
-                    == <GuestConfiguration as wasmtime::component::ComponentType>::SIZE32)
-                {
+                if !(20 == <GuestConfiguration as wasmtime::component::ComponentType>::SIZE32) {
                     ::core::panicking::panic(
                         "assertion failed: 20 == <GuestConfiguration as wasmtime::component::ComponentType>::SIZE32",
                     )
                 }
-                if !(4
-                    == <GuestConfiguration as wasmtime::component::ComponentType>::ALIGN32)
-                {
+                if !(4 == <GuestConfiguration as wasmtime::component::ComponentType>::ALIGN32) {
                     ::core::panicking::panic(
                         "assertion failed: 4 == <GuestConfiguration as wasmtime::component::ComponentType>::ALIGN32",
                     )
@@ -1151,15 +1131,12 @@ pub mod wasi {
             unsafe impl wasmtime::component::Lower for FormatSpec {
                 #[inline]
                 fn lower<T>(
-                    &self,
-                    cx: &mut wasmtime::component::__internal::LowerContext<'_, T>,
+                    &self, cx: &mut wasmtime::component::__internal::LowerContext<'_, T>,
                     ty: wasmtime::component::__internal::InterfaceType,
                     dst: &mut std::mem::MaybeUninit<Self::Lower>,
                 ) -> wasmtime::component::__internal::anyhow::Result<()> {
                     let ty = match ty {
-                        wasmtime::component::__internal::InterfaceType::Enum(i) => {
-                            &cx.types[i]
-                        }
+                        wasmtime::component::__internal::InterfaceType::Enum(i) => &cx.types[i],
                         _ => wasmtime::component::__internal::bad_type_info(),
                     };
                     match self {
@@ -1174,7 +1151,7 @@ pub mod wasi {
                                     }
                                 }
                             }
-                                .write(wasmtime::ValRaw::u32(0u32));
+                            .write(wasmtime::ValRaw::u32(0u32));
                             unsafe {
                                 wasmtime::component::__internal::lower_payload(
                                     {
@@ -1212,7 +1189,7 @@ pub mod wasi {
                                     }
                                 }
                             }
-                                .write(wasmtime::ValRaw::u32(1u32));
+                            .write(wasmtime::ValRaw::u32(1u32));
                             unsafe {
                                 wasmtime::component::__internal::lower_payload(
                                     {
@@ -1250,7 +1227,7 @@ pub mod wasi {
                                     }
                                 }
                             }
-                                .write(wasmtime::ValRaw::u32(2u32));
+                            .write(wasmtime::ValRaw::u32(2u32));
                             unsafe {
                                 wasmtime::component::__internal::lower_payload(
                                     {
@@ -1288,7 +1265,7 @@ pub mod wasi {
                                     }
                                 }
                             }
-                                .write(wasmtime::ValRaw::u32(3u32));
+                            .write(wasmtime::ValRaw::u32(3u32));
                             unsafe {
                                 wasmtime::component::__internal::lower_payload(
                                     {
@@ -1326,7 +1303,7 @@ pub mod wasi {
                                     }
                                 }
                             }
-                                .write(wasmtime::ValRaw::u32(4u32));
+                            .write(wasmtime::ValRaw::u32(4u32));
                             unsafe {
                                 wasmtime::component::__internal::lower_payload(
                                     {
@@ -1364,7 +1341,7 @@ pub mod wasi {
                                     }
                                 }
                             }
-                                .write(wasmtime::ValRaw::u32(5u32));
+                            .write(wasmtime::ValRaw::u32(5u32));
                             unsafe {
                                 wasmtime::component::__internal::lower_payload(
                                     {
@@ -1393,23 +1370,20 @@ pub mod wasi {
                         }
                     }
                 }
+
                 #[inline]
                 fn store<T>(
-                    &self,
-                    cx: &mut wasmtime::component::__internal::LowerContext<'_, T>,
-                    ty: wasmtime::component::__internal::InterfaceType,
-                    mut offset: usize,
+                    &self, cx: &mut wasmtime::component::__internal::LowerContext<'_, T>,
+                    ty: wasmtime::component::__internal::InterfaceType, mut offset: usize,
                 ) -> wasmtime::component::__internal::anyhow::Result<()> {
                     let ty = match ty {
-                        wasmtime::component::__internal::InterfaceType::Enum(i) => {
-                            &cx.types[i]
-                        }
+                        wasmtime::component::__internal::InterfaceType::Enum(i) => &cx.types[i],
                         _ => wasmtime::component::__internal::bad_type_info(),
                     };
                     if true {
                         if !(offset
-                            % (<Self as wasmtime::component::ComponentType>::ALIGN32
-                                as usize) == 0)
+                            % (<Self as wasmtime::component::ComponentType>::ALIGN32 as usize)
+                            == 0)
                         {
                             ::core::panicking::panic(
                                 "assertion failed: offset % (<Self as wasmtime::component::ComponentType>::ALIGN32 as usize) == 0",
@@ -1448,41 +1422,35 @@ pub mod wasi {
                 #[inline]
                 fn lift(
                     cx: &mut wasmtime::component::__internal::LiftContext<'_>,
-                    ty: wasmtime::component::__internal::InterfaceType,
-                    src: &Self::Lower,
+                    ty: wasmtime::component::__internal::InterfaceType, src: &Self::Lower,
                 ) -> wasmtime::component::__internal::anyhow::Result<Self> {
                     let ty = match ty {
-                        wasmtime::component::__internal::InterfaceType::Enum(i) => {
-                            &cx.types[i]
-                        }
+                        wasmtime::component::__internal::InterfaceType::Enum(i) => &cx.types[i],
                         _ => wasmtime::component::__internal::bad_type_info(),
                     };
-                    Ok(
-                        match src.tag.get_u32() {
-                            0u32 => Self::Cloudevents,
-                            1u32 => Self::Http,
-                            2u32 => Self::Amqp,
-                            3u32 => Self::Mqtt,
-                            4u32 => Self::Kafka,
-                            5u32 => Self::Raw,
-                            discrim => {
-                                return ::anyhow::__private::Err(
-                                    ::anyhow::Error::msg({
-                                        let res = ::alloc::fmt::format(
-                                            format_args!("unexpected discriminant: {0}", discrim),
-                                        );
-                                        res
-                                    }),
-                                );
-                            }
-                        },
-                    )
+                    Ok(match src.tag.get_u32() {
+                        0u32 => Self::Cloudevents,
+                        1u32 => Self::Http,
+                        2u32 => Self::Amqp,
+                        3u32 => Self::Mqtt,
+                        4u32 => Self::Kafka,
+                        5u32 => Self::Raw,
+                        discrim => {
+                            return ::anyhow::__private::Err(::anyhow::Error::msg({
+                                let res = ::alloc::fmt::format(format_args!(
+                                    "unexpected discriminant: {0}",
+                                    discrim
+                                ));
+                                res
+                            }));
+                        }
+                    })
                 }
+
                 #[inline]
                 fn load(
                     cx: &mut wasmtime::component::__internal::LiftContext<'_>,
-                    ty: wasmtime::component::__internal::InterfaceType,
-                    bytes: &[u8],
+                    ty: wasmtime::component::__internal::InterfaceType, bytes: &[u8],
                 ) -> wasmtime::component::__internal::anyhow::Result<Self> {
                     let align = <Self as wasmtime::component::ComponentType>::ALIGN32;
                     if true {
@@ -1496,31 +1464,26 @@ pub mod wasi {
                     let payload_offset = <Self as wasmtime::component::__internal::ComponentVariant>::PAYLOAD_OFFSET32;
                     let payload = &bytes[payload_offset..];
                     let ty = match ty {
-                        wasmtime::component::__internal::InterfaceType::Enum(i) => {
-                            &cx.types[i]
-                        }
+                        wasmtime::component::__internal::InterfaceType::Enum(i) => &cx.types[i],
                         _ => wasmtime::component::__internal::bad_type_info(),
                     };
-                    Ok(
-                        match discrim {
-                            0u8 => Self::Cloudevents,
-                            1u8 => Self::Http,
-                            2u8 => Self::Amqp,
-                            3u8 => Self::Mqtt,
-                            4u8 => Self::Kafka,
-                            5u8 => Self::Raw,
-                            discrim => {
-                                return ::anyhow::__private::Err(
-                                    ::anyhow::Error::msg({
-                                        let res = ::alloc::fmt::format(
-                                            format_args!("unexpected discriminant: {0}", discrim),
-                                        );
-                                        res
-                                    }),
-                                );
-                            }
-                        },
-                    )
+                    Ok(match discrim {
+                        0u8 => Self::Cloudevents,
+                        1u8 => Self::Http,
+                        2u8 => Self::Amqp,
+                        3u8 => Self::Mqtt,
+                        4u8 => Self::Kafka,
+                        5u8 => Self::Raw,
+                        discrim => {
+                            return ::anyhow::__private::Err(::anyhow::Error::msg({
+                                let res = ::alloc::fmt::format(format_args!(
+                                    "unexpected discriminant: {0}",
+                                    discrim
+                                ));
+                                res
+                            }));
+                        }
+                    })
                 }
             }
             const _: () = {
@@ -1566,6 +1529,12 @@ pub mod wasi {
                 impl ::core::marker::Copy for LowerPayloadFormatSpec {}
                 unsafe impl wasmtime::component::ComponentType for FormatSpec {
                     type Lower = LowerFormatSpec;
+
+                    const ABI: wasmtime::component::__internal::CanonicalAbiInfo =
+                        wasmtime::component::__internal::CanonicalAbiInfo::variant_static(&[
+                            None, None, None, None, None, None,
+                        ]);
+
                     #[inline]
                     fn typecheck(
                         ty: &wasmtime::component::__internal::InterfaceType,
@@ -1577,12 +1546,8 @@ pub mod wasi {
                             &["cloudevents", "http", "amqp", "mqtt", "kafka", "raw"],
                         )
                     }
-                    const ABI: wasmtime::component::__internal::CanonicalAbiInfo = wasmtime::component::__internal::CanonicalAbiInfo::variant_static(
-                        &[None, None, None, None, None, None],
-                    );
                 }
-                unsafe impl wasmtime::component::__internal::ComponentVariant
-                for FormatSpec {
+                unsafe impl wasmtime::component::__internal::ComponentVariant for FormatSpec {
                     const CASES: &'static [Option<
                         wasmtime::component::__internal::CanonicalAbiInfo,
                     >] = &[None, None, None, None, None, None];
@@ -1638,75 +1603,56 @@ pub mod wasi {
             unsafe impl wasmtime::component::Lower for Message {
                 #[inline]
                 fn lower<T>(
-                    &self,
-                    cx: &mut wasmtime::component::__internal::LowerContext<'_, T>,
+                    &self, cx: &mut wasmtime::component::__internal::LowerContext<'_, T>,
                     ty: wasmtime::component::__internal::InterfaceType,
                     dst: &mut std::mem::MaybeUninit<Self::Lower>,
                 ) -> wasmtime::component::__internal::anyhow::Result<()> {
                     let ty = match ty {
-                        wasmtime::component::__internal::InterfaceType::Record(i) => {
-                            &cx.types[i]
-                        }
+                        wasmtime::component::__internal::InterfaceType::Record(i) => &cx.types[i],
                         _ => wasmtime::component::__internal::bad_type_info(),
                     };
-                    wasmtime::component::Lower::lower(
-                        &self.data,
-                        cx,
-                        ty.fields[0usize].ty,
+                    wasmtime::component::Lower::lower(&self.data, cx, ty.fields[0usize].ty, {
+                        #[allow(unused_unsafe)]
                         {
-                            #[allow(unused_unsafe)]
-                            {
-                                unsafe {
-                                    use ::wasmtime::component::__internal::MaybeUninitExt;
-                                    let m: &mut std::mem::MaybeUninit<_> = dst;
-                                    m.map(|p| &raw mut (*p).data)
-                                }
+                            unsafe {
+                                use ::wasmtime::component::__internal::MaybeUninitExt;
+                                let m: &mut std::mem::MaybeUninit<_> = dst;
+                                m.map(|p| &raw mut (*p).data)
                             }
-                        },
-                    )?;
-                    wasmtime::component::Lower::lower(
-                        &self.format,
-                        cx,
-                        ty.fields[1usize].ty,
+                        }
+                    })?;
+                    wasmtime::component::Lower::lower(&self.format, cx, ty.fields[1usize].ty, {
+                        #[allow(unused_unsafe)]
                         {
-                            #[allow(unused_unsafe)]
-                            {
-                                unsafe {
-                                    use ::wasmtime::component::__internal::MaybeUninitExt;
-                                    let m: &mut std::mem::MaybeUninit<_> = dst;
-                                    m.map(|p| &raw mut (*p).format)
-                                }
+                            unsafe {
+                                use ::wasmtime::component::__internal::MaybeUninitExt;
+                                let m: &mut std::mem::MaybeUninit<_> = dst;
+                                m.map(|p| &raw mut (*p).format)
                             }
-                        },
-                    )?;
-                    wasmtime::component::Lower::lower(
-                        &self.metadata,
-                        cx,
-                        ty.fields[2usize].ty,
+                        }
+                    })?;
+                    wasmtime::component::Lower::lower(&self.metadata, cx, ty.fields[2usize].ty, {
+                        #[allow(unused_unsafe)]
                         {
-                            #[allow(unused_unsafe)]
-                            {
-                                unsafe {
-                                    use ::wasmtime::component::__internal::MaybeUninitExt;
-                                    let m: &mut std::mem::MaybeUninit<_> = dst;
-                                    m.map(|p| &raw mut (*p).metadata)
-                                }
+                            unsafe {
+                                use ::wasmtime::component::__internal::MaybeUninitExt;
+                                let m: &mut std::mem::MaybeUninit<_> = dst;
+                                m.map(|p| &raw mut (*p).metadata)
                             }
-                        },
-                    )?;
+                        }
+                    })?;
                     Ok(())
                 }
+
                 #[inline]
                 fn store<T>(
-                    &self,
-                    cx: &mut wasmtime::component::__internal::LowerContext<'_, T>,
-                    ty: wasmtime::component::__internal::InterfaceType,
-                    mut offset: usize,
+                    &self, cx: &mut wasmtime::component::__internal::LowerContext<'_, T>,
+                    ty: wasmtime::component::__internal::InterfaceType, mut offset: usize,
                 ) -> wasmtime::component::__internal::anyhow::Result<()> {
                     if true {
                         if !(offset
-                            % (<Self as wasmtime::component::ComponentType>::ALIGN32
-                                as usize) == 0)
+                            % (<Self as wasmtime::component::ComponentType>::ALIGN32 as usize)
+                            == 0)
                         {
                             ::core::panicking::panic(
                                 "assertion failed: offset % (<Self as wasmtime::component::ComponentType>::ALIGN32 as usize) == 0",
@@ -1714,9 +1660,7 @@ pub mod wasi {
                         }
                     }
                     let ty = match ty {
-                        wasmtime::component::__internal::InterfaceType::Record(i) => {
-                            &cx.types[i]
-                        }
+                        wasmtime::component::__internal::InterfaceType::Record(i) => &cx.types[i],
                         _ => wasmtime::component::__internal::bad_type_info(),
                     };
                     wasmtime::component::Lower::store(
@@ -1737,9 +1681,7 @@ pub mod wasi {
                         &self.metadata,
                         cx,
                         ty.fields[2usize].ty,
-                        <Option<
-                            Vec<(String, String)>,
-                        > as wasmtime::component::ComponentType>::ABI
+                        <Option<Vec<(String, String)>> as wasmtime::component::ComponentType>::ABI
                             .next_field32_size(&mut offset),
                     )?;
                     Ok(())
@@ -1749,19 +1691,14 @@ pub mod wasi {
                 #[inline]
                 fn lift(
                     cx: &mut wasmtime::component::__internal::LiftContext<'_>,
-                    ty: wasmtime::component::__internal::InterfaceType,
-                    src: &Self::Lower,
+                    ty: wasmtime::component::__internal::InterfaceType, src: &Self::Lower,
                 ) -> wasmtime::component::__internal::anyhow::Result<Self> {
                     let ty = match ty {
-                        wasmtime::component::__internal::InterfaceType::Record(i) => {
-                            &cx.types[i]
-                        }
+                        wasmtime::component::__internal::InterfaceType::Record(i) => &cx.types[i],
                         _ => wasmtime::component::__internal::bad_type_info(),
                     };
                     Ok(Self {
-                        data: <Vec<
-                            u8,
-                        > as wasmtime::component::Lift>::lift(
+                        data: <Vec<u8> as wasmtime::component::Lift>::lift(
                             cx,
                             ty.fields[0usize].ty,
                             &src.data,
@@ -1771,31 +1708,28 @@ pub mod wasi {
                             ty.fields[1usize].ty,
                             &src.format,
                         )?,
-                        metadata: <Option<
-                            Vec<(String, String)>,
-                        > as wasmtime::component::Lift>::lift(
-                            cx,
-                            ty.fields[2usize].ty,
-                            &src.metadata,
-                        )?,
+                        metadata:
+                            <Option<Vec<(String, String)>> as wasmtime::component::Lift>::lift(
+                                cx,
+                                ty.fields[2usize].ty,
+                                &src.metadata,
+                            )?,
                     })
                 }
+
                 #[inline]
                 fn load(
                     cx: &mut wasmtime::component::__internal::LiftContext<'_>,
-                    ty: wasmtime::component::__internal::InterfaceType,
-                    bytes: &[u8],
+                    ty: wasmtime::component::__internal::InterfaceType, bytes: &[u8],
                 ) -> wasmtime::component::__internal::anyhow::Result<Self> {
                     let ty = match ty {
-                        wasmtime::component::__internal::InterfaceType::Record(i) => {
-                            &cx.types[i]
-                        }
+                        wasmtime::component::__internal::InterfaceType::Record(i) => &cx.types[i],
                         _ => wasmtime::component::__internal::bad_type_info(),
                     };
                     if true {
                         if !((bytes.as_ptr() as usize)
-                            % (<Self as wasmtime::component::ComponentType>::ALIGN32
-                                as usize) == 0)
+                            % (<Self as wasmtime::component::ComponentType>::ALIGN32 as usize)
+                            == 0)
                         {
                             ::core::panicking::panic(
                                 "assertion failed: (bytes.as_ptr() as usize) %\n        (<Self as wasmtime::component::ComponentType>::ALIGN32 as usize) == 0",
@@ -1852,10 +1786,11 @@ pub mod wasi {
                 }
                 #[automatically_derived]
                 impl<
-                    T0: ::core::clone::Clone + Copy,
-                    T1: ::core::clone::Clone + Copy,
-                    T2: ::core::clone::Clone + Copy,
-                > ::core::clone::Clone for LowerMessage<T0, T1, T2> {
+                        T0: ::core::clone::Clone + Copy,
+                        T1: ::core::clone::Clone + Copy,
+                        T2: ::core::clone::Clone + Copy,
+                    > ::core::clone::Clone for LowerMessage<T0, T1, T2>
+                {
                     #[inline]
                     fn clone(&self) -> LowerMessage<T0, T1, T2> {
                         LowerMessage {
@@ -1868,10 +1803,12 @@ pub mod wasi {
                 }
                 #[automatically_derived]
                 impl<
-                    T0: ::core::marker::Copy + Copy,
-                    T1: ::core::marker::Copy + Copy,
-                    T2: ::core::marker::Copy + Copy,
-                > ::core::marker::Copy for LowerMessage<T0, T1, T2> {}
+                        T0: ::core::marker::Copy + Copy,
+                        T1: ::core::marker::Copy + Copy,
+                        T2: ::core::marker::Copy + Copy,
+                    > ::core::marker::Copy for LowerMessage<T0, T1, T2>
+                {
+                }
                 unsafe impl wasmtime::component::ComponentType for Message {
                     type Lower = LowerMessage<
                         <Vec<u8> as wasmtime::component::ComponentType>::Lower,
@@ -1880,6 +1817,7 @@ pub mod wasi {
                             Vec<(String, String)>,
                         > as wasmtime::component::ComponentType>::Lower,
                     >;
+
                     const ABI: wasmtime::component::__internal::CanonicalAbiInfo = wasmtime::component::__internal::CanonicalAbiInfo::record_static(
                         &[
                             <Vec<u8> as wasmtime::component::ComponentType>::ABI,
@@ -1889,6 +1827,7 @@ pub mod wasi {
                             > as wasmtime::component::ComponentType>::ABI,
                         ],
                     );
+
                     #[inline]
                     fn typecheck(
                         ty: &wasmtime::component::__internal::InterfaceType,
@@ -1947,8 +1886,7 @@ pub mod wasi {
                 T: Send,
                 U: Host + Send,
             {
-                let mut inst = linker
-                    .instance("wasi:messaging/messaging-types@0.2.0-draft")?;
+                let mut inst = linker.instance("wasi:messaging/messaging-types@0.2.0-draft")?;
                 inst.resource(
                     "client",
                     wasmtime::component::ResourceType::host::<Client>(),
@@ -2943,17 +2881,16 @@ pub mod wasi {
                 #[must_use]
                 #[allow(clippy::type_complexity, clippy::type_repetition_in_bounds)]
                 fn send<'life0, 'async_trait>(
-                    &'life0 mut self,
-                    c: wasmtime::component::Resource<Client>,
-                    ch: Channel,
+                    &'life0 mut self, c: wasmtime::component::Resource<Client>, ch: Channel,
                     m: Vec<Message>,
                 ) -> ::core::pin::Pin<
                     Box<
                         dyn ::core::future::Future<
-                            Output = wasmtime::Result<
-                                Result<(), wasmtime::component::Resource<Error>>,
-                            >,
-                        > + ::core::marker::Send + 'async_trait,
+                                Output = wasmtime::Result<
+                                    Result<(), wasmtime::component::Resource<Error>>,
+                                >,
+                            > + ::core::marker::Send
+                            + 'async_trait,
                     >,
                 >
                 where
@@ -3508,18 +3445,15 @@ pub mod wasi {
                 }
             };
             pub type Error = super::super::super::wasi::messaging::messaging_types::Error;
-            pub type GuestConfiguration = super::super::super::wasi::messaging::messaging_types::GuestConfiguration;
+            pub type GuestConfiguration =
+                super::super::super::wasi::messaging::messaging_types::GuestConfiguration;
             const _: () = {
-                if !(20
-                    == <GuestConfiguration as wasmtime::component::ComponentType>::SIZE32)
-                {
+                if !(20 == <GuestConfiguration as wasmtime::component::ComponentType>::SIZE32) {
                     ::core::panicking::panic(
                         "assertion failed: 20 == <GuestConfiguration as wasmtime::component::ComponentType>::SIZE32",
                     )
                 }
-                if !(4
-                    == <GuestConfiguration as wasmtime::component::ComponentType>::ALIGN32)
-                {
+                if !(4 == <GuestConfiguration as wasmtime::component::ComponentType>::ALIGN32) {
                     ::core::panicking::panic(
                         "assertion failed: 4 == <GuestConfiguration as wasmtime::component::ComponentType>::ALIGN32",
                     )
@@ -3530,20 +3464,19 @@ pub mod wasi {
                 #[must_use]
                 #[allow(clippy::type_complexity, clippy::type_repetition_in_bounds)]
                 fn subscribe_try_receive<'life0, 'async_trait>(
-                    &'life0 mut self,
-                    c: wasmtime::component::Resource<Client>,
-                    ch: Channel,
+                    &'life0 mut self, c: wasmtime::component::Resource<Client>, ch: Channel,
                     t_milliseconds: u32,
                 ) -> ::core::pin::Pin<
                     Box<
                         dyn ::core::future::Future<
-                            Output = wasmtime::Result<
-                                Result<
-                                    Option<Vec<Message>>,
-                                    wasmtime::component::Resource<Error>,
+                                Output = wasmtime::Result<
+                                    Result<
+                                        Option<Vec<Message>>,
+                                        wasmtime::component::Resource<Error>,
+                                    >,
                                 >,
-                            >,
-                        > + ::core::marker::Send + 'async_trait,
+                            > + ::core::marker::Send
+                            + 'async_trait,
                     >,
                 >
                 where
@@ -3553,16 +3486,15 @@ pub mod wasi {
                 #[must_use]
                 #[allow(clippy::type_complexity, clippy::type_repetition_in_bounds)]
                 fn subscribe_receive<'life0, 'async_trait>(
-                    &'life0 mut self,
-                    c: wasmtime::component::Resource<Client>,
-                    ch: Channel,
+                    &'life0 mut self, c: wasmtime::component::Resource<Client>, ch: Channel,
                 ) -> ::core::pin::Pin<
                     Box<
                         dyn ::core::future::Future<
-                            Output = wasmtime::Result<
-                                Result<Vec<Message>, wasmtime::component::Resource<Error>>,
-                            >,
-                        > + ::core::marker::Send + 'async_trait,
+                                Output = wasmtime::Result<
+                                    Result<Vec<Message>, wasmtime::component::Resource<Error>>,
+                                >,
+                            > + ::core::marker::Send
+                            + 'async_trait,
                     >,
                 >
                 where
@@ -3575,15 +3507,15 @@ pub mod wasi {
                 #[must_use]
                 #[allow(clippy::type_complexity, clippy::type_repetition_in_bounds)]
                 fn update_guest_configuration<'life0, 'async_trait>(
-                    &'life0 mut self,
-                    gc: GuestConfiguration,
+                    &'life0 mut self, gc: GuestConfiguration,
                 ) -> ::core::pin::Pin<
                     Box<
                         dyn ::core::future::Future<
-                            Output = wasmtime::Result<
-                                Result<(), wasmtime::component::Resource<Error>>,
-                            >,
-                        > + ::core::marker::Send + 'async_trait,
+                                Output = wasmtime::Result<
+                                    Result<(), wasmtime::component::Resource<Error>>,
+                                >,
+                            > + ::core::marker::Send
+                            + 'async_trait,
                     >,
                 >
                 where
@@ -3600,15 +3532,15 @@ pub mod wasi {
                 #[must_use]
                 #[allow(clippy::type_complexity, clippy::type_repetition_in_bounds)]
                 fn complete_message<'life0, 'async_trait>(
-                    &'life0 mut self,
-                    m: Message,
+                    &'life0 mut self, m: Message,
                 ) -> ::core::pin::Pin<
                     Box<
                         dyn ::core::future::Future<
-                            Output = wasmtime::Result<
-                                Result<(), wasmtime::component::Resource<Error>>,
-                            >,
-                        > + ::core::marker::Send + 'async_trait,
+                                Output = wasmtime::Result<
+                                    Result<(), wasmtime::component::Resource<Error>>,
+                                >,
+                            > + ::core::marker::Send
+                            + 'async_trait,
                     >,
                 >
                 where
@@ -3617,15 +3549,15 @@ pub mod wasi {
                 #[must_use]
                 #[allow(clippy::type_complexity, clippy::type_repetition_in_bounds)]
                 fn abandon_message<'life0, 'async_trait>(
-                    &'life0 mut self,
-                    m: Message,
+                    &'life0 mut self, m: Message,
                 ) -> ::core::pin::Pin<
                     Box<
                         dyn ::core::future::Future<
-                            Output = wasmtime::Result<
-                                Result<(), wasmtime::component::Resource<Error>>,
-                            >,
-                        > + ::core::marker::Send + 'async_trait,
+                                Output = wasmtime::Result<
+                                    Result<(), wasmtime::component::Resource<Error>>,
+                                >,
+                            > + ::core::marker::Send
+                            + 'async_trait,
                     >,
                 >
                 where
@@ -6060,7 +5992,8 @@ pub mod exports {
             pub mod messaging_guest {
                 #[allow(unused_imports)]
                 use wasmtime::component::__internal::anyhow;
-                pub type Message = super::super::super::super::wasi::messaging::messaging_types::Message;
+                pub type Message =
+                    super::super::super::super::wasi::messaging::messaging_types::Message;
                 const _: () = {
                     if !(24 == <Message as wasmtime::component::ComponentType>::SIZE32) {
                         ::core::panicking::panic(
@@ -6075,22 +6008,19 @@ pub mod exports {
                 };
                 pub type GuestConfiguration = super::super::super::super::wasi::messaging::messaging_types::GuestConfiguration;
                 const _: () = {
-                    if !(20
-                        == <GuestConfiguration as wasmtime::component::ComponentType>::SIZE32)
-                    {
+                    if !(20 == <GuestConfiguration as wasmtime::component::ComponentType>::SIZE32) {
                         ::core::panicking::panic(
                             "assertion failed: 20 == <GuestConfiguration as wasmtime::component::ComponentType>::SIZE32",
                         )
                     }
-                    if !(4
-                        == <GuestConfiguration as wasmtime::component::ComponentType>::ALIGN32)
-                    {
+                    if !(4 == <GuestConfiguration as wasmtime::component::ComponentType>::ALIGN32) {
                         ::core::panicking::panic(
                             "assertion failed: 4 == <GuestConfiguration as wasmtime::component::ComponentType>::ALIGN32",
                         )
                     }
                 };
-                pub type Error = super::super::super::super::wasi::messaging::messaging_types::Error;
+                pub type Error =
+                    super::super::super::super::wasi::messaging::messaging_types::Error;
                 pub struct Guest {
                     configure: wasmtime::component::Func,
                     handler: wasmtime::component::Func,
@@ -6099,17 +6029,15 @@ pub mod exports {
                     pub fn new(
                         __exports: &mut wasmtime::component::ExportInstance<'_, '_>,
                     ) -> wasmtime::Result<Guest> {
-                        let configure = *__exports
-                            .typed_func::<
-                                (),
-                                (
+                        let configure =
+                            *__exports
+                                .typed_func::<(), (
                                     Result<
                                         GuestConfiguration,
                                         wasmtime::component::Resource<Error>,
                                     >,
-                                ),
-                            >("configure")?
-                            .func();
+                                )>("configure")?
+                                .func();
                         let handler = *__exports
                             .typed_func::<
                                 (&[Message],),
@@ -6118,11 +6046,11 @@ pub mod exports {
                             .func();
                         Ok(Guest { configure, handler })
                     }
+
                     /// Returns the list of channels (and extension metadata within guest-configuration) that
                     /// this component should subscribe to and be handled by the subsequent handler within guest-configuration
                     pub async fn call_configure<S: wasmtime::AsContextMut>(
-                        &self,
-                        mut store: S,
+                        &self, mut store: S,
                     ) -> wasmtime::Result<
                         Result<GuestConfiguration, wasmtime::component::Resource<Error>>,
                     >
@@ -6152,8 +6080,7 @@ pub mod exports {
                                 ::tracing::callsite::DefaultCallsite::new(&META)
                             };
                             let mut interest = ::tracing::subscriber::Interest::never();
-                            if tracing::Level::TRACE
-                                <= ::tracing::level_filters::STATIC_MAX_LEVEL
+                            if tracing::Level::TRACE <= ::tracing::level_filters::STATIC_MAX_LEVEL
                                 && tracing::Level::TRACE
                                     <= ::tracing::level_filters::LevelFilter::current()
                                 && {
@@ -6166,31 +6093,28 @@ pub mod exports {
                                 )
                             {
                                 let meta = __CALLSITE.metadata();
-                                ::tracing::Span::new(
-                                    meta,
-                                    &{
-                                        #[allow(unused_imports)]
-                                        use ::tracing::field::{debug, display, Value};
-                                        let mut iter = meta.fields().iter();
-                                        meta.fields()
-                                            .value_set(
-                                                &[
-                                                    (
-                                                        &::core::iter::Iterator::next(&mut iter)
-                                                            .expect("FieldSet corrupted (this is a bug)"),
-                                                        ::core::option::Option::Some(
-                                                            &"wasi:messaging/messaging-guest@0.2.0-draft" as &dyn Value,
-                                                        ),
-                                                    ),
-                                                    (
-                                                        &::core::iter::Iterator::next(&mut iter)
-                                                            .expect("FieldSet corrupted (this is a bug)"),
-                                                        ::core::option::Option::Some(&"configure" as &dyn Value),
-                                                    ),
-                                                ],
-                                            )
-                                    },
-                                )
+                                ::tracing::Span::new(meta, &{
+                                    #[allow(unused_imports)]
+                                    use ::tracing::field::{debug, display, Value};
+                                    let mut iter = meta.fields().iter();
+                                    meta.fields().value_set(&[
+                                        (
+                                            &::core::iter::Iterator::next(&mut iter)
+                                                .expect("FieldSet corrupted (this is a bug)"),
+                                            ::core::option::Option::Some(
+                                                &"wasi:messaging/messaging-guest@0.2.0-draft"
+                                                    as &dyn Value,
+                                            ),
+                                        ),
+                                        (
+                                            &::core::iter::Iterator::next(&mut iter)
+                                                .expect("FieldSet corrupted (this is a bug)"),
+                                            ::core::option::Option::Some(
+                                                &"configure" as &dyn Value,
+                                            ),
+                                        ),
+                                    ])
+                                })
                             } else {
                                 let span = ::tracing::__macro_support::__disabled_span(
                                     __CALLSITE.metadata(),
@@ -6253,20 +6177,15 @@ pub mod exports {
                                 ),
                             >::new_unchecked(self.configure)
                         };
-                        let (ret0,) = callee
-                            .call_async(store.as_context_mut(), ())
-                            .await?;
+                        let (ret0,) = callee.call_async(store.as_context_mut(), ()).await?;
                         callee.post_return_async(store.as_context_mut()).await?;
                         Ok(ret0)
                     }
+
                     /// Whenever this guest receives a message in one of the subscribed channels, the message is sent to this handler
                     pub async fn call_handler<S: wasmtime::AsContextMut>(
-                        &self,
-                        mut store: S,
-                        arg0: &[Message],
-                    ) -> wasmtime::Result<
-                        Result<(), wasmtime::component::Resource<Error>>,
-                    >
+                        &self, mut store: S, arg0: &[Message],
+                    ) -> wasmtime::Result<Result<(), wasmtime::component::Resource<Error>>>
                     where
                         <S as wasmtime::AsContext>::Data: Send,
                     {
@@ -6293,8 +6212,7 @@ pub mod exports {
                                 ::tracing::callsite::DefaultCallsite::new(&META)
                             };
                             let mut interest = ::tracing::subscriber::Interest::never();
-                            if tracing::Level::TRACE
-                                <= ::tracing::level_filters::STATIC_MAX_LEVEL
+                            if tracing::Level::TRACE <= ::tracing::level_filters::STATIC_MAX_LEVEL
                                 && tracing::Level::TRACE
                                     <= ::tracing::level_filters::LevelFilter::current()
                                 && {
@@ -6307,31 +6225,26 @@ pub mod exports {
                                 )
                             {
                                 let meta = __CALLSITE.metadata();
-                                ::tracing::Span::new(
-                                    meta,
-                                    &{
-                                        #[allow(unused_imports)]
-                                        use ::tracing::field::{debug, display, Value};
-                                        let mut iter = meta.fields().iter();
-                                        meta.fields()
-                                            .value_set(
-                                                &[
-                                                    (
-                                                        &::core::iter::Iterator::next(&mut iter)
-                                                            .expect("FieldSet corrupted (this is a bug)"),
-                                                        ::core::option::Option::Some(
-                                                            &"wasi:messaging/messaging-guest@0.2.0-draft" as &dyn Value,
-                                                        ),
-                                                    ),
-                                                    (
-                                                        &::core::iter::Iterator::next(&mut iter)
-                                                            .expect("FieldSet corrupted (this is a bug)"),
-                                                        ::core::option::Option::Some(&"handler" as &dyn Value),
-                                                    ),
-                                                ],
-                                            )
-                                    },
-                                )
+                                ::tracing::Span::new(meta, &{
+                                    #[allow(unused_imports)]
+                                    use ::tracing::field::{debug, display, Value};
+                                    let mut iter = meta.fields().iter();
+                                    meta.fields().value_set(&[
+                                        (
+                                            &::core::iter::Iterator::next(&mut iter)
+                                                .expect("FieldSet corrupted (this is a bug)"),
+                                            ::core::option::Option::Some(
+                                                &"wasi:messaging/messaging-guest@0.2.0-draft"
+                                                    as &dyn Value,
+                                            ),
+                                        ),
+                                        (
+                                            &::core::iter::Iterator::next(&mut iter)
+                                                .expect("FieldSet corrupted (this is a bug)"),
+                                            ::core::option::Option::Some(&"handler" as &dyn Value),
+                                        ),
+                                    ])
+                                })
                             } else {
                                 let span = ::tracing::__macro_support::__disabled_span(
                                     __CALLSITE.metadata(),
@@ -6389,9 +6302,7 @@ pub mod exports {
                                 (Result<(), wasmtime::component::Resource<Error>>,),
                             >::new_unchecked(self.handler)
                         };
-                        let (ret0,) = callee
-                            .call_async(store.as_context_mut(), (arg0,))
-                            .await?;
+                        let (ret0,) = callee.call_async(store.as_context_mut(), (arg0,)).await?;
                         callee.post_return_async(store.as_context_mut()).await?;
                         Ok(ret0)
                     }
@@ -6416,13 +6327,7 @@ struct Args {
 #[automatically_derived]
 #[allow(unused_qualifications, clippy::redundant_locals)]
 impl clap::Parser for Args {}
-#[allow(
-    dead_code,
-    unreachable_code,
-    unused_variables,
-    unused_braces,
-    unused_qualifications,
-)]
+#[allow(dead_code, unreachable_code, unused_variables, unused_braces, unused_qualifications)]
 #[allow(
     clippy::style,
     clippy::complexity,
@@ -6434,7 +6339,7 @@ impl clap::Parser for Args {}
     clippy::cargo,
     clippy::suspicious_else_formatting,
     clippy::almost_swapped,
-    clippy::redundant_locals,
+    clippy::redundant_locals
 )]
 #[automatically_derived]
 impl clap::CommandFactory for Args {
@@ -6442,18 +6347,13 @@ impl clap::CommandFactory for Args {
         let __clap_app = clap::Command::new("host");
         <Self as clap::Args>::augment_args(__clap_app)
     }
+
     fn command_for_update<'b>() -> clap::Command {
         let __clap_app = clap::Command::new("host");
         <Self as clap::Args>::augment_args_for_update(__clap_app)
     }
 }
-#[allow(
-    dead_code,
-    unreachable_code,
-    unused_variables,
-    unused_braces,
-    unused_qualifications,
-)]
+#[allow(dead_code, unreachable_code, unused_variables, unused_braces, unused_qualifications)]
 #[allow(
     clippy::style,
     clippy::complexity,
@@ -6465,7 +6365,7 @@ impl clap::CommandFactory for Args {
     clippy::cargo,
     clippy::suspicious_else_formatting,
     clippy::almost_swapped,
-    clippy::redundant_locals,
+    clippy::redundant_locals
 )]
 #[automatically_derived]
 impl clap::FromArgMatches for Args {
@@ -6474,51 +6374,46 @@ impl clap::FromArgMatches for Args {
     ) -> ::std::result::Result<Self, clap::Error> {
         Self::from_arg_matches_mut(&mut __clap_arg_matches.clone())
     }
+
     fn from_arg_matches_mut(
         __clap_arg_matches: &mut clap::ArgMatches,
     ) -> ::std::result::Result<Self, clap::Error> {
         #![allow(deprecated)]
         let v = Args {
-            wasm: __clap_arg_matches
-                .remove_one::<String>("wasm")
-                .ok_or_else(|| clap::Error::raw(
+            wasm: __clap_arg_matches.remove_one::<String>("wasm").ok_or_else(|| {
+                clap::Error::raw(
                     clap::error::ErrorKind::MissingRequiredArgument,
                     "The following required argument was not provided: wasm",
-                ))?,
+                )
+            })?,
         };
         ::std::result::Result::Ok(v)
     }
+
     fn update_from_arg_matches(
-        &mut self,
-        __clap_arg_matches: &clap::ArgMatches,
+        &mut self, __clap_arg_matches: &clap::ArgMatches,
     ) -> ::std::result::Result<(), clap::Error> {
         self.update_from_arg_matches_mut(&mut __clap_arg_matches.clone())
     }
+
     fn update_from_arg_matches_mut(
-        &mut self,
-        __clap_arg_matches: &mut clap::ArgMatches,
+        &mut self, __clap_arg_matches: &mut clap::ArgMatches,
     ) -> ::std::result::Result<(), clap::Error> {
         #![allow(deprecated)]
         if __clap_arg_matches.contains_id("wasm") {
             #[allow(non_snake_case)]
             let wasm = &mut self.wasm;
-            *wasm = __clap_arg_matches
-                .remove_one::<String>("wasm")
-                .ok_or_else(|| clap::Error::raw(
+            *wasm = __clap_arg_matches.remove_one::<String>("wasm").ok_or_else(|| {
+                clap::Error::raw(
                     clap::error::ErrorKind::MissingRequiredArgument,
                     "The following required argument was not provided: wasm",
-                ))?;
+                )
+            })?;
         }
         ::std::result::Result::Ok(())
     }
 }
-#[allow(
-    dead_code,
-    unreachable_code,
-    unused_variables,
-    unused_braces,
-    unused_qualifications,
-)]
+#[allow(dead_code, unreachable_code, unused_variables, unused_braces, unused_qualifications)]
 #[allow(
     clippy::style,
     clippy::complexity,
@@ -6530,46 +6425,39 @@ impl clap::FromArgMatches for Args {
     clippy::cargo,
     clippy::suspicious_else_formatting,
     clippy::almost_swapped,
-    clippy::redundant_locals,
+    clippy::redundant_locals
 )]
 #[automatically_derived]
 impl clap::Args for Args {
     fn group_id() -> Option<clap::Id> {
         Some(clap::Id::from("Args"))
     }
+
     fn augment_args<'b>(__clap_app: clap::Command) -> clap::Command {
         {
-            let __clap_app = __clap_app
-                .group(
-                    clap::ArgGroup::new("Args")
-                        .multiple(true)
-                        .args({
-                            let members: [clap::Id; 1usize] = [clap::Id::from("wasm")];
-                            members
-                        }),
-                );
-            let __clap_app = __clap_app
-                .arg({
-                    #[allow(deprecated)]
-                    let arg = clap::Arg::new("wasm")
-                        .value_name("WASM")
-                        .required(true && clap::ArgAction::Set.takes_values())
-                        .value_parser({
-                            use ::clap_builder::builder::via_prelude::*;
-                            let auto = ::clap_builder::builder::_AutoValueParser::<
-                                String,
-                            >::new();
-                            (&&&&&&auto).value_parser()
-                        })
-                        .action(clap::ArgAction::Set);
-                    let arg = arg
-                        .help("The path to the wasm file to serve")
-                        .long_help(None)
-                        .short('w')
-                        .long("wasm");
-                    let arg = arg;
-                    arg
-                });
+            let __clap_app = __clap_app.group(clap::ArgGroup::new("Args").multiple(true).args({
+                let members: [clap::Id; 1usize] = [clap::Id::from("wasm")];
+                members
+            }));
+            let __clap_app = __clap_app.arg({
+                #[allow(deprecated)]
+                let arg = clap::Arg::new("wasm")
+                    .value_name("WASM")
+                    .required(true && clap::ArgAction::Set.takes_values())
+                    .value_parser({
+                        use ::clap_builder::builder::via_prelude::*;
+                        let auto = ::clap_builder::builder::_AutoValueParser::<String>::new();
+                        (&&&&&&auto).value_parser()
+                    })
+                    .action(clap::ArgAction::Set);
+                let arg = arg
+                    .help("The path to the wasm file to serve")
+                    .long_help(None)
+                    .short('w')
+                    .long("wasm");
+                let arg = arg;
+                arg
+            });
             __clap_app
                 .about(
                     "Host wasm runtime for a vault service that stores signing keys and credentials for a Verifiable Credential wallet",
@@ -6582,39 +6470,32 @@ impl clap::Args for Args {
                 .long_about(None)
         }
     }
+
     fn augment_args_for_update<'b>(__clap_app: clap::Command) -> clap::Command {
         {
-            let __clap_app = __clap_app
-                .group(
-                    clap::ArgGroup::new("Args")
-                        .multiple(true)
-                        .args({
-                            let members: [clap::Id; 1usize] = [clap::Id::from("wasm")];
-                            members
-                        }),
-                );
-            let __clap_app = __clap_app
-                .arg({
-                    #[allow(deprecated)]
-                    let arg = clap::Arg::new("wasm")
-                        .value_name("WASM")
-                        .required(true && clap::ArgAction::Set.takes_values())
-                        .value_parser({
-                            use ::clap_builder::builder::via_prelude::*;
-                            let auto = ::clap_builder::builder::_AutoValueParser::<
-                                String,
-                            >::new();
-                            (&&&&&&auto).value_parser()
-                        })
-                        .action(clap::ArgAction::Set);
-                    let arg = arg
-                        .help("The path to the wasm file to serve")
-                        .long_help(None)
-                        .short('w')
-                        .long("wasm");
-                    let arg = arg.required(false);
-                    arg
-                });
+            let __clap_app = __clap_app.group(clap::ArgGroup::new("Args").multiple(true).args({
+                let members: [clap::Id; 1usize] = [clap::Id::from("wasm")];
+                members
+            }));
+            let __clap_app = __clap_app.arg({
+                #[allow(deprecated)]
+                let arg = clap::Arg::new("wasm")
+                    .value_name("WASM")
+                    .required(true && clap::ArgAction::Set.takes_values())
+                    .value_parser({
+                        use ::clap_builder::builder::via_prelude::*;
+                        let auto = ::clap_builder::builder::_AutoValueParser::<String>::new();
+                        (&&&&&&auto).value_parser()
+                    })
+                    .action(clap::ArgAction::Set);
+                let arg = arg
+                    .help("The path to the wasm file to serve")
+                    .long_help(None)
+                    .short('w')
+                    .long("wasm");
+                let arg = arg.required(false);
+                arg
+            });
             __clap_app
                 .about(
                     "Host wasm runtime for a vault service that stores signing keys and credentials for a Verifiable Credential wallet",
@@ -6632,12 +6513,7 @@ impl clap::Args for Args {
 impl ::core::fmt::Debug for Args {
     #[inline]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
-        ::core::fmt::Formatter::debug_struct_field1_finish(
-            f,
-            "Args",
-            "wasm",
-            &&self.wasm,
-        )
+        ::core::fmt::Formatter::debug_struct_field1_finish(f, "Args", "wasm", &&self.wasm)
     }
 }
 pub fn main() -> wasmtime::Result<()> {
@@ -6668,9 +6544,8 @@ async fn shutdown() -> Result<(), Error> {
             }
             pub(super) type Mask = u8;
         }
-        use ::tokio::macros::support::Future;
-        use ::tokio::macros::support::Pin;
-        use ::tokio::macros::support::Poll::{Ready, Pending};
+        use ::tokio::macros::support::Poll::{Pending, Ready};
+        use ::tokio::macros::support::{Future, Pin};
         const BRANCHES: u32 = 1;
         let mut disabled: __tokio_select_util::Mask = Default::default();
         if !true {
@@ -6681,72 +6556,69 @@ async fn shutdown() -> Result<(), Error> {
             let mut futures = (tokio::signal::ctrl_c(),);
             let mut futures = &mut futures;
             ::tokio::macros::support::poll_fn(|cx| {
-                    let mut is_pending = false;
-                    let start = { ::tokio::macros::support::thread_rng_n(BRANCHES) };
-                    for i in 0..BRANCHES {
-                        let branch;
-                        #[allow(clippy::modulo_one)]
-                        {
-                            branch = (start + i) % BRANCHES;
-                        }
-                        match branch {
-                            #[allow(unreachable_code)]
-                            0 => {
-                                let mask = 1 << branch;
-                                if disabled & mask == mask {
+                let mut is_pending = false;
+                let start = { ::tokio::macros::support::thread_rng_n(BRANCHES) };
+                for i in 0..BRANCHES {
+                    let branch;
+                    #[allow(clippy::modulo_one)]
+                    {
+                        branch = (start + i) % BRANCHES;
+                    }
+                    match branch {
+                        #[allow(unreachable_code)]
+                        0 => {
+                            let mask = 1 << branch;
+                            if disabled & mask == mask {
+                                continue;
+                            }
+                            let (fut, ..) = &mut *futures;
+                            let mut fut = unsafe { Pin::new_unchecked(fut) };
+                            let out = match Future::poll(fut, cx) {
+                                Ready(out) => out,
+                                Pending => {
+                                    is_pending = true;
                                     continue;
                                 }
-                                let (fut, ..) = &mut *futures;
-                                let mut fut = unsafe { Pin::new_unchecked(fut) };
-                                let out = match Future::poll(fut, cx) {
-                                    Ready(out) => out,
-                                    Pending => {
-                                        is_pending = true;
-                                        continue;
-                                    }
-                                };
-                                disabled |= mask;
-                                #[allow(unused_variables)] #[allow(unused_mut)]
-                                match &out {
-                                    _ => {}
-                                    _ => continue,
-                                }
-                                return Ready(__tokio_select_util::Out::_0(out));
+                            };
+                            disabled |= mask;
+                            #[allow(unused_variables)]
+                            #[allow(unused_mut)]
+                            match &out {
+                                _ => {}
+                                _ => continue,
                             }
-                            _ => {
-                                ::core::panicking::panic_fmt(
-                                    format_args!(
-                                        "internal error: entered unreachable code: {0}",
-                                        format_args!(
-                                            "reaching this means there probably is an off by one bug",
-                                        ),
-                                    ),
-                                );
-                            }
+                            return Ready(__tokio_select_util::Out::_0(out));
+                        }
+                        _ => {
+                            ::core::panicking::panic_fmt(format_args!(
+                                "internal error: entered unreachable code: {0}",
+                                format_args!(
+                                    "reaching this means there probably is an off by one bug",
+                                ),
+                            ));
                         }
                     }
-                    if is_pending {
-                        Pending
-                    } else {
-                        Ready(__tokio_select_util::Out::Disabled)
-                    }
-                })
-                .await
+                }
+                if is_pending {
+                    Pending
+                } else {
+                    Ready(__tokio_select_util::Out::Disabled)
+                }
+            })
+            .await
         };
         match output {
             __tokio_select_util::Out::_0(_) => Ok(()),
             __tokio_select_util::Out::Disabled => {
-                ::core::panicking::panic_fmt(
-                    format_args!("all branches are disabled and there is no else branch"),
-                );
+                ::core::panicking::panic_fmt(format_args!(
+                    "all branches are disabled and there is no else branch"
+                ));
             }
             _ => {
-                ::core::panicking::panic_fmt(
-                    format_args!(
-                        "internal error: entered unreachable code: {0}",
-                        format_args!("failed to match bind"),
-                    ),
-                );
+                ::core::panicking::panic_fmt(format_args!(
+                    "internal error: entered unreachable code: {0}",
+                    format_args!("failed to match bind"),
+                ));
             }
         }
     }

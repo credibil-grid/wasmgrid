@@ -5,14 +5,17 @@ use futures::stream::StreamExt;
 use tokio::time::{sleep, Duration};
 use wasmtime::component::Resource;
 
-use crate::messaging::WasiMessagingView;
+use crate::messaging::{MessagingClient, MessagingView};
 use crate::wasi::messaging::consumer;
 use crate::wasi::messaging::messaging_types::{
     Client, Error, FormatSpec, GuestConfiguration, Message,
 };
 
 #[async_trait::async_trait]
-impl<T: WasiMessagingView> consumer::Host for T {
+impl<T: MessagingView> consumer::Host for T
+where
+    T: MessagingView<Client = Client>,
+{
     async fn subscribe_try_receive(
         &mut self, client: Resource<Client>, ch: String, t_milliseconds: u32,
     ) -> wasmtime::Result<anyhow::Result<Option<Vec<Message>>, Resource<Error>>> {

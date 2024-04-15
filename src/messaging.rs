@@ -1,21 +1,32 @@
 mod consumer;
 mod producer;
-pub mod types;
 
+use bytes::Bytes;
 use wasmtime::component::Resource;
 use wasmtime_wasi::WasiView;
 
 use crate::wasi::messaging::messaging_types::{self, Client, Error, HostClient, HostError};
 
 #[async_trait::async_trait]
-pub trait WasiMessagingView: WasiView + Send {
-    async fn connect(&mut self, name: String) -> anyhow::Result<Resource<Client>>;
+pub trait MessagingView: WasiView + Send {
+    type Client: MessagingClient;
+
+    async fn connect(&mut self, name: String) -> anyhow::Result<Resource<Self::Client>>;
 }
 
-impl<T: WasiMessagingView> messaging_types::Host for T {}
+pub trait MessagingClient {
+    async fn subscribe(&self, ch: String) -> anyhow::Result<async_nats::Subscriber>;
+
+    async fn publish(&self, ch: String, data: Bytes) -> anyhow::Result<()>;
+}
+
+impl<T: MessagingView> messaging_types::Host for T where T: MessagingView<Client = Client> {}
 
 #[async_trait::async_trait]
-impl<T: WasiMessagingView> HostClient for T {
+impl<T: MessagingView> HostClient for T
+where
+    T: MessagingView<Client = Client>,
+{
     /// Connect to the NATS server specified by `name` and return a client resource.
     async fn connect(
         &mut self, name: String,
@@ -32,7 +43,7 @@ impl<T: WasiMessagingView> HostClient for T {
 }
 
 #[async_trait::async_trait]
-impl<T: WasiMessagingView> HostError for T {
+impl<T: MessagingView> HostError for T {
     async fn trace(&mut self) -> wasmtime::Result<String> {
         Ok(String::from("trace HostError"))
     }
@@ -42,13 +53,3 @@ impl<T: WasiMessagingView> HostError for T {
         Ok(())
     }
 }
-
-// impl<T: WasiMessagingView> WasiView for T {
-//     fn table(&mut self) -> &mut ResourceTable {
-//         self.table()
-//     }
-
-//     fn ctx(&mut self) -> &mut WasiCtx {
-//         self.ctx()
-//     }
-// }

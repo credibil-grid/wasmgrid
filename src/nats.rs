@@ -7,7 +7,7 @@ use wasmtime::component::{Component, Linker, Resource};
 use wasmtime::{Engine, Store};
 use wasmtime_wasi::{command, ResourceTable, WasiCtx, WasiCtxBuilder, WasiView};
 
-use crate::messaging::{self, WasiMessagingView};
+use crate::messaging::{self, MessagingClient, MessagingView};
 use crate::wasi::messaging::messaging_types::{FormatSpec, Message};
 
 /// Host is the base type used to implement host messaging interfaces.
@@ -29,7 +29,9 @@ impl Host {
 }
 
 #[async_trait::async_trait]
-impl messaging::WasiMessagingView for Host {
+impl messaging::MessagingView for Host {
+    type Client = Client;
+
     async fn connect(&mut self, name: String) -> anyhow::Result<Resource<Client>> {
         let resource = if let Some(key) = self.keys.get(&name) {
             // Get an existing connection by key
@@ -67,12 +69,12 @@ pub struct Client {
     pub inner: async_nats::Client,
 }
 
-impl Client {
-    pub async fn subscribe(&self, ch: String) -> anyhow::Result<async_nats::Subscriber> {
+impl messaging::MessagingClient for Client {
+    async fn subscribe(&self, ch: String) -> anyhow::Result<async_nats::Subscriber> {
         Ok(self.inner.subscribe(ch).await?)
     }
 
-    pub async fn publish(&self, ch: String, data: Bytes) -> anyhow::Result<()> {
+    async fn publish(&self, ch: String, data: Bytes) -> anyhow::Result<()> {
         Ok(self.inner.publish(ch, data).await?)
     }
 }
@@ -92,8 +94,8 @@ pub async fn serve(engine: &Engine, wasm: String) -> anyhow::Result<()> {
 
     // connect to NATS server
     let host = store.data_mut();
-    let client = host.connect("demo.nats.io".to_string()).await?;
-    let client = host.table.get(&client)?.clone();
+    let client_res = host.connect("demo.nats.io".to_string()).await?;
+    let client = host.table.get(&client_res)?.clone();
 
     // get channels to subscribe to
     let Ok(gc) = guest.call_configure(&mut store).await? else {

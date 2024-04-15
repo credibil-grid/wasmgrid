@@ -1,12 +1,15 @@
 use bytes::Bytes;
 use wasmtime::component::Resource;
 
-use crate::messaging::WasiMessagingView;
+use crate::messaging::{MessagingClient, MessagingView};
 use crate::wasi::messaging::messaging_types::{Client, Error, Message};
 use crate::wasi::messaging::producer;
 
 #[async_trait::async_trait]
-impl<T: WasiMessagingView> producer::Host for T {
+impl<T: MessagingView> producer::Host for T
+where
+    T: MessagingView<Client = Client>,
+{
     async fn send(
         &mut self, client: Resource<Client>, ch: String, msg: Vec<Message>,
     ) -> wasmtime::Result<anyhow::Result<(), Resource<Error>>> {
