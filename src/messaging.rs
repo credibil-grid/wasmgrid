@@ -1,11 +1,27 @@
 mod consumer;
 mod producer;
 
+use bindings::messaging_types::{self, Client, Error, HostClient, HostError};
 use bytes::Bytes;
+// pub use nats::Client;
 use wasmtime::component::Resource;
 use wasmtime_wasi::WasiView;
 
-use crate::wasi::messaging::messaging_types::{self, Client, Error, HostClient, HostError};
+pub mod bindings {
+    pub use wasi::messaging::*;
+
+    pub use crate::nats::Client;
+
+    wasmtime::component::bindgen!({
+        world: "messaging",
+        path: "./src/messaging/wit",
+        tracing: true,
+        async: true,
+        with: {
+            "wasi:messaging/messaging-types/client": Client,
+        },
+    });
+}
 
 #[allow(clippy::module_name_repetitions)]
 #[async_trait::async_trait]

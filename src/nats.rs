@@ -7,8 +7,9 @@ use wasmtime::component::{Component, Linker, Resource};
 use wasmtime::{Engine, Store};
 use wasmtime_wasi::{command, ResourceTable, WasiCtx, WasiCtxBuilder, WasiView};
 
+use crate::messaging::bindings::messaging_types::{FormatSpec, Message};
+use crate::messaging::bindings::Messaging;
 use crate::messaging::{self, MessagingClient, MessagingView};
-use crate::wasi::messaging::messaging_types::{FormatSpec, Message};
 
 /// Host is the base type used to implement host messaging interfaces.
 /// In addition, it holds the "host-defined state" used by the wasm runtime [`Store`].
@@ -85,11 +86,11 @@ pub async fn serve(engine: &Engine, wasm: String) -> anyhow::Result<()> {
 
     let mut linker = Linker::new(engine);
     command::add_to_linker(&mut linker)?;
-    crate::Messaging::add_to_linker(&mut linker, |t| t)?;
+    Messaging::add_to_linker(&mut linker, |t| t)?;
 
     let instance_pre = linker.instantiate_pre(&component)?;
 
-    let (messaging, _) = crate::Messaging::instantiate_pre(&mut store, &instance_pre).await?;
+    let (messaging, _) = Messaging::instantiate_pre(&mut store, &instance_pre).await?;
     let guest = messaging.wasi_messaging_messaging_guest();
 
     // connect to NATS server

@@ -1,9 +1,9 @@
 use bytes::Bytes;
 use wasmtime::component::Resource;
 
+use super::bindings::messaging_types::{Client, Error, Message};
+use super::bindings::producer;
 use crate::messaging::{MessagingClient, MessagingView};
-use crate::wasi::messaging::messaging_types::{Client, Error, Message};
-use crate::wasi::messaging::producer;
 
 #[async_trait::async_trait]
 impl<T> producer::Host for T

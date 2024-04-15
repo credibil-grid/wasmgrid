@@ -35,5 +35,5 @@ wit-bindgen-rt = "0.24.0"
 wit-component = "0.203.0"
 
 [package.metadata.component.target]
-path = "wit"
+path = "./src/messaging/wit"
 world = "messaging"

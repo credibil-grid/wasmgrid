@@ -4,18 +4,7 @@ mod nats;
 use anyhow::Error;
 use clap::Parser;
 pub use nats::Client;
-use wasmtime::component::bindgen;
 use wasmtime::{Config, Engine};
-
-bindgen!({
-    world: "messaging",
-    path: "wit",
-    tracing: true,
-    async: true,
-    with: {
-        "wasi:messaging/messaging-types/client": Client,
-    },
-});
 
 /// Host wasm runtime for a vault service that stores signing keys and credentials for a Verifiable
 /// Credential wallet.
