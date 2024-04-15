@@ -3,17 +3,18 @@
 use std::prelude::rust_2021::*;
 #[macro_use]
 extern crate std;
-mod nats {
+mod messaging {
     mod consumer {
         use anyhow::anyhow;
         use futures::stream::StreamExt;
         use tokio::time::{sleep, Duration};
         use wasmtime::component::Resource;
+        use crate::messaging::types::WasiMessagingView;
         use crate::wasi::messaging::consumer;
         use crate::wasi::messaging::messaging_types::{
             Client, Error, FormatSpec, GuestConfiguration, Message,
         };
-        impl consumer::Host for super::Nats {
+        impl<T: WasiMessagingView> consumer::Host for T {
             #[allow(
                 clippy::async_yields_async,
                 clippy::diverging_sub_expression,
@@ -57,7 +58,7 @@ mod nats {
                     let __ret: wasmtime::Result<
                         anyhow::Result<Option<Vec<Message>>, Resource<Error>>,
                     > = {
-                        let client = __self.table.get(&client)?;
+                        let client = __self.table().get(&client)?;
                         let mut subscriber = match client.subscribe(ch).await {
                             Ok(s) => s,
                             Err(e) => {
@@ -140,7 +141,7 @@ mod nats {
                     let __ret: wasmtime::Result<
                         anyhow::Result<Vec<Message>, Resource<Error>>,
                     > = {
-                        let client = __self.table.get(&client)?;
+                        let client = __self.table().get(&client)?;
                         let mut subscriber = match client.subscribe(ch).await {
                             Ok(s) => s,
                             Err(e) => {
@@ -307,9 +308,10 @@ mod nats {
     mod producer {
         use bytes::Bytes;
         use wasmtime::component::Resource;
+        use crate::messaging::types::WasiMessagingView;
         use crate::wasi::messaging::messaging_types::{Client, Error, Message};
         use crate::wasi::messaging::producer;
-        impl producer::Host for super::Nats {
+        impl<T: WasiMessagingView> producer::Host for T {
             #[allow(
                 clippy::async_yields_async,
                 clippy::diverging_sub_expression,
@@ -351,7 +353,7 @@ mod nats {
                             ::std::io::_print(format_args!("send: ch: {0}\n", ch));
                         };
                         let data = Bytes::from(msg[0].data.clone());
-                        let client = __self.table.get(&client)?;
+                        let client = __self.table().get(&client)?;
                         client.publish(ch, data).await?;
                         Ok(Ok(()))
                     };
@@ -360,70 +362,34 @@ mod nats {
             }
         }
     }
-    use std::collections::HashMap;
-    use async_nats::Client;
-    use futures::stream::{self, StreamExt};
+    pub mod types {
+        use bytes::Bytes;
+        use wasmtime::component::Resource;
+        use wasmtime_wasi::{ResourceTable, WasiCtx, WasiView};
+        pub trait WasiMessagingView: WasiView + Send {
+            #[must_use]
+            #[allow(clippy::type_complexity, clippy::type_repetition_in_bounds)]
+            fn connect<'life0, 'async_trait>(
+                &'life0 mut self,
+                name: String,
+            ) -> ::core::pin::Pin<
+                Box<
+                    dyn ::core::future::Future<
+                        Output = anyhow::Result<Resource<Client>>,
+                    > + ::core::marker::Send + 'async_trait,
+                >,
+            >
+            where
+                'life0: 'async_trait,
+                Self: 'async_trait;
+        }
+    }
+    use crate::wasi::messaging::Client;
     use wasmtime::component::Resource;
-    use wasmtime::Store;
-    use wasmtime_wasi::{ResourceTable, WasiCtx, WasiCtxBuilder, WasiView};
-    use crate::exports::wasi::messaging::messaging_guest::Guest;
-    use crate::wasi::messaging::messaging_types::{
-        Error, FormatSpec, Host, HostClient, HostError, Message,
-    };
-    /// Nats is the base type used to implement host messaging interfaces.
-    /// In addition, it holds the "host-defined state" used by the wasm runtime [`Store`].
-    pub struct Nats {
-        keys: HashMap<String, u32>,
-        table: ResourceTable,
-        ctx: WasiCtx,
-    }
-    impl Nats {
-        /// Create a default instance of the host state for use in initialisng the [`Store`].
-        pub fn default() -> Self {
-            Self {
-                keys: HashMap::default(),
-                table: ResourceTable::default(),
-                ctx: WasiCtxBuilder::new().inherit_env().build(),
-            }
-        }
-        /// Run the NATS messaging service. The method subscribes to configured channels and processes
-        /// messages blocking the current thread until terminated.
-        pub async fn run(
-            store: &mut Store<Nats>,
-            guest: &Guest,
-        ) -> wasmtime::Result<()> {
-            let host_state = store.data_mut();
-            let client = HostClient::connect(host_state, "demo.nats.io".to_string())
-                .await?
-                .unwrap();
-            let client = host_state.table.get(&client)?.clone();
-            let gc = guest.call_configure(&mut *store).await?;
-            let mut subscribers = ::alloc::vec::Vec::new();
-            for ch in &gc.unwrap().channels {
-                let subscriber = client.subscribe(ch.to_owned()).await?;
-                subscribers.push(subscriber);
-            }
-            let mut messages = stream::select_all(subscribers);
-            while let Some(message) = messages.next().await {
-                let msg = Message {
-                    data: message.payload.to_vec(),
-                    metadata: Some(
-                        <[_]>::into_vec(
-                            #[rustc_box]
-                            ::alloc::boxed::Box::new([
-                                (String::from("channel"), message.subject.to_string()),
-                            ]),
-                        ),
-                    ),
-                    format: FormatSpec::Raw,
-                };
-                let _ = guest.call_handler(&mut *store, &[msg]).await?;
-            }
-            Ok(())
-        }
-    }
-    impl Host for Nats {}
-    impl HostClient for Nats {
+    pub use crate::messaging::types::WasiMessagingView;
+    use crate::wasi::messaging::messaging_types::{self, Error, HostClient, HostError};
+    impl<T: WasiMessagingView> messaging_types::Host for T {}
+    impl<T: WasiMessagingView> HostClient for T {
         /// Connect to the NATS server specified by `name` and return a client resource.
         #[allow(
             clippy::async_yields_async,
@@ -462,14 +428,7 @@ mod nats {
                 let __ret: wasmtime::Result<
                     anyhow::Result<Resource<Client>, Resource<Error>>,
                 > = {
-                    let resource = if let Some(key) = __self.keys.get(&name) {
-                        Resource::new_own(*key)
-                    } else {
-                        let client = async_nats::connect("demo.nats.io").await?;
-                        let resource = __self.table.push(client)?;
-                        __self.keys.insert(name, resource.rep());
-                        resource
-                    };
+                    let resource = __self.connect(name).await?;
                     Ok(Ok(resource))
                 };
                 #[allow(unreachable_code)] __ret
@@ -477,12 +436,11 @@ mod nats {
         }
         /// Drop the specified NATS client resource.
         fn drop(&mut self, client: Resource<Client>) -> wasmtime::Result<()> {
-            self.keys.retain(|_, v| *v != client.rep());
-            let _ = self.table.delete(client)?;
+            let _ = self.table().delete(client)?;
             Ok(())
         }
     }
-    impl HostError for Nats {
+    impl<T: WasiMessagingView> HostError for T {
         #[allow(
             clippy::async_yields_async,
             clippy::diverging_sub_expression,
@@ -526,22 +484,189 @@ mod nats {
             Ok(())
         }
     }
-    impl WasiView for Nats {
-        fn table(&mut self) -> &mut ResourceTable {
-            &mut self.table
+}
+mod nats {
+    use std::collections::HashMap;
+    use futures::stream::{self, StreamExt};
+    use wasmtime::component::{Component, Linker, Resource};
+    use wasmtime::{Engine, Store};
+    use wasmtime_wasi::{command, ResourceTable, WasiCtx, WasiCtxBuilder, WasiView};
+    use crate::messaging;
+    use crate::wasi::messaging::messaging_types::{FormatSpec, Message};
+    /// Host is the base type used to implement host messaging interfaces.
+    /// In addition, it holds the "host-defined state" used by the wasm runtime [`Store`].
+    pub struct Host {
+        keys: HashMap<String, u32>,
+        pub table: ResourceTable,
+        ctx: WasiCtx,
+    }
+    impl Host {
+        pub fn new() -> Self {
+            Self {
+                keys: HashMap::default(),
+                table: ResourceTable::default(),
+                ctx: WasiCtxBuilder::new().inherit_env().build(),
+            }
+        }
+    }
+    impl messaging::WasiMessagingView for Host {
+        #[allow(
+            clippy::async_yields_async,
+            clippy::diverging_sub_expression,
+            clippy::let_unit_value,
+            clippy::no_effect_underscore_binding,
+            clippy::shadow_same,
+            clippy::type_complexity,
+            clippy::type_repetition_in_bounds,
+            clippy::used_underscore_binding
+        )]
+        fn connect<'life0, 'async_trait>(
+            &'life0 mut self,
+            name: String,
+        ) -> ::core::pin::Pin<
+            Box<
+                dyn ::core::future::Future<
+                    Output = anyhow::Result<Resource<Client>>,
+                > + ::core::marker::Send + 'async_trait,
+            >,
+        >
+        where
+            'life0: 'async_trait,
+            Self: 'async_trait,
+        {
+            Box::pin(async move {
+                if let ::core::option::Option::Some(__ret) = ::core::option::Option::None::<
+                    anyhow::Result<Resource<Client>>,
+                > {
+                    #[allow(unreachable_code)] return __ret;
+                }
+                let mut __self = self;
+                let name = name;
+                let __ret: anyhow::Result<Resource<Client>> = {
+                    {
+                        ::core::panicking::panic_fmt(
+                            format_args!("not implemented: {0}", format_args!("connect")),
+                        );
+                    }
+                };
+                #[allow(unreachable_code)] __ret
+            })
         }
         fn ctx(&mut self) -> &mut WasiCtx {
-            &mut self.ctx
+            {
+                ::core::panicking::panic_fmt(
+                    format_args!("not implemented: {0}", format_args!("ctx")),
+                );
+            }
         }
+        fn table(&mut self) -> &mut ResourceTable {
+            {
+                ::core::panicking::panic_fmt(
+                    format_args!("not implemented: {0}", format_args!("table")),
+                );
+            }
+        }
+    }
+    impl WasiView for Host {
+        fn ctx(&mut self) -> &mut WasiCtx {
+            {
+                ::core::panicking::panic_fmt(
+                    format_args!("not implemented: {0}", format_args!("ctx")),
+                );
+            }
+        }
+        fn table(&mut self) -> &mut ResourceTable {
+            {
+                ::core::panicking::panic_fmt(
+                    format_args!("not implemented: {0}", format_args!("table")),
+                );
+            }
+        }
+    }
+    pub struct Client {
+        pub inner: async_nats::Client,
+    }
+    #[automatically_derived]
+    impl ::core::clone::Clone for Client {
+        #[inline]
+        fn clone(&self) -> Client {
+            Client {
+                inner: ::core::clone::Clone::clone(&self.inner),
+            }
+        }
+    }
+    impl Client {
+        pub async fn subscribe(
+            &self,
+            ch: String,
+        ) -> anyhow::Result<async_nats::Subscriber> {
+            Ok(self.inner.subscribe(ch).await?)
+        }
+        pub async fn publish(&self, ch: String, data: Bytes) -> anyhow::Result<()> {
+            Ok(self.inner.publish(ch, data).await?)
+        }
+    }
+    pub async fn serve(engine: &Engine, wasm: String) -> anyhow::Result<()> {
+        let mut store = Store::new(engine, messaging::Host::new());
+        let component = Component::from_file(engine, wasm)?;
+        let mut linker = Linker::new(engine);
+        command::add_to_linker(&mut linker)?;
+        crate::Messaging::add_to_linker(&mut linker, |t| t)?;
+        let instance_pre = linker.instantiate_pre(&component)?;
+        let (messaging, _) = crate::Messaging::instantiate_pre(&mut store, &instance_pre)
+            .await?;
+        let guest = messaging.wasi_messaging_messaging_guest();
+        let host = store.data_mut();
+        let Ok(client) = host.connect("demo.nats.io".to_string()).await? else {
+            return Err(
+                ::anyhow::__private::must_use({
+                    let error = ::anyhow::__private::format_err(
+                        format_args!("Failed to connect to NATS server"),
+                    );
+                    error
+                }),
+            );
+        };
+        let client = host.table.get(&client)?.clone();
+        let Ok(gc) = guest.call_configure(&mut store).await? else {
+            return Err(
+                ::anyhow::__private::must_use({
+                    let error = ::anyhow::__private::format_err(
+                        format_args!("Failed to configure NATS client"),
+                    );
+                    error
+                }),
+            );
+        };
+        let mut subscribers = ::alloc::vec::Vec::new();
+        for ch in &gc.channels {
+            let subscriber = client.subscribe(ch.to_owned()).await?;
+            subscribers.push(subscriber);
+        }
+        let mut messages = stream::select_all(subscribers);
+        while let Some(message) = messages.next().await {
+            let msg = Message {
+                data: message.payload.to_vec(),
+                metadata: Some(
+                    <[_]>::into_vec(
+                        #[rustc_box]
+                        ::alloc::boxed::Box::new([
+                            (String::from("channel"), message.subject.to_string()),
+                        ]),
+                    ),
+                ),
+                format: FormatSpec::Raw,
+            };
+            let _ = guest.call_handler(&mut store, &[msg]).await?;
+        }
+        Ok(())
     }
 }
 use anyhow::Error;
-pub use async_nats::Client;
 use clap::Parser;
-use tokio::signal::unix::{signal, SignalKind};
-use wasmtime::component::{bindgen, Component, Linker};
-use wasmtime::{Config, Engine, Store};
-use wasmtime_wasi::command;
+pub use nats::Client;
+use wasmtime::component::bindgen;
+use wasmtime::{Config, Engine};
 pub struct Messaging {
     interface0: exports::wasi::messaging::messaging_guest::Guest,
 }
@@ -1859,7 +1984,7 @@ pub mod wasi {
                                         "host::wasi::messaging::messaging_types",
                                         tracing::Level::TRACE,
                                         ::core::option::Option::Some("src/main.rs"),
-                                        ::core::option::Option::Some(11u32),
+                                        ::core::option::Option::Some(10u32),
                                         ::core::option::Option::Some(
                                             "host::wasi::messaging::messaging_types",
                                         ),
@@ -1972,11 +2097,11 @@ pub mod wasi {
                             static __CALLSITE: ::tracing::callsite::DefaultCallsite = {
                                 static META: ::tracing::Metadata<'static> = {
                                     ::tracing_core::metadata::Metadata::new(
-                                        "event src/main.rs:11",
+                                        "event src/main.rs:10",
                                         "host::wasi::messaging::messaging_types",
                                         tracing::Level::TRACE,
                                         ::core::option::Option::Some("src/main.rs"),
-                                        ::core::option::Option::Some(11u32),
+                                        ::core::option::Option::Some(10u32),
                                         ::core::option::Option::Some(
                                             "host::wasi::messaging::messaging_types",
                                         ),
@@ -2148,11 +2273,11 @@ pub mod wasi {
                             static __CALLSITE: ::tracing::callsite::DefaultCallsite = {
                                 static META: ::tracing::Metadata<'static> = {
                                     ::tracing_core::metadata::Metadata::new(
-                                        "event src/main.rs:11",
+                                        "event src/main.rs:10",
                                         "host::wasi::messaging::messaging_types",
                                         tracing::Level::TRACE,
                                         ::core::option::Option::Some("src/main.rs"),
-                                        ::core::option::Option::Some(11u32),
+                                        ::core::option::Option::Some(10u32),
                                         ::core::option::Option::Some(
                                             "host::wasi::messaging::messaging_types",
                                         ),
@@ -2332,7 +2457,7 @@ pub mod wasi {
                                         "host::wasi::messaging::messaging_types",
                                         tracing::Level::TRACE,
                                         ::core::option::Option::Some("src/main.rs"),
-                                        ::core::option::Option::Some(11u32),
+                                        ::core::option::Option::Some(10u32),
                                         ::core::option::Option::Some(
                                             "host::wasi::messaging::messaging_types",
                                         ),
@@ -2445,11 +2570,11 @@ pub mod wasi {
                             static __CALLSITE: ::tracing::callsite::DefaultCallsite = {
                                 static META: ::tracing::Metadata<'static> = {
                                     ::tracing_core::metadata::Metadata::new(
-                                        "event src/main.rs:11",
+                                        "event src/main.rs:10",
                                         "host::wasi::messaging::messaging_types",
                                         tracing::Level::TRACE,
                                         ::core::option::Option::Some("src/main.rs"),
-                                        ::core::option::Option::Some(11u32),
+                                        ::core::option::Option::Some(10u32),
                                         ::core::option::Option::Some(
                                             "host::wasi::messaging::messaging_types",
                                         ),
@@ -2607,11 +2732,11 @@ pub mod wasi {
                             static __CALLSITE: ::tracing::callsite::DefaultCallsite = {
                                 static META: ::tracing::Metadata<'static> = {
                                     ::tracing_core::metadata::Metadata::new(
-                                        "event src/main.rs:11",
+                                        "event src/main.rs:10",
                                         "host::wasi::messaging::messaging_types",
                                         tracing::Level::TRACE,
                                         ::core::option::Option::Some("src/main.rs"),
-                                        ::core::option::Option::Some(11u32),
+                                        ::core::option::Option::Some(10u32),
                                         ::core::option::Option::Some(
                                             "host::wasi::messaging::messaging_types",
                                         ),
@@ -2867,7 +2992,7 @@ pub mod wasi {
                                         "host::wasi::messaging::producer",
                                         tracing::Level::TRACE,
                                         ::core::option::Option::Some("src/main.rs"),
-                                        ::core::option::Option::Some(11u32),
+                                        ::core::option::Option::Some(10u32),
                                         ::core::option::Option::Some(
                                             "host::wasi::messaging::producer",
                                         ),
@@ -2972,11 +3097,11 @@ pub mod wasi {
                             static __CALLSITE: ::tracing::callsite::DefaultCallsite = {
                                 static META: ::tracing::Metadata<'static> = {
                                     ::tracing_core::metadata::Metadata::new(
-                                        "event src/main.rs:11",
+                                        "event src/main.rs:10",
                                         "host::wasi::messaging::producer",
                                         tracing::Level::TRACE,
                                         ::core::option::Option::Some("src/main.rs"),
-                                        ::core::option::Option::Some(11u32),
+                                        ::core::option::Option::Some(10u32),
                                         ::core::option::Option::Some(
                                             "host::wasi::messaging::producer",
                                         ),
@@ -3176,11 +3301,11 @@ pub mod wasi {
                             static __CALLSITE: ::tracing::callsite::DefaultCallsite = {
                                 static META: ::tracing::Metadata<'static> = {
                                     ::tracing_core::metadata::Metadata::new(
-                                        "event src/main.rs:11",
+                                        "event src/main.rs:10",
                                         "host::wasi::messaging::producer",
                                         tracing::Level::TRACE,
                                         ::core::option::Option::Some("src/main.rs"),
-                                        ::core::option::Option::Some(11u32),
+                                        ::core::option::Option::Some(10u32),
                                         ::core::option::Option::Some(
                                             "host::wasi::messaging::producer",
                                         ),
@@ -3535,7 +3660,7 @@ pub mod wasi {
                                         "host::wasi::messaging::consumer",
                                         tracing::Level::TRACE,
                                         ::core::option::Option::Some("src/main.rs"),
-                                        ::core::option::Option::Some(11u32),
+                                        ::core::option::Option::Some(10u32),
                                         ::core::option::Option::Some(
                                             "host::wasi::messaging::consumer",
                                         ),
@@ -3644,11 +3769,11 @@ pub mod wasi {
                             static __CALLSITE: ::tracing::callsite::DefaultCallsite = {
                                 static META: ::tracing::Metadata<'static> = {
                                     ::tracing_core::metadata::Metadata::new(
-                                        "event src/main.rs:11",
+                                        "event src/main.rs:10",
                                         "host::wasi::messaging::consumer",
                                         tracing::Level::TRACE,
                                         ::core::option::Option::Some("src/main.rs"),
-                                        ::core::option::Option::Some(11u32),
+                                        ::core::option::Option::Some(10u32),
                                         ::core::option::Option::Some(
                                             "host::wasi::messaging::consumer",
                                         ),
@@ -3849,11 +3974,11 @@ pub mod wasi {
                             static __CALLSITE: ::tracing::callsite::DefaultCallsite = {
                                 static META: ::tracing::Metadata<'static> = {
                                     ::tracing_core::metadata::Metadata::new(
-                                        "event src/main.rs:11",
+                                        "event src/main.rs:10",
                                         "host::wasi::messaging::consumer",
                                         tracing::Level::TRACE,
                                         ::core::option::Option::Some("src/main.rs"),
-                                        ::core::option::Option::Some(11u32),
+                                        ::core::option::Option::Some(10u32),
                                         ::core::option::Option::Some(
                                             "host::wasi::messaging::consumer",
                                         ),
@@ -4036,7 +4161,7 @@ pub mod wasi {
                                         "host::wasi::messaging::consumer",
                                         tracing::Level::TRACE,
                                         ::core::option::Option::Some("src/main.rs"),
-                                        ::core::option::Option::Some(11u32),
+                                        ::core::option::Option::Some(10u32),
                                         ::core::option::Option::Some(
                                             "host::wasi::messaging::consumer",
                                         ),
@@ -4145,11 +4270,11 @@ pub mod wasi {
                             static __CALLSITE: ::tracing::callsite::DefaultCallsite = {
                                 static META: ::tracing::Metadata<'static> = {
                                     ::tracing_core::metadata::Metadata::new(
-                                        "event src/main.rs:11",
+                                        "event src/main.rs:10",
                                         "host::wasi::messaging::consumer",
                                         tracing::Level::TRACE,
                                         ::core::option::Option::Some("src/main.rs"),
-                                        ::core::option::Option::Some(11u32),
+                                        ::core::option::Option::Some(10u32),
                                         ::core::option::Option::Some(
                                             "host::wasi::messaging::consumer",
                                         ),
@@ -4335,11 +4460,11 @@ pub mod wasi {
                             static __CALLSITE: ::tracing::callsite::DefaultCallsite = {
                                 static META: ::tracing::Metadata<'static> = {
                                     ::tracing_core::metadata::Metadata::new(
-                                        "event src/main.rs:11",
+                                        "event src/main.rs:10",
                                         "host::wasi::messaging::consumer",
                                         tracing::Level::TRACE,
                                         ::core::option::Option::Some("src/main.rs"),
-                                        ::core::option::Option::Some(11u32),
+                                        ::core::option::Option::Some(10u32),
                                         ::core::option::Option::Some(
                                             "host::wasi::messaging::consumer",
                                         ),
@@ -4522,7 +4647,7 @@ pub mod wasi {
                                         "host::wasi::messaging::consumer",
                                         tracing::Level::TRACE,
                                         ::core::option::Option::Some("src/main.rs"),
-                                        ::core::option::Option::Some(11u32),
+                                        ::core::option::Option::Some(10u32),
                                         ::core::option::Option::Some(
                                             "host::wasi::messaging::consumer",
                                         ),
@@ -4631,11 +4756,11 @@ pub mod wasi {
                             static __CALLSITE: ::tracing::callsite::DefaultCallsite = {
                                 static META: ::tracing::Metadata<'static> = {
                                     ::tracing_core::metadata::Metadata::new(
-                                        "event src/main.rs:11",
+                                        "event src/main.rs:10",
                                         "host::wasi::messaging::consumer",
                                         tracing::Level::TRACE,
                                         ::core::option::Option::Some("src/main.rs"),
-                                        ::core::option::Option::Some(11u32),
+                                        ::core::option::Option::Some(10u32),
                                         ::core::option::Option::Some(
                                             "host::wasi::messaging::consumer",
                                         ),
@@ -4807,11 +4932,11 @@ pub mod wasi {
                             static __CALLSITE: ::tracing::callsite::DefaultCallsite = {
                                 static META: ::tracing::Metadata<'static> = {
                                     ::tracing_core::metadata::Metadata::new(
-                                        "event src/main.rs:11",
+                                        "event src/main.rs:10",
                                         "host::wasi::messaging::consumer",
                                         tracing::Level::TRACE,
                                         ::core::option::Option::Some("src/main.rs"),
-                                        ::core::option::Option::Some(11u32),
+                                        ::core::option::Option::Some(10u32),
                                         ::core::option::Option::Some(
                                             "host::wasi::messaging::consumer",
                                         ),
@@ -4994,7 +5119,7 @@ pub mod wasi {
                                         "host::wasi::messaging::consumer",
                                         tracing::Level::TRACE,
                                         ::core::option::Option::Some("src/main.rs"),
-                                        ::core::option::Option::Some(11u32),
+                                        ::core::option::Option::Some(10u32),
                                         ::core::option::Option::Some(
                                             "host::wasi::messaging::consumer",
                                         ),
@@ -5103,11 +5228,11 @@ pub mod wasi {
                             static __CALLSITE: ::tracing::callsite::DefaultCallsite = {
                                 static META: ::tracing::Metadata<'static> = {
                                     ::tracing_core::metadata::Metadata::new(
-                                        "event src/main.rs:11",
+                                        "event src/main.rs:10",
                                         "host::wasi::messaging::consumer",
                                         tracing::Level::TRACE,
                                         ::core::option::Option::Some("src/main.rs"),
-                                        ::core::option::Option::Some(11u32),
+                                        ::core::option::Option::Some(10u32),
                                         ::core::option::Option::Some(
                                             "host::wasi::messaging::consumer",
                                         ),
@@ -5279,11 +5404,11 @@ pub mod wasi {
                             static __CALLSITE: ::tracing::callsite::DefaultCallsite = {
                                 static META: ::tracing::Metadata<'static> = {
                                     ::tracing_core::metadata::Metadata::new(
-                                        "event src/main.rs:11",
+                                        "event src/main.rs:10",
                                         "host::wasi::messaging::consumer",
                                         tracing::Level::TRACE,
                                         ::core::option::Option::Some("src/main.rs"),
-                                        ::core::option::Option::Some(11u32),
+                                        ::core::option::Option::Some(10u32),
                                         ::core::option::Option::Some(
                                             "host::wasi::messaging::consumer",
                                         ),
@@ -5466,7 +5591,7 @@ pub mod wasi {
                                         "host::wasi::messaging::consumer",
                                         tracing::Level::TRACE,
                                         ::core::option::Option::Some("src/main.rs"),
-                                        ::core::option::Option::Some(11u32),
+                                        ::core::option::Option::Some(10u32),
                                         ::core::option::Option::Some(
                                             "host::wasi::messaging::consumer",
                                         ),
@@ -5575,11 +5700,11 @@ pub mod wasi {
                             static __CALLSITE: ::tracing::callsite::DefaultCallsite = {
                                 static META: ::tracing::Metadata<'static> = {
                                     ::tracing_core::metadata::Metadata::new(
-                                        "event src/main.rs:11",
+                                        "event src/main.rs:10",
                                         "host::wasi::messaging::consumer",
                                         tracing::Level::TRACE,
                                         ::core::option::Option::Some("src/main.rs"),
-                                        ::core::option::Option::Some(11u32),
+                                        ::core::option::Option::Some(10u32),
                                         ::core::option::Option::Some(
                                             "host::wasi::messaging::consumer",
                                         ),
@@ -5751,11 +5876,11 @@ pub mod wasi {
                             static __CALLSITE: ::tracing::callsite::DefaultCallsite = {
                                 static META: ::tracing::Metadata<'static> = {
                                     ::tracing_core::metadata::Metadata::new(
-                                        "event src/main.rs:11",
+                                        "event src/main.rs:10",
                                         "host::wasi::messaging::consumer",
                                         tracing::Level::TRACE,
                                         ::core::option::Option::Some("src/main.rs"),
-                                        ::core::option::Option::Some(11u32),
+                                        ::core::option::Option::Some(10u32),
                                         ::core::option::Option::Some(
                                             "host::wasi::messaging::consumer",
                                         ),
@@ -6013,7 +6138,7 @@ pub mod exports {
                                         "host::exports::wasi::messaging::messaging_guest",
                                         tracing::Level::TRACE,
                                         ::core::option::Option::Some("src/main.rs"),
-                                        ::core::option::Option::Some(11u32),
+                                        ::core::option::Option::Some(10u32),
                                         ::core::option::Option::Some(
                                             "host::exports::wasi::messaging::messaging_guest",
                                         ),
@@ -6154,7 +6279,7 @@ pub mod exports {
                                         "host::exports::wasi::messaging::messaging_guest",
                                         tracing::Level::TRACE,
                                         ::core::option::Option::Some("src/main.rs"),
-                                        ::core::option::Option::Some(11u32),
+                                        ::core::option::Option::Some(10u32),
                                         ::core::option::Option::Some(
                                             "host::exports::wasi::messaging::messaging_guest",
                                         ),
@@ -6280,13 +6405,11 @@ const _: &str = "interface consumer {\n    // {client, message, channel, error, 
 const _: &str = "interface messaging-guest {\n    use messaging-types.{message, guest-configuration, error};\n\n    /// Returns the list of channels (and extension metadata within guest-configuration) that \n    /// this component should subscribe to and be handled by the subsequent handler within guest-configuration\n    configure: func() -> result<guest-configuration, error>;\n\n    /// Whenever this guest receives a message in one of the subscribed channels, the message is sent to this handler\n    handler: func(ms: list<message>) -> result<_, error>;\n}";
 const _: &str = "interface producer {\n    use messaging-types.{client, channel, message, error};\n    \n    send: func(c: client, ch: channel, m: list<message>) -> result<_, error>;\n}";
 const _: &str = "interface messaging-types {\n    /// A connection to a message-exchange service (e.g., buffer, broker, etc.).\n    resource client {\n        connect: static func(name: string) -> result<client, error>;\n    }\n    \n    /// TODO(danbugs): This should be eventually extracted as an underlying type for other wasi-cloud-core interfaces.\n    resource error {\n        trace: static func() -> string;    \n    }\n  \n    /// There are two types of channels:\n    /// - publish-subscribe channel, which is a broadcast channel, and\n    /// - point-to-point channel, which is a unicast channel.\n    ///\n    /// The interface doesn\'t highlight this difference in the type itself as that\'s uniquely a consumer issue.\n    type channel = string;\n  \n    /// Configuration includes a required list of channels the guest is subscribing to, and an optional list of extensions key-value pairs \n    /// (e.g., partitions/offsets to read from in Kafka/EventHubs, QoS etc.).\n    record guest-configuration {\n        channels: list<channel>,\n        extensions: option<list<tuple<string, string>>>\n    }\n  \n    /// Format specification for messages \n    ///  - more info: https://github.com/clemensv/spec/blob/registry-extensions/registry/spec.md#message-formats\n    ///  - message metadata can further decorate w/ things like format version, and so on.\n    enum format-spec {\n        cloudevents,\n        http,\n        amqp,\n        mqtt,\n        kafka,\n        raw\n    }\n  \n    /// A message with a binary payload, a format specification, and decorative metadata.\n    record message {\n        data: list<u8>,\n        format: format-spec,\n        metadata: option<list<tuple<string, string>>>\n    }\n}";
-use crate::nats::Nats;
-use crate::wasi::messaging::{consumer, messaging_types, producer};
 /// Host wasm runtime for a vault service that stores signing keys and credentials for a Verifiable
 /// Credential wallet.
 #[command(version, about, long_about = None)]
 struct Args {
-    /// The path to the wasm file to run.
+    /// The path to the wasm file to serve.
     #[arg(short, long)]
     wasm: String,
 }
@@ -6440,7 +6563,7 @@ impl clap::Args for Args {
                         })
                         .action(clap::ArgAction::Set);
                     let arg = arg
-                        .help("The path to the wasm file to run")
+                        .help("The path to the wasm file to serve")
                         .long_help(None)
                         .short('w')
                         .long("wasm");
@@ -6485,7 +6608,7 @@ impl clap::Args for Args {
                         })
                         .action(clap::ArgAction::Set);
                     let arg = arg
-                        .help("The path to the wasm file to run")
+                        .help("The path to the wasm file to serve")
                         .long_help(None)
                         .short('w')
                         .long("wasm");
@@ -6523,22 +6646,7 @@ pub fn main() -> wasmtime::Result<()> {
         let mut config = Config::new();
         config.async_support(true);
         let engine = Engine::new(&config)?;
-        let mut linker = Linker::new(&engine);
-        command::add_to_linker(&mut linker)?;
-        messaging_types::add_to_linker(&mut linker, |t| t)?;
-        producer::add_to_linker(&mut linker, |t| t)?;
-        consumer::add_to_linker(&mut linker, |t| t)?;
-        let component = Component::from_file(&engine, args.wasm)?;
-        let mut store = Store::new(&engine, Nats::default());
-        let (messaging, _) = Messaging::instantiate_async(
-                &mut store,
-                &component,
-                &linker,
-            )
-            .await?;
-        tokio::spawn(async move {
-            Nats::run(&mut store, messaging.wasi_messaging_messaging_guest()).await
-        });
+        tokio::spawn(async move { nats::serve(&engine, args.wasm).await });
         shutdown().await
     };
     #[allow(clippy::expect_used, clippy::diverging_sub_expression)]
@@ -6551,16 +6659,11 @@ pub fn main() -> wasmtime::Result<()> {
     }
 }
 async fn shutdown() -> Result<(), Error> {
-    let mut sigint = signal(SignalKind::interrupt())?;
-    let mut sigterm = signal(SignalKind::terminate())?;
-    let mut sigquit = signal(SignalKind::quit())?;
     {
         #[doc(hidden)]
         mod __tokio_select_util {
-            pub(super) enum Out<_0, _1, _2> {
+            pub(super) enum Out<_0> {
                 _0(_0),
-                _1(_1),
-                _2(_2),
                 Disabled,
             }
             pub(super) type Mask = u8;
@@ -6568,22 +6671,14 @@ async fn shutdown() -> Result<(), Error> {
         use ::tokio::macros::support::Future;
         use ::tokio::macros::support::Pin;
         use ::tokio::macros::support::Poll::{Ready, Pending};
-        const BRANCHES: u32 = 3;
+        const BRANCHES: u32 = 1;
         let mut disabled: __tokio_select_util::Mask = Default::default();
         if !true {
             let mask: __tokio_select_util::Mask = 1 << 0;
             disabled |= mask;
         }
-        if !true {
-            let mask: __tokio_select_util::Mask = 1 << 1;
-            disabled |= mask;
-        }
-        if !true {
-            let mask: __tokio_select_util::Mask = 1 << 2;
-            disabled |= mask;
-        }
         let mut output = {
-            let mut futures = (sigint.recv(), sigterm.recv(), sigquit.recv());
+            let mut futures = (tokio::signal::ctrl_c(),);
             let mut futures = &mut futures;
             ::tokio::macros::support::poll_fn(|cx| {
                     let mut is_pending = false;
@@ -6618,52 +6713,6 @@ async fn shutdown() -> Result<(), Error> {
                                 }
                                 return Ready(__tokio_select_util::Out::_0(out));
                             }
-                            #[allow(unreachable_code)]
-                            1 => {
-                                let mask = 1 << branch;
-                                if disabled & mask == mask {
-                                    continue;
-                                }
-                                let (_, fut, ..) = &mut *futures;
-                                let mut fut = unsafe { Pin::new_unchecked(fut) };
-                                let out = match Future::poll(fut, cx) {
-                                    Ready(out) => out,
-                                    Pending => {
-                                        is_pending = true;
-                                        continue;
-                                    }
-                                };
-                                disabled |= mask;
-                                #[allow(unused_variables)] #[allow(unused_mut)]
-                                match &out {
-                                    _ => {}
-                                    _ => continue,
-                                }
-                                return Ready(__tokio_select_util::Out::_1(out));
-                            }
-                            #[allow(unreachable_code)]
-                            2 => {
-                                let mask = 1 << branch;
-                                if disabled & mask == mask {
-                                    continue;
-                                }
-                                let (_, _, fut, ..) = &mut *futures;
-                                let mut fut = unsafe { Pin::new_unchecked(fut) };
-                                let out = match Future::poll(fut, cx) {
-                                    Ready(out) => out,
-                                    Pending => {
-                                        is_pending = true;
-                                        continue;
-                                    }
-                                };
-                                disabled |= mask;
-                                #[allow(unused_variables)] #[allow(unused_mut)]
-                                match &out {
-                                    _ => {}
-                                    _ => continue,
-                                }
-                                return Ready(__tokio_select_util::Out::_2(out));
-                            }
                             _ => {
                                 ::core::panicking::panic_fmt(
                                     format_args!(
@@ -6686,8 +6735,6 @@ async fn shutdown() -> Result<(), Error> {
         };
         match output {
             __tokio_select_util::Out::_0(_) => Ok(()),
-            __tokio_select_util::Out::_1(_) => Ok(()),
-            __tokio_select_util::Out::_2(_) => Ok(()),
             __tokio_select_util::Out::Disabled => {
                 ::core::panicking::panic_fmt(
                     format_args!("all branches are disabled and there is no else branch"),

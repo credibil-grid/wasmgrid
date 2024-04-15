@@ -1,149 +1,38 @@
 mod consumer;
 mod producer;
+pub mod types;
 
-use std::collections::HashMap;
+use wasmtime::component::Resource;
+use wasmtime_wasi::WasiView;
 
-use async_nats::Client;
-use futures::stream::{self, StreamExt};
-use wasmtime::component::{Component, Linker, Resource};
-use wasmtime::{Engine, Store};
-use wasmtime_wasi::{command, ResourceTable, WasiCtx, WasiCtxBuilder, WasiView};
-
-use crate::wasi::messaging::messaging_types::{
-    self, Error, FormatSpec, HostClient, HostError, Message,
-};
-
-/// Host is the base type used to implement host messaging interfaces.
-/// In addition, it holds the "host-defined state" used by the wasm runtime [`Store`].
-pub struct Host {
-    keys: HashMap<String, u32>,
-    table: ResourceTable,
-    ctx: WasiCtx,
-    engine: Engine,
-    wasm: String,
-}
-
-impl Default for Host {
-    /// Create a default instance of the host state for use in initialisng the [`Store`].
-    fn default() -> Self {
-        // let mut config = Config::new();
-        // config.async_support(true);
-        // let engine = Engine::new(&config).unwrap();
-
-        Self {
-            keys: HashMap::default(),
-            table: ResourceTable::default(),
-            ctx: WasiCtxBuilder::new().inherit_env().build(),
-            engine: Engine::default(),
-            wasm: String::default(),
-        }
-    }
-}
-
-impl Host {
-    pub fn new(engine: Engine, wasm: String) -> Self {
-        Self {
-            keys: HashMap::default(),
-            table: ResourceTable::default(),
-            ctx: WasiCtxBuilder::new().inherit_env().build(),
-            engine,
-            wasm,
-        }
-    }
-
-    /// Run the NATS messaging service. The method subscribes to configured channels and processes
-    /// messages blocking the current thread until terminated.
-    pub async fn run(&mut self) -> wasmtime::Result<()> {
-        let mut store = Store::new(&self.engine, Host::default());
-        let component = Component::from_file(&self.engine, &self.wasm)?;
-
-        let mut linker = Linker::new(&self.engine);
-        command::add_to_linker(&mut linker)?;
-        crate::Messaging::add_to_linker(&mut linker, |t| t)?;
-
-        let (messaging, _) =
-            crate::Messaging::instantiate_async(&mut store, &component, &linker).await?;
-        let guest = messaging.wasi_messaging_messaging_guest();
-
-        // connect to NATS server
-        let host = store.data_mut();
-        let Ok(client) = host.connect("demo.nats.io".to_string()).await? else {
-            return Err(anyhow::anyhow!("Failed to connect to NATS server"));
-        };
-        let client = host.table.get(&client)?.clone();
-
-        // get channels to subscribe to
-        let Ok(gc) = guest.call_configure(&mut store).await? else {
-            return Err(anyhow::anyhow!("Failed to configure NATS client"));
-        };
-
-        // subscribe to channels
-        let mut subscribers = vec![];
-        for ch in &gc.channels {
-            let subscriber = client.subscribe(ch.to_owned()).await?;
-            subscribers.push(subscriber);
-        }
-
-        // process messages until terminated
-        let mut messages = stream::select_all(subscribers);
-        while let Some(message) = messages.next().await {
-            let msg = Message {
-                data: message.payload.to_vec(),
-                metadata: Some(vec![(String::from("channel"), message.subject.to_string())]),
-                format: FormatSpec::Raw,
-            };
-            let _ = guest.call_handler(&mut store, &[msg]).await?;
-        }
-
-        Ok(())
-    }
-}
-
-// tokio::select! {
-//     _ = tokio::signal::ctrl_c() => {
-//         Ok::<_, anyhow::Error>(())
-//     }
-//     res = self.serve() => {
-//         res
-//     }
-// }
-
-impl messaging_types::Host for Host {}
+use crate::wasi::messaging::messaging_types::{self, Client, Error, HostClient, HostError};
 
 #[async_trait::async_trait]
-impl HostClient for Host {
+pub trait WasiMessagingView: WasiView + Send {
+    async fn connect(&mut self, name: String) -> anyhow::Result<Resource<Client>>;
+}
+
+impl<T: WasiMessagingView> messaging_types::Host for T {}
+
+#[async_trait::async_trait]
+impl<T: WasiMessagingView> HostClient for T {
     /// Connect to the NATS server specified by `name` and return a client resource.
     async fn connect(
         &mut self, name: String,
     ) -> wasmtime::Result<anyhow::Result<Resource<Client>, Resource<Error>>> {
-        let resource = if let Some(key) = self.keys.get(&name) {
-            // Get an existing connection by key
-            // let any = self.table.get_any_mut(*key).unwrap();
-            // Resource::try_from_resource_any(any, store).unwrap()
-            println!("Reusing existing connection");
-            Resource::new_own(*key)
-        } else {
-            // Create a new connection
-            println!("New connection");
-            let client = async_nats::connect("demo.nats.io").await?;
-            let resource = self.table.push(client)?;
-            self.keys.insert(name, resource.rep());
-            resource
-        };
-
+        let resource = self.connect(name).await?;
         Ok(Ok(resource))
     }
 
     /// Drop the specified NATS client resource.
     fn drop(&mut self, client: Resource<Client>) -> wasmtime::Result<()> {
-        self.keys.retain(|_, v| *v != client.rep());
-        let _ = self.table.delete(client)?;
+        let _ = self.table().delete(client)?;
         Ok(())
     }
 }
 
 #[async_trait::async_trait]
-impl HostError for Host {
+impl<T: WasiMessagingView> HostError for T {
     async fn trace(&mut self) -> wasmtime::Result<String> {
         Ok(String::from("trace HostError"))
     }
@@ -154,12 +43,12 @@ impl HostError for Host {
     }
 }
 
-impl WasiView for Host {
-    fn table(&mut self) -> &mut ResourceTable {
-        &mut self.table
-    }
+// impl<T: WasiMessagingView> WasiView for T {
+//     fn table(&mut self) -> &mut ResourceTable {
+//         self.table()
+//     }
 
-    fn ctx(&mut self) -> &mut WasiCtx {
-        &mut self.ctx
-    }
-}
+//     fn ctx(&mut self) -> &mut WasiCtx {
+//         self.ctx()
+//     }
+// }
