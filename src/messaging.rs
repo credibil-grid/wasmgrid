@@ -3,7 +3,6 @@ mod producer;
 
 use bindings::messaging_types::{self, Client, Error, HostClient, HostError};
 use bytes::Bytes;
-// pub use nats::Client;
 use wasmtime::component::Resource;
 use wasmtime_wasi::WasiView;
 
