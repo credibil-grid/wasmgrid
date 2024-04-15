@@ -7,6 +7,7 @@ use wasmtime_wasi::WasiView;
 
 use crate::wasi::messaging::messaging_types::{self, Client, Error, HostClient, HostError};
 
+#[allow(clippy::module_name_repetitions)]
 #[async_trait::async_trait]
 pub trait MessagingView: WasiView + Send {
     type Client: MessagingClient;
@@ -14,16 +15,19 @@ pub trait MessagingView: WasiView + Send {
     async fn connect(&mut self, name: String) -> anyhow::Result<Resource<Self::Client>>;
 }
 
+#[allow(clippy::module_name_repetitions)]
 pub trait MessagingClient {
+    // type Subscriber: Send;
+
     async fn subscribe(&self, ch: String) -> anyhow::Result<async_nats::Subscriber>;
 
     async fn publish(&self, ch: String, data: Bytes) -> anyhow::Result<()>;
 }
 
-impl<T: MessagingView> messaging_types::Host for T where T: MessagingView<Client = Client> {}
+impl<T> messaging_types::Host for T where T: MessagingView<Client = Client> {}
 
 #[async_trait::async_trait]
-impl<T: MessagingView> HostClient for T
+impl<T> HostClient for T
 where
     T: MessagingView<Client = Client>,
 {
@@ -43,7 +47,10 @@ where
 }
 
 #[async_trait::async_trait]
-impl<T: MessagingView> HostError for T {
+impl<T> HostError for T
+where
+    T: MessagingView,
+{
     async fn trace(&mut self) -> wasmtime::Result<String> {
         Ok(String::from("trace HostError"))
     }

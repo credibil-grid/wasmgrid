@@ -12,7 +12,7 @@ use crate::wasi::messaging::messaging_types::{
 };
 
 #[async_trait::async_trait]
-impl<T: MessagingView> consumer::Host for T
+impl<T> consumer::Host for T
 where
     T: MessagingView<Client = Client>,
 {

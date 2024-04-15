@@ -6,7 +6,7 @@ use crate::wasi::messaging::messaging_types::{Client, Error, Message};
 use crate::wasi::messaging::producer;
 
 #[async_trait::async_trait]
-impl<T: MessagingView> producer::Host for T
+impl<T> producer::Host for T
 where
     T: MessagingView<Client = Client>,
 {
