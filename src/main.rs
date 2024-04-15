@@ -1,8 +1,9 @@
 mod messaging;
 mod nats;
+
 use anyhow::Error;
-pub use async_nats::Client;
 use clap::Parser;
+pub use messaging::types::Client;
 use wasmtime::component::bindgen;
 use wasmtime::{Config, Engine};
 
@@ -12,7 +13,7 @@ bindgen!({
     tracing: true,
     async: true,
     with: {
-        "wasi:messaging/messaging-types/client": messaging::Client,
+        "wasi:messaging/messaging-types/client": Client,
     },
 });
 

@@ -1,29 +1,14 @@
 mod consumer;
 mod producer;
+pub mod types;
 
 use std::collections::HashMap;
 
-use bytes::Bytes;
-// use async_nats::Client;
+use types::Client;
 use wasmtime::component::Resource;
 use wasmtime_wasi::{ResourceTable, WasiCtx, WasiCtxBuilder, WasiView};
 
 use crate::wasi::messaging::messaging_types::{self, Error, HostClient, HostError};
-
-#[derive(Clone)]
-pub struct Client {
-    inner: async_nats::Client,
-}
-
-impl Client {
-    pub async fn subscribe(&self, ch: String) -> anyhow::Result<async_nats::Subscriber> {
-        Ok(self.inner.subscribe(ch).await?)
-    }
-
-    pub async fn publish(&self, ch: String, data: Bytes) -> anyhow::Result<()> {
-        Ok(self.inner.publish(ch, data).await?)
-    }
-}
 
 /// Host is the base type used to implement host messaging interfaces.
 /// In addition, it holds the "host-defined state" used by the wasm runtime [`Store`].
