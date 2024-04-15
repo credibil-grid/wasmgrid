@@ -1,5 +1,19 @@
 use bytes::Bytes;
 
+pub struct Server;
+
+impl Server {
+    pub fn new() -> Self {
+        Server
+    }
+
+    pub async fn connect(&self) -> anyhow::Result<Client> {
+        let nats_client = async_nats::connect("demo.nats.io").await?;
+        let client = Client { inner: nats_client };
+        Ok(client)
+    }
+}
+
 #[derive(Clone)]
 pub struct Client {
     pub inner: async_nats::Client,

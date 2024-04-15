@@ -16,22 +16,30 @@ pub struct Host {
     keys: HashMap<String, u32>,
     pub table: ResourceTable,
     ctx: WasiCtx,
+    server: types::Server,
 }
 
-impl Default for Host {
-    /// Create a default instance of the host state for use in initialisng the [`Store`].
-    fn default() -> Self {
+// impl Default for Host {
+//     /// Create a default instance of the host state for use in initialisng the [`Store`].
+//     fn default() -> Self {
+//         Self {
+//             keys: HashMap::default(),
+//             table: ResourceTable::default(),
+//             ctx: WasiCtxBuilder::new().inherit_env().build(),
+//         }
+//     }
+// }
+
+impl Host {
+    pub fn new() -> Self {
         Self {
             keys: HashMap::default(),
             table: ResourceTable::default(),
             ctx: WasiCtxBuilder::new().inherit_env().build(),
+            server: types::Server::new(),
         }
-    }
-}
-
-impl Host {
-    pub fn new() -> Self {
-        Self::default()
+        // Self::default()
+        // let server= types::Server::new();
     }
 }
 
@@ -52,8 +60,8 @@ impl HostClient for Host {
         } else {
             // Create a new connection
             println!("New connection");
-            let nats_client = async_nats::connect("demo.nats.io").await?;
-            let client = Client { inner: nats_client };
+
+            let client = self.server.connect().await?;
             let resource = self.table.push(client)?;
             self.keys.insert(name, resource.rep());
             resource
