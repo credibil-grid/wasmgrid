@@ -5,18 +5,19 @@ use futures::stream::StreamExt;
 use tokio::time::{sleep, Duration};
 use wasmtime::component::Resource;
 
+use crate::messaging::WasiMessagingView;
 use crate::wasi::messaging::consumer;
 use crate::wasi::messaging::messaging_types::{
     Client, Error, FormatSpec, GuestConfiguration, Message,
 };
 
 #[async_trait::async_trait]
-impl consumer::Host for super::Host {
+impl<T: WasiMessagingView> consumer::Host for T {
     async fn subscribe_try_receive(
         &mut self, client: Resource<Client>, ch: String, t_milliseconds: u32,
     ) -> wasmtime::Result<anyhow::Result<Option<Vec<Message>>, Resource<Error>>> {
         // subscribe to channel
-        let client = self.table.get(&client)?;
+        let client = self.table().get(&client)?;
         let mut subscriber = match client.subscribe(ch).await {
             Ok(s) => s,
             Err(e) => return Err(anyhow!(e)),
@@ -47,7 +48,7 @@ impl consumer::Host for super::Host {
     async fn subscribe_receive(
         &mut self, client: Resource<Client>, ch: String,
     ) -> wasmtime::Result<anyhow::Result<Vec<Message>, Resource<Error>>> {
-        let client = self.table.get(&client)?;
+        let client = self.table().get(&client)?;
         let mut subscriber = match client.subscribe(ch).await {
             Ok(s) => s,
             Err(e) => return Err(anyhow!(e)),

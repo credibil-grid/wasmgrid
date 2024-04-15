@@ -3,7 +3,7 @@ mod nats;
 
 use anyhow::Error;
 use clap::Parser;
-pub use messaging::types::Client;
+pub use nats::Client;
 use wasmtime::component::bindgen;
 use wasmtime::{Config, Engine};
 

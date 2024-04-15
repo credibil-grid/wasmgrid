@@ -2,82 +2,37 @@ mod consumer;
 mod producer;
 pub mod types;
 
-use std::collections::HashMap;
-
-pub use types::{Client, Server};
 use wasmtime::component::Resource;
-use wasmtime_wasi::{ResourceTable, WasiCtx, WasiCtxBuilder, WasiView};
+use wasmtime_wasi::WasiView;
 
-use crate::wasi::messaging::messaging_types::{self, Error, HostClient, HostError};
-
-/// Host is the base type used to implement host messaging interfaces.
-/// In addition, it holds the "host-defined state" used by the wasm runtime [`Store`].
-pub struct Host {
-    keys: HashMap<String, u32>,
-    pub table: ResourceTable,
-    ctx: WasiCtx,
-    server: types::Server,
-}
-
-// impl Default for Host {
-//     /// Create a default instance of the host state for use in initialisng the [`Store`].
-//     fn default() -> Self {
-//         Self {
-//             keys: HashMap::default(),
-//             table: ResourceTable::default(),
-//             ctx: WasiCtxBuilder::new().inherit_env().build(),
-//         }
-//     }
-// }
-
-impl Host {
-    pub fn new(server: types::Server) -> Self {
-        Self {
-            keys: HashMap::default(),
-            table: ResourceTable::default(),
-            ctx: WasiCtxBuilder::new().inherit_env().build(),
-            server,
-        }
-    }
-}
-
-impl messaging_types::Host for Host {}
+use crate::wasi::messaging::messaging_types::{self, Client, Error, HostClient, HostError};
 
 #[async_trait::async_trait]
-impl HostClient for Host {
+pub trait WasiMessagingView: WasiView + Send {
+    async fn connect(&mut self, name: String) -> anyhow::Result<Resource<Client>>;
+}
+
+impl<T: WasiMessagingView> messaging_types::Host for T {}
+
+#[async_trait::async_trait]
+impl<T: WasiMessagingView> HostClient for T {
     /// Connect to the NATS server specified by `name` and return a client resource.
     async fn connect(
         &mut self, name: String,
     ) -> wasmtime::Result<anyhow::Result<Resource<Client>, Resource<Error>>> {
-        let resource = if let Some(key) = self.keys.get(&name) {
-            // Get an existing connection by key
-            // let any = self.table.get_any_mut(*key).unwrap();
-            // Resource::try_from_resource_any(any, store).unwrap()
-            println!("Reusing existing connection");
-            Resource::new_own(*key)
-        } else {
-            // Create a new connection
-            println!("New connection");
-
-            let client = self.server.connect().await?;
-            let resource = self.table.push(client)?;
-            self.keys.insert(name, resource.rep());
-            resource
-        };
-
+        let resource = self.connect(name).await?;
         Ok(Ok(resource))
     }
 
     /// Drop the specified NATS client resource.
     fn drop(&mut self, client: Resource<Client>) -> wasmtime::Result<()> {
-        self.keys.retain(|_, v| *v != client.rep());
-        let _ = self.table.delete(client)?;
+        let _ = self.table().delete(client)?;
         Ok(())
     }
 }
 
 #[async_trait::async_trait]
-impl HostError for Host {
+impl<T: WasiMessagingView> HostError for T {
     async fn trace(&mut self) -> wasmtime::Result<String> {
         Ok(String::from("trace HostError"))
     }
@@ -88,12 +43,12 @@ impl HostError for Host {
     }
 }
 
-impl WasiView for Host {
-    fn table(&mut self) -> &mut ResourceTable {
-        &mut self.table
-    }
+// impl<T: WasiMessagingView> WasiView for T {
+//     fn table(&mut self) -> &mut ResourceTable {
+//         self.table()
+//     }
 
-    fn ctx(&mut self) -> &mut WasiCtx {
-        &mut self.ctx
-    }
-}
+//     fn ctx(&mut self) -> &mut WasiCtx {
+//         self.ctx()
+//     }
+// }
