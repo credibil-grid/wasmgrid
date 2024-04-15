@@ -4,7 +4,7 @@ pub struct Server;
 
 impl Server {
     pub fn new() -> Self {
-        Server
+        Self
     }
 
     pub async fn connect(&self) -> anyhow::Result<Client> {

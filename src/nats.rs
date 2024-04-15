@@ -10,7 +10,7 @@ use crate::messaging;
 use crate::wasi::messaging::messaging_types::{FormatSpec, HostClient, Message};
 
 pub async fn serve(engine: &Engine, wasm: String) -> anyhow::Result<()> {
-    let mut store = Store::new(engine, messaging::Host::new());
+    let mut store = Store::new(engine, messaging::Host::new(messaging::Server::new()));
     let component = Component::from_file(engine, wasm)?;
 
     let mut linker = Linker::new(engine);

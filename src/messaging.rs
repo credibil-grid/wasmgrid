@@ -4,7 +4,7 @@ pub mod types;
 
 use std::collections::HashMap;
 
-use types::Client;
+pub use types::{Client, Server};
 use wasmtime::component::Resource;
 use wasmtime_wasi::{ResourceTable, WasiCtx, WasiCtxBuilder, WasiView};
 
@@ -31,15 +31,13 @@ pub struct Host {
 // }
 
 impl Host {
-    pub fn new() -> Self {
+    pub fn new(server: types::Server) -> Self {
         Self {
             keys: HashMap::default(),
             table: ResourceTable::default(),
             ctx: WasiCtxBuilder::new().inherit_env().build(),
-            server: types::Server::new(),
+            server,
         }
-        // Self::default()
-        // let server= types::Server::new();
     }
 }
 
