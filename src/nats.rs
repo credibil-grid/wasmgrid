@@ -5,7 +5,7 @@ use futures::stream::{self, StreamExt};
 use messaging::bindings::messaging_types::{FormatSpec, Message};
 use messaging::bindings::Messaging;
 use messaging::{self, Client, MessagingClient, MessagingView};
-use wasmtime::component::{Component, Linker, Resource};
+use wasmtime::component::{Component, InstancePre, Linker, Resource};
 use wasmtime::{Engine, Store};
 use wasmtime_wasi::{command, ResourceTable, WasiCtx, WasiCtxBuilder, WasiView};
 
@@ -34,7 +34,6 @@ impl messaging::MessagingView for Host {
             // Get an existing connection by key
             // let any = self.table.get_any_mut(*key).unwrap();
             // Resource::try_from_resource_any(any, store).unwrap()
-            println!("Reusing connection");
             Resource::new_own(*key)
         } else {
             // Create a new connection
@@ -110,13 +109,27 @@ pub async fn serve(engine: &Engine, wasm: String) -> anyhow::Result<()> {
     // process messages until terminated
     let mut messages = stream::select_all(subscribers);
     while let Some(message) = messages.next().await {
-        let msg = Message {
-            data: message.payload.to_vec(),
-            metadata: Some(vec![(String::from("channel"), message.subject.to_string())]),
-            format: FormatSpec::Raw,
-        };
-        let _ = guest.call_handler(&mut store, &[msg]).await?;
+        let engine = engine.clone();
+        let instance_pre = instance_pre.clone();
+        tokio::spawn(async move { handle_request(engine, instance_pre, message).await });
     }
+
+    Ok(())
+}
+
+async fn handle_request(
+    engine: Engine, instance_pre: InstancePre<Host>, message: async_nats::Message,
+) -> anyhow::Result<()> {
+    let mut store = Store::new(&engine, Host::new());
+    let (messaging, _) = Messaging::instantiate_pre(&mut store, &instance_pre).await?;
+
+    let msg = Message {
+        data: message.payload.to_vec(),
+        metadata: Some(vec![(String::from("channel"), message.subject.to_string())]),
+        format: FormatSpec::Raw,
+    };
+
+    let _ = messaging.wasi_messaging_messaging_guest().call_handler(&mut store, &[msg]).await?;
 
     Ok(())
 }

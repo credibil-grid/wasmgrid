@@ -986,10 +986,8 @@ dependencies = [
  "bytes",
  "clap",
  "futures",
- "log",
  "messaging",
  "tokio",
- "tracing",
  "wasmtime",
  "wasmtime-wasi",
 ]
