@@ -3,7 +3,6 @@ mod nats;
 
 use anyhow::Error;
 use clap::Parser;
-pub use nats::Client;
 use wasmtime::{Config, Engine};
 
 /// Host wasm runtime for a vault service that stores signing keys and credentials for a Verifiable

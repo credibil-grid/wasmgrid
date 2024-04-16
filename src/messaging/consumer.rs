@@ -7,13 +7,10 @@ use wasmtime::component::Resource;
 
 use super::bindings::consumer;
 use super::bindings::messaging_types::{Client, Error, FormatSpec, GuestConfiguration, Message};
-use crate::messaging::{MessagingClient, MessagingView};
+use crate::messaging::MessagingView;
 
 #[async_trait::async_trait]
-impl<T> consumer::Host for T
-where
-    T: MessagingView<Client = Client>,
-{
+impl<T: MessagingView> consumer::Host for T {
     async fn subscribe_try_receive(
         &mut self, client: Resource<Client>, ch: String, t_milliseconds: u32,
     ) -> wasmtime::Result<anyhow::Result<Option<Vec<Message>>, Resource<Error>>> {

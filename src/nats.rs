@@ -9,7 +9,7 @@ use wasmtime_wasi::{command, ResourceTable, WasiCtx, WasiCtxBuilder, WasiView};
 
 use crate::messaging::bindings::messaging_types::{FormatSpec, Message};
 use crate::messaging::bindings::Messaging;
-use crate::messaging::{self, MessagingClient, MessagingView};
+use crate::messaging::{self, Client, MessagingClient, MessagingView};
 
 /// Host is the base type used to implement host messaging interfaces.
 /// In addition, it holds the "host-defined state" used by the wasm runtime [`Store`].
@@ -31,8 +31,6 @@ impl Host {
 
 #[async_trait::async_trait]
 impl messaging::MessagingView for Host {
-    type Client = Client;
-
     async fn connect(&mut self, name: String) -> anyhow::Result<Resource<Client>> {
         let resource = if let Some(key) = self.keys.get(&name) {
             // Get an existing connection by key
@@ -44,8 +42,10 @@ impl messaging::MessagingView for Host {
             // Create a new connection
             println!("New connection");
 
-            let client = async_nats::connect("demo.nats.io").await?;
-            let client = Client { inner: client };
+            //let client = async_nats::connect("demo.nats.io").await?;
+            let client = Client::new(Box::new(MyClient {
+                inner: async_nats::connect("demo.nats.io").await?,
+            }));
             let resource = self.table.push(client)?;
             self.keys.insert(name, resource.rep());
             resource
@@ -66,11 +66,12 @@ impl WasiView for Host {
 }
 
 #[derive(Clone)]
-pub struct Client {
+pub struct MyClient {
     pub inner: async_nats::Client,
 }
 
-impl messaging::MessagingClient for Client {
+#[async_trait::async_trait]
+impl MessagingClient for MyClient {
     async fn subscribe(&self, ch: String) -> anyhow::Result<async_nats::Subscriber> {
         Ok(self.inner.subscribe(ch).await?)
     }
@@ -96,16 +97,17 @@ pub async fn serve(engine: &Engine, wasm: String) -> anyhow::Result<()> {
     // connect to NATS server
     let host = store.data_mut();
     let client_res = host.connect("demo.nats.io".to_string()).await?;
-    let client = host.table.get(&client_res)?.clone();
+    let client = host.table.get(&client_res)?;
 
     // get channels to subscribe to
-    let Ok(gc) = guest.call_configure(&mut store).await? else {
-        return Err(anyhow::anyhow!("Failed to configure NATS client"));
-    };
+    // let Ok(gc) = guest.call_configure(&mut store).await? else {
+    //     return Err(anyhow::anyhow!("Failed to configure NATS client"));
+    // };
 
     // subscribe to channels
     let mut subscribers = vec![];
-    for ch in &gc.channels {
+    // for ch in &gc.channels {
+    for ch in ["a", "b", "c"] {
         let subscriber = client.subscribe(ch.to_owned()).await?;
         subscribers.push(subscriber);
     }
