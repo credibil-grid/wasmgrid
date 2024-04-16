@@ -987,6 +987,7 @@ dependencies = [
  "clap",
  "futures",
  "log",
+ "messaging",
  "tokio",
  "tracing",
  "wasmtime",
@@ -1201,6 +1202,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "488016bfae457b036d996092f6cb448677611ce4449e970ceaf42695203f218a"
 dependencies = [
  "autocfg",
+]
+
+[[package]]
+name = "messaging"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-nats",
+ "async-trait",
+ "bytes",
+ "futures",
+ "tokio",
+ "tracing",
+ "wasmtime",
+ "wasmtime-wasi",
+ "wit-bindgen-rt",
 ]
 
 [[package]]

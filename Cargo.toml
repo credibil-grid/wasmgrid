@@ -1,5 +1,5 @@
 [workspace]
-members = ["examples/guest"]
+members = ["examples/guest", "crates/*"]
 resolver = "2"
 
 [workspace.package]
@@ -27,13 +27,10 @@ bytes = "1.6.0"
 clap = { version = "4.5.4", features = ["derive"] }
 futures = "0.3.30"
 log = "0.4.21"
+messaging = { path = "crates/messaging" }
 tokio = { version = "1.37.0", features = ["full"] }
 tracing = "0.1.40"
 wasmtime = { version = "19.0.2", features = ["component-model"] }
 wasmtime-wasi = "19.0.2"
 wit-bindgen-rt = "0.24.0"
 wit-component = "0.203.0"
-
-[package.metadata.component.target]
-path = "./src/messaging/wit"
-world = "messaging"

@@ -1,15 +1,13 @@
 use std::collections::HashMap;
 
 use bytes::Bytes;
-// use async_nats::Client;
 use futures::stream::{self, StreamExt};
+use messaging::bindings::messaging_types::{FormatSpec, Message};
+use messaging::bindings::Messaging;
+use messaging::{self, Client, MessagingClient, MessagingView};
 use wasmtime::component::{Component, Linker, Resource};
 use wasmtime::{Engine, Store};
 use wasmtime_wasi::{command, ResourceTable, WasiCtx, WasiCtxBuilder, WasiView};
-
-use crate::messaging::bindings::messaging_types::{FormatSpec, Message};
-use crate::messaging::bindings::Messaging;
-use crate::messaging::{self, Client, MessagingClient, MessagingView};
 
 /// Host is the base type used to implement host messaging interfaces.
 /// In addition, it holds the "host-defined state" used by the wasm runtime [`Store`].

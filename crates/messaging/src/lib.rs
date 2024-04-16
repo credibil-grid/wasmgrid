@@ -14,7 +14,7 @@ pub mod bindings {
 
     wasmtime::component::bindgen!({
         world: "messaging",
-        path: "./src/messaging/wit",
+        path: "wit",
         tracing: true,
         async: true,
         with: {
@@ -76,14 +76,21 @@ pub struct Client {
 }
 
 impl Client {
+    #[must_use]
     pub fn new(inner: Box<dyn MessagingClient>) -> Self {
         Self { inner }
     }
 
+    /// Subscribe to the specified channel.
+    ///
+    /// # Errors
     pub async fn subscribe(&self, ch: String) -> anyhow::Result<async_nats::Subscriber> {
         self.inner.subscribe(ch).await
     }
 
+    /// Publish a message to the specified channel.
+    ///
+    /// # Errors
     pub async fn publish(&self, ch: String, data: Bytes) -> anyhow::Result<()> {
         self.inner.publish(ch, data).await
     }

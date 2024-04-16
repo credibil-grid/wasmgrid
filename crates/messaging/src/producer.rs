@@ -3,7 +3,7 @@ use wasmtime::component::Resource;
 
 use super::bindings::messaging_types::{Client, Error, Message};
 use super::bindings::producer;
-use crate::messaging::MessagingView;
+use crate::MessagingView;
 
 #[async_trait::async_trait]
 impl<T: MessagingView> producer::Host for T {

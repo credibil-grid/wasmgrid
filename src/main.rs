@@ -1,4 +1,3 @@
-mod messaging;
 mod nats;
 
 use anyhow::Error;
