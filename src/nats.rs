@@ -36,16 +36,12 @@ impl messaging::MessagingView for Host {
             // Get an existing connection by key
             // let any = self.table.get_any_mut(*key).unwrap();
             // Resource::try_from_resource_any(any, store).unwrap()
-            println!("Reusing existing connection");
+            println!("Reusing connection");
             Resource::new_own(*key)
         } else {
             // Create a new connection
-            println!("connection bytes: {:?}", name.as_bytes());
-            println!("connection name: {:?}", name);
-
-            //let client = async_nats::connect("demo.nats.io").await?;
             let client = Client::new(Box::new(MyClient {
-                inner: async_nats::connect(name.clone()).await?,
+                inner: async_nats::connect(&name).await?,
             }));
             let resource = self.table.push(client)?;
             self.keys.insert(name, resource.rep());
