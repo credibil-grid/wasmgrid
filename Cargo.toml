@@ -32,5 +32,3 @@ tokio = { version = "1.37.0", features = ["full"] }
 tracing = "0.1.40"
 wasmtime = { version = "19.0.2", features = ["component-model"] }
 wasmtime-wasi = "19.0.2"
-wit-bindgen-rt = "0.24.0"
-wit-component = "0.203.0"
