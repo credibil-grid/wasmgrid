@@ -45,7 +45,7 @@ impl messaging_guest::Guest for MessagingGuest {
                 }
                 "b" => {
                     // request-reply from channel d
-                    let client = Client::connect("some-broker").unwrap();
+                    let client = Client::connect("demo.nats.io").unwrap();
                     let _msgs =
                         consumer::subscribe_try_receive(client, &Channel::from("d"), 100).unwrap();
                     return consumer::complete_message(&msg);
@@ -55,7 +55,7 @@ impl messaging_guest::Guest for MessagingGuest {
                     let mut resp = b"channel c: ".to_vec();
                     resp.extend(msg.data.clone());
 
-                    let client = Client::connect("some-broker").unwrap();
+                    let client = Client::connect("demo.nats.io").unwrap();
                     let message = Message {
                         data: resp,
                         format: messaging_types::FormatSpec::Raw,

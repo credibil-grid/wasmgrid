@@ -80,16 +80,16 @@ impl<T: MessagingView> consumer::Host for T {
     }
 
     async fn complete_message(
-        &mut self, _msg: Message,
+        &mut self, msg: Message,
     ) -> wasmtime::Result<anyhow::Result<(), Resource<Error>>> {
-        println!("Implement complete_message");
+        println!("Implement complete_message: {:?}", msg.metadata);
         Ok(Ok(()))
     }
 
     async fn abandon_message(
-        &mut self, _msg: Message,
+        &mut self, msg: Message,
     ) -> wasmtime::Result<anyhow::Result<(), Resource<Error>>> {
-        println!("Implement abandon_message");
+        println!("Implement abandon_message: {:?}", msg.metadata);
         Ok(Ok(()))
     }
 }

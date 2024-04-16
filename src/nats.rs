@@ -40,11 +40,12 @@ impl messaging::MessagingView for Host {
             Resource::new_own(*key)
         } else {
             // Create a new connection
-            println!("New connection");
+            println!("connection bytes: {:?}", name.as_bytes());
+            println!("connection name: {:?}", name);
 
             //let client = async_nats::connect("demo.nats.io").await?;
             let client = Client::new(Box::new(MyClient {
-                inner: async_nats::connect("demo.nats.io").await?,
+                inner: async_nats::connect(name.clone()).await?,
             }));
             let resource = self.table.push(client)?;
             self.keys.insert(name, resource.rep());
