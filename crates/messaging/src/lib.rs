@@ -9,7 +9,6 @@ use wasmtime_wasi::WasiView;
 pub mod bindings {
     pub use wasi::messaging::*;
 
-    // pub use crate::nats::Client;
     pub use super::Client;
 
     wasmtime::component::bindgen!({
