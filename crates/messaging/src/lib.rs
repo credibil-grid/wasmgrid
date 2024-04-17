@@ -1,3 +1,5 @@
+//! # WASI Messaging Host
+
 mod consumer;
 mod producer;
 
@@ -22,17 +24,20 @@ pub mod bindings {
     });
 }
 
+/// MessageView is implemented by the messaging runtime to provide the host with
+/// access to runtime-specific functionality.
 #[allow(clippy::module_name_repetitions)]
 #[async_trait::async_trait]
 pub trait MessagingView: WasiView + Send {
     async fn connect(&mut self, name: String) -> anyhow::Result<Resource<Client>>;
 }
 
+// Type T — the host — is supplied by the messaging runtime.
 impl<T: MessagingView> messaging_types::Host for T {}
 
 #[async_trait::async_trait]
 impl<T: MessagingView> HostClient for T {
-    /// Connect to the NATS server specified by `name` and return a client resource.
+    // Connect to the runtime's messaging server.
     async fn connect(
         &mut self, name: String,
     ) -> wasmtime::Result<anyhow::Result<Resource<Client>, Resource<Error>>> {
@@ -40,7 +45,7 @@ impl<T: MessagingView> HostClient for T {
         Ok(Ok(resource))
     }
 
-    /// Drop the specified NATS client resource.
+    // Drop the specified client resource.
     fn drop(&mut self, client: Resource<Client>) -> wasmtime::Result<()> {
         let _ = self.table().delete(client)?;
         Ok(())
@@ -59,11 +64,11 @@ impl<T: MessagingView> HostError for T {
     }
 }
 
+/// MessagingClient is implemented by the messaging runtime to provide this host with
+/// access to runtime functionality.
 #[allow(clippy::module_name_repetitions)]
 #[async_trait::async_trait]
 pub trait MessagingClient: Sync + Send {
-    // type Subscriber: Send;
-
     async fn subscribe(&self, ch: String) -> anyhow::Result<async_nats::Subscriber>;
 
     async fn publish(&self, ch: String, data: Bytes) -> anyhow::Result<()>;

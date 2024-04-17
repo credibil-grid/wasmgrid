@@ -1,3 +1,7 @@
+//! # NATS Messaging Runtime
+//! 
+//! This module implements a NATS wasi:messaging runtime.
+
 use std::collections::HashMap;
 
 use bytes::Bytes;
@@ -19,7 +23,7 @@ pub async fn serve(engine: &Engine, wasm: String) -> anyhow::Result<()> {
     // subscribe to channels
     let mut subscribers = vec![];
     for ch in &handler.channels().await? {
-        let subscriber = client.subscribe(ch.to_owned()).await?;
+        let subscriber = client.subscribe(ch.clone()).await?;
         subscribers.push(subscriber);
     }
 
