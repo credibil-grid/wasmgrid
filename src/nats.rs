@@ -4,61 +4,12 @@ use bytes::Bytes;
 use futures::stream::{self, StreamExt};
 use messaging::bindings::messaging_types::{FormatSpec, Message};
 use messaging::bindings::Messaging;
-use messaging::{self, Client, MessagingClient, MessagingView};
+use messaging::{self, MessagingClient, MessagingView};
 use wasmtime::component::{Component, InstancePre, Linker, Resource};
 use wasmtime::{Engine, Store};
 use wasmtime_wasi::{command, ResourceTable, WasiCtx, WasiCtxBuilder, WasiView};
 
-/// Host is the base type used to implement host messaging interfaces.
-/// In addition, it holds the "host-defined state" used by the wasm runtime [`Store`].
-pub struct Host {
-    keys: HashMap<String, u32>,
-    pub table: ResourceTable,
-    ctx: WasiCtx,
-}
-
-impl Host {
-    pub fn new() -> Self {
-        Self {
-            keys: HashMap::default(),
-            table: ResourceTable::default(),
-            ctx: WasiCtxBuilder::new().inherit_env().build(),
-        }
-    }
-}
-
-#[async_trait::async_trait]
-impl MessagingView for Host {
-    async fn connect(&mut self, name: String) -> anyhow::Result<Resource<Client>> {
-        let resource = if let Some(key) = self.keys.get(&name) {
-            // Get an existing connection by key
-            // let any = self.table.get_any_mut(*key).unwrap();
-            // Resource::try_from_resource_any(any, store).unwrap()
-            Resource::new_own(*key)
-        } else {
-            // Create a new connection
-            let client = Client::new(Box::new(MyClient {
-                inner: async_nats::connect(&name).await?,
-            }));
-            let resource = self.table.push(client)?;
-            self.keys.insert(name, resource.rep());
-            resource
-        };
-
-        Ok(resource)
-    }
-}
-
-impl WasiView for Host {
-    fn table(&mut self) -> &mut ResourceTable {
-        &mut self.table
-    }
-
-    fn ctx(&mut self) -> &mut WasiCtx {
-        &mut self.ctx
-    }
-}
-
+/// Start and run NATS for the specified wasm guest.
 pub async fn serve(engine: &Engine, wasm: String) -> anyhow::Result<()> {
     let handler = HandlerProxy::new(engine.clone(), wasm)?;
 
@@ -83,6 +34,8 @@ pub async fn serve(engine: &Engine, wasm: String) -> anyhow::Result<()> {
     Ok(())
 }
 
+// HandlerProxy is a proxy for the wasm messaging Host, wrapping calls to the Guest's
+// messaging API.
 #[derive(Clone)]
 struct HandlerProxy {
     engine: Engine,
@@ -90,6 +43,7 @@ struct HandlerProxy {
 }
 
 impl HandlerProxy {
+    // Create a new HandlerProxy for the specified wasm Guest.
     fn new(engine: Engine, wasm: String) -> anyhow::Result<Self> {
         let mut linker = Linker::new(&engine);
         command::add_to_linker(&mut linker)?;
@@ -101,6 +55,7 @@ impl HandlerProxy {
         Ok(Self { engine, instance_pre })
     }
 
+    // Return the list of channels the Guest wants to subscribe to.
     async fn channels(&self) -> anyhow::Result<Vec<String>> {
         let mut store = Store::new(&self.engine, Host::new());
         let (messaging, _) = Messaging::instantiate_pre(&mut store, &self.instance_pre).await?;
@@ -112,12 +67,15 @@ impl HandlerProxy {
         Ok(gc.channels)
     }
 
+    // Forward NATS message to the wasm Guest.
     async fn message(
         &self, client: async_nats::Client, message: async_nats::Message,
     ) -> anyhow::Result<()> {
         // set up host state
         let mut host = Host::new();
-        let client = Client::new(Box::new(MyClient { inner: client }));
+
+        // add client to ResourceTable
+        let client = messaging::Client::new(Box::new(ClientProxy { inner: client }));
         let resource = host.table.push(client)?;
         host.keys.insert("demo.nats.io".to_string(), resource.rep());
 
@@ -136,13 +94,66 @@ impl HandlerProxy {
     }
 }
 
+// Host implements messaging host interfaces. In addition, it holds the host-defined
+// state used by the wasm runtime [`Store`].
+struct Host {
+    keys: HashMap<String, u32>,
+    table: ResourceTable,
+    ctx: WasiCtx,
+}
+
+impl Host {
+    // Create a new Host instance.
+    fn new() -> Self {
+        Self {
+            keys: HashMap::default(),
+            table: ResourceTable::default(),
+            ctx: WasiCtxBuilder::new().inherit_env().build(),
+        }
+    }
+}
+
+// Implement the [`messaging::MessagingView`]` trait for Host.
+#[async_trait::async_trait]
+impl MessagingView for Host {
+    async fn connect(&mut self, name: String) -> anyhow::Result<Resource<messaging::Client>> {
+        let resource = if let Some(key) = self.keys.get(&name) {
+            // reuse existing connection
+            Resource::new_own(*key)
+        } else {
+            // create a new connection
+            let client = messaging::Client::new(Box::new(ClientProxy {
+                inner: async_nats::connect(&name).await?,
+            }));
+            let resource = self.table.push(client)?;
+            self.keys.insert(name, resource.rep());
+            resource
+        };
+
+        Ok(resource)
+    }
+}
+
+// Implement the [`wasmtime_wasi::ctx::WasiView`] trait for Host.
+impl WasiView for Host {
+    fn table(&mut self) -> &mut ResourceTable {
+        &mut self.table
+    }
+
+    fn ctx(&mut self) -> &mut WasiCtx {
+        &mut self.ctx
+    }
+}
+
+// ClientProxy holds a reference to the the NATS client. It is used to implement the
+// [`messaging::MessagingClient`] trait which is used by the messaging Host.
 #[derive(Clone)]
-pub struct MyClient {
-    pub inner: async_nats::Client,
+struct ClientProxy {
+    inner: async_nats::Client,
 }
 
 #[async_trait::async_trait]
-impl MessagingClient for MyClient {
+impl MessagingClient for ClientProxy {
     async fn subscribe(&self, ch: String) -> anyhow::Result<async_nats::Subscriber> {
         Ok(self.inner.subscribe(ch).await?)
     }
