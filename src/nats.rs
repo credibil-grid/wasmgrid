@@ -110,7 +110,7 @@ impl Host {
         Self {
             keys: HashMap::default(),
             table: ResourceTable::default(),
-            ctx: WasiCtxBuilder::new().inherit_env().inherit_stdio().inherit_args().build(),
+            ctx: WasiCtxBuilder::new().inherit_args().inherit_env().inherit_stdio().build(),
         }
     }
 
