@@ -14,7 +14,7 @@ pub async fn serve(engine: &Engine, wasm: String) -> anyhow::Result<()> {
     let handler = HandlerProxy::new(engine.clone(), wasm)?;
 
     // connect to NATS
-    let client = async_nats::connect("demo.nats.io").await?;
+    let client = ClientProxy::connect("demo.nats.io".to_string()).await?;
 
     // subscribe to channels
     let mut subscribers = vec![];
@@ -69,15 +69,13 @@ impl HandlerProxy {
 
     // Forward NATS message to the wasm Guest.
     async fn message(
-        &self, client: async_nats::Client, message: async_nats::Message,
+        &self, client: ClientProxy, message: async_nats::Message,
     ) -> anyhow::Result<()> {
         // set up host state
         let mut host = Host::new();
 
         // add client to ResourceTable
-        let client = messaging::Client::new(Box::new(ClientProxy { inner: client }));
-        let resource = host.table.push(client)?;
-        host.keys.insert("demo.nats.io".to_string(), resource.rep());
+        host.add_client(client)?;
 
         let mut store = Store::new(&self.engine, host);
         let (messaging, _) = Messaging::instantiate_pre(&mut store, &self.instance_pre).await?;
@@ -111,6 +109,17 @@ impl Host {
             ctx: WasiCtxBuilder::new().inherit_env().build(),
         }
     }
+
+    // Add a new client to the host state.
+    fn add_client(&mut self, client: ClientProxy) -> anyhow::Result<Resource<messaging::Client>> {
+        let name = client.name.clone();
+        let client = messaging::Client::new(Box::new(client));
+
+        let resource = self.table.push(client)?;
+        self.keys.insert(name, resource.rep());
+
+        Ok(resource)
+    }
 }
 
 // Implement the [`messaging::MessagingView`]` trait for Host.
@@ -122,12 +131,8 @@ impl MessagingView for Host {
             Resource::new_own(*key)
         } else {
             // create a new connection
-            let client = messaging::Client::new(Box::new(ClientProxy {
-                inner: async_nats::connect(&name).await?,
-            }));
-            let resource = self.table.push(client)?;
-            self.keys.insert(name, resource.rep());
-            resource
+            let client = ClientProxy::connect(name.clone()).await?;
+            self.add_client(client)?
         };
 
         Ok(resource)
@@ -146,12 +151,23 @@ impl WasiView for Host {
 }
 
 // ClientProxy holds a reference to the the NATS client. It is used to implement the
-// [`messaging::MessagingClient`] trait which is used by the messaging Host.
+// [`messaging::MessagingClient`] trait used by the messaging Host.
 #[derive(Clone)]
 struct ClientProxy {
+    name: String,
     inner: async_nats::Client,
 }
 
+impl ClientProxy {
+    // Create a new ClientProxy for the specified NATS server.
+    async fn connect(name: String) -> anyhow::Result<Self> {
+        let inner = async_nats::connect(&name).await?;
+        Ok(Self { name, inner })
+    }
+}
+
+// Implement the [`messaging::MessagingClient`] trait for ClientProxy. This trait
+// implementation is used by the messaging Host to interact with the NATS client.
 #[async_trait::async_trait]
 impl MessagingClient for ClientProxy {
     async fn subscribe(&self, ch: String) -> anyhow::Result<async_nats::Subscriber> {
