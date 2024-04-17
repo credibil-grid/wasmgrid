@@ -43,6 +43,7 @@ impl<T: MessagingView> consumer::Host for T {
         Ok(self.update_configuration(gc).await)
     }
 
+    // TODO: implement complete_message
     async fn complete_message(
         &mut self, msg: Message,
     ) -> wasmtime::Result<anyhow::Result<(), Resource<Error>>> {
@@ -50,6 +51,7 @@ impl<T: MessagingView> consumer::Host for T {
         Ok(Ok(()))
     }
 
+    // TODO: implement abandon_message
     async fn abandon_message(
         &mut self, msg: Message,
     ) -> wasmtime::Result<anyhow::Result<(), Resource<Error>>> {

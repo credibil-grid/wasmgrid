@@ -4,6 +4,7 @@
 
 use std::collections::HashMap;
 
+use anyhow::anyhow;
 use bytes::Bytes;
 use futures::stream::{self, StreamExt};
 use messaging::bindings::messaging_types::{Error, FormatSpec, GuestConfiguration, Message};
@@ -63,9 +64,14 @@ impl HandlerProxy {
     async fn channels(&self) -> anyhow::Result<Vec<String>> {
         let mut store = Store::new(&self.engine, Host::new());
         let (messaging, _) = Messaging::instantiate_pre(&mut store, &self.instance_pre).await?;
-        let Ok(gc) = messaging.wasi_messaging_messaging_guest().call_configure(&mut store).await?
-        else {
-            return Err(anyhow::anyhow!("Failed to configure NATS client"));
+
+        let gc = match messaging.wasi_messaging_messaging_guest().call_configure(&mut store).await?
+        {
+            Ok(gc) => gc,
+            Err(e) => {
+                let err = store.data_mut().table().get(&e)?;
+                return Err(anyhow!(err.to_string()));
+            }
         };
 
         Ok(gc.channels)
@@ -84,13 +90,19 @@ impl HandlerProxy {
         let mut store = Store::new(&self.engine, host);
         let (messaging, _) = Messaging::instantiate_pre(&mut store, &self.instance_pre).await?;
 
+        // call guest with message
         let msg = Message {
             data: message.payload.to_vec(),
             metadata: Some(vec![(String::from("channel"), message.subject.to_string())]),
             format: FormatSpec::Raw,
         };
 
-        let _ = messaging.wasi_messaging_messaging_guest().call_handler(&mut store, &[msg]).await?;
+        if let Err(e) =
+            messaging.wasi_messaging_messaging_guest().call_handler(&mut store, &[msg]).await?
+        {
+            let err = store.data_mut().table().get(&e)?;
+            return Err(anyhow!(err.to_string()));
+        }
 
         Ok(())
     }
@@ -142,6 +154,7 @@ impl MessagingView for Host {
         Ok(resource)
     }
 
+    // TODO: implement update_configuration
     async fn update_configuration(
         &mut self, _gc: GuestConfiguration,
     ) -> anyhow::Result<(), Resource<Error>> {
