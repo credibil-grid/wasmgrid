@@ -3,7 +3,7 @@
 mod consumer;
 mod producer;
 
-use bindings::messaging_types::{self, Error, HostClient, HostError};
+use bindings::messaging_types::{self, Error, GuestConfiguration, HostClient, HostError};
 use bytes::Bytes;
 use wasmtime::component::Resource;
 use wasmtime_wasi::WasiView;
@@ -36,6 +36,10 @@ pub mod bindings {
 #[async_trait::async_trait]
 pub trait MessagingView: WasiView + Send {
     async fn connect(&mut self, name: String) -> anyhow::Result<Resource<Client>>;
+
+    async fn update_configuration(
+        &mut self, gc: GuestConfiguration,
+    ) -> anyhow::Result<(), Resource<Error>>;
 }
 
 // Type T — the host — is provided by the messaging runtime.
@@ -64,11 +68,11 @@ impl<T: MessagingView> HostClient for T {
 #[async_trait::async_trait]
 impl<T: MessagingView> HostError for T {
     async fn trace(&mut self) -> wasmtime::Result<String> {
-        Ok(String::from("trace HostError"))
+        Ok(String::from("TODO: trace HostError"))
     }
 
     fn drop(&mut self, err: Resource<Error>) -> wasmtime::Result<()> {
-        println!("Implement drop for {err:?}");
+        println!("TODO: implement drop for {err:?}");
         Ok(())
     }
 }

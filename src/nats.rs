@@ -6,7 +6,7 @@ use std::collections::HashMap;
 
 use bytes::Bytes;
 use futures::stream::{self, StreamExt};
-use messaging::bindings::messaging_types::{FormatSpec, Message};
+use messaging::bindings::messaging_types::{Error, FormatSpec, GuestConfiguration, Message};
 use messaging::bindings::Messaging;
 use messaging::{self, MessagingClient, MessagingView};
 use wasmtime::component::{Component, InstancePre, Linker, Resource};
@@ -140,6 +140,13 @@ impl MessagingView for Host {
         };
 
         Ok(resource)
+    }
+
+    async fn update_configuration(
+        &mut self, _gc: GuestConfiguration,
+    ) -> anyhow::Result<(), Resource<Error>> {
+        println!("TODO: update_configuration");
+        Ok(())
     }
 }
 

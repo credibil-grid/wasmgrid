@@ -7,14 +7,16 @@ use crate::MessagingView;
 
 #[async_trait::async_trait]
 impl<T: MessagingView> producer::Host for T {
+    // Publish Guest messages to the specified channel.
     async fn send(
-        &mut self, client: Resource<Client>, ch: String, msg: Vec<Message>,
+        &mut self, client: Resource<Client>, ch: String, messages: Vec<Message>,
     ) -> wasmtime::Result<anyhow::Result<(), Resource<Error>>> {
-        println!("send: ch: {ch}");
-
-        let data = Bytes::from(msg[0].data.clone());
         let client = self.table().get(&client)?;
-        client.publish(ch, data).await?;
+
+        for m in messages {
+            let data = Bytes::from(m.data.clone());
+            client.publish(ch.clone(), data).await?;
+        }
 
         Ok(Ok(()))
     }
