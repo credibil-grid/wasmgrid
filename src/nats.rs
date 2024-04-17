@@ -28,7 +28,7 @@ impl Host {
 }
 
 #[async_trait::async_trait]
-impl messaging::MessagingView for Host {
+impl MessagingView for Host {
     async fn connect(&mut self, name: String) -> anyhow::Result<Resource<Client>> {
         let resource = if let Some(key) = self.keys.get(&name) {
             // Get an existing connection by key
@@ -59,6 +59,72 @@ impl WasiView for Host {
     }
 }
 
+pub async fn serve(engine: &Engine, wasm: String) -> anyhow::Result<()> {
+    let component = Component::from_file(engine, wasm)?;
+
+    let mut linker = Linker::new(engine);
+    command::add_to_linker(&mut linker)?;
+    Messaging::add_to_linker(&mut linker, |t| t)?;
+
+    let instance_pre = linker.instantiate_pre(&component)?;
+
+    // Guest channels to subscribe to
+    let channels = {
+        let mut store = Store::new(engine, Host::new());
+        let (messaging, _) = Messaging::instantiate_pre(&mut store, &instance_pre).await?;
+        let Ok(gc) = messaging.wasi_messaging_messaging_guest().call_configure(&mut store).await?
+        else {
+            return Err(anyhow::anyhow!("Failed to configure NATS client"));
+        };
+        gc.channels
+    };
+
+    // connect to NATS
+    let client = async_nats::connect("demo.nats.io").await?;
+
+    // subscribe to channels
+    let mut subscribers = vec![];
+    for ch in &channels {
+        let subscriber = client.subscribe(ch.to_owned()).await?;
+        subscribers.push(subscriber);
+    }
+
+    // process messages until terminated
+    let mut messages = stream::select_all(subscribers);
+    while let Some(message) = messages.next().await {
+        let engine = engine.clone();
+        let instance_pre = instance_pre.clone();
+        let client = client.clone();
+        tokio::spawn(async move { handle_request(engine, instance_pre, client, message).await });
+    }
+
+    Ok(())
+}
+
+async fn handle_request(
+    engine: Engine, instance_pre: InstancePre<Host>, client: async_nats::Client,
+    message: async_nats::Message,
+) -> anyhow::Result<()> {
+    // set up host state
+    let mut host = Host::new();
+    let client = Client::new(Box::new(MyClient { inner: client }));
+    let resource = host.table.push(client)?;
+    host.keys.insert("demo.nats.io".to_string(), resource.rep());
+
+    let mut store = Store::new(&engine, host);
+    let (messaging, _) = Messaging::instantiate_pre(&mut store, &instance_pre).await?;
+
+    let msg = Message {
+        data: message.payload.to_vec(),
+        metadata: Some(vec![(String::from("channel"), message.subject.to_string())]),
+        format: FormatSpec::Raw,
+    };
+
+    let _ = messaging.wasi_messaging_messaging_guest().call_handler(&mut store, &[msg]).await?;
+
+    Ok(())
+}
+
 #[derive(Clone)]
 pub struct MyClient {
     pub inner: async_nats::Client,
@@ -73,63 +139,4 @@ impl MessagingClient for MyClient {
     async fn publish(&self, ch: String, data: Bytes) -> anyhow::Result<()> {
         Ok(self.inner.publish(ch, data).await?)
     }
-}
-
-pub async fn serve(engine: &Engine, wasm: String) -> anyhow::Result<()> {
-    let mut store = Store::new(engine, Host::new());
-    let component = Component::from_file(engine, wasm)?;
-
-    let mut linker = Linker::new(engine);
-    command::add_to_linker(&mut linker)?;
-    Messaging::add_to_linker(&mut linker, |t| t)?;
-
-    let instance_pre = linker.instantiate_pre(&component)?;
-
-    let (messaging, _) = Messaging::instantiate_pre(&mut store, &instance_pre).await?;
-    let guest = messaging.wasi_messaging_messaging_guest();
-
-    // connect to NATS server
-    let host = store.data_mut();
-    let client_res = host.connect("demo.nats.io".to_string()).await?;
-    let client = host.table.get(&client_res)?;
-
-    // get channels to subscribe to
-    // let Ok(gc) = guest.call_configure(&mut store).await? else {
-    //     return Err(anyhow::anyhow!("Failed to configure NATS client"));
-    // };
-
-    // subscribe to channels
-    let mut subscribers = vec![];
-    // for ch in &gc.channels {
-    for ch in ["a", "b", "c"] {
-        let subscriber = client.subscribe(ch.to_owned()).await?;
-        subscribers.push(subscriber);
-    }
-
-    // process messages until terminated
-    let mut messages = stream::select_all(subscribers);
-    while let Some(message) = messages.next().await {
-        let engine = engine.clone();
-        let instance_pre = instance_pre.clone();
-        tokio::spawn(async move { handle_request(engine, instance_pre, message).await });
-    }
-
-    Ok(())
-}
-
-async fn handle_request(
-    engine: Engine, instance_pre: InstancePre<Host>, message: async_nats::Message,
-) -> anyhow::Result<()> {
-    let mut store = Store::new(&engine, Host::new());
-    let (messaging, _) = Messaging::instantiate_pre(&mut store, &instance_pre).await?;
-
-    let msg = Message {
-        data: message.payload.to_vec(),
-        metadata: Some(vec![(String::from("channel"), message.subject.to_string())]),
-        format: FormatSpec::Raw,
-    };
-
-    let _ = messaging.wasi_messaging_messaging_guest().call_handler(&mut store, &[msg]).await?;
-
-    Ok(())
 }
