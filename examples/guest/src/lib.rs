@@ -37,7 +37,7 @@ impl messaging_guest::Guest for MessagingGuest {
             match channel.as_str() {
                 "a" => {
                     println!("Hello from guest channel a");
-                    
+
                     // unsubscribe from channel
                     consumer::update_guest_configuration(&GuestConfiguration {
                         channels: vec!["b".to_string(), "c".to_string()],
@@ -48,8 +48,10 @@ impl messaging_guest::Guest for MessagingGuest {
                 "b" => {
                     // request-reply from channel d
                     let client = Client::connect("demo.nats.io").unwrap();
-                    let _msgs =
+                    let msgs =
                         consumer::subscribe_try_receive(client, &Channel::from("d"), 100).unwrap();
+                    println!("channel d: {:?}", msgs);
+
                     return consumer::complete_message(&msg);
                 }
                 "c" => {

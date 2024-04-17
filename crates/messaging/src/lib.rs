@@ -3,7 +3,6 @@
 mod consumer;
 mod producer;
 
-use anyhow::anyhow;
 use bindings::messaging_types::{self, Error, HostClient, HostError};
 use bytes::Bytes;
 use wasmtime::component::Resource;
@@ -21,13 +20,13 @@ pub mod bindings {
         path: "wit",
         tracing: true,
         async: true,
-        // trappable_error_type: {
-        //     "wasi:messaging/messaging-types/error" => Error,
-        // },
         with: {
             "wasi:messaging/messaging-types/client": Client,
             "wasi:messaging/messaging-types/error": Error,
         },
+        // trappable_error_type: {
+        //     "wasi:messaging/messaging-types/error" => Error,
+        // },
     });
 }
 
@@ -39,7 +38,7 @@ pub trait MessagingView: WasiView + Send {
     async fn connect(&mut self, name: String) -> anyhow::Result<Resource<Client>>;
 }
 
-// Type T — the host — is supplied by the messaging runtime.
+// Type T — the host — is provided by the messaging runtime.
 impl<T: MessagingView> messaging_types::Host for T {
     // fn convert_error(&mut self, e: anyhow::Error) -> anyhow::Result<Error> {
     //     todo!()

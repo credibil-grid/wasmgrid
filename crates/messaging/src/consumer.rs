@@ -16,31 +16,32 @@ impl<T: MessagingView> consumer::Host for T {
     ) -> wasmtime::Result<anyhow::Result<Option<Vec<Message>>, Resource<Error>>> {
         // subscribe to channel
         let client = self.table().get(&client)?;
-        let mut subscriber = match client.subscribe(ch).await {
-            Ok(s) => s,
-            Err(e) => return Err(anyhow!(e)),
-        };
+        let mut subscriber = client.subscribe(ch).await?;
 
         // TODO: remove spawn task
-        let _result = tokio::spawn(async move {
+        let messages = tokio::spawn(async move {
+            // create a time-limited message stream
             let stream = subscriber
                 .by_ref()
                 .take_until(sleep(Duration::from_millis(u64::from(t_milliseconds))));
+
+            // collect messages until stream times out
             let messages = stream
                 .map(|m| Message {
                     data: m.payload.to_vec(),
                     metadata: Some(vec![(String::from("channel"), m.subject.to_string())]),
                     format: FormatSpec::Raw,
                 })
-                .collect::<Vec<_>>()
+                .collect::<Vec<Message>>()
                 .await;
 
             let _ = subscriber.unsubscribe().await;
 
             Ok::<Vec<Message>, Error>(messages)
-        });
+        })
+        .await??;
 
-        Ok(Ok(None))
+        Ok(Ok(Some(messages)))
     }
 
     async fn subscribe_receive(
