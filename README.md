@@ -1,15 +1,33 @@
-# Wasi Messaging
+# Wasm Runtime
 
-Build guest wasm module:
+An interim runtime for running WASI WebAssembly components.
+
+This wasm runtime is a stop-gap solution until production-grade runtimes such as [`wasmtime`](https://github.com/bytecodealliance/wasmtime)
+can support components based on the [`wasi-cloud-core`](https://github.com/WebAssembly/wasi-cloud-core) specifications.
+
+## Quick Start
+
+Install `cargo-component`:
+
+```bash
+cargo install cargo-component
+```
+
+Build the messaging guest:
 
 ```bash
 cargo component build --package guest --release
 ```
 
-Run messaging host using guest from previous step:
+Run the guest using the runtime:
 
 ```bash
 cargo run -- --wasm ./target/wasm32-wasi/release/guest.wasm
 ```
 
+In a separate console, send some messages to the guest:
+
+```bash
+cargo test --test publish
+```
 

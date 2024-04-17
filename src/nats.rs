@@ -1,5 +1,5 @@
 //! # NATS Messaging Runtime
-//! 
+//!
 //! This module implements a NATS wasi:messaging runtime.
 
 use std::collections::HashMap;
@@ -110,7 +110,7 @@ impl Host {
         Self {
             keys: HashMap::default(),
             table: ResourceTable::default(),
-            ctx: WasiCtxBuilder::new().inherit_env().build(),
+            ctx: WasiCtxBuilder::new().inherit_env().inherit_stdio().inherit_args().build(),
         }
     }
 

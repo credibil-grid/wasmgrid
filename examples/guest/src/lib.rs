@@ -36,6 +36,8 @@ impl messaging_guest::Guest for MessagingGuest {
 
             match channel.as_str() {
                 "a" => {
+                    println!("Hello from guest channel a");
+                    
                     // unsubscribe from channel
                     consumer::update_guest_configuration(&GuestConfiguration {
                         channels: vec!["b".to_string(), "c".to_string()],

@@ -1,3 +1,4 @@
+// Send 100 messages to each of the subjects a, b, and c.
 #[tokio::test]
 async fn publish() {
     let client = async_nats::connect("demo.nats.io").await.unwrap();
