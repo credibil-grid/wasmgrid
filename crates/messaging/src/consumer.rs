@@ -3,7 +3,7 @@ use tokio::time::{sleep, Duration};
 use wasmtime::component::Resource;
 
 use super::bindings::consumer;
-use super::bindings::messaging_types::{Client, Error, FormatSpec, GuestConfiguration, Message};
+use super::bindings::messaging_types::{Client, Error, GuestConfiguration, Message};
 use crate::MessagingView;
 
 #[async_trait::async_trait]
@@ -18,7 +18,7 @@ impl<T: MessagingView> consumer::Host for T {
         // create stream that times out after t_milliseconds
         let stream =
             subscriber.by_ref().take_until(sleep(Duration::from_millis(u64::from(t_milliseconds))));
-        let messages = stream.map(to_message).collect().await;
+        let messages = stream.collect().await;
         // subscriber.unsubscribe().await?;
 
         Ok(Ok(Some(messages)))
@@ -31,7 +31,7 @@ impl<T: MessagingView> consumer::Host for T {
         let mut subscriber = client.subscribe(ch).await?;
 
         // get first message
-        let messages = subscriber.by_ref().take(1).map(to_message).collect().await;
+        let messages = subscriber.by_ref().take(1).collect().await;
         // subscriber.unsubscribe().await?;
 
         Ok(Ok(messages))
@@ -57,13 +57,5 @@ impl<T: MessagingView> consumer::Host for T {
     ) -> wasmtime::Result<anyhow::Result<(), Resource<Error>>> {
         println!("TODO: implement abandon_message: {:?}", msg.metadata);
         Ok(Ok(()))
-    }
-}
-
-fn to_message(msg: async_nats::Message) -> Message {
-    Message {
-        data: msg.payload.to_vec(),
-        metadata: Some(vec![(String::from("channel"), msg.subject.to_string())]),
-        format: FormatSpec::Raw,
     }
 }

@@ -3,11 +3,12 @@
 //! This module implements a NATS wasi:messaging runtime.
 
 use std::collections::HashMap;
-use std::ops::Deref;
+use std::pin::Pin;
+use std::task::{Context, Poll};
 
 use anyhow::anyhow;
 use bytes::Bytes;
-use futures::stream::{self, StreamExt};
+use futures::stream::{self, Stream, StreamExt};
 use messaging::bindings::messaging_types::{Error, FormatSpec, GuestConfiguration, Message};
 use messaging::bindings::Messaging;
 use messaging::{self, MessagingClient, MessagingSubscriber, MessagingView, Subscriber};
@@ -79,9 +80,7 @@ impl HandlerProxy {
     }
 
     // Forward NATS message to the wasm Guest.
-    async fn message(
-        &self, client: ClientProxy, message: async_nats::Message,
-    ) -> anyhow::Result<()> {
+    async fn message(&self, client: ClientProxy, message: Message) -> anyhow::Result<()> {
         // set up host state
         let mut host = Host::new();
 
@@ -92,14 +91,8 @@ impl HandlerProxy {
         let (messaging, _) = Messaging::instantiate_pre(&mut store, &self.instance_pre).await?;
 
         // call guest with message
-        let msg = Message {
-            data: message.payload.to_vec(),
-            metadata: Some(vec![(String::from("channel"), message.subject.to_string())]),
-            format: FormatSpec::Raw,
-        };
-
         if let Err(e) =
-            messaging.wasi_messaging_messaging_guest().call_handler(&mut store, &[msg]).await?
+            messaging.wasi_messaging_messaging_guest().call_handler(&mut store, &[message]).await?
         {
             let err = store.data_mut().table().get(&e)?;
             return Err(anyhow!(err.to_string()));
@@ -223,34 +216,22 @@ impl MessagingSubscriber for SubscriberProxy {
     }
 }
 
-use std::pin::Pin;
-use std::task::{Context, Poll};
-
-use futures::stream::Stream;
-
 impl Stream for SubscriberProxy {
-    type Item = async_nats::Message;
+    type Item = Message;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        self.inner.poll_next_unpin(cx)
+        let opt = self.inner.poll_next_unpin(cx);
+
+        opt.map(|m| {
+            let Some(m) = m else {
+                return None;
+            };
+
+            return Some(Message {
+                data: m.payload.to_vec(),
+                metadata: Some(vec![(String::from("channel"), m.subject.to_string())]),
+                format: FormatSpec::Raw,
+            });
+        })
     }
 }
-
-// // #[async_trait::async_trait]
-// impl futures::stream::Stream for SubscriberProxy {
-//     type Item = async_nats::Message;
-
-//     fn poll_next(
-//         mut self: std::pin::Pin<&mut Self>, cx: &mut std::task::Context<'_>,
-//     ) -> std::task::Poll<Option<Self::Item>> {
-//         self.inner.poll_next_unpin(cx)
-//     }
-// }
-
-// impl Deref for SubscriberProxy {
-//     type Target = async_nats::Subscriber;
-
-//     fn deref(&self) -> &Self::Target {
-//         &self.inner
-//     }
-// }

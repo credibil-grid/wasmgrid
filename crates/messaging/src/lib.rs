@@ -3,7 +3,7 @@
 mod consumer;
 mod producer;
 
-use bindings::messaging_types::{self, Error, GuestConfiguration, HostClient, HostError};
+use bindings::messaging_types::{self, Error, GuestConfiguration, HostClient, HostError, Message};
 use bytes::Bytes;
 use futures::StreamExt;
 use wasmtime::component::Resource;
@@ -111,7 +111,7 @@ impl Client {
     ///
     /// # Errors
     pub async fn subscribe(&self, ch: String) -> anyhow::Result<Subscriber> {
-        Ok(self.inner.subscribe(ch).await?)
+        self.inner.subscribe(ch).await
     }
 
     /// Publish a message to the specified channel.
@@ -126,9 +126,10 @@ use std::pin::Pin;
 use std::task::{Context, Poll};
 
 use futures::stream::Stream;
-// use futures::StreamExt;
 
-pub trait MessagingSubscriber: Stream<Item = async_nats::Message>+Send {
+/// MessagingSubscriber is implemented by the runtime to provide this host with access
+/// to runtime subscriber functionality.
+pub trait MessagingSubscriber: Stream<Item = Message> + Send {
     fn unsubscribe(&self) -> anyhow::Result<()>;
 }
 
@@ -144,7 +145,7 @@ impl Subscriber {
 }
 
 impl Stream for Subscriber {
-    type Item = async_nats::Message;
+    type Item = Message;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         self.inner.poll_next_unpin(cx)
