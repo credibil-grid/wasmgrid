@@ -3,13 +3,14 @@
 //! This module implements a NATS wasi:messaging runtime.
 
 use std::collections::HashMap;
+use std::ops::Deref;
 
 use anyhow::anyhow;
 use bytes::Bytes;
 use futures::stream::{self, StreamExt};
 use messaging::bindings::messaging_types::{Error, FormatSpec, GuestConfiguration, Message};
 use messaging::bindings::Messaging;
-use messaging::{self, MessagingClient, MessagingView};
+use messaging::{self, MessagingClient, MessagingSubscriber, MessagingView};
 use wasmtime::component::{Component, InstancePre, Linker, Resource};
 use wasmtime::{Engine, Store};
 use wasmtime_wasi::{command, ResourceTable, WasiCtx, WasiCtxBuilder, WasiView};
@@ -200,5 +201,40 @@ impl MessagingClient for ClientProxy {
 
     async fn publish(&self, ch: String, data: Bytes) -> anyhow::Result<()> {
         Ok(self.inner.publish(ch, data).await?)
+    }
+}
+
+// SubscriberProxy holds a reference to the the NATS client. It is used to implement the
+// [`messaging::MessagingClient`] trait used by the messaging Host.
+struct SubscriberProxy {
+    inner: async_nats::Subscriber,
+}
+
+// Implement the [`messaging::MessagingClient`] trait for ClientProxy. This trait
+// implementation is used by the messaging Host to interact with the NATS client.
+// #[async_trait::async_trait]
+impl MessagingSubscriber for SubscriberProxy {
+    fn unsubscribe(&self) -> anyhow::Result<()> {
+        // Ok(self.inner.unsubscribe()?)
+        Ok(())
+    }
+}
+
+// #[async_trait::async_trait]
+impl futures::stream::Stream for SubscriberProxy {
+    type Item = async_nats::Message;
+
+    fn poll_next(
+        mut self: std::pin::Pin<&mut Self>, cx: &mut std::task::Context<'_>,
+    ) -> std::task::Poll<Option<Self::Item>> {
+        self.inner.poll_next_unpin(cx)
+    }
+}
+
+impl Deref for SubscriberProxy {
+    type Target = async_nats::Subscriber;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
     }
 }

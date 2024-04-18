@@ -89,6 +89,10 @@ pub trait MessagingClient: Sync + Send {
     async fn publish(&self, ch: String, data: Bytes) -> anyhow::Result<()>;
 }
 
+pub trait MessagingSubscriber: futures::stream::Stream {
+    fn unsubscribe(&self) -> anyhow::Result<()>;
+}
+
 /// Client is used by `bindgen` (see [`bindings`] module above) to generate the type
 /// for the wit `client` resource. By default, `bindgen` will generate an uninhabitable
 /// type as a placeholder.
@@ -109,8 +113,10 @@ impl Client {
     /// Subscribe to the specified channel.
     ///
     /// # Errors
-    pub async fn subscribe(&self, ch: String) -> anyhow::Result<async_nats::Subscriber> {
-        self.inner.subscribe(ch).await
+    pub async fn subscribe(
+        &self, ch: String,
+    ) -> anyhow::Result<impl futures::stream::Stream<Item = async_nats::Message>> {
+        Ok(self.inner.subscribe(ch).await?)
     }
 
     /// Publish a message to the specified channel.
