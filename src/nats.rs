@@ -21,7 +21,7 @@ pub async fn serve(engine: &Engine, wasm: String) -> anyhow::Result<()> {
     let handler = HandlerProxy::new(engine.clone(), wasm)?;
 
     // connect to NATS
-    let client = ClientProxy::connect("demo.nats.io".to_string()).await?;
+    let client = Client::connect("demo.nats.io".to_string()).await?;
 
     // subscribe to channels
     let mut subscribers = vec![];
@@ -80,7 +80,7 @@ impl HandlerProxy {
     }
 
     // Forward NATS message to the wasm Guest.
-    async fn message(&self, client: ClientProxy, message: Message) -> anyhow::Result<()> {
+    async fn message(&self, client: Client, message: Message) -> anyhow::Result<()> {
         // set up host state
         let mut host = Host::new();
 
@@ -121,7 +121,7 @@ impl Host {
     }
 
     // Add a new client to the host state.
-    fn add_client(&mut self, client: ClientProxy) -> anyhow::Result<Resource<messaging::Client>> {
+    fn add_client(&mut self, client: Client) -> anyhow::Result<Resource<messaging::Client>> {
         let name = client.name.clone();
         let client = messaging::Client::new(Box::new(client));
 
@@ -141,7 +141,7 @@ impl MessagingView for Host {
             Resource::new_own(*key)
         } else {
             // create a new connection
-            let client = ClientProxy::connect(name.clone()).await?;
+            let client = Client::connect(name.clone()).await?;
             self.add_client(client)?
         };
 
@@ -168,30 +168,28 @@ impl WasiView for Host {
     }
 }
 
-// ClientProxy holds a reference to the the NATS client. It is used to implement the
+// Client holds a reference to the the NATS client. It is used to implement the
 // [`messaging::RuntimeClient`] trait used by the messaging Host.
 #[derive(Clone)]
-struct ClientProxy {
+struct Client {
     name: String,
     inner: async_nats::Client,
 }
 
-impl ClientProxy {
-    // Create a new ClientProxy for the specified NATS server.
+impl Client {
+    // Create a new Client for the specified NATS server.
     async fn connect(name: String) -> anyhow::Result<Self> {
         let inner = async_nats::connect(&name).await?;
         Ok(Self { name, inner })
     }
 }
 
-// Implement the [`messaging::RuntimeClient`] trait for ClientProxy. This trait
+// Implement the [`messaging::RuntimeClient`] trait for Client. This trait
 // implementation is used by the messaging Host to interact with the NATS client.
 #[async_trait::async_trait]
-impl RuntimeClient for ClientProxy {
-    // type Subscriber = Subscriber;
-
+impl RuntimeClient for Client {
     async fn subscribe(&self, ch: String) -> anyhow::Result<messaging::Subscriber> {
-        let subscriber = messaging::Subscriber::new(Box::pin(SubscriberProxy {
+        let subscriber = messaging::Subscriber::new(Box::pin(Subscriber {
             inner: self.inner.subscribe(ch).await?,
         }));
         Ok(subscriber)
@@ -202,22 +200,22 @@ impl RuntimeClient for ClientProxy {
     }
 }
 
-// // SubscriberProxy holds a reference to the the NATS client. It is used to implement the
+// // Subscriber holds a reference to the the NATS client. It is used to implement the
 // [`messaging::RuntimeClient`] trait used by the messaging Host.
-struct SubscriberProxy {
+struct Subscriber {
     inner: async_nats::Subscriber,
 }
 
-// Implement the [`messaging::RuntimeClient`] trait for ClientProxy. This trait
+// Implement the [`messaging::RuntimeClient`] trait for Client. This trait
 // implementation is used by the messaging Host to interact with the NATS client.
 #[async_trait::async_trait]
-impl RuntimeSubscriber for SubscriberProxy {
+impl RuntimeSubscriber for Subscriber {
     async fn unsubscribe(&mut self) -> anyhow::Result<()> {
         Ok(self.inner.unsubscribe().await?)
     }
 }
 
-impl Stream for SubscriberProxy {
+impl Stream for Subscriber {
     type Item = Message;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {

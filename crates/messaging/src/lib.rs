@@ -104,31 +104,31 @@ pub trait RuntimeClient: Sync + Send {
 /// the host to interact with the runtime's messaging client without prior knowledge of
 /// runtime implementation details.
 pub struct Client {
-    inner: Box<dyn RuntimeClient>,
+    runtime: Box<dyn RuntimeClient>,
 }
 
 impl Client {
     #[must_use]
-    pub fn new(inner: Box<dyn RuntimeClient>) -> Self {
-        Self { inner }
+    pub fn new(runtime: Box<dyn RuntimeClient>) -> Self {
+        Self { runtime }
     }
 
     /// Subscribe to the specified channel.
     ///
     /// # Errors
     async fn subscribe(&self, ch: String) -> anyhow::Result<Subscriber> {
-        self.inner.subscribe(ch).await
+        self.runtime.subscribe(ch).await
     }
 
     /// Publish a message to the specified channel.
     ///
     /// # Errors
     async fn publish(&self, ch: String, data: Bytes) -> anyhow::Result<()> {
-        self.inner.publish(ch, data).await
+        self.runtime.publish(ch, data).await
     }
 }
 
-/// RuntimeSubscriber is implemented by the runtime to provide this host with access
+/// RuntimeSubscriber is implemented by the runtime to provide the host with access
 /// to runtime subscriber functionality.
 #[async_trait::async_trait]
 pub trait RuntimeSubscriber: Stream<Item = Message> + Send {
@@ -136,18 +136,18 @@ pub trait RuntimeSubscriber: Stream<Item = Message> + Send {
 }
 
 pub struct Subscriber {
-    inner: Pin<Box<dyn RuntimeSubscriber>>,
+    runtime: Pin<Box<dyn RuntimeSubscriber>>,
 }
 
 impl Subscriber {
     #[must_use]
-    pub fn new(inner: Pin<Box<dyn RuntimeSubscriber>>) -> Self {
-        Self { inner }
+    pub fn new(runtime: Pin<Box<dyn RuntimeSubscriber>>) -> Self {
+        Self { runtime }
     }
 
     async fn unsubscribe(&mut self) -> anyhow::Result<()> {
-        // RuntimeSubscriber::unsubscribe(&mut self.inner);
-        // self.inner.unsubscribe().await?;
+        // RuntimeSubscriber::unsubscribe(&mut self.runtime);
+        // self.runtime.unsubscribe().await?;
 
         Ok(())
     }
@@ -157,6 +157,6 @@ impl Stream for Subscriber {
     type Item = Message;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        self.inner.poll_next_unpin(cx)
+        self.runtime.poll_next_unpin(cx)
     }
 }
