@@ -14,7 +14,7 @@ use wasmtime::component::{Component, InstancePre, Linker, Resource};
 use wasmtime::{Engine, Store};
 use wasmtime_wasi::{command, ResourceTable, WasiCtx, WasiCtxBuilder, WasiView};
 
-/// Start and run NATS for the specified wasm guest.
+/// Start and run NATS for the specified wasm component.
 pub async fn serve(engine: &Engine, wasm: String) -> anyhow::Result<()> {
     let handler = HandlerProxy::new(engine.clone(), wasm)?;
 
