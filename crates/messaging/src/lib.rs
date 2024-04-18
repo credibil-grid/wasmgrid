@@ -84,14 +84,10 @@ impl<T: MessagingView> HostError for T {
 #[async_trait::async_trait]
 pub trait MessagingClient: Sync + Send {
     /// Subscribe to the specified channel.
-    async fn subscribe(&self, ch: String) -> anyhow::Result<async_nats::Subscriber>;
+    async fn subscribe(&self, ch: String) -> anyhow::Result<Subscriber>;
 
     /// Publish a message to the specified channel.
     async fn publish(&self, ch: String, data: Bytes) -> anyhow::Result<()>;
-}
-
-pub trait MessagingSubscriber: futures::stream::Stream<Item = async_nats::Message> {
-    fn unsubscribe(&self) -> anyhow::Result<()>;
 }
 
 /// Client is used by `bindgen` (see [`bindings`] module above) to generate the type
@@ -114,9 +110,7 @@ impl Client {
     /// Subscribe to the specified channel.
     ///
     /// # Errors
-    pub async fn subscribe(
-        &self, ch: String,
-    ) -> anyhow::Result<impl futures::stream::Stream<Item = async_nats::Message>> {
+    pub async fn subscribe(&self, ch: String) -> anyhow::Result<Subscriber> {
         Ok(self.inner.subscribe(ch).await?)
     }
 
@@ -126,6 +120,16 @@ impl Client {
     pub async fn publish(&self, ch: String, data: Bytes) -> anyhow::Result<()> {
         self.inner.publish(ch, data).await
     }
+}
+
+use std::pin::Pin;
+use std::task::{Context, Poll};
+
+use futures::stream::Stream;
+// use futures::StreamExt;
+
+pub trait MessagingSubscriber: Stream<Item = async_nats::Message>+Send {
+    fn unsubscribe(&self) -> anyhow::Result<()>;
 }
 
 pub struct Subscriber {
@@ -138,12 +142,6 @@ impl Subscriber {
         Self { inner }
     }
 }
-
-use std::pin::Pin;
-use std::task::{Context, Poll};
-
-use futures::stream::Stream;
-// use futures::StreamExt;
 
 impl Stream for Subscriber {
     type Item = async_nats::Message;

@@ -10,7 +10,7 @@ use bytes::Bytes;
 use futures::stream::{self, StreamExt};
 use messaging::bindings::messaging_types::{Error, FormatSpec, GuestConfiguration, Message};
 use messaging::bindings::Messaging;
-use messaging::{self, MessagingClient, MessagingSubscriber, MessagingView};
+use messaging::{self, MessagingClient, MessagingSubscriber, MessagingView, Subscriber};
 use wasmtime::component::{Component, InstancePre, Linker, Resource};
 use wasmtime::{Engine, Store};
 use wasmtime_wasi::{command, ResourceTable, WasiCtx, WasiCtxBuilder, WasiView};
@@ -195,8 +195,11 @@ impl ClientProxy {
 // implementation is used by the messaging Host to interact with the NATS client.
 #[async_trait::async_trait]
 impl MessagingClient for ClientProxy {
-    async fn subscribe(&self, ch: String) -> anyhow::Result<async_nats::Subscriber> {
-        Ok(self.inner.subscribe(ch).await?)
+    async fn subscribe(&self, ch: String) -> anyhow::Result<Subscriber> {
+        let subscriber = Subscriber::new(Box::pin(SubscriberProxy {
+            inner: self.inner.subscribe(ch).await?,
+        }));
+        Ok(subscriber)
     }
 
     async fn publish(&self, ch: String, data: Bytes) -> anyhow::Result<()> {
@@ -205,20 +208,33 @@ impl MessagingClient for ClientProxy {
 }
 
 // // SubscriberProxy holds a reference to the the NATS client. It is used to implement the
-// // [`messaging::MessagingClient`] trait used by the messaging Host.
-// struct SubscriberProxy {
-//     inner: async_nats::Subscriber,
-// }
+// [`messaging::MessagingClient`] trait used by the messaging Host.
+struct SubscriberProxy {
+    inner: async_nats::Subscriber,
+}
 
-// // Implement the [`messaging::MessagingClient`] trait for ClientProxy. This trait
-// // implementation is used by the messaging Host to interact with the NATS client.
-// // #[async_trait::async_trait]
-// impl MessagingSubscriber for SubscriberProxy {
-//     fn unsubscribe(&self) -> anyhow::Result<()> {
-//         // Ok(self.inner.unsubscribe()?)
-//         Ok(())
-//     }
-// }
+// Implement the [`messaging::MessagingClient`] trait for ClientProxy. This trait
+// implementation is used by the messaging Host to interact with the NATS client.
+// #[async_trait::async_trait]
+impl MessagingSubscriber for SubscriberProxy {
+    fn unsubscribe(&self) -> anyhow::Result<()> {
+        // Ok(self.inner.unsubscribe()?)
+        Ok(())
+    }
+}
+
+use std::pin::Pin;
+use std::task::{Context, Poll};
+
+use futures::stream::Stream;
+
+impl Stream for SubscriberProxy {
+    type Item = async_nats::Message;
+
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        self.inner.poll_next_unpin(cx)
+    }
+}
 
 // // #[async_trait::async_trait]
 // impl futures::stream::Stream for SubscriberProxy {
