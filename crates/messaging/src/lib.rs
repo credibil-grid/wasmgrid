@@ -3,8 +3,12 @@
 mod consumer;
 mod producer;
 
+use std::pin::Pin;
+use std::task::{Context, Poll};
+
 use bindings::messaging_types::{self, Error, GuestConfiguration, HostClient, HostError, Message};
 use bytes::Bytes;
+use futures::stream::Stream;
 use futures::StreamExt;
 use wasmtime::component::Resource;
 use wasmtime_wasi::WasiView;
@@ -122,15 +126,11 @@ impl Client {
     }
 }
 
-use std::pin::Pin;
-use std::task::{Context, Poll};
-
-use futures::stream::Stream;
-
 /// MessagingSubscriber is implemented by the runtime to provide this host with access
 /// to runtime subscriber functionality.
+#[async_trait::async_trait]
 pub trait MessagingSubscriber: Stream<Item = Message> + Send {
-    fn unsubscribe(&self) -> anyhow::Result<()>;
+    async fn unsubscribe(&mut self) -> anyhow::Result<()>;
 }
 
 pub struct Subscriber {

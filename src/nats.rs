@@ -208,11 +208,10 @@ struct SubscriberProxy {
 
 // Implement the [`messaging::MessagingClient`] trait for ClientProxy. This trait
 // implementation is used by the messaging Host to interact with the NATS client.
-// #[async_trait::async_trait]
+#[async_trait::async_trait]
 impl MessagingSubscriber for SubscriberProxy {
-    fn unsubscribe(&self) -> anyhow::Result<()> {
-        // Ok(self.inner.unsubscribe()?)
-        Ok(())
+    async fn unsubscribe(&mut self) -> anyhow::Result<()> {
+        Ok(self.inner.unsubscribe().await?)
     }
 }
 
