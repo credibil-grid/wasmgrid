@@ -19,7 +19,7 @@ impl<T: MessagingView> consumer::Host for T {
         let stream =
             subscriber.by_ref().take_until(sleep(Duration::from_millis(u64::from(t_milliseconds))));
         let messages = stream.collect().await;
-        // subscriber.unsubscribe().await?;
+        subscriber.unsubscribe().await?;
 
         Ok(Ok(Some(messages)))
     }

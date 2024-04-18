@@ -142,6 +142,13 @@ impl Subscriber {
     pub fn new(inner: Pin<Box<dyn MessagingSubscriber>>) -> Self {
         Self { inner }
     }
+
+    async fn unsubscribe(&mut self) -> anyhow::Result<()> {
+        // MessagingSubscriber::unsubscribe(&mut self.inner);
+        // self.inner.unsubscribe().await?;
+
+        Ok(())
+    }
 }
 
 impl Stream for Subscriber {
