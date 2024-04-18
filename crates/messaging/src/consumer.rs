@@ -4,7 +4,7 @@ use wasmtime::component::Resource;
 
 use super::bindings::consumer;
 use super::bindings::messaging_types::{Client, Error, GuestConfiguration, Message};
-use crate::{MessagingClient, MessagingView, MessagingSubscriber};
+use crate::MessagingView;
 
 #[async_trait::async_trait]
 impl<T: MessagingView> consumer::Host for T {

@@ -82,15 +82,15 @@ impl<T: MessagingView> HostError for T {
     }
 }
 
-/// MessagingClient is implemented by the runtime to provide this host with access
+/// RuntimeClient is implemented by the runtime to provide this host with access
 /// to runtime functionality.
 #[allow(clippy::module_name_repetitions)]
 #[async_trait::async_trait]
-pub trait MessagingClient: Sync + Send {
-    type Subscriber: MessagingSubscriber;
+pub trait RuntimeClient: Sync + Send {
+    // type Subscriber: RuntimeSubscriber;
 
     /// Subscribe to the specified channel.
-    async fn subscribe(&self, ch: String) -> anyhow::Result<Self::Subscriber>;
+    async fn subscribe(&self, ch: String) -> anyhow::Result<Subscriber>;
 
     /// Publish a message to the specified channel.
     async fn publish(&self, ch: String, data: Bytes) -> anyhow::Result<()>;
@@ -104,24 +104,19 @@ pub trait MessagingClient: Sync + Send {
 /// the host to interact with the runtime's messaging client without prior knowledge of
 /// runtime implementation details.
 pub struct Client {
-    inner: Box<dyn MessagingClient<Subscriber = Subscriber>>,
+    inner: Box<dyn RuntimeClient>,
 }
 
 impl Client {
     #[must_use]
-    pub fn new(inner: Box<dyn MessagingClient<Subscriber = Subscriber>>) -> Self {
+    pub fn new(inner: Box<dyn RuntimeClient>) -> Self {
         Self { inner }
     }
-}
-
-#[async_trait::async_trait]
-impl MessagingClient for Client {
-    type Subscriber = Subscriber;
 
     /// Subscribe to the specified channel.
     ///
     /// # Errors
-    async fn subscribe(&self, ch: String) -> anyhow::Result<Self::Subscriber> {
+    async fn subscribe(&self, ch: String) -> anyhow::Result<Subscriber> {
         self.inner.subscribe(ch).await
     }
 
@@ -133,28 +128,25 @@ impl MessagingClient for Client {
     }
 }
 
-/// MessagingSubscriber is implemented by the runtime to provide this host with access
+/// RuntimeSubscriber is implemented by the runtime to provide this host with access
 /// to runtime subscriber functionality.
 #[async_trait::async_trait]
-pub trait MessagingSubscriber: Stream<Item = Message> + Send {
+pub trait RuntimeSubscriber: Stream<Item = Message> + Send {
     async fn unsubscribe(&mut self) -> anyhow::Result<()>;
 }
 
 pub struct Subscriber {
-    inner: Pin<Box<dyn MessagingSubscriber>>,
+    inner: Pin<Box<dyn RuntimeSubscriber>>,
 }
 
 impl Subscriber {
     #[must_use]
-    pub fn new(inner: Pin<Box<dyn MessagingSubscriber>>) -> Self {
+    pub fn new(inner: Pin<Box<dyn RuntimeSubscriber>>) -> Self {
         Self { inner }
     }
-}
 
-#[async_trait::async_trait]
-impl MessagingSubscriber for Subscriber {
     async fn unsubscribe(&mut self) -> anyhow::Result<()> {
-        // MessagingSubscriber::unsubscribe(&mut self.inner);
+        // RuntimeSubscriber::unsubscribe(&mut self.inner);
         // self.inner.unsubscribe().await?;
 
         Ok(())
