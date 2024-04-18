@@ -4,7 +4,7 @@ use wasmtime::component::Resource;
 
 use super::bindings::consumer;
 use super::bindings::messaging_types::{Client, Error, GuestConfiguration, Message};
-use crate::MessagingView;
+use crate::{MessagingClient, MessagingView, MessagingSubscriber};
 
 #[async_trait::async_trait]
 impl<T: MessagingView> consumer::Host for T {
@@ -32,7 +32,7 @@ impl<T: MessagingView> consumer::Host for T {
 
         // get first message
         let messages = subscriber.by_ref().take(1).collect().await;
-        // subscriber.unsubscribe().await?;
+        subscriber.unsubscribe().await?;
 
         Ok(Ok(messages))
     }

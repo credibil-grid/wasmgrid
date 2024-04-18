@@ -87,8 +87,10 @@ impl<T: MessagingView> HostError for T {
 #[allow(clippy::module_name_repetitions)]
 #[async_trait::async_trait]
 pub trait MessagingClient: Sync + Send {
+    type Subscriber: MessagingSubscriber;
+
     /// Subscribe to the specified channel.
-    async fn subscribe(&self, ch: String) -> anyhow::Result<Subscriber>;
+    async fn subscribe(&self, ch: String) -> anyhow::Result<Self::Subscriber>;
 
     /// Publish a message to the specified channel.
     async fn publish(&self, ch: String, data: Bytes) -> anyhow::Result<()>;
@@ -102,26 +104,31 @@ pub trait MessagingClient: Sync + Send {
 /// the host to interact with the runtime's messaging client without prior knowledge of
 /// runtime implementation details.
 pub struct Client {
-    inner: Box<dyn MessagingClient>,
+    inner: Box<dyn MessagingClient<Subscriber = Subscriber>>,
 }
 
 impl Client {
     #[must_use]
-    pub fn new(inner: Box<dyn MessagingClient>) -> Self {
+    pub fn new(inner: Box<dyn MessagingClient<Subscriber = Subscriber>>) -> Self {
         Self { inner }
     }
+}
+
+#[async_trait::async_trait]
+impl MessagingClient for Client {
+    type Subscriber = Subscriber;
 
     /// Subscribe to the specified channel.
     ///
     /// # Errors
-    pub async fn subscribe(&self, ch: String) -> anyhow::Result<Subscriber> {
+    async fn subscribe(&self, ch: String) -> anyhow::Result<Self::Subscriber> {
         self.inner.subscribe(ch).await
     }
 
     /// Publish a message to the specified channel.
     ///
     /// # Errors
-    pub async fn publish(&self, ch: String, data: Bytes) -> anyhow::Result<()> {
+    async fn publish(&self, ch: String, data: Bytes) -> anyhow::Result<()> {
         self.inner.publish(ch, data).await
     }
 }
@@ -142,7 +149,10 @@ impl Subscriber {
     pub fn new(inner: Pin<Box<dyn MessagingSubscriber>>) -> Self {
         Self { inner }
     }
+}
 
+#[async_trait::async_trait]
+impl MessagingSubscriber for Subscriber {
     async fn unsubscribe(&mut self) -> anyhow::Result<()> {
         // MessagingSubscriber::unsubscribe(&mut self.inner);
         // self.inner.unsubscribe().await?;

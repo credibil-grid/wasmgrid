@@ -188,7 +188,9 @@ impl ClientProxy {
 // implementation is used by the messaging Host to interact with the NATS client.
 #[async_trait::async_trait]
 impl MessagingClient for ClientProxy {
-    async fn subscribe(&self, ch: String) -> anyhow::Result<Subscriber> {
+    type Subscriber = Subscriber;
+
+    async fn subscribe(&self, ch: String) -> anyhow::Result<Self::Subscriber> {
         let subscriber = Subscriber::new(Box::pin(SubscriberProxy {
             inner: self.inner.subscribe(ch).await?,
         }));
