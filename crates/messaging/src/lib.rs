@@ -5,6 +5,7 @@ mod producer;
 
 use bindings::messaging_types::{self, Error, GuestConfiguration, HostClient, HostError};
 use bytes::Bytes;
+use futures::StreamExt;
 use wasmtime::component::Resource;
 use wasmtime_wasi::WasiView;
 
@@ -89,7 +90,7 @@ pub trait MessagingClient: Sync + Send {
     async fn publish(&self, ch: String, data: Bytes) -> anyhow::Result<()>;
 }
 
-pub trait MessagingSubscriber: futures::stream::Stream {
+pub trait MessagingSubscriber: futures::stream::Stream<Item = async_nats::Message> {
     fn unsubscribe(&self) -> anyhow::Result<()>;
 }
 
@@ -124,5 +125,30 @@ impl Client {
     /// # Errors
     pub async fn publish(&self, ch: String, data: Bytes) -> anyhow::Result<()> {
         self.inner.publish(ch, data).await
+    }
+}
+
+pub struct Subscriber {
+    inner: Pin<Box<dyn MessagingSubscriber>>,
+}
+
+impl Subscriber {
+    #[must_use]
+    pub fn new(inner: Pin<Box<dyn MessagingSubscriber>>) -> Self {
+        Self { inner }
+    }
+}
+
+use std::pin::Pin;
+use std::task::{Context, Poll};
+
+use futures::stream::Stream;
+// use futures::StreamExt;
+
+impl Stream for Subscriber {
+    type Item = async_nats::Message;
+
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        self.inner.poll_next_unpin(cx)
     }
 }
