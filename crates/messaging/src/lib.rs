@@ -146,7 +146,6 @@ impl Subscriber {
     }
 
     async fn unsubscribe(&mut self) -> anyhow::Result<()> {
-        // RuntimeSubscriber::unsubscribe(&mut self.runtime);
         // self.runtime.unsubscribe().await?;
         Ok(())
     }
