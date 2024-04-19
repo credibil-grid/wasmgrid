@@ -135,7 +135,7 @@ impl Host {
 // Implement the [`messaging::MessagingView`]` trait for Host.
 #[async_trait::async_trait]
 impl MessagingView for Host {
-    async fn connect(&mut self, name: String) -> anyhow::Result<Resource<messaging::Client>> {
+    async fn connect(&mut self, name: String) -> anyhow::Result<Resource<messaging::Client2>> {
         let resource = if let Some(key) = self.keys.get(&name) {
             // reuse existing connection
             Resource::new_own(*key)

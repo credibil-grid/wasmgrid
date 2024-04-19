@@ -13,6 +13,8 @@ use futures::StreamExt;
 use wasmtime::component::Resource;
 use wasmtime_wasi::WasiView;
 
+pub type Client2 = Box<dyn RuntimeClient>;
+
 /// Wrap generation of wit bindings to simplify exports
 pub mod bindings {
     pub use anyhow::Error;
@@ -26,7 +28,7 @@ pub mod bindings {
         tracing: true,
         async: true,
         with: {
-            "wasi:messaging/messaging-types/client": Client,
+            "wasi:messaging/messaging-types/client":super::Client2,
             "wasi:messaging/messaging-types/error": Error,
         },
         // trappable_error_type: {
@@ -40,7 +42,7 @@ pub mod bindings {
 #[allow(clippy::module_name_repetitions)]
 #[async_trait::async_trait]
 pub trait MessagingView: WasiView + Send {
-    async fn connect(&mut self, name: String) -> anyhow::Result<Resource<Client>>;
+    async fn connect(&mut self, name: String) -> anyhow::Result<Resource<Client2>>;
 
     async fn update_configuration(
         &mut self, gc: GuestConfiguration,
@@ -59,12 +61,12 @@ impl<T: MessagingView> HostClient for T {
     // Connect to the runtime's messaging server.
     async fn connect(
         &mut self, name: String,
-    ) -> wasmtime::Result<anyhow::Result<Resource<Client>, Resource<Error>>> {
+    ) -> wasmtime::Result<anyhow::Result<Resource<Client2>, Resource<Error>>> {
         Ok(Ok(T::connect(self, name).await?))
     }
 
     // Drop the specified client resource.
-    fn drop(&mut self, client: Resource<Client>) -> wasmtime::Result<()> {
+    fn drop(&mut self, client: Resource<Client2>) -> wasmtime::Result<()> {
         self.table().delete(client)?;
         Ok(())
     }
