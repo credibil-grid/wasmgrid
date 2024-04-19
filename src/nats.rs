@@ -123,7 +123,8 @@ impl Host {
     // Add a new client to the host state.
     fn add_client(&mut self, client: Client) -> anyhow::Result<Resource<messaging::Client>> {
         let name = client.name.clone();
-        let client = messaging::Client::new(Box::new(client));
+        // let client = messaging::Client::new(Box::new(client));
+        let client: messaging::Client = Box::new(client);
 
         let resource = self.table.push(client)?;
         self.keys.insert(name, resource.rep());
@@ -189,10 +190,10 @@ impl Client {
 #[async_trait::async_trait]
 impl RuntimeClient for Client {
     async fn subscribe(&self, ch: String) -> anyhow::Result<messaging::Subscriber> {
-        let subscriber = messaging::Subscriber::new(Box::pin(Subscriber {
+        let subscriber = Subscriber {
             inner: self.inner.subscribe(ch).await?,
-        }));
-        Ok(subscriber)
+        };
+        Ok(Box::pin(subscriber))
     }
 
     async fn publish(&self, ch: String, data: Bytes) -> anyhow::Result<()> {
