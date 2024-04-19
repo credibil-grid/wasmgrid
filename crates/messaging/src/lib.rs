@@ -13,7 +13,7 @@ use futures::StreamExt;
 use wasmtime::component::Resource;
 use wasmtime_wasi::WasiView;
 
-pub type Client2 = Box<dyn RuntimeClient>;
+pub type Client = Box<dyn RuntimeClient>;
 
 /// Wrap generation of wit bindings to simplify exports
 pub mod bindings {
@@ -28,7 +28,7 @@ pub mod bindings {
         tracing: true,
         async: true,
         with: {
-            "wasi:messaging/messaging-types/client":super::Client2,
+            "wasi:messaging/messaging-types/client": Client,
             "wasi:messaging/messaging-types/error": Error,
         },
         // trappable_error_type: {
@@ -42,7 +42,7 @@ pub mod bindings {
 #[allow(clippy::module_name_repetitions)]
 #[async_trait::async_trait]
 pub trait MessagingView: WasiView + Send {
-    async fn connect(&mut self, name: String) -> anyhow::Result<Resource<Client2>>;
+    async fn connect(&mut self, name: String) -> anyhow::Result<Resource<Client>>;
 
     async fn update_configuration(
         &mut self, gc: GuestConfiguration,
@@ -61,12 +61,12 @@ impl<T: MessagingView> HostClient for T {
     // Connect to the runtime's messaging server.
     async fn connect(
         &mut self, name: String,
-    ) -> wasmtime::Result<anyhow::Result<Resource<Client2>, Resource<Error>>> {
+    ) -> wasmtime::Result<anyhow::Result<Resource<Client>, Resource<Error>>> {
         Ok(Ok(T::connect(self, name).await?))
     }
 
     // Drop the specified client resource.
-    fn drop(&mut self, client: Resource<Client2>) -> wasmtime::Result<()> {
+    fn drop(&mut self, client: Resource<Client>) -> wasmtime::Result<()> {
         self.table().delete(client)?;
         Ok(())
     }
@@ -96,38 +96,6 @@ pub trait RuntimeClient: Sync + Send {
 
     /// Publish a message to the specified channel.
     async fn publish(&self, ch: String, data: Bytes) -> anyhow::Result<()>;
-}
-
-/// Client is used by `bindgen` (see [`bindings`] module above) to generate the type
-/// for the wit `client` resource. By default, `bindgen` will generate an uninhabitable
-/// type as a placeholder.
-///
-/// The `Client` struct wraps the runtime's messaging client implementation. This allows
-/// the host to interact with the runtime's messaging client without prior knowledge of
-/// runtime implementation details.
-pub struct Client {
-    runtime: Box<dyn RuntimeClient>,
-}
-
-impl Client {
-    #[must_use]
-    pub fn new(runtime: Box<dyn RuntimeClient>) -> Self {
-        Self { runtime }
-    }
-
-    /// Subscribe to the specified channel.
-    ///
-    /// # Errors
-    async fn subscribe(&self, ch: String) -> anyhow::Result<Subscriber> {
-        self.runtime.subscribe(ch).await
-    }
-
-    /// Publish a message to the specified channel.
-    ///
-    /// # Errors
-    async fn publish(&self, ch: String, data: Bytes) -> anyhow::Result<()> {
-        self.runtime.publish(ch, data).await
-    }
 }
 
 /// RuntimeSubscriber is implemented by the runtime to provide the host with access
