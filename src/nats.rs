@@ -190,11 +190,11 @@ impl Client {
 #[async_trait::async_trait]
 impl RuntimeClient for Client {
     
-    async fn subscribe(&self, ch: String) -> anyhow::Result<messaging::Subscriber> {
-        let subscriber = messaging::Subscriber::new(Box::pin(Subscriber {
+    async fn subscribe(&self, ch: String) -> anyhow::Result<Pin<Box<dyn RuntimeSubscriber>>> {
+        let subscriber = Subscriber {
             inner: self.inner.subscribe(ch).await?,
-        }));
-        Ok(subscriber)
+        };
+        Ok(Box::pin(subscriber))
     }
 
     async fn publish(&self, ch: String, data: Bytes) -> anyhow::Result<()> {

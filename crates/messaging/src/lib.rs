@@ -4,12 +4,10 @@ mod consumer;
 mod producer;
 
 use std::pin::Pin;
-use std::task::{Context, Poll};
 
 use bindings::messaging_types::{self, Error, GuestConfiguration, HostClient, HostError, Message};
 use bytes::Bytes;
 use futures::stream::Stream;
-use futures::StreamExt;
 use wasmtime::component::Resource;
 use wasmtime_wasi::WasiView;
 
@@ -88,10 +86,10 @@ impl<T: MessagingView> HostError for T {
 /// to runtime functionality.
 #[async_trait::async_trait]
 pub trait RuntimeClient: Sync + Send {
-    // type S: RuntimeSubscriber;
+    // type S: SubscriberView;
 
     /// Subscribe to the specified channel.
-    async fn subscribe(&self, ch: String) -> anyhow::Result<Subscriber>;
+    async fn subscribe(&self, ch: String) -> anyhow::Result<Pin<Box<dyn RuntimeSubscriber>>>;
 
     /// Publish a message to the specified channel.
     async fn publish(&self, ch: String, data: Bytes) -> anyhow::Result<()>;
@@ -104,26 +102,3 @@ pub trait RuntimeSubscriber: Stream<Item = Message> + Send {
     async fn unsubscribe(&mut self) -> anyhow::Result<()>;
 }
 
-pub struct Subscriber {
-    runtime: Pin<Box<dyn RuntimeSubscriber>>,
-}
-
-impl Subscriber {
-    #[must_use]
-    pub fn new(runtime: Pin<Box<dyn RuntimeSubscriber>>) -> Self {
-        Self { runtime }
-    }
-
-    async fn unsubscribe(&mut self) -> anyhow::Result<()> {
-        // self.runtime.unsubscribe().await?;
-        Ok(())
-    }
-}
-
-impl Stream for Subscriber {
-    type Item = Message;
-
-    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        self.runtime.poll_next_unpin(cx)
-    }
-}
