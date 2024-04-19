@@ -29,8 +29,6 @@ impl<T: MessagingView> consumer::Host for T {
     ) -> wasmtime::Result<anyhow::Result<Vec<Message>, Resource<Error>>> {
         let client = self.table().get(&client)?;
         let mut subscriber = client.subscribe(ch).await?;
-
-        // get first message
         let messages = subscriber.by_ref().take(1).collect().await;
         // subscriber.unsubscribe().await?;
 
