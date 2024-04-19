@@ -189,8 +189,7 @@ impl Client {
 // implementation is used by the messaging Host to interact with the NATS client.
 #[async_trait::async_trait]
 impl RuntimeClient for Client {
-    
-    async fn subscribe(&self, ch: String) -> anyhow::Result<Pin<Box<dyn RuntimeSubscriber>>> {
+    async fn subscribe(&self, ch: String) -> anyhow::Result<messaging::Subscriber> {
         let subscriber = Subscriber {
             inner: self.inner.subscribe(ch).await?,
         };

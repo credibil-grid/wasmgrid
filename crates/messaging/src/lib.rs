@@ -12,6 +12,7 @@ use wasmtime::component::Resource;
 use wasmtime_wasi::WasiView;
 
 pub type Client = Box<dyn RuntimeClient>;
+pub type Subscriber = Pin<Box<dyn RuntimeSubscriber>>;
 
 /// Wrap generation of wit bindings to simplify exports
 pub mod bindings {
@@ -86,10 +87,8 @@ impl<T: MessagingView> HostError for T {
 /// to runtime functionality.
 #[async_trait::async_trait]
 pub trait RuntimeClient: Sync + Send {
-    // type S: SubscriberView;
-
     /// Subscribe to the specified channel.
-    async fn subscribe(&self, ch: String) -> anyhow::Result<Pin<Box<dyn RuntimeSubscriber>>>;
+    async fn subscribe(&self, ch: String) -> anyhow::Result<Subscriber>;
 
     /// Publish a message to the specified channel.
     async fn publish(&self, ch: String, data: Bytes) -> anyhow::Result<()>;
@@ -101,4 +100,3 @@ pub trait RuntimeClient: Sync + Send {
 pub trait RuntimeSubscriber: Stream<Item = Message> + Send {
     async fn unsubscribe(&mut self) -> anyhow::Result<()>;
 }
-
