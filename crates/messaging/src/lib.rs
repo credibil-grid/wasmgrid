@@ -86,10 +86,9 @@ impl<T: MessagingView> HostError for T {
 
 /// RuntimeClient is implemented by the runtime to provide this host with access
 /// to runtime functionality.
-#[allow(clippy::module_name_repetitions)]
 #[async_trait::async_trait]
 pub trait RuntimeClient: Sync + Send {
-    // type Subscriber: RuntimeSubscriber;
+    // type S: RuntimeSubscriber;
 
     /// Subscribe to the specified channel.
     async fn subscribe(&self, ch: String) -> anyhow::Result<Subscriber>;
