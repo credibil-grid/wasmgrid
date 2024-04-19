@@ -147,6 +147,18 @@ impl Subscriber {
 
     async fn unsubscribe(&mut self) -> anyhow::Result<()> {
         // RuntimeSubscriber::unsubscribe(&mut self.runtime);
+
+        // let rtmut = self.runtime.by_ref();
+        // let bmut = self.runtime.borrow();
+
+        // RuntimeSubscriber::unsubscribe(&mut *self.runtime.as_mut());
+
+        // let mut rtmut = self.runtime.as_mut(); //as_mut();
+        // rtmut.unsubscribe().await?;
+
+        // let sref = rtmut.as_ref();
+        // sref.unsubscribe().await?;
+
         // self.runtime.unsubscribe().await?;
 
         Ok(())

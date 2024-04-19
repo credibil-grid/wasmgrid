@@ -219,9 +219,8 @@ impl Stream for Subscriber {
     type Item = Message;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        let opt = self.inner.poll_next_unpin(cx);
-
-        opt.map(|m| {
+        // convert async_nats::Message to messaging::Message
+        self.inner.poll_next_unpin(cx).map(|m| {
             let Some(m) = m else {
                 return None;
             };
