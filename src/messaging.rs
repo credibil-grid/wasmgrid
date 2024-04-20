@@ -17,11 +17,11 @@ use wasmtime::{Engine, Store};
 use wasmtime_wasi::{command, ResourceTable, WasiCtx, WasiCtxBuilder, WasiView};
 
 /// Start and run NATS for the specified wasm component.
-pub async fn serve(engine: &Engine, wasm: String) -> anyhow::Result<()> {
+pub async fn serve(engine: Engine, wasm: String, host: String) -> anyhow::Result<()> {
     let handler = HandlerProxy::new(engine.clone(), wasm)?;
 
     // connect to NATS
-    let client = Client::connect("demo.nats.io".to_string()).await?;
+    let client = Client::connect(host).await?;
 
     // subscribe to channels
     let mut subscribers = vec![];
