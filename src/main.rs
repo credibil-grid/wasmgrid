@@ -19,15 +19,15 @@ struct Args {
 pub async fn main() -> wasmtime::Result<()> {
     let args = Args::parse();
 
-    // initialise Engine (compilation/management of wasm modules)
+    // initialise Engine to compile and manage wasm modules
     let mut config = Config::new();
     config.async_support(true);
     let engine = Engine::new(&config)?;
 
     // start messaging Host
-    // let e = engine.clone();
-    // let w = args.wasm.clone();
-    // tokio::spawn(async move { messaging::serve(e, w, "demo.nats.io".to_string()).await });
+    let e = engine.clone();
+    let w = args.wasm.clone();
+    tokio::spawn(async move { messaging::serve(e, w, "demo.nats.io".to_string()).await });
 
     // start Http server
     let e = engine.clone();

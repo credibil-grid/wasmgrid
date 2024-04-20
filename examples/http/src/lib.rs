@@ -5,14 +5,14 @@ use http::header::CONTENT_TYPE; // AUTHORIZATION
 use http::Uri;
 // use serde::de::DeserializeOwned;
 use serde_json::json;
-use wasi::exports::http::incoming_handler;
+use wasi::exports::http::incoming_handler::Guest;
 use wasi::http::types::{
     Fields, IncomingRequest, OutgoingBody, OutgoingResponse, ResponseOutparam,
 }; // Scheme,
 
 struct HttpGuest;
 
-impl incoming_handler::Guest for HttpGuest {
+impl Guest for HttpGuest {
     fn handle(request: IncomingRequest, response: ResponseOutparam) {
         // set up response in case of early failure
         let headers = Fields::new();
