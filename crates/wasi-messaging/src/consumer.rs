@@ -2,8 +2,8 @@ use futures::stream::StreamExt;
 use tokio::time::{sleep, Duration};
 use wasmtime::component::Resource;
 
-use super::bindings::consumer;
-use super::bindings::messaging_types::{Client, Error, GuestConfiguration, Message};
+use super::bindings::wasi::messaging::consumer;
+use super::bindings::wasi::messaging::messaging_types::{Client, Error, GuestConfiguration, Message};
 use crate::MessagingView;
 
 #[async_trait::async_trait]

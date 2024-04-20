@@ -1,7 +1,8 @@
 //! # WASI Messaging Host
 
-// pub mod bindings;
 mod consumer;
+// #[path = "bindings.rs"]
+// pub mod guest_bindings;
 mod producer;
 
 use std::pin::Pin;
@@ -11,19 +12,14 @@ use futures::stream::Stream;
 use wasmtime::component::Resource;
 use wasmtime_wasi::WasiView;
 
-pub use crate::bindings::exports;
-use crate::bindings::messaging_types::{
-    self, Error, GuestConfiguration, HostClient, HostError, Message,
-};
-
 pub type Client = Box<dyn RuntimeClient>;
 pub type Subscriber = Pin<Box<dyn RuntimeSubscriber>>;
 
 /// Wrap generation of wit bindings to simplify exports
 pub mod bindings {
     pub use anyhow::Error;
-    pub use wasi::messaging::*;
 
+    // pub use wasi::messaging::*;
     pub use super::Client;
 
     wasmtime::component::bindgen!({
@@ -40,6 +36,11 @@ pub mod bindings {
         // },
     });
 }
+
+// pub use crate::bindings::exports;
+use crate::bindings::wasi::messaging::messaging_types::{
+    self, Error, GuestConfiguration, HostClient, HostError, Message,
+};
 
 /// MessageView is implemented by the messaging runtime to provide the host with
 /// access to runtime-specific functionality.

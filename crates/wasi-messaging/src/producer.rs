@@ -1,8 +1,8 @@
 use bytes::Bytes;
 use wasmtime::component::Resource;
 
-use super::bindings::messaging_types::{Client, Error, Message};
-use super::bindings::producer;
+use super::bindings::wasi::messaging::messaging_types::{Client, Error, Message};
+use super::bindings::wasi::messaging::producer;
 use crate::MessagingView;
 
 #[async_trait::async_trait]

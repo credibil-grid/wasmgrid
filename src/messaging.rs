@@ -9,7 +9,9 @@ use std::task::{Context, Poll};
 use anyhow::anyhow;
 use bytes::Bytes;
 use futures::stream::{self, Stream, StreamExt};
-use wasi_messaging::bindings::messaging_types::{Error, FormatSpec, GuestConfiguration, Message};
+use wasi_messaging::bindings::wasi::messaging::messaging_types::{
+    Error, FormatSpec, GuestConfiguration, Message,
+};
 use wasi_messaging::bindings::Messaging;
 use wasi_messaging::{self, MessagingView, RuntimeClient, RuntimeSubscriber};
 use wasmtime::component::{Component, InstancePre, Linker, Resource};

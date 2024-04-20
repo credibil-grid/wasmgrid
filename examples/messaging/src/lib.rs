@@ -5,9 +5,6 @@ use bindings::exports::wasi::messaging::messaging_guest::{
     self, Error, GuestConfiguration, Message,
 };
 
-// use wasi_messaging::bindings::exports::wasi::messaging::messaging_guest::{
-//     self, Error, GuestConfiguration, Message,
-// };
 use crate::bindings::wasi::messaging::consumer;
 use crate::bindings::wasi::messaging::messaging_types::{self, Client};
 use crate::bindings::wasi::messaging::producer::{self, Channel};
