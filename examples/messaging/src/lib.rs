@@ -2,7 +2,7 @@
 mod bindings;
 
 use bindings::exports::wasi::messaging::messaging_guest::{
-    self, Error, GuestConfiguration, Message,
+     Error, Guest, GuestConfiguration, Message,
 };
 
 use crate::bindings::wasi::messaging::consumer;
@@ -11,7 +11,7 @@ use crate::bindings::wasi::messaging::producer::{self, Channel};
 
 struct MessagingGuest;
 
-impl messaging_guest::Guest for MessagingGuest {
+impl Guest for MessagingGuest {
     // Called by the host in order to subscribe the guest to the specified channels.
     // As soon as configuration is set, the host will kill the Wasm instance.
     fn configure() -> Result<GuestConfiguration, Error> {

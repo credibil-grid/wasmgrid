@@ -1,5 +1,5 @@
 [package]
-name = "http-guest"
+name = "http"
 description = "WASM guest for secure, isolated and distributed storage of wallet keys and credentials"
 version = "0.1.0"
 
