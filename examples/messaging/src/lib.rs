@@ -2,7 +2,7 @@
 mod bindings;
 
 use bindings::exports::wasi::messaging::messaging_guest::{
-     Error, Guest, GuestConfiguration, Message,
+    Error, Guest, GuestConfiguration, Message,
 };
 
 use crate::bindings::wasi::messaging::consumer;

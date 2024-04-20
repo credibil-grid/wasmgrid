@@ -14,6 +14,7 @@ use hyper::body::Incoming;
 use hyper::server::conn::http1;
 use hyper::service::service_fn;
 use hyper::Request;
+use tokio::net::TcpSocket;
 use wasmtime::component::{Component, InstancePre, Linker, ResourceTable};
 use wasmtime::{Engine, Store, StoreLimits};
 use wasmtime_wasi::{command, WasiCtx, WasiCtxBuilder, WasiView};
@@ -21,19 +22,17 @@ use wasmtime_wasi::{command, WasiCtx, WasiCtxBuilder, WasiView};
 use wasmtime_wasi_http::body::HyperOutgoingBody;
 use wasmtime_wasi_http::io::TokioIo;
 use wasmtime_wasi_http::proxy::Proxy;
-use wasmtime_wasi_http::{hyper_response_error, WasiHttpCtx, WasiHttpView};
+use wasmtime_wasi_http::{hyper_response_error, proxy, WasiHttpCtx, WasiHttpView};
 
 /// Start and run NATS for the specified wasm component.
 pub async fn serve(engine: Engine, wasm: String, host: String) -> anyhow::Result<()> {
     let handler = HandlerProxy::new(engine.clone(), wasm)?;
 
     let addr = SocketAddr::from_str(&host)?;
-    let socket = match &addr {
-        SocketAddr::V4(_) => tokio::net::TcpSocket::new_v4()?,
-        SocketAddr::V6(_) => tokio::net::TcpSocket::new_v6()?,
-    };
-    socket.set_reuseaddr(false)?;
+    let socket = TcpSocket::new_v4()?;
+    // socket.set_reuseaddr(false)?;
     socket.bind(addr)?;
+
     let listener = socket.listen(100)?;
 
     loop {
@@ -69,7 +68,7 @@ impl HandlerProxy {
     fn new(engine: Engine, wasm: String) -> anyhow::Result<Self> {
         let mut linker = Linker::new(&engine);
         command::add_to_linker(&mut linker)?;
-        wasmtime_wasi_http::proxy::add_to_linker(&mut linker)?;
+        proxy::add_only_http_to_linker(&mut linker)?;
 
         let component = Component::from_file(&engine, wasm)?;
         let instance_pre = linker.instantiate_pre(&component)?;

@@ -3,7 +3,9 @@ use tokio::time::{sleep, Duration};
 use wasmtime::component::Resource;
 
 use super::bindings::wasi::messaging::consumer;
-use super::bindings::wasi::messaging::messaging_types::{Client, Error, GuestConfiguration, Message};
+use super::bindings::wasi::messaging::messaging_types::{
+    Client, Error, GuestConfiguration, Message,
+};
 use crate::MessagingView;
 
 #[async_trait::async_trait]

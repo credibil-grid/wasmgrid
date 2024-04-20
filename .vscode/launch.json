@@ -7,21 +7,42 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug host",
+            "name": "Messaging",
             "cargo": {
                 "args": [
                     "build",
-                    "--bin=host",
-                    "--package=host"
+                    "--bin=wasmrun",
+                    "--package=wasmrun"
                 ],
                 "filter": {
-                    "name": "host",
+                    "name": "wasmrun",
                     "kind": "bin"
                 }
             },
             "args": [
                 "--wasm",
-                "./target/wasm32-wasi/release/guest.wasm"
+                "./target/wasm32-wasi/release/messaging_guest.wasm"
+            ],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Http",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=wasmrun",
+                    "--package=wasmrun"
+                ],
+                "filter": {
+                    "name": "wasmrun",
+                    "kind": "bin"
+                }
+            },
+            "args": [
+                "--wasm",
+                "./target/wasm32-wasi/release/http_guest.wasm"
             ],
             "cwd": "${workspaceFolder}"
         },

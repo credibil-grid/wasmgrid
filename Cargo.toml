@@ -31,11 +31,11 @@ bytes = "1.6.0"
 clap = { version = "4.5.4", features = ["derive"] }
 futures = "0.3.30"
 # log = "0.4.21"
-wasi-messaging = { path = "crates/wasi-messaging" }
 tokio = { version = "1.37.0", features = ["full"] }
+wasi-messaging = { path = "crates/wasi-messaging" }
 # tracing = "0.1.40"
+http-body-util = "0.1.1"
+hyper = "1.3.1"
 wasmtime = { version = "19.0.2", features = ["component-model"] }
 wasmtime-wasi = "19.0.2"
 wasmtime-wasi-http = "19.0.2"
-hyper = "1.3.1"
-http-body-util = "0.1.1"

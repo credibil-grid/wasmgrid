@@ -25,14 +25,17 @@ pub async fn main() -> wasmtime::Result<()> {
     let engine = Engine::new(&config)?;
 
     // start messaging Host
-    let e = engine.clone();
-    let w = args.wasm.clone();
-    tokio::spawn(async move { messaging::serve(e, w, "demo.nats.io".to_string()).await });
+    // let e = engine.clone();
+    // let w = args.wasm.clone();
+    // tokio::spawn(async move { messaging::serve(e, w, "demo.nats.io".to_string()).await });
 
     // start Http server
     let e = engine.clone();
     let w = args.wasm.clone();
-    tokio::spawn(async move { http::serve(e, w, "demo.nats.io".to_string()).await });
+    // tokio::spawn(async move { http::serve(e, w, "http://localhost:8080".to_string()).await });
+    if let Err(e) = http::serve(e, w, "127.0.0.1:8080".to_string()).await {
+        eprintln!("error: {e}");
+    }
 
     shutdown().await
 }

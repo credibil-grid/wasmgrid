@@ -1,82 +1,143 @@
-#[allow(warnings)]
-mod bindings;
+#![feature(let_chains)]
 
-use bindings::exports::wasi::messaging::messaging_guest::{
-    self, Error, GuestConfiguration, Message,
-};
+use anyhow::{anyhow, Result};
+use http::header::CONTENT_TYPE; // AUTHORIZATION
+use http::Uri;
+// use serde::de::DeserializeOwned;
+use serde_json::json;
+use wasi::exports::http::incoming_handler;
+use wasi::http::types::{
+    Fields, IncomingRequest, OutgoingBody, OutgoingResponse, ResponseOutparam,
+}; // Scheme,
 
-use crate::bindings::wasi::messaging::consumer;
-use crate::bindings::wasi::messaging::messaging_types::{self, Client};
-use crate::bindings::wasi::messaging::producer::{self, Channel};
+struct HttpGuest;
 
-struct MessagingGuest;
+impl incoming_handler::Guest for HttpGuest {
+    fn handle(request: IncomingRequest, response: ResponseOutparam) {
+        // set up response in case of early failure
+        let headers = Fields::new();
+        let _ = headers.set(&CONTENT_TYPE.to_string(), &[b"application/json".to_vec()]);
+        let out_resp = OutgoingResponse::new(headers);
 
-impl messaging_guest::Guest for MessagingGuest {
-    // Called by the host in order to subscribe the guest to the specified channels.
-    // As soon as configuration is set, the host will kill the Wasm instance.
-    fn configure() -> Result<GuestConfiguration, Error> {
-        Ok(GuestConfiguration {
-            channels: vec!["a".to_string(), "b".to_string(), "c".to_string()],
-            extensions: None,
-        })
-    }
+        let Ok(out_body) = out_resp.body() else {
+            return;
+        };
+        ResponseOutparam::set(response, Ok(out_resp));
 
-    // Whenever a message is received on a subscribed channel, the host will call this
-    // function. Once the message has been handled, the host should kill the Wasm
-    // instance.
-    fn handler(msgs: Vec<Message>) -> Result<(), Error> {
-        for msg in msgs {
-            // get channel
-            let Some(metadata) = &msg.metadata else {
-                return Ok(());
-            };
-            let Some((_, channel)) = metadata.iter().find(|(k, _)| k == "channel") else {
-                return Ok(());
-            };
+        let req = Request::from(&request);
 
-            match channel.as_str() {
-                "a" => {
-                    println!("Hello from guest channel a");
+        // invoke handler based on path
+        let result = match req.uri().path() {
+            "/" => invoke(&req),
+            path => Err(anyhow!("path {path} not found")),
+        };
 
-                    // unsubscribe from channel
-                    consumer::update_guest_configuration(&GuestConfiguration {
-                        channels: vec!["b".to_string(), "c".to_string()],
-                        extensions: None,
-                    })?;
-                    return consumer::abandon_message(&msg);
-                }
-                "b" => {
-                    // request-reply from channel d
-                    let client = Client::connect("demo.nats.io").unwrap();
-                    let msgs =
-                        consumer::subscribe_try_receive(client, &Channel::from("d"), 100).unwrap();
-                    println!("channel d: {:?}", msgs);
-
-                    return consumer::complete_message(&msg);
-                }
-                "c" => {
-                    // send message to temp channel d
-                    let mut resp = b"channel c: ".to_vec();
-                    resp.extend(msg.data.clone());
-
-                    let client = Client::connect("demo.nats.io").unwrap();
-                    let message = Message {
-                        data: resp,
-                        format: messaging_types::FormatSpec::Raw,
-                        metadata: None,
-                    };
-                    producer::send(client, &Channel::from("d"), &[message]).unwrap();
-
-                    return consumer::complete_message(&msg);
-                }
-                _ => {
-                    return Ok(());
-                }
+        // serialize response
+        let content = match result {
+            Ok(resp) => resp,
+            Err(err) => {
+                let json = json!({"error": "server_error", "error_description": err.to_string()});
+                serde_json::to_vec(&json).unwrap()
             }
-        }
+        };
 
-        Ok(())
+        // write outgoing body
+        let out_stream = out_body.write().unwrap();
+        out_stream.blocking_write_and_flush(content.as_slice()).unwrap();
+        drop(out_stream);
+        OutgoingBody::finish(out_body, None).unwrap();
     }
 }
 
-bindings::export!(MessagingGuest with_types_in bindings);
+fn invoke(request: &Request) -> Result<Vec<u8>> {
+    println!("{:?}", request.uri());
+
+    // let json_req = serde_json::from_slice(&request.body()?)?;
+    // println!("{:?}", json_req);
+
+    let json_res = json!({
+        "message": "Hello, World!"
+    });
+
+    serde_json::to_vec(&json_res).map_err(Into::into)
+
+    // let mut req = request.from_json::<InvokeRequest>()?;
+    // req.credential_issuer = request.host()?;
+
+    // let result = block_on(async { ENDPOINT.invoke(&req).await })?;
+    // serde_json::to_vec(&result).map_err(Into::into)
+}
+
+wasi::http::proxy::export!(HttpGuest);
+
+#[derive(Debug)]
+pub struct Request<'a> {
+    inner: &'a IncomingRequest,
+}
+
+impl<'a> From<&'a IncomingRequest> for Request<'a> {
+    fn from(inner: &'a IncomingRequest) -> Self {
+        Self { inner }
+    }
+}
+
+impl<'a> Request<'a> {
+    pub fn uri(&self) -> Uri {
+        let p_and_q = self.inner.path_with_query().unwrap_or_default();
+        p_and_q.parse::<Uri>().unwrap_or_else(|_| Uri::default())
+    }
+
+    // // Get the host the request was made to (using scheme and authority).
+    // fn host(&self) -> Result<String> {
+    //     let Some(authority) = self.inner.authority() else {
+    //         return Err(anyhow!("Authority is missing"));
+    //     };
+
+    //     let scheme = match self.inner.scheme() {
+    //         Some(Scheme::Http) => String::from("http"),
+    //         Some(Scheme::Https) => String::from("https"),
+    //         Some(Scheme::Other(s)) => s,
+    //         None => return Err(anyhow!("Scheme is missing")),
+    //     };
+
+    //     Ok(format!("{scheme}://{authority}"))
+    // }
+
+    // // Get the access token from the Authorization header.
+    // fn auth_token(&self) -> Result<String> {
+    //     let header = self.inner.headers().get(&AUTHORIZATION.to_string());
+    //     if header.is_empty() {
+    //         return Err(anyhow!("Authorization header is missing"));
+    //     }
+    //     let Ok(value) = String::from_utf8(header[0].clone()) else {
+    //         return Err(anyhow!("Authorization header is not valid UTF-8"));
+    //     };
+    //     let Some(token) = value.split_whitespace().last() else {
+    //         return Err(anyhow!("Authorization header is missing token"));
+    //     };
+    //     Ok(token.to_owned())
+    // }
+
+    fn body(&self) -> Result<Vec<u8>> {
+        let body = self.inner.consume().map_err(|()| anyhow!("error consuming request body"))?;
+        let stream = body.stream().map_err(|()| anyhow!("error getting body stream"))?;
+
+        // Read the entire body into a buffer.
+        let mut buffer = Vec::new();
+        while let Ok(bytes) = stream.read(1000)
+            && !bytes.is_empty()
+        {
+            buffer.extend_from_slice(&bytes);
+        }
+
+        Ok(buffer)
+    }
+
+    // fn from_json<T: DeserializeOwned>(&self) -> Result<T> {
+    //     Ok(serde_json::from_slice::<T>(&self.body()?)?)
+    // }
+
+    // fn from_form<T: DeserializeOwned>(&self) -> Result<T> {
+    //     Ok(serde_urlencoded::from_bytes::<T>(&self.body()?)?)
+    // }
+}
