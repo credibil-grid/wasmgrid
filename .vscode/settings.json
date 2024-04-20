@@ -6,8 +6,7 @@
         "cargo",
         "component",
         "check",
-        "--workspace",
-        "--all-targets",
+        "--examples",
         "--message-format=json"
     ],
 }

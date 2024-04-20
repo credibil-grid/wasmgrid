@@ -15,40 +15,12 @@ cargo install cargo-component
 
 ### Messaging Example
 
-Build the example guest:
+Build and run the Messaging host and example guest.
 
-```bash
-cargo component build --package messaging-guest --release
-```
-
-Run a guest using the runtime:
-
-```bash
-cargo run -- --wasm ./target/wasm32-wasi/release/messaging_guest.wasm
-```
-
-In a separate console, send some messages to the guest:
-
-```bash
-cargo test --test publish
-```
+[examples/messaging/README.md](examples/messaging/README.md).
 
 ### Http Example
 
-Build the example guest:
+Build and run the Http host and example guest.
 
-```bash
-cargo component build --package http-guest --release
-```
-
-Run a guest using the runtime:
-
-```bash
-cargo run -- --wasm ./target/wasm32-wasi/release/http_guest.wasm
-```
-
-In a separate console, call the guest:
-
-```bash
-curl -d '{"text":"hello"}' http://localhost:8080
-```
+See [examples/http/README.md](examples/http/README.md).
