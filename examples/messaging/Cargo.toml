@@ -1,5 +1,5 @@
 [package]
-name = "guest"
+name = "messaging-guest"
 description = "WASM guest for secure, isolated and distributed storage of wallet keys and credentials"
 version = "0.1.0"
 
@@ -12,12 +12,13 @@ crate-type = ["cdylib"]
 [dependencies]
 bitflags = "2.5.0"
 wit-bindgen-rt = "0.24.0"
+wasi-messaging = { path = "../../crates/wasi-messaging" }
 
 [package.metadata.component]
 package = "wasi:messaging"
 
 [package.metadata.component.target]
-path = "../../crates/messaging/wit"
+path = "../../crates/wasi-messaging/wit"
 world = "messaging"
 
 [package.metadata.component.dependencies]

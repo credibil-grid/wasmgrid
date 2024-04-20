@@ -9,9 +9,9 @@ use std::task::{Context, Poll};
 use anyhow::anyhow;
 use bytes::Bytes;
 use futures::stream::{self, Stream, StreamExt};
-use messaging::bindings::messaging_types::{Error, FormatSpec, GuestConfiguration, Message};
-use messaging::bindings::Messaging;
-use messaging::{self, MessagingView, RuntimeClient, RuntimeSubscriber};
+use wasi_messaging::bindings::messaging_types::{Error, FormatSpec, GuestConfiguration, Message};
+use wasi_messaging::bindings::Messaging;
+use wasi_messaging::{self, MessagingView, RuntimeClient, RuntimeSubscriber};
 use wasmtime::component::{Component, InstancePre, Linker, Resource};
 use wasmtime::{Engine, Store};
 use wasmtime_wasi::{command, ResourceTable, WasiCtx, WasiCtxBuilder, WasiView};
@@ -121,10 +121,10 @@ impl Host {
     }
 
     // Add a new client to the host state.
-    fn add_client(&mut self, client: Client) -> anyhow::Result<Resource<messaging::Client>> {
+    fn add_client(&mut self, client: Client) -> anyhow::Result<Resource<wasi_messaging::Client>> {
         let name = client.name.clone();
-        // let client = messaging::Client::new(Box::new(client));
-        let client: messaging::Client = Box::new(client);
+        // let client = wasi_messaging::Client::new(Box::new(client));
+        let client: wasi_messaging::Client = Box::new(client);
 
         let resource = self.table.push(client)?;
         self.keys.insert(name, resource.rep());
@@ -133,10 +133,10 @@ impl Host {
     }
 }
 
-// Implement the [`messaging::MessagingView`]` trait for Host.
+// Implement the [`wasi_messaging::MessagingView`]` trait for Host.
 #[async_trait::async_trait]
 impl MessagingView for Host {
-    async fn connect(&mut self, name: String) -> anyhow::Result<Resource<messaging::Client>> {
+    async fn connect(&mut self, name: String) -> anyhow::Result<Resource<wasi_messaging::Client>> {
         let resource = if let Some(key) = self.keys.get(&name) {
             // reuse existing connection
             Resource::new_own(*key)
@@ -170,7 +170,7 @@ impl WasiView for Host {
 }
 
 // Client holds a reference to the the NATS client. It is used to implement the
-// [`messaging::RuntimeClient`] trait used by the messaging Host.
+// [`wasi_messaging::RuntimeClient`] trait used by the messaging Host.
 #[derive(Clone)]
 struct Client {
     name: String,
@@ -185,11 +185,11 @@ impl Client {
     }
 }
 
-// Implement the [`messaging::RuntimeClient`] trait for Client. This trait
+// Implement the [`wasi_messaging::RuntimeClient`] trait for Client. This trait
 // implementation is used by the messaging Host to interact with the NATS client.
 #[async_trait::async_trait]
 impl RuntimeClient for Client {
-    async fn subscribe(&self, ch: String) -> anyhow::Result<messaging::Subscriber> {
+    async fn subscribe(&self, ch: String) -> anyhow::Result<wasi_messaging::Subscriber> {
         let subscriber = Subscriber {
             inner: self.inner.subscribe(ch).await?,
         };
@@ -202,12 +202,12 @@ impl RuntimeClient for Client {
 }
 
 // // Subscriber holds a reference to the the NATS client. It is used to implement the
-// [`messaging::RuntimeClient`] trait used by the messaging Host.
+// [`wasi_messaging::RuntimeClient`] trait used by the messaging Host.
 struct Subscriber {
     inner: async_nats::Subscriber,
 }
 
-// Implement the [`messaging::RuntimeClient`] trait for Client. This trait
+// Implement the [`wasi_messaging::RuntimeClient`] trait for Client. This trait
 // implementation is used by the messaging Host to interact with the NATS client.
 #[async_trait::async_trait]
 impl RuntimeSubscriber for Subscriber {
@@ -220,7 +220,7 @@ impl Stream for Subscriber {
     type Item = Message;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        // convert async_nats::Message to messaging::Message
+        // convert async_nats::Message to wasi_messaging::Message
         self.inner.poll_next_unpin(cx).map(|m| {
             let Some(m) = m else {
                 return None;

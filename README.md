@@ -16,13 +16,13 @@ cargo install cargo-component
 Build the messaging guest:
 
 ```bash
-cargo component build --package guest --release
+cargo component build --package messaging --release
 ```
 
 Run the guest using the runtime:
 
 ```bash
-cargo run -- --wasm ./target/wasm32-wasi/release/guest.wasm
+cargo run -- --wasm ./target/wasm32-wasi/release/messaging.wasm
 ```
 
 In a separate console, send some messages to the guest:

@@ -1,15 +1,20 @@
 //! # WASI Messaging Host
 
+// pub mod bindings;
 mod consumer;
 mod producer;
 
 use std::pin::Pin;
 
-use bindings::messaging_types::{self, Error, GuestConfiguration, HostClient, HostError, Message};
 use bytes::Bytes;
 use futures::stream::Stream;
 use wasmtime::component::Resource;
 use wasmtime_wasi::WasiView;
+
+pub use crate::bindings::exports;
+use crate::bindings::messaging_types::{
+    self, Error, GuestConfiguration, HostClient, HostError, Message,
+};
 
 pub type Client = Box<dyn RuntimeClient>;
 pub type Subscriber = Pin<Box<dyn RuntimeSubscriber>>;

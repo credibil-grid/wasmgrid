@@ -10,7 +10,10 @@ use std::str::FromStr;
 // use std::sync::atomic::{AtomicU64}, Ordering};
 use anyhow::anyhow;
 use http_body_util::BodyExt;
+use hyper::body::Incoming;
 use hyper::server::conn::http1;
+use hyper::service::service_fn;
+use hyper::Request;
 use wasmtime::component::{Component, InstancePre, Linker, ResourceTable};
 use wasmtime::{Engine, Store, StoreLimits};
 use wasmtime_wasi::{command, WasiCtx, WasiCtxBuilder, WasiView};
@@ -19,8 +22,6 @@ use wasmtime_wasi_http::body::HyperOutgoingBody;
 use wasmtime_wasi_http::io::TokioIo;
 use wasmtime_wasi_http::proxy::Proxy;
 use wasmtime_wasi_http::{hyper_response_error, WasiHttpCtx, WasiHttpView};
-
-type Request = hyper::Request<hyper::body::Incoming>;
 
 /// Start and run NATS for the specified wasm component.
 pub async fn serve(engine: Engine, wasm: String, host: String) -> anyhow::Result<()> {
@@ -37,16 +38,13 @@ pub async fn serve(engine: Engine, wasm: String, host: String) -> anyhow::Result
 
     loop {
         let (stream, _) = listener.accept().await?;
-        let stream = TokioIo::new(stream);
+        let io = TokioIo::new(stream);
         let handler = handler.clone();
 
-        tokio::spawn(async {
+        tokio::spawn(async move {
             if let Err(e) = http1::Builder::new()
                 .keep_alive(true)
-                .serve_connection(
-                    stream,
-                    hyper::service::service_fn(move |req| handler.clone().request(req)),
-                )
+                .serve_connection(io, service_fn(|req| handler.clone().request(req)))
                 .await
             {
                 eprintln!("error: {e:?}");
@@ -84,7 +82,9 @@ impl HandlerProxy {
     }
 
     // Forward NATS message to the wasm Guest.
-    async fn request(self, request: Request) -> anyhow::Result<hyper::Response<HyperOutgoingBody>> {
+    async fn request(
+        self, request: Request<Incoming>,
+    ) -> anyhow::Result<hyper::Response<HyperOutgoingBody>> {
         let (sender, receiver) = tokio::sync::oneshot::channel();
         let engine = self.engine.clone();
         // let req_id = self.next_id.fetch_add(1, Ordering::Relaxed);

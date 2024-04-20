@@ -939,14 +939,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "guest"
-version = "0.1.0"
-dependencies = [
- "bitflags 2.5.0",
- "wit-bindgen-rt",
-]
-
-[[package]]
 name = "h2"
 version = "0.4.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1033,6 +1025,14 @@ dependencies = [
  "http",
  "http-body",
  "pin-project-lite",
+]
+
+[[package]]
+name = "http-guest"
+version = "0.1.0"
+dependencies = [
+ "bitflags 2.5.0",
+ "wit-bindgen-rt",
 ]
 
 [[package]]
@@ -1277,17 +1277,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "messaging"
+name = "messaging-guest"
 version = "0.1.0"
 dependencies = [
- "anyhow",
- "async-trait",
- "bytes",
- "futures",
- "tokio",
- "tracing",
- "wasmtime",
- "wasmtime-wasi",
+ "bitflags 2.5.0",
+ "wasi-messaging",
+ "wit-bindgen-rt",
 ]
 
 [[package]]
@@ -2314,6 +2309,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9c8d87e72b64a3b4db28d11ce29237c246188f4f51057d65a7eab63b7987e423"
 
 [[package]]
+name = "wasi-messaging"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "bytes",
+ "futures",
+ "tokio",
+ "tracing",
+ "wasmtime",
+ "wasmtime-wasi",
+]
+
+[[package]]
 name = "wasm-bindgen"
 version = "0.2.92"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2418,8 +2427,8 @@ dependencies = [
  "futures",
  "http-body-util",
  "hyper",
- "messaging",
  "tokio",
+ "wasi-messaging",
  "wasmtime",
  "wasmtime-wasi",
  "wasmtime-wasi-http",
