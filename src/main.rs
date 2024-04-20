@@ -32,10 +32,7 @@ pub async fn main() -> wasmtime::Result<()> {
     // start Http server
     let e = engine.clone();
     let w = args.wasm.clone();
-    // tokio::spawn(async move { http::serve(e, w, "http://localhost:8080".to_string()).await });
-    if let Err(e) = http::serve(e, w, "127.0.0.1:8080".to_string()).await {
-        eprintln!("error: {e}");
-    }
+    tokio::spawn(async move { http::serve(e, w, "localhost:8080").await });
 
     shutdown().await
 }

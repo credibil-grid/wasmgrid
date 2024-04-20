@@ -14,7 +14,7 @@ use hyper::body::Incoming;
 use hyper::server::conn::http1;
 use hyper::service::service_fn;
 use hyper::Request;
-use tokio::net::TcpSocket;
+use tokio::net::{TcpListener, TcpSocket};
 use wasmtime::component::{Component, InstancePre, Linker, ResourceTable};
 use wasmtime::{Engine, Store, StoreLimits};
 use wasmtime_wasi::{command, WasiCtx, WasiCtxBuilder, WasiView};
@@ -25,15 +25,16 @@ use wasmtime_wasi_http::proxy::Proxy;
 use wasmtime_wasi_http::{hyper_response_error, proxy, WasiHttpCtx, WasiHttpView};
 
 /// Start and run NATS for the specified wasm component.
-pub async fn serve(engine: Engine, wasm: String, host: String) -> anyhow::Result<()> {
+pub async fn serve(engine: Engine, wasm: String, host: &str) -> anyhow::Result<()> {
     let handler = HandlerProxy::new(engine.clone(), wasm)?;
 
-    let addr = SocketAddr::from_str(&host)?;
-    let socket = TcpSocket::new_v4()?;
+    // let addr = SocketAddr::from_str(host)?;
+    // let socket = TcpSocket::new_v4()?;
     // socket.set_reuseaddr(false)?;
-    socket.bind(addr)?;
+    // socket.bind(addr)?;
+    // let listener = socket.listen(100)?;
 
-    let listener = socket.listen(100)?;
+    let listener = TcpListener::bind(host).await?;
 
     loop {
         let (stream, _) = listener.accept().await?;
