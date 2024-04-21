@@ -224,15 +224,12 @@ impl Stream for Subscriber {
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         // convert async_nats::Message to wasi_messaging::Message
         self.inner.poll_next_unpin(cx).map(|m| {
-            let Some(m) = m else {
-                return None;
-            };
-
-            return Some(Message {
+            let m = m?;
+            Some(Message {
                 data: m.payload.to_vec(),
                 metadata: Some(vec![(String::from("channel"), m.subject.to_string())]),
                 format: FormatSpec::Raw,
-            });
+            })
         })
     }
 }

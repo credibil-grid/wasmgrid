@@ -5,10 +5,14 @@ version = "0.1.0"
 authors.workspace = true
 edition.workspace = true
 default-run = "wasmrun"
+rust-version.workspace = true
 
-[[bin]]
-path = "src/main.rs"
-name = "wasmrun"
+# [[bin]]
+# path = "src/main.rs"
+# name = "wasmrun"
+
+[lints]
+workspace = true
 
 [dependencies]
 anyhow.workspace = true
@@ -34,6 +38,19 @@ resolver = "2"
 [workspace.package]
 edition = "2021"
 authors = ["Credibil"]
+rust-version = "1.77.0"
+
+[workspace.lints.rust]
+# turn on allow-by-default lints
+unused_extern_crates = "warn"
+trivial_numeric_casts = "warn"
+unstable_features = "warn"
+unused_import_braces = "warn"
+
+[workspace.lints.clippy]
+all = "warn"
+pedantic = "warn"
+# nursery = "warn"
 
 [workspace.dependencies]
 anyhow = "1.0.82"

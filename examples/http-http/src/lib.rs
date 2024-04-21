@@ -7,7 +7,8 @@ use http::Uri;
 use serde_json::json;
 use wasi::exports::http::incoming_handler::Guest;
 use wasi::http::types::{
-    Fields, IncomingRequest, OutgoingBody, OutgoingResponse, ResponseOutparam,
+    Fields, IncomingRequest, IncomingResponse, OutgoingBody, OutgoingRequest, OutgoingResponse,
+    ResponseOutparam,
 }; // Scheme,
 
 struct HttpGuest;
@@ -28,7 +29,7 @@ impl Guest for HttpGuest {
 
         // invoke handler based on path
         let result = match req.uri().path() {
-            "/" => hello(&req),
+            "/" => outgoing(&req),
             path => Err(anyhow!("path {path} not found")),
         };
 
@@ -49,7 +50,7 @@ impl Guest for HttpGuest {
     }
 }
 
-fn hello(request: &Request) -> Result<Vec<u8>> {
+fn outgoingx(request: &Request) -> Result<Vec<u8>> {
     println!("request.uri: {}", request.uri());
 
     let json_req = serde_json::from_slice(&request.body()?)?;

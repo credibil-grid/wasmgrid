@@ -9,6 +9,9 @@ edition.workspace = true
 [lib]
 crate-type = ["cdylib"]
 
+[lints]
+workspace = true
+
 [dependencies]
 # bitflags = "2.5.0"
 wit-bindgen-rt = "0.24.0"

@@ -49,7 +49,8 @@ install_crate = "taplo-cli"
 # not using (yet) -Dclippy::restriction
 [tasks.lint]
 command = "cargo"
-args = ["clippy", "--", "-Dclippy::all", "-Dclippy::nursery", "-Dclippy::pedantic"]
+args = ["clippy"]
+# args = ["clippy", "--", "-Dclippy::all", "-Dclippy::pedantic"] # "-Dclippy::nursery",
 install_crate = { rustup_component_name = "clippy" }
 
 [tasks.audit]

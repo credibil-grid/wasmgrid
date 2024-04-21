@@ -92,7 +92,6 @@ impl HandlerProxy {
 
         let task = tokio::spawn(async move {
             let mut store = Store::new(&engine, Host::new());
-            store.data_mut().limits = StoreLimits::default();
             store.limiter(|t| &mut t.limits);
 
             let (parts, body) = request.into_parts();
@@ -104,14 +103,7 @@ impl HandlerProxy {
             let (proxy, _) = Proxy::instantiate_pre(&mut store, &instance_pre).await?;
 
             // call guest with request
-            if let Err(e) =
-                proxy.wasi_http_incoming_handler().call_handle(&mut store, req, out).await
-            {
-                // log::error!("[{req_id}] :: {:#?}", e);
-                return Err(e);
-            }
-
-            Ok(())
+            proxy.wasi_http_incoming_handler().call_handle(&mut store, req, out).await
         });
 
         match receiver.await {
@@ -132,7 +124,7 @@ impl HandlerProxy {
                     Err(e) => e.into(),
                 };
 
-                return Err(anyhow!("guest never invoked `response-outparam::set` method: {e:?}"));
+                Err(anyhow!("guest never invoked `response-outparam::set` method: {e:?}"))
             }
         }
     }
