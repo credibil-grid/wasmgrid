@@ -9,11 +9,11 @@ cargo component build --package http-http --release
 Run a guest using the runtime:
 
 ```bash
-cargo run -- --wasm ./target/wasm32-wasi/release/http_http.wasm
+cargo run -- --http-addr localhost:8081 ./target/wasm32-wasi/release/http_http.wasm
 ```
 
 In a separate console, call the guest:
 
 ```bash
-curl http://localhost:8081
+curl -d '{"text":"hello"}' http://localhost:8081
 ```

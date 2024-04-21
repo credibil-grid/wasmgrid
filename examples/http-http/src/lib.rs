@@ -54,19 +54,20 @@ impl Guest for HttpGuest {
 fn outgoing(request: &Request) -> Result<Vec<u8>> {
     println!("request.uri: {}", request.uri());
 
-    let json_req = serde_json::from_slice(&request.body()?)?;
-    println!("{:?}", json_req);
+    let req: serde_json::Value = serde_json::from_slice(&request.body()?)?;
+    println!("http-http req: {:?}", req);
 
     let headers = Headers::new();
     let out_req = OutgoingRequest::new(headers);
-
     let _ = out_req.set_scheme(Some(&Scheme::Http));
-    let _ = out_req.set_authority(Some("localhost:8080"));
+    let _ = out_req.set_authority(Some("127.0.0.1:8080"));
     let _ = out_req.set_path_with_query(Some("/"));
 
     let fut_resp = outgoing_handler::handle(out_req, None)?;
+    println!("fut_resp: {:?}", fut_resp);
+
     let resp = fut_resp.get();
-    println!("{:?}", resp);
+    println!("resp: {:?}", resp);
 
     let json_res = json!({
         "message": "Hello, World!"

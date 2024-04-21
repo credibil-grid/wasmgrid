@@ -14,27 +14,21 @@ use hyper::body::Incoming;
 use hyper::server::conn::http1;
 use hyper::service::service_fn;
 use hyper::Request;
-use tokio::net::TcpListener; // TcpSocket
+use tokio::net::TcpListener;
 use wasmtime::component::{Component, InstancePre, Linker, ResourceTable};
 use wasmtime::{Engine, Store, StoreLimits}; // StoreLimitsBuilder
 use wasmtime_wasi::{command, WasiCtx, WasiCtxBuilder, WasiView};
-// use wasmtime_wasi_http::bindings::http::types as http_types;
 use wasmtime_wasi_http::body::HyperOutgoingBody;
 use wasmtime_wasi_http::io::TokioIo;
 use wasmtime_wasi_http::proxy::Proxy;
 use wasmtime_wasi_http::{hyper_response_error, proxy, WasiHttpCtx, WasiHttpView};
 
-/// Start and run NATS for the specified wasm component.
-pub async fn serve(engine: Engine, wasm: String, host: String) -> anyhow::Result<()> {
+/// Start and run http server for the specified wasm component.
+pub async fn serve(engine: Engine, addr: String, wasm: String) -> anyhow::Result<()> {
     let handler = HandlerProxy::new(engine.clone(), wasm)?;
+    let listener = TcpListener::bind(addr).await?;
 
-    // let addr = SocketAddr::from_str(host)?;
-    // let socket = TcpSocket::new_v4()?;
-    // socket.set_reuseaddr(false)?;
-    // socket.bind(addr)?;
-    // let listener = socket.listen(100)?;
-
-    let listener = TcpListener::bind(host).await?;
+    println!("Listening on: {}", listener.local_addr()?);
 
     loop {
         let (stream, _) = listener.accept().await?;
@@ -51,8 +45,6 @@ pub async fn serve(engine: Engine, wasm: String, host: String) -> anyhow::Result
             }
         });
     }
-
-    // Ok(())
 }
 
 // HandlerProxy is a proxy for the wasm messaging Host, wrapping calls to the Guest's

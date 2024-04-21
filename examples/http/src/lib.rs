@@ -52,13 +52,13 @@ impl Guest for HttpGuest {
 fn hello(request: &Request) -> Result<Vec<u8>> {
     println!("request.uri: {}", request.uri());
 
-    let json_req = serde_json::from_slice(&request.body()?)?;
-    println!("{:?}", json_req);
+    let req: serde_json::Value = serde_json::from_slice(&request.body()?)?;
+    println!("json: {:?}", req);
 
-    let json_res = json!({
+    let resp = json!({
         "message": "Hello, World!"
     });
-    serde_json::to_vec(&json_res).map_err(Into::into)
+    serde_json::to_vec(&resp).map_err(Into::into)
 }
 
 wasi::http::proxy::export!(HttpGuest);
