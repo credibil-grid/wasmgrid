@@ -5,7 +5,7 @@ edition = "2021"
 authors.workspace = true
 
 [lib]
-crate-type = ["cdylib", "rlib"]
+crate-type = ["cdylib"]
 
 [lints]
 workspace = true
@@ -14,5 +14,5 @@ workspace = true
 anyhow.workspace = true
 http = "1.1.0"
 # serde = { version = "1.0.197", features = ["derive"] }
-serde_json = "1.0.115"
+serde_json = "1.0.116"
 wasi = "0.13.0"

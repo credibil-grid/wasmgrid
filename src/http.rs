@@ -25,7 +25,7 @@ use wasmtime_wasi_http::proxy::Proxy;
 use wasmtime_wasi_http::{hyper_response_error, proxy, WasiHttpCtx, WasiHttpView};
 
 /// Start and run NATS for the specified wasm component.
-pub async fn serve(engine: Engine, wasm: String, host: &str) -> anyhow::Result<()> {
+pub async fn serve(engine: Engine, wasm: String, host: String) -> anyhow::Result<()> {
     let handler = HandlerProxy::new(engine.clone(), wasm)?;
 
     // let addr = SocketAddr::from_str(host)?;

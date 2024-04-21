@@ -6,9 +6,10 @@ use http::Uri;
 // use serde::de::DeserializeOwned;
 use serde_json::json;
 use wasi::exports::http::incoming_handler::Guest;
+use wasi::http::outgoing_handler;
 use wasi::http::types::{
-    Fields, IncomingRequest, IncomingResponse, OutgoingBody, OutgoingRequest, OutgoingResponse,
-    ResponseOutparam,
+    Fields, Headers, IncomingRequest, OutgoingBody, OutgoingRequest, OutgoingResponse,
+    ResponseOutparam, Scheme,
 }; // Scheme,
 
 struct HttpGuest;
@@ -55,6 +56,17 @@ fn outgoing(request: &Request) -> Result<Vec<u8>> {
 
     let json_req = serde_json::from_slice(&request.body()?)?;
     println!("{:?}", json_req);
+
+    let headers = Headers::new();
+    let out_req = OutgoingRequest::new(headers);
+
+    let _ = out_req.set_scheme(Some(&Scheme::Http));
+    let _ = out_req.set_authority(Some("localhost:8080"));
+    let _ = out_req.set_path_with_query(Some("/"));
+
+    let fut_resp = outgoing_handler::handle(out_req, None)?;
+    let resp = fut_resp.get();
+    println!("{:?}", resp);
 
     let json_res = json!({
         "message": "Hello, World!"

@@ -13,6 +13,16 @@ struct Args {
     /// The path to the wasm file to serve.
     #[arg(short, long)]
     wasm: String,
+
+    /// The http host.
+    #[arg(long)]
+    #[arg(default_value = "localhost:8080")]
+    http_host: String,
+
+    /// The NATS host.
+    #[arg(long)]
+    #[arg(default_value = "demo.nats.io")]
+    nats_host: String,
 }
 
 #[tokio::main]
@@ -27,12 +37,12 @@ pub async fn main() -> wasmtime::Result<()> {
     // start messaging Host
     let e = engine.clone();
     let w = args.wasm.clone();
-    tokio::spawn(async move { messaging::serve(e, w, "demo.nats.io".to_string()).await });
+    tokio::spawn(async move { messaging::serve(e, w, args.nats_host).await });
 
     // start Http server
     let e = engine.clone();
     let w = args.wasm.clone();
-    tokio::spawn(async move { http::serve(e, w, "localhost:8080").await });
+    tokio::spawn(async move { http::serve(e, w, args.http_host).await });
 
     shutdown().await
 }
