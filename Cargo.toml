@@ -1,41 +1,45 @@
+[package]
+name = "wasmrun"
+description = "WASI Component runtime"
+version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+default-run = "wasmrun"
+
+[[bin]]
+path = "src/main.rs"
+name = "wasmrun"
+
+[dependencies]
+anyhow.workspace = true
+async-nats = "0.34.0"
+async-trait.workspace = true
+bytes.workspace = true
+clap = { version = "4.5.4", features = ["derive"] }
+futures.workspace = true
+# log = "0.4.21"
+tokio = { version = "1.37.0", features = ["full"] }
+wasi-messaging = { path = "crates/wasi-messaging" }
+# tracing.workspace = true
+http-body-util = "0.1.1"
+hyper = "1.3.1"
+wasmtime.workspace = true
+wasmtime-wasi.workspace = true
+wasmtime-wasi-http = "19.0.2"
+
 [workspace]
-members = ["examples/*", "crates/*"]
+members = ["crates/*", "examples/*"]
 resolver = "2"
 
 [workspace.package]
 edition = "2021"
 authors = ["Credibil"]
 
-[package]
-name = "wasmrun"
-description = "host for WASM guest for secure, isolated and distributed storage of wallet keys and credentials"
-version = "0.1.0"
-authors.workspace = true
-edition.workspace = true
-
-[[bin]]
-path = "src/main.rs"
-name = "wasmrun"
-
-# [[example]]
-# name = "guest"
-# path = "examples/guest"
-# crate-type = ["cdylib"]
-# targets = ["wasm32-wasi"]
-
-[dependencies]
+[workspace.dependencies]
 anyhow = "1.0.82"
-async-nats = "0.34.0"
 async-trait = "0.1.80"
 bytes = "1.6.0"
-clap = { version = "4.5.4", features = ["derive"] }
 futures = "0.3.30"
-# log = "0.4.21"
-tokio = { version = "1.37.0", features = ["full"] }
-wasi-messaging = { path = "crates/wasi-messaging" }
-# tracing = "0.1.40"
-http-body-util = "0.1.1"
-hyper = "1.3.1"
+tracing = "0.1.40"
 wasmtime = { version = "19.0.2", features = ["component-model"] }
 wasmtime-wasi = "19.0.2"
-wasmtime-wasi-http = "19.0.2"

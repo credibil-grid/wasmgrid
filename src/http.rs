@@ -2,8 +2,8 @@
 //!
 //! This module implements a NATS wasi:messaging runtime.
 
-use std::net::SocketAddr;
-use std::str::FromStr;
+// use std::net::SocketAddr;
+// use std::str::FromStr;
 
 // use std::sync::Arc;
 
@@ -14,9 +14,9 @@ use hyper::body::Incoming;
 use hyper::server::conn::http1;
 use hyper::service::service_fn;
 use hyper::Request;
-use tokio::net::{TcpListener, TcpSocket};
+use tokio::net::TcpListener; // TcpSocket
 use wasmtime::component::{Component, InstancePre, Linker, ResourceTable};
-use wasmtime::{Engine, Store, StoreLimits};
+use wasmtime::{Engine, Store, StoreLimits}; // StoreLimitsBuilder
 use wasmtime_wasi::{command, WasiCtx, WasiCtxBuilder, WasiView};
 // use wasmtime_wasi_http::bindings::http::types as http_types;
 use wasmtime_wasi_http::body::HyperOutgoingBody;
@@ -92,6 +92,8 @@ impl HandlerProxy {
 
         let task = tokio::spawn(async move {
             let mut store = Store::new(&engine, Host::new());
+            store.data_mut().limits = StoreLimits::default();
+            store.limiter(|t| &mut t.limits);
 
             let (parts, body) = request.into_parts();
             let req = hyper::Request::from_parts(parts, body.map_err(hyper_response_error).boxed());
