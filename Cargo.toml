@@ -1,3 +1,4 @@
+
 [package]
 name = "wasmrun"
 description = "WASI Component runtime"
@@ -7,9 +8,9 @@ edition.workspace = true
 default-run = "wasmrun"
 rust-version.workspace = true
 
-# [[bin]]
-# path = "src/main.rs"
-# name = "wasmrun"
+[[bin]]
+path = "src/main.rs"
+name = "wasmrun"
 
 [lints]
 workspace = true
@@ -41,10 +42,9 @@ authors = ["Credibil"]
 rust-version = "1.77.0"
 
 [workspace.lints.rust]
-# turn on allow-by-default lints
 unused_extern_crates = "warn"
 trivial_numeric_casts = "warn"
-unstable_features = "warn"
+# unstable_features = "warn"
 unused_import_braces = "warn"
 
 [workspace.lints.clippy]

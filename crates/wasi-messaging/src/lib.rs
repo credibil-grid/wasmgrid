@@ -1,8 +1,6 @@
 //! # WASI Messaging Host
 
 mod consumer;
-// #[path = "bindings.rs"]
-// pub mod guest_bindings;
 mod producer;
 
 use std::pin::Pin;

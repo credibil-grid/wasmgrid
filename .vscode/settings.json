@@ -6,7 +6,12 @@
         "cargo",
         "component",
         "check",
-        "--examples",
+        "--package",
+        "http@0.1.0",
+        "--package",
+        "http-http",
+        "--package",
+        "messaging",
         "--message-format=json"
     ],
 }

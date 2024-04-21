@@ -50,7 +50,7 @@ impl Guest for HttpGuest {
     }
 }
 
-fn outgoingx(request: &Request) -> Result<Vec<u8>> {
+fn outgoing(request: &Request) -> Result<Vec<u8>> {
     println!("request.uri: {}", request.uri());
 
     let json_req = serde_json::from_slice(&request.body()?)?;
