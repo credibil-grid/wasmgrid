@@ -8,7 +8,7 @@ use serde_json::json;
 use wasi::exports::http::incoming_handler::Guest;
 use wasi::http::types::{
     Fields, IncomingRequest, OutgoingBody, OutgoingResponse, ResponseOutparam,
-}; // Scheme,
+};
 
 struct HttpGuest;
 
