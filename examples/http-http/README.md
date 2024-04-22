@@ -1,4 +1,21 @@
-# Http Example
+# Http-Http Example
+
+This example demonstrates how to make an outgoing http request to a downstream service (the `http` example).
+
+## Running the example
+
+First, start the downstream service:
+
+```bash
+# build the http guest
+cargo component build --package http --release
+
+# build the `wasmrun` binary
+cargo build
+
+# run the binary (on localhost:8080)
+./target/debug/wasmrun --http-addr localhost:8080 ./target/wasm32-wasi/release/http.wasm
+```
 
 Build the example guest:
 
