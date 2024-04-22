@@ -31,7 +31,7 @@ impl Guest for HttpGuest {
 
         // invoke handler based on path
         let result = match req.uri().path() {
-            "/" => outgoing(&req),
+            "/" => call_downstream(&req),
             path => Err(anyhow!("path {path} not found")),
         };
 
@@ -52,9 +52,10 @@ impl Guest for HttpGuest {
     }
 }
 
-fn outgoing(request: &Request) -> Result<Vec<u8>> {
+fn call_downstream(request: &Request) -> Result<Vec<u8>> {
     println!("request.uri: {}", request.uri());
 
+    // build outgoing request
     let headers = Headers::new();
     headers.append(&USER_AGENT.to_string(), &b"WASI-HTTP/0.0.1".to_vec())?;
     headers.append(&CONTENT_TYPE.to_string(), &b"application/json".to_vec())?;
@@ -80,53 +81,50 @@ fn outgoing(request: &Request) -> Result<Vec<u8>> {
     out_stream.blocking_write_and_flush(vec.as_slice()).unwrap();
     drop(out_stream);
 
+    // make request
     let fut_resp = outgoing_handler::handle(out_req, None)?;
     if let Err(e) = OutgoingBody::finish(out_body, None) {
-        println!("error finishing out_req body: {e}");
         anyhow::bail!("output stream error: {e}")
     }
 
-    let in_resp = match fut_resp.get() {
-        Some(Ok(result)) => result,
-        Some(Err(())) => anyhow::bail!("response taken"),
+    // Option<Result<Result<IncomingResponse, ErrorCode>, ()>>
+    // process response
+    let resp = match fut_resp.get() {
+        Some(result) => result,
         None => {
-            println!("here 5.2");
             fut_resp.subscribe().block();
             let Some(result) = fut_resp.get() else {
                 anyhow::bail!("response missing");
             };
-            result.map_err(|()| anyhow!("response taken"))?
+            result
         }
-    }?;
+    }
+    .map_err(|()| anyhow!("ersponse taken"))??;
     drop(fut_resp);
 
-    let status = in_resp.status();
+    let status = resp.status();
     println!("status: {:?}", status);
 
-    let headers_handle = in_resp.headers();
+    let headers_handle = resp.headers();
     let headers = headers_handle.entries();
     println!("headers: {:?}", headers);
     drop(headers_handle);
 
-    let in_body = in_resp
-        .consume()
-        .map_err(|()| anyhow!("incoming response has no body stream"))?;
+    let resp_body = resp.consume().map_err(|()| anyhow!("incoming response has no body stream"))?;
 
-    drop(in_resp);
+    drop(resp);
 
-    let input_stream = in_body.stream().unwrap();
-    let input_stream_pollable = input_stream.subscribe();
+    let body_stream = resp_body.stream().unwrap();
+    let body_stream_pollable = body_stream.subscribe();
 
     let mut body = Vec::new();
     loop {
-        input_stream_pollable.block();
-
-        let mut body_chunk = match input_stream.read(1024 * 1024) {
+        body_stream_pollable.block();
+        let mut body_chunk = match body_stream.read(1024 * 1024) {
             Ok(c) => c,
             Err(streams::StreamError::Closed) => break,
             Err(e) => Err(anyhow!("input_stream read failed: {e:?}"))?,
         };
-
         if !body_chunk.is_empty() {
             body.append(&mut body_chunk);
         }
