@@ -1,5 +1,3 @@
-#![feature(let_chains)]
-
 use anyhow::{anyhow, Result};
 use http::header::CONTENT_TYPE; // AUTHORIZATION
 use http::Uri;

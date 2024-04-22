@@ -5,14 +5,18 @@ edition.workspace = true
 authors.workspace = true
 rust-version.workspace = true
 
-[dependencies]
-wit-bindgen-rt = { version = "0.24.0", features = ["bitflags"] }
+[lib]
+crate-type = ["cdylib"]
 
 [lints]
 workspace = true
 
-[lib]
-crate-type = ["cdylib"]
+[dependencies]
+anyhow.workspace = true
+http = "1.1.0"
+wit-bindgen-rt = { version = "0.24.0", features = ["bitflags"] }
+serde_json = "1.0.116"
+wasi = "0.13.0"
 
 [package.metadata.component]
 package = "component:http-msg"
