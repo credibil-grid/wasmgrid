@@ -1,13 +1,11 @@
 #[allow(warnings)]
 mod bindings;
 
-use bindings::exports::wasi::messaging::messaging_guest::{
-    Error, Guest, GuestConfiguration, Message,
+use crate::bindings::exports::wasi::messaging::messaging_guest::Guest;
+use crate::bindings::wasi::messaging::messaging_types::{
+    self, Channel, Client, Error, GuestConfiguration, Message,
 };
-
-use crate::bindings::wasi::messaging::consumer;
-use crate::bindings::wasi::messaging::messaging_types::{self, Client};
-use crate::bindings::wasi::messaging::producer::{self, Channel};
+use crate::bindings::wasi::messaging::{consumer, producer};
 
 struct MessagingGuest;
 
