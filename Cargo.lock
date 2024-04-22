@@ -1049,6 +1049,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "http-msg"
+version = "0.1.0"
+dependencies = [
+ "wit-bindgen-rt 0.24.0",
+]
+
+[[package]]
 name = "httparse"
 version = "1.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3100,6 +3107,9 @@ name = "wit-bindgen-rt"
 version = "0.24.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3b0780cf7046630ed70f689a098cd8d56c5c3b22f2a7379bbdb088879963ff96"
+dependencies = [
+ "bitflags 2.5.0",
+]
 
 [[package]]
 name = "wit-parser"

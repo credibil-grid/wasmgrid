@@ -1,0 +1,27 @@
+[package]
+name = "http-msg"
+version = "0.1.0"
+edition.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+wit-bindgen-rt = { version = "0.24.0", features = ["bitflags"] }
+
+[lints]
+workspace = true
+
+[lib]
+crate-type = ["cdylib"]
+
+[package.metadata.component]
+package = "component:http-msg"
+
+[package.metadata.component.dependencies]
+
+[package.metadata.component.target]
+# path = "wit"
+# world = "messaging"
+
+[package.metadata.component.target.dependencies]
+"wasi:messaging" = { path = "../../crates/wasi-messaging/wit" }
