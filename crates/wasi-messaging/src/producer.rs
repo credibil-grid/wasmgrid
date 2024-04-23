@@ -12,7 +12,7 @@ impl<T: MessagingView> producer::Host for T {
         &mut self, client: Resource<Client>, ch: String, messages: Vec<Message>,
     ) -> wasmtime::Result<anyhow::Result<(), Resource<Error>>> {
         println!("send: {:?}", ch);
-        
+
         let client = self.table().get(&client)?;
 
         for m in messages {
