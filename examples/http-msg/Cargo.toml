@@ -29,10 +29,3 @@ world = "messaging"
 
 [package.metadata.component.target.dependencies]
 "wasi:messaging" = { path = "wit/deps/messaging" }
-"wasi:http" = { path = "wit/deps/http" }
-"wasi:cli" = { path = "wit/deps/cli" }
-"wasi:clocks" = { path = "wit/deps/clocks" }
-"wasi:filesystem" = { path = "wit/deps/filesystem" }
-"wasi:io" = { path = "wit/deps/io" }
-"wasi:random" = { path = "wit/deps/random" }
-"wasi:sockets" = { path = "wit/deps/sockets" }

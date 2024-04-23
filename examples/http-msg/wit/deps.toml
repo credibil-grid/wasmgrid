@@ -6,5 +6,4 @@
 # wit-deps --manifest examples/http-msg/wit/deps.toml --deps examples/http-msg/wit/deps
 # ```
 
-http = "https://github.com/WebAssembly/wasi-http/archive/main.tar.gz"
 messaging = "https://github.com/WebAssembly/wasi-messaging/archive/main.tar.gz"

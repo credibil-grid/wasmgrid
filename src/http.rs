@@ -17,11 +17,11 @@ use hyper::Request;
 use tokio::net::TcpListener;
 use wasmtime::component::{Component, InstancePre, Linker, ResourceTable};
 use wasmtime::{Engine, Store, StoreLimits}; // StoreLimitsBuilder
-use wasmtime_wasi::{ WasiCtx, WasiCtxBuilder, WasiView};
+use wasmtime_wasi::{WasiCtx, WasiCtxBuilder, WasiView};
 use wasmtime_wasi_http::body::HyperOutgoingBody;
 use wasmtime_wasi_http::io::TokioIo;
-use wasmtime_wasi_http::proxy::Proxy;
-use wasmtime_wasi_http::{hyper_response_error, proxy, WasiHttpCtx, WasiHttpView};
+use wasmtime_wasi_http::proxy::{self, Proxy};
+use wasmtime_wasi_http::{hyper_response_error, WasiHttpCtx, WasiHttpView};
 
 /// Start and run http server for the specified wasm component.
 pub async fn serve(engine: Engine, addr: String, wasm: String) -> anyhow::Result<()> {
@@ -64,7 +64,7 @@ impl HandlerProxy {
         proxy::add_only_http_to_linker(&mut linker)?;
 
         let component = Component::from_file(&engine, wasm)?;
-        let instance_pre = linker.instantiate_pre(&component)?;
+        let instance_pre = linker.instantiate_pre(&component).expect("should instantiate");
 
         Ok(Self {
             engine,

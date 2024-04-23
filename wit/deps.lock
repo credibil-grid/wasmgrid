@@ -1,0 +1,4 @@
+[messaging]
+url = "https://github.com/WebAssembly/wasi-messaging/archive/main.tar.gz"
+sha256 = "78a631ca15186602187fc5b4e5686e08ed4b412253d5112d37d7641aca4f4149"
+sha512 = "62d5df0f892b41ce704f7b989e85cad4743599b275f6e11fdb13a63be9079f5dfbf19d3198ef1824e2571381fe1061e699dad91b950c1c219d685d70a55e955a"
