@@ -19,7 +19,7 @@ use wasi_messaging::bindings::Messaging;
 use wasi_messaging::{self, MessagingView, RuntimeClient, RuntimeSubscriber};
 use wasmtime::component::{Component, InstancePre, Linker, Resource};
 use wasmtime::StoreLimits; // StoreLimitsBuilder
-use wasmtime::{Engine, Store};
+use wasmtime::{Config, Engine, Store};
 use wasmtime_wasi::{ResourceTable, WasiCtx, WasiCtxBuilder, WasiView};
 use wasmtime_wasi_http::body::HyperOutgoingBody;
 use wasmtime_wasi_http::proxy::{self, Proxy};
@@ -35,9 +35,15 @@ pub struct HandlerProxy {
 
 impl HandlerProxy {
     // Create a new HandlerProxy for the specified wasm Guest.
-    pub fn new(engine: Engine, wasm: String) -> anyhow::Result<Self> {
+    pub fn new(wasm: String) -> anyhow::Result<Self> {
+        let mut config = Config::new();
+        config.async_support(true);
+        let engine = Engine::new(&config)?;
+
         let mut linker = Linker::new(&engine);
         wasmtime_wasi::add_to_linker_async(&mut linker)?;
+
+        // link specific runtime modules
         Messaging::add_to_linker(&mut linker, |t| t)?;
         proxy::add_only_http_to_linker(&mut linker)?;
 

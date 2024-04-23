@@ -4,7 +4,6 @@ mod msg;
 
 use anyhow::Error;
 use clap::Parser;
-use wasmtime::{Config, Engine};
 
 /// Host wasm runtime for a vault service that stores signing keys and credentials for a Verifiable
 /// Credential wallet.
@@ -26,12 +25,7 @@ struct Args {
 #[tokio::main]
 pub async fn main() -> wasmtime::Result<()> {
     let args = Args::parse();
-
-    // initialise Engine to compile and manage wasm modules
-    let mut config = Config::new();
-    config.async_support(true);
-    let engine = Engine::new(&config)?;
-    let handler = handler::HandlerProxy::new(engine, args.wasm)?;
+    let handler = handler::HandlerProxy::new(args.wasm)?;
 
     // start messaging server
     let h = handler.clone();
