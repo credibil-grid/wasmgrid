@@ -8,13 +8,10 @@ use std::task::{Context, Poll};
 
 use anyhow::anyhow;
 use bytes::Bytes;
-use futures::stream::{self, Stream, StreamExt};
+use futures::stream::{Stream, StreamExt};
 use http_body_util::BodyExt;
 use hyper::body::Incoming;
-use hyper::server::conn::http1;
-use hyper::service::service_fn;
 use hyper::Request;
-use tokio::net::TcpListener;
 use wasi_messaging::bindings::wasi::messaging::messaging_types::{
     Error, FormatSpec, GuestConfiguration, Message,
 };
@@ -25,80 +22,20 @@ use wasmtime::StoreLimits; // StoreLimitsBuilder
 use wasmtime::{Engine, Store};
 use wasmtime_wasi::{ResourceTable, WasiCtx, WasiCtxBuilder, WasiView};
 use wasmtime_wasi_http::body::HyperOutgoingBody;
-use wasmtime_wasi_http::io::TokioIo;
 use wasmtime_wasi_http::proxy::{self, Proxy};
 use wasmtime_wasi_http::{hyper_response_error, WasiHttpCtx, WasiHttpView};
-
-/// Start and run NATS for the specified wasm component.
-pub async fn serve(
-    engine: Engine, http_addr: String, msg_addr: String, wasm: String,
-) -> anyhow::Result<()> {
-    let handler = HandlerProxy::new(engine.clone(), wasm)?;
-
-    let msg_handler = handler.clone();
-    tokio::spawn(async move {
-        // connect to NATS
-        let client = Client::connect(msg_addr).await?;
-
-        // subscribe to channels
-        let mut subscribers = vec![];
-        for ch in &msg_handler.channels().await? {
-            let subscriber = client.subscribe(ch.clone()).await?;
-            subscribers.push(subscriber);
-        }
-
-        // process messages until terminated
-        let mut messages = stream::select_all(subscribers);
-        while let Some(message) = messages.next().await {
-            let handler = msg_handler.clone();
-            let client = client.clone();
-            if let Err(e) =
-                tokio::spawn(async move { handler.message(client, message).await }).await
-            {
-                eprintln!("Error: {:?}", e);
-            }
-        }
-
-        Ok::<(), anyhow::Error>(())
-    });
-
-    tokio::spawn(async move {
-        let listener = TcpListener::bind(http_addr).await?;
-        println!("Listening on: {}", listener.local_addr()?);
-
-        loop {
-            let (stream, _) = listener.accept().await?;
-            let io = TokioIo::new(stream);
-            let handler = handler.clone();
-
-            tokio::spawn(async move {
-                if let Err(e) = http1::Builder::new()
-                    .keep_alive(true)
-                    .serve_connection(io, service_fn(|req| handler.clone().request(req)))
-                    .await
-                {
-                    eprintln!("error: {e:?}");
-                }
-            });
-        }
-
-        Ok::<(), anyhow::Error>(())
-    });
-
-    Ok(())
-}
 
 // HandlerProxy is a proxy for the wasm messaging Host, wrapping calls to the Guest's
 // messaging API.
 #[derive(Clone)]
-struct HandlerProxy {
+pub struct HandlerProxy {
     engine: Engine,
     instance_pre: InstancePre<Host>,
 }
 
 impl HandlerProxy {
     // Create a new HandlerProxy for the specified wasm Guest.
-    fn new(engine: Engine, wasm: String) -> anyhow::Result<Self> {
+    pub fn new(engine: Engine, wasm: String) -> anyhow::Result<Self> {
         let mut linker = Linker::new(&engine);
         wasmtime_wasi::add_to_linker_async(&mut linker)?;
         Messaging::add_to_linker(&mut linker, |t| t)?;
@@ -111,7 +48,7 @@ impl HandlerProxy {
     }
 
     // Return the list of channels the Guest wants to subscribe to.
-    async fn channels(&self) -> anyhow::Result<Vec<String>> {
+    pub async fn channels(&self) -> anyhow::Result<Vec<String>> {
         let mut store = Store::new(&self.engine, Host::new());
         let (messaging, _) = Messaging::instantiate_pre(&mut store, &self.instance_pre).await?;
 
@@ -129,7 +66,7 @@ impl HandlerProxy {
     }
 
     // Forward NATS message to the wasm Guest.
-    async fn message(&self, client: Client, message: Message) -> anyhow::Result<()> {
+    pub async fn message(&self, client: Client, message: Message) -> anyhow::Result<()> {
         // set up host state
         let mut host = Host::new();
 
@@ -152,7 +89,7 @@ impl HandlerProxy {
     }
 
     // Forward NATS message to the wasm Guest.
-    async fn request(
+    pub async fn request(
         self, request: Request<Incoming>,
     ) -> anyhow::Result<hyper::Response<HyperOutgoingBody>> {
         let (sender, receiver) = tokio::sync::oneshot::channel();
@@ -283,14 +220,14 @@ impl WasiHttpView for Host {
 // Client holds a reference to the the NATS client. It is used to implement the
 // [`wasi_messaging::RuntimeClient`] trait used by the messaging Host.
 #[derive(Clone)]
-struct Client {
+pub struct Client {
     name: String,
     inner: async_nats::Client,
 }
 
 impl Client {
     // Create a new Client for the specified NATS server.
-    async fn connect(name: String) -> anyhow::Result<Self> {
+    pub async fn connect(name: String) -> anyhow::Result<Self> {
         let inner = async_nats::connect(&name).await?;
         Ok(Self { name, inner })
     }

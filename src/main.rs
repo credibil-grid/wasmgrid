@@ -1,4 +1,6 @@
-mod messaging;
+mod handler;
+mod http;
+mod msg;
 
 use anyhow::Error;
 use clap::Parser;
@@ -29,21 +31,19 @@ pub async fn main() -> wasmtime::Result<()> {
     let mut config = Config::new();
     config.async_support(true);
     let engine = Engine::new(&config)?;
+    let handler = handler::HandlerProxy::new(engine, args.wasm)?;
 
-    // start messaging Host
-    let e = engine.clone();
-    let w = args.wasm.clone();
-    if let Err(e) =
-        tokio::spawn(async move { messaging::serve(e, args.http_addr, args.nats_addr, w).await })
-            .await
-    {
+    // start messaging server
+    let h = handler.clone();
+    if let Err(e) = tokio::spawn(async move { msg::serve(h, args.nats_addr).await }).await {
         eprintln!("Error: {:?}", e);
     };
 
-    // // start Http server
-    // let e = engine.clone();
-    // let w = args.wasm.clone();
-    // tokio::spawn(async move { http::serve(e, args.http_addr, w).await });
+    // start http server
+    let h = handler.clone();
+    if let Err(e) = tokio::spawn(async move { http::serve(h, args.http_addr).await }).await {
+        eprintln!("Error: {:?}", e);
+    };
 
     shutdown().await
 }
