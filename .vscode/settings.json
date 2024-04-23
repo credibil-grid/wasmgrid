@@ -2,12 +2,12 @@
     "rust-analyzer.linkedProjects": [
         "Cargo.toml"
     ],
-    "rust-analyzer.check.overrideCommand": [
-        "cargo",
-        "component",
-        "check",
-        "--package",
-        "http-msg",
-        "--message-format=json"
-    ],
+    // "rust-analyzer.check.overrideCommand": [
+    //     "cargo",
+    //     "component",
+    //     "check",
+    //     "--package",
+    //     "http-msg",
+    //     "--message-format=json"
+    // ],
 }

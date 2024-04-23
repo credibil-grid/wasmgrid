@@ -37,7 +37,9 @@ pub async fn serve(engine: Engine, addr: String, wasm: String) -> anyhow::Result
     while let Some(message) = messages.next().await {
         let handler = handler.clone();
         let client = client.clone();
-        tokio::spawn(async move { handler.message(client, message).await });
+        if let Err(e) = tokio::spawn(async move { handler.message(client, message).await }).await {
+            eprintln!("Error: {:?}", e);
+        }
     }
 
     Ok(())

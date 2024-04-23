@@ -1,4 +1,4 @@
-# Http Example
+# Http-Msg Example
 
 Build the example guest:
 
@@ -16,4 +16,10 @@ In a separate console, call the guest:
 
 ```bash
 curl -d '{"text":"hello"}' http://localhost:8080
+```
+
+Or, send some messages:
+
+```bash
+cargo test --test publish
 ```

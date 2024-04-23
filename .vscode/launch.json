@@ -7,7 +7,7 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Messaging",
+            "name": "http-msg",
             "cargo": {
                 "args": [
                     "build",
@@ -20,15 +20,14 @@
                 }
             },
             "args": [
-                "--wasm",
-                "./target/wasm32-wasi/release/messaging_guest.wasm"
+                "./target/wasm32-wasi/release/http_msg.wasm"
             ],
             "cwd": "${workspaceFolder}"
         },
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Http",
+            "name": "http",
             "cargo": {
                 "args": [
                     "build",
@@ -41,8 +40,7 @@
                 }
             },
             "args": [
-                "--wasm",
-                "./target/wasm32-wasi/release/http_guest.wasm"
+                "./target/wasm32-wasi/release/http.wasm"
             ],
             "cwd": "${workspaceFolder}"
         },

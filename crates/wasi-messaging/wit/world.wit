@@ -1,7 +1,6 @@
 package component:http-msg;
 
 world imports {
-	import wasi:http/incoming-handler@0.2.0;
 	import wasi:messaging/producer@0.2.0-draft;
 	import wasi:messaging/consumer@0.2.0-draft;
 }

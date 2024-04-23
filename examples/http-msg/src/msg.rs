@@ -1,12 +1,11 @@
+use super::GuestImpl;
 use crate::bindings::exports::wasi::messaging::messaging_guest::Guest;
 use crate::bindings::wasi::messaging::messaging_types::{
     self, Channel, Client, Error, GuestConfiguration, Message,
 };
 use crate::bindings::wasi::messaging::{consumer, producer};
 
-struct HttpMsgGuest;
-
-impl Guest for HttpMsgGuest {
+impl Guest for GuestImpl {
     // Called by the host in order to subscribe the guest to the specified channels.
     // As soon as configuration is set, the host will kill the Wasm instance.
     fn configure() -> Result<GuestConfiguration, Error> {
@@ -74,4 +73,4 @@ impl Guest for HttpMsgGuest {
     }
 }
 
-crate::bindings::export!(HttpMsgGuest with_types_in crate::bindings);
+// crate::bindings::export!(GuestImpl with_types_in crate::bindings);

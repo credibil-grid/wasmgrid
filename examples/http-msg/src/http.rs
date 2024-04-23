@@ -7,9 +7,9 @@ use wasi::http::types::{
     Fields, IncomingRequest, OutgoingBody, OutgoingResponse, ResponseOutparam,
 };
 
-struct HttpGuest;
+use super::GuestImpl;
 
-impl Guest for HttpGuest {
+impl Guest for GuestImpl {
     fn handle(request: IncomingRequest, response: ResponseOutparam) {
         // set up response in case of early failure
         let headers = Fields::new();
@@ -57,8 +57,6 @@ fn hello(request: &Request) -> Result<Vec<u8>> {
     });
     serde_json::to_vec(&resp).map_err(Into::into)
 }
-
-wasi::http::proxy::export!(HttpGuest);
 
 #[derive(Debug)]
 pub struct Request<'a> {
@@ -131,3 +129,5 @@ impl<'a> Request<'a> {
     //     Ok(serde_urlencoded::from_bytes::<T>(&self.body()?)?)
     // }
 }
+
+// wasi::http::proxy::export!(GuestImpl);
