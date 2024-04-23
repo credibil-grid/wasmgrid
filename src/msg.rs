@@ -17,14 +17,16 @@ use wasmtime::component::Resource;
 use wasmtime::Store;
 use wasmtime_wasi::WasiView;
 
-use crate::handler::{self, HandlerProxy};
+use crate::handler::{HandlerProxy, State};
+
+pub fn add_to_linker(linker: &mut wasmtime::component::Linker<State>) -> anyhow::Result<()> {
+    Messaging::add_to_linker(linker, |t| t)
+}
 
 /// Start and run NATS for the specified wasm component.
 pub async fn serve(handler: HandlerProxy, addr: String) -> anyhow::Result<()> {
-    let msg_handler = handler.clone();
-
-    // connect to NATS
-    let client = Client::connect(addr).await?;
+    let client = Client::connect(addr.clone()).await?;
+    println!("Connected to NATS: {}", addr);
 
     // subscribe to channels
     let mut subscribers = vec![];
@@ -36,7 +38,7 @@ pub async fn serve(handler: HandlerProxy, addr: String) -> anyhow::Result<()> {
     // process messages until terminated
     let mut messages = stream::select_all(subscribers);
     while let Some(message) = messages.next().await {
-        let handler = msg_handler.clone();
+        let handler = handler.clone();
         let client = client.clone();
         if let Err(e) = tokio::spawn(async move { handler.message(client, message).await }).await {
             eprintln!("Error: {:?}", e);
@@ -48,8 +50,8 @@ pub async fn serve(handler: HandlerProxy, addr: String) -> anyhow::Result<()> {
 
 impl HandlerProxy {
     // Return the list of channels the Guest wants to subscribe to.
-    pub async fn channels(&self) -> anyhow::Result<Vec<String>> {
-        let mut store = Store::new(&self.engine, handler::Host::new());
+    async fn channels(&self) -> anyhow::Result<Vec<String>> {
+        let mut store = Store::new(&self.engine, State::new());
         let (messaging, _) = Messaging::instantiate_pre(&mut store, &self.instance_pre).await?;
 
         let gc = match messaging.wasi_messaging_messaging_guest().call_configure(&mut store).await?
@@ -66,9 +68,9 @@ impl HandlerProxy {
     }
 
     // Forward NATS message to the wasm Guest.
-    pub async fn message(&self, client: Client, message: Message) -> anyhow::Result<()> {
+    async fn message(&self, client: Client, message: Message) -> anyhow::Result<()> {
         // set up host state
-        let mut host = handler::Host::new();
+        let mut host = State::new();
 
         // add client to ResourceTable
         host.add_client(client)?;
@@ -89,11 +91,9 @@ impl HandlerProxy {
     }
 }
 
-impl handler::Host {
+impl State {
     // Add a new client to the host state.
-    pub fn add_client(
-        &mut self, client: Client,
-    ) -> anyhow::Result<Resource<wasi_messaging::Client>> {
+    fn add_client(&mut self, client: Client) -> anyhow::Result<Resource<wasi_messaging::Client>> {
         let name = client.name.clone();
         let client: wasi_messaging::Client = Box::new(client);
 
@@ -104,9 +104,9 @@ impl handler::Host {
     }
 }
 
-// Implement the [`wasi_messaging::MessagingView`]` trait for Host.
+// Implement the [`wasi_messaging::MessagingView`]` trait for State.
 #[async_trait::async_trait]
-impl MessagingView for handler::Host {
+impl MessagingView for State {
     async fn connect(&mut self, name: String) -> anyhow::Result<Resource<wasi_messaging::Client>> {
         let resource = if let Some(key) = self.keys.get(&name) {
             // reuse existing connection
@@ -130,7 +130,7 @@ impl MessagingView for handler::Host {
 }
 
 // Client holds a reference to the the NATS client. It is used to implement the
-// [`wasi_messaging::RuntimeClient`] trait used by the messaging Host.
+// [`wasi_messaging::RuntimeClient`] trait used by the messaging State.
 #[derive(Clone)]
 pub struct Client {
     name: String,
@@ -139,14 +139,14 @@ pub struct Client {
 
 impl Client {
     // Create a new Client for the specified NATS server.
-    pub async fn connect(name: String) -> anyhow::Result<Self> {
+    async fn connect(name: String) -> anyhow::Result<Self> {
         let inner = async_nats::connect(&name).await?;
         Ok(Self { name, inner })
     }
 }
 
 // Implement the [`wasi_messaging::RuntimeClient`] trait for Client. This trait
-// implementation is used by the messaging Host to interact with the NATS client.
+// implementation is used by the messaging State to interact with the NATS client.
 #[async_trait::async_trait]
 impl RuntimeClient for Client {
     async fn subscribe(&self, ch: String) -> anyhow::Result<wasi_messaging::Subscriber> {
@@ -162,13 +162,13 @@ impl RuntimeClient for Client {
 }
 
 // // Subscriber holds a reference to the the NATS client. It is used to implement the
-// [`wasi_messaging::RuntimeClient`] trait used by the messaging Host.
+// [`wasi_messaging::RuntimeClient`] trait used by the messaging State.
 struct Subscriber {
     inner: async_nats::Subscriber,
 }
 
 // Implement the [`wasi_messaging::RuntimeClient`] trait for Client. This trait
-// implementation is used by the messaging Host to interact with the NATS client.
+// implementation is used by the messaging State to interact with the NATS client.
 #[async_trait::async_trait]
 impl RuntimeSubscriber for Subscriber {
     async fn unsubscribe(&mut self) -> anyhow::Result<()> {

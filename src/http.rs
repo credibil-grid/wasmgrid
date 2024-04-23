@@ -13,15 +13,20 @@ use wasmtime::Store;
 use wasmtime_wasi_http::body::HyperOutgoingBody;
 use wasmtime_wasi_http::io::TokioIo;
 use wasmtime_wasi_http::proxy::Proxy;
-use wasmtime_wasi_http::{hyper_response_error, WasiHttpCtx, WasiHttpView};
+use wasmtime_wasi_http::{hyper_response_error, proxy, WasiHttpCtx, WasiHttpView};
 
-use crate::handler;
+use crate::handler::{HandlerProxy, State};
+
+pub fn add_to_linker(linker: &mut wasmtime::component::Linker<State>) -> anyhow::Result<()> {
+    proxy::add_only_http_to_linker(linker)
+}
 
 /// Start and run NATS for the specified wasm component.
-pub async fn serve(handler: handler::HandlerProxy, addr: String) -> anyhow::Result<()> {
+pub async fn serve(handler: HandlerProxy, addr: String) -> anyhow::Result<()> {
     let listener = TcpListener::bind(addr).await?;
     println!("Listening on: {}", listener.local_addr()?);
 
+    // listen for requests until terminated
     loop {
         let (stream, _) = listener.accept().await?;
         let io = TokioIo::new(stream);
@@ -38,12 +43,12 @@ pub async fn serve(handler: handler::HandlerProxy, addr: String) -> anyhow::Resu
         });
     }
 
-    Ok(())
+    // Ok(())
 }
 
-impl handler::HandlerProxy {
+impl HandlerProxy {
     // Forward NATS message to the wasm Guest.
-    pub async fn request(
+    async fn request(
         self, request: Request<Incoming>,
     ) -> anyhow::Result<hyper::Response<HyperOutgoingBody>> {
         let (sender, receiver) = tokio::sync::oneshot::channel();
@@ -52,7 +57,7 @@ impl handler::HandlerProxy {
         let instance_pre = self.instance_pre.clone();
 
         let task = tokio::spawn(async move {
-            let mut store = Store::new(&engine, handler::Host::new());
+            let mut store = Store::new(&engine, State::new());
             store.limiter(|t| &mut t.limits);
 
             let (parts, body) = request.into_parts();
@@ -91,7 +96,7 @@ impl handler::HandlerProxy {
     }
 }
 
-impl WasiHttpView for handler::Host {
+impl WasiHttpView for State {
     fn table(&mut self) -> &mut wasmtime::component::ResourceTable {
         &mut self.table
     }
