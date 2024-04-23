@@ -1,7 +1,11 @@
 package component:messaging;
 
-world messaging {
+world imports {
 	import wasi:messaging/consumer@0.2.0-draft;
 	import wasi:messaging/producer@0.2.0-draft;
+}
+
+world messaging {
+	include imports;
 	export wasi:messaging/messaging-guest@0.2.0-draft;
 }

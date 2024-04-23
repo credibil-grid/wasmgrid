@@ -30,7 +30,7 @@ http-body-util = "0.1.1"
 hyper = "1.3.1"
 wasmtime.workspace = true
 wasmtime-wasi.workspace = true
-wasmtime-wasi-http = "19.0.2"
+wasmtime-wasi-http = "20.0.0"
 
 [workspace]
 members = [".", "crates/*", "examples/*"]
@@ -58,5 +58,5 @@ async-trait = "0.1.80"
 bytes = "1.6.0"
 futures = "0.3.30"
 tracing = "0.1.40"
-wasmtime = { version = "19.0.2", features = ["component-model"] }
-wasmtime-wasi = "19.0.2"
+wasmtime = { version = "20.0.0", features = ["component-model"] }
+wasmtime-wasi = "20.0.0"

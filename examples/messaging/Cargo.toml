@@ -19,8 +19,8 @@ wit-bindgen-rt = "0.24.0"
 package = "component:messaging"
 
 [package.metadata.component.target]
+world = "messaging"
 # path = "wit"
-# world = "messaging"
 
 [package.metadata.component.target.dependencies]
-"wasi:messaging" = { path = "../../crates/wasi-messaging/wit" }
+"wasi:messaging" = { path = "wit/deps/messaging" }

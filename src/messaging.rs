@@ -16,7 +16,7 @@ use wasi_messaging::bindings::Messaging;
 use wasi_messaging::{self, MessagingView, RuntimeClient, RuntimeSubscriber};
 use wasmtime::component::{Component, InstancePre, Linker, Resource};
 use wasmtime::{Engine, Store};
-use wasmtime_wasi::{command, ResourceTable, WasiCtx, WasiCtxBuilder, WasiView};
+use wasmtime_wasi::{ResourceTable, WasiCtx, WasiCtxBuilder, WasiView};
 
 /// Start and run NATS for the specified wasm component.
 pub async fn serve(engine: Engine, addr: String, wasm: String) -> anyhow::Result<()> {
@@ -57,7 +57,7 @@ impl HandlerProxy {
     // Create a new HandlerProxy for the specified wasm Guest.
     fn new(engine: Engine, wasm: String) -> anyhow::Result<Self> {
         let mut linker = Linker::new(&engine);
-        command::add_to_linker(&mut linker)?;
+        wasmtime_wasi::add_to_linker_sync(&mut linker)?;
         Messaging::add_to_linker(&mut linker, |t| t)?;
 
         let component = Component::from_file(&engine, wasm)?;
