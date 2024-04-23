@@ -265,6 +265,152 @@ pub mod wasi {
         }
 
         #[allow(dead_code, clippy::all)]
+        pub mod producer {
+            #[used]
+            #[doc(hidden)]
+            #[cfg(target_arch = "wasm32")]
+            static __FORCE_SECTION_REF: fn() =
+                super::super::super::__link_custom_section_describing_imports;
+            use super::super::super::_rt;
+            pub type Client = super::super::super::wasi::messaging::messaging_types::Client;
+            pub type Channel = super::super::super::wasi::messaging::messaging_types::Channel;
+            pub type Message = super::super::super::wasi::messaging::messaging_types::Message;
+            pub type Error = super::super::super::wasi::messaging::messaging_types::Error;
+            #[allow(unused_unsafe, clippy::all)]
+            pub fn send(c: Client, ch: &Channel, m: &[Message]) -> Result<(), Error> {
+                unsafe {
+                    let mut cleanup_list = _rt::Vec::new();
+                    #[repr(align(4))]
+                    struct RetArea([::core::mem::MaybeUninit<u8>; 8]);
+                    let mut ret_area = RetArea([::core::mem::MaybeUninit::uninit(); 8]);
+                    let vec0 = ch;
+                    let ptr0 = vec0.as_ptr().cast::<u8>();
+                    let len0 = vec0.len();
+                    let vec7 = m;
+                    let len7 = vec7.len();
+                    let layout7 = _rt::alloc::Layout::from_size_align_unchecked(vec7.len() * 24, 4);
+                    let result7 = if layout7.size() != 0 {
+                        let ptr = _rt::alloc::alloc(layout7).cast::<u8>();
+                        if ptr.is_null() {
+                            _rt::alloc::handle_alloc_error(layout7);
+                        }
+                        ptr
+                    } else {
+                        {
+                            ::core::ptr::null_mut()
+                        }
+                    };
+                    for (i, e) in vec7.into_iter().enumerate() {
+                        let base = result7.add(i * 24);
+                        {
+                            let super::super::super::wasi::messaging::messaging_types::Message {
+                                data: data1,
+                                format: format1,
+                                metadata: metadata1,
+                            } = e;
+                            let vec2 = data1;
+                            let ptr2 = vec2.as_ptr().cast::<u8>();
+                            let len2 = vec2.len();
+                            *base.add(4).cast::<usize>() = len2;
+                            *base.add(0).cast::<*mut u8>() = ptr2.cast_mut();
+                            *base.add(8).cast::<u8>() = (format1.clone() as i32) as u8;
+                            match metadata1 {
+                                Some(e) => {
+                                    *base.add(12).cast::<u8>() = (1i32) as u8;
+                                    let vec6 = e;
+                                    let len6 = vec6.len();
+                                    let layout6 = _rt::alloc::Layout::from_size_align_unchecked(
+                                        vec6.len() * 16,
+                                        4,
+                                    );
+                                    let result6 = if layout6.size() != 0 {
+                                        let ptr = _rt::alloc::alloc(layout6).cast::<u8>();
+                                        if ptr.is_null() {
+                                            _rt::alloc::handle_alloc_error(layout6);
+                                        }
+                                        ptr
+                                    } else {
+                                        {
+                                            ::core::ptr::null_mut()
+                                        }
+                                    };
+                                    for (i, e) in vec6.into_iter().enumerate() {
+                                        let base = result6.add(i * 16);
+                                        {
+                                            let (t3_0, t3_1) = e;
+                                            let vec4 = t3_0;
+                                            let ptr4 = vec4.as_ptr().cast::<u8>();
+                                            let len4 = vec4.len();
+                                            *base.add(4).cast::<usize>() = len4;
+                                            *base.add(0).cast::<*mut u8>() = ptr4.cast_mut();
+                                            let vec5 = t3_1;
+                                            let ptr5 = vec5.as_ptr().cast::<u8>();
+                                            let len5 = vec5.len();
+                                            *base.add(12).cast::<usize>() = len5;
+                                            *base.add(8).cast::<*mut u8>() = ptr5.cast_mut();
+                                        }
+                                    }
+                                    *base.add(20).cast::<usize>() = len6;
+                                    *base.add(16).cast::<*mut u8>() = result6;
+                                    cleanup_list.extend_from_slice(&[(result6, layout6)]);
+                                }
+                                None => {
+                                    *base.add(12).cast::<u8>() = (0i32) as u8;
+                                }
+                            };
+                        }
+                    }
+                    let ptr8 = ret_area.0.as_mut_ptr().cast::<u8>();
+                    #[cfg(target_arch = "wasm32")]
+                    #[link(wasm_import_module = "wasi:messaging/producer@0.2.0-draft")]
+                    extern "C" {
+                        #[link_name = "send"]
+                        fn wit_import(
+                            _: i32, _: *mut u8, _: usize, _: *mut u8, _: usize, _: *mut u8,
+                        );
+                    }
+
+                    #[cfg(not(target_arch = "wasm32"))]
+                    fn wit_import(_: i32, _: *mut u8, _: usize, _: *mut u8, _: usize, _: *mut u8) {
+                        unreachable!()
+                    }
+                    wit_import(
+                        (&c).take_handle() as i32,
+                        ptr0.cast_mut(),
+                        len0,
+                        result7,
+                        len7,
+                        ptr8,
+                    );
+                    let l9 = i32::from(*ptr8.add(0).cast::<u8>());
+                    if layout7.size() != 0 {
+                        _rt::alloc::dealloc(result7.cast(), layout7);
+                    }
+                    for (ptr, layout) in cleanup_list {
+                        if layout.size() != 0 {
+                            _rt::alloc::dealloc(ptr.cast(), layout);
+                        }
+                    }
+                    match l9 {
+                        0 => {
+                            let e = ();
+                            Ok(e)
+                        }
+                        1 => {
+                            let e = {
+                                let l10 = *ptr8.add(4).cast::<i32>();
+
+                                super::super::super::wasi::messaging::messaging_types::Error::from_handle(l10 as u32)
+                            };
+                            Err(e)
+                        }
+                        _ => _rt::invalid_enum_discriminant(),
+                    }
+                }
+            }
+        }
+
+        #[allow(dead_code, clippy::all)]
         pub mod consumer {
             #[used]
             #[doc(hidden)]
@@ -334,42 +480,42 @@ pub mod wasi {
                                                     let l10 = i32::from(*base.add(12).cast::<u8>());
 
                                                     super::super::super::wasi::messaging::messaging_types::Message{
-                            data: _rt::Vec::from_raw_parts(l6.cast(), len8, len8),
-                            format: super::super::super::wasi::messaging::messaging_types::FormatSpec::_lift(l9 as u8),
-                            metadata: match l10 {
-                              0 => None,
-                              1 => {
-                                let e = {
-                                  let l11 = *base.add(16).cast::<*mut u8>();
-                                  let l12 = *base.add(20).cast::<usize>();
-                                  let base19 = l11;
-                                  let len19 = l12;
-                                  let mut result19 = _rt::Vec::with_capacity(len19);
-                                  for i in 0..len19 {
-                                    let base = base19.add(i * 16);
-                                    let e19 = {
-                                      let l13 = *base.add(0).cast::<*mut u8>();
-                                      let l14 = *base.add(4).cast::<usize>();
-                                      let len15 = l14;
-                                      let bytes15 = _rt::Vec::from_raw_parts(l13.cast(), len15, len15);
-                                      let l16 = *base.add(8).cast::<*mut u8>();
-                                      let l17 = *base.add(12).cast::<usize>();
-                                      let len18 = l17;
-                                      let bytes18 = _rt::Vec::from_raw_parts(l16.cast(), len18, len18);
+                              data: _rt::Vec::from_raw_parts(l6.cast(), len8, len8),
+                              format: super::super::super::wasi::messaging::messaging_types::FormatSpec::_lift(l9 as u8),
+                              metadata: match l10 {
+                                0 => None,
+                                1 => {
+                                  let e = {
+                                    let l11 = *base.add(16).cast::<*mut u8>();
+                                    let l12 = *base.add(20).cast::<usize>();
+                                    let base19 = l11;
+                                    let len19 = l12;
+                                    let mut result19 = _rt::Vec::with_capacity(len19);
+                                    for i in 0..len19 {
+                                      let base = base19.add(i * 16);
+                                      let e19 = {
+                                        let l13 = *base.add(0).cast::<*mut u8>();
+                                        let l14 = *base.add(4).cast::<usize>();
+                                        let len15 = l14;
+                                        let bytes15 = _rt::Vec::from_raw_parts(l13.cast(), len15, len15);
+                                        let l16 = *base.add(8).cast::<*mut u8>();
+                                        let l17 = *base.add(12).cast::<usize>();
+                                        let len18 = l17;
+                                        let bytes18 = _rt::Vec::from_raw_parts(l16.cast(), len18, len18);
 
-                                      (_rt::string_lift(bytes15), _rt::string_lift(bytes18))
-                                    };
-                                    result19.push(e19);
-                                  }
-                                  _rt::cabi_dealloc(base19, len19 * 16, 4);
+                                        (_rt::string_lift(bytes15), _rt::string_lift(bytes18))
+                                      };
+                                      result19.push(e19);
+                                    }
+                                    _rt::cabi_dealloc(base19, len19 * 16, 4);
 
-                                  result19
-                                };
-                                Some(e)
-                              }
-                              _ => _rt::invalid_enum_discriminant(),
-                            },
-                          }
+                                    result19
+                                  };
+                                  Some(e)
+                                }
+                                _ => _rt::invalid_enum_discriminant(),
+                              },
+                            }
                                                 };
                                                 result20.push(e20);
                                             }
@@ -438,42 +584,42 @@ pub mod wasi {
                                         let l9 = i32::from(*base.add(12).cast::<u8>());
 
                                         super::super::super::wasi::messaging::messaging_types::Message{
-                      data: _rt::Vec::from_raw_parts(l5.cast(), len7, len7),
-                      format: super::super::super::wasi::messaging::messaging_types::FormatSpec::_lift(l8 as u8),
-                      metadata: match l9 {
-                        0 => None,
-                        1 => {
-                          let e = {
-                            let l10 = *base.add(16).cast::<*mut u8>();
-                            let l11 = *base.add(20).cast::<usize>();
-                            let base18 = l10;
-                            let len18 = l11;
-                            let mut result18 = _rt::Vec::with_capacity(len18);
-                            for i in 0..len18 {
-                              let base = base18.add(i * 16);
-                              let e18 = {
-                                let l12 = *base.add(0).cast::<*mut u8>();
-                                let l13 = *base.add(4).cast::<usize>();
-                                let len14 = l13;
-                                let bytes14 = _rt::Vec::from_raw_parts(l12.cast(), len14, len14);
-                                let l15 = *base.add(8).cast::<*mut u8>();
-                                let l16 = *base.add(12).cast::<usize>();
-                                let len17 = l16;
-                                let bytes17 = _rt::Vec::from_raw_parts(l15.cast(), len17, len17);
+                        data: _rt::Vec::from_raw_parts(l5.cast(), len7, len7),
+                        format: super::super::super::wasi::messaging::messaging_types::FormatSpec::_lift(l8 as u8),
+                        metadata: match l9 {
+                          0 => None,
+                          1 => {
+                            let e = {
+                              let l10 = *base.add(16).cast::<*mut u8>();
+                              let l11 = *base.add(20).cast::<usize>();
+                              let base18 = l10;
+                              let len18 = l11;
+                              let mut result18 = _rt::Vec::with_capacity(len18);
+                              for i in 0..len18 {
+                                let base = base18.add(i * 16);
+                                let e18 = {
+                                  let l12 = *base.add(0).cast::<*mut u8>();
+                                  let l13 = *base.add(4).cast::<usize>();
+                                  let len14 = l13;
+                                  let bytes14 = _rt::Vec::from_raw_parts(l12.cast(), len14, len14);
+                                  let l15 = *base.add(8).cast::<*mut u8>();
+                                  let l16 = *base.add(12).cast::<usize>();
+                                  let len17 = l16;
+                                  let bytes17 = _rt::Vec::from_raw_parts(l15.cast(), len17, len17);
 
-                                (_rt::string_lift(bytes14), _rt::string_lift(bytes17))
-                              };
-                              result18.push(e18);
-                            }
-                            _rt::cabi_dealloc(base18, len18 * 16, 4);
+                                  (_rt::string_lift(bytes14), _rt::string_lift(bytes17))
+                                };
+                                result18.push(e18);
+                              }
+                              _rt::cabi_dealloc(base18, len18 * 16, 4);
 
-                            result18
-                          };
-                          Some(e)
-                        }
-                        _ => _rt::invalid_enum_discriminant(),
-                      },
-                    }
+                              result18
+                            };
+                            Some(e)
+                          }
+                          _ => _rt::invalid_enum_discriminant(),
+                        },
+                      }
                                     };
                                     result19.push(e19);
                                 }
@@ -819,152 +965,6 @@ pub mod wasi {
                                 let l9 = *ptr7.add(4).cast::<i32>();
 
                                 super::super::super::wasi::messaging::messaging_types::Error::from_handle(l9 as u32)
-                            };
-                            Err(e)
-                        }
-                        _ => _rt::invalid_enum_discriminant(),
-                    }
-                }
-            }
-        }
-
-        #[allow(dead_code, clippy::all)]
-        pub mod producer {
-            #[used]
-            #[doc(hidden)]
-            #[cfg(target_arch = "wasm32")]
-            static __FORCE_SECTION_REF: fn() =
-                super::super::super::__link_custom_section_describing_imports;
-            use super::super::super::_rt;
-            pub type Client = super::super::super::wasi::messaging::messaging_types::Client;
-            pub type Channel = super::super::super::wasi::messaging::messaging_types::Channel;
-            pub type Message = super::super::super::wasi::messaging::messaging_types::Message;
-            pub type Error = super::super::super::wasi::messaging::messaging_types::Error;
-            #[allow(unused_unsafe, clippy::all)]
-            pub fn send(c: Client, ch: &Channel, m: &[Message]) -> Result<(), Error> {
-                unsafe {
-                    let mut cleanup_list = _rt::Vec::new();
-                    #[repr(align(4))]
-                    struct RetArea([::core::mem::MaybeUninit<u8>; 8]);
-                    let mut ret_area = RetArea([::core::mem::MaybeUninit::uninit(); 8]);
-                    let vec0 = ch;
-                    let ptr0 = vec0.as_ptr().cast::<u8>();
-                    let len0 = vec0.len();
-                    let vec7 = m;
-                    let len7 = vec7.len();
-                    let layout7 = _rt::alloc::Layout::from_size_align_unchecked(vec7.len() * 24, 4);
-                    let result7 = if layout7.size() != 0 {
-                        let ptr = _rt::alloc::alloc(layout7).cast::<u8>();
-                        if ptr.is_null() {
-                            _rt::alloc::handle_alloc_error(layout7);
-                        }
-                        ptr
-                    } else {
-                        {
-                            ::core::ptr::null_mut()
-                        }
-                    };
-                    for (i, e) in vec7.into_iter().enumerate() {
-                        let base = result7.add(i * 24);
-                        {
-                            let super::super::super::wasi::messaging::messaging_types::Message {
-                                data: data1,
-                                format: format1,
-                                metadata: metadata1,
-                            } = e;
-                            let vec2 = data1;
-                            let ptr2 = vec2.as_ptr().cast::<u8>();
-                            let len2 = vec2.len();
-                            *base.add(4).cast::<usize>() = len2;
-                            *base.add(0).cast::<*mut u8>() = ptr2.cast_mut();
-                            *base.add(8).cast::<u8>() = (format1.clone() as i32) as u8;
-                            match metadata1 {
-                                Some(e) => {
-                                    *base.add(12).cast::<u8>() = (1i32) as u8;
-                                    let vec6 = e;
-                                    let len6 = vec6.len();
-                                    let layout6 = _rt::alloc::Layout::from_size_align_unchecked(
-                                        vec6.len() * 16,
-                                        4,
-                                    );
-                                    let result6 = if layout6.size() != 0 {
-                                        let ptr = _rt::alloc::alloc(layout6).cast::<u8>();
-                                        if ptr.is_null() {
-                                            _rt::alloc::handle_alloc_error(layout6);
-                                        }
-                                        ptr
-                                    } else {
-                                        {
-                                            ::core::ptr::null_mut()
-                                        }
-                                    };
-                                    for (i, e) in vec6.into_iter().enumerate() {
-                                        let base = result6.add(i * 16);
-                                        {
-                                            let (t3_0, t3_1) = e;
-                                            let vec4 = t3_0;
-                                            let ptr4 = vec4.as_ptr().cast::<u8>();
-                                            let len4 = vec4.len();
-                                            *base.add(4).cast::<usize>() = len4;
-                                            *base.add(0).cast::<*mut u8>() = ptr4.cast_mut();
-                                            let vec5 = t3_1;
-                                            let ptr5 = vec5.as_ptr().cast::<u8>();
-                                            let len5 = vec5.len();
-                                            *base.add(12).cast::<usize>() = len5;
-                                            *base.add(8).cast::<*mut u8>() = ptr5.cast_mut();
-                                        }
-                                    }
-                                    *base.add(20).cast::<usize>() = len6;
-                                    *base.add(16).cast::<*mut u8>() = result6;
-                                    cleanup_list.extend_from_slice(&[(result6, layout6)]);
-                                }
-                                None => {
-                                    *base.add(12).cast::<u8>() = (0i32) as u8;
-                                }
-                            };
-                        }
-                    }
-                    let ptr8 = ret_area.0.as_mut_ptr().cast::<u8>();
-                    #[cfg(target_arch = "wasm32")]
-                    #[link(wasm_import_module = "wasi:messaging/producer@0.2.0-draft")]
-                    extern "C" {
-                        #[link_name = "send"]
-                        fn wit_import(
-                            _: i32, _: *mut u8, _: usize, _: *mut u8, _: usize, _: *mut u8,
-                        );
-                    }
-
-                    #[cfg(not(target_arch = "wasm32"))]
-                    fn wit_import(_: i32, _: *mut u8, _: usize, _: *mut u8, _: usize, _: *mut u8) {
-                        unreachable!()
-                    }
-                    wit_import(
-                        (&c).take_handle() as i32,
-                        ptr0.cast_mut(),
-                        len0,
-                        result7,
-                        len7,
-                        ptr8,
-                    );
-                    let l9 = i32::from(*ptr8.add(0).cast::<u8>());
-                    if layout7.size() != 0 {
-                        _rt::alloc::dealloc(result7.cast(), layout7);
-                    }
-                    for (ptr, layout) in cleanup_list {
-                        if layout.size() != 0 {
-                            _rt::alloc::dealloc(ptr.cast(), layout);
-                        }
-                    }
-                    match l9 {
-                        0 => {
-                            let e = ();
-                            Ok(e)
-                        }
-                        1 => {
-                            let e = {
-                                let l10 = *ptr8.add(4).cast::<i32>();
-
-                                super::super::super::wasi::messaging::messaging_types::Error::from_handle(l10 as u32)
                             };
                             Err(e)
                         }
@@ -1348,6 +1348,7 @@ mod _rt {
             String::from_utf8_unchecked(bytes)
         }
     }
+    pub use alloc_crate::alloc;
 
     pub fn as_i32<T: AsI32>(t: T) -> i32 {
         t.as_i32()
@@ -1425,7 +1426,6 @@ mod _rt {
         let layout = alloc::Layout::from_size_align_unchecked(size, align);
         alloc::dealloc(ptr as *mut u8, layout);
     }
-    pub use alloc_crate::alloc;
 
     #[cfg(target_arch = "wasm32")]
     pub fn run_ctors_once() {
@@ -1474,28 +1474,28 @@ http\x04amqp\x04mqtt\x05kafka\x03raw\x04\0\x0bformat-spec\x03\0\x0a\x01p}\x01r\x
 \x04data\x0c\x06format\x0b\x08metadata\x07\x04\0\x07message\x03\0\x0d\x01i\0\x01\
 i\x01\x01j\x01\x0f\x01\x10\x01@\x01\x04names\0\x11\x04\0\x16[static]client.conne\
 ct\x01\x12\x01@\0\0s\x04\0\x13[static]error.trace\x01\x13\x03\x01*wasi:messaging\
-/messaging-types@0.2.0-draft\x05\0\x02\x03\0\0\x06client\x02\x03\0\0\x07message\x02\
-\x03\0\0\x07channel\x02\x03\0\0\x05error\x02\x03\0\0\x13guest-configuration\x01B\
-\x1a\x02\x03\x02\x01\x01\x04\0\x06client\x03\0\0\x02\x03\x02\x01\x02\x04\0\x07me\
-ssage\x03\0\x02\x02\x03\x02\x01\x03\x04\0\x07channel\x03\0\x04\x02\x03\x02\x01\x04\
-\x04\0\x05error\x03\0\x06\x02\x03\x02\x01\x05\x04\0\x13guest-configuration\x03\0\
-\x08\x01i\x01\x01p\x03\x01k\x0b\x01i\x07\x01j\x01\x0c\x01\x0d\x01@\x03\x01c\x0a\x02\
-ch\x05\x0et-millisecondsy\0\x0e\x04\0\x15subscribe-try-receive\x01\x0f\x01j\x01\x0b\
-\x01\x0d\x01@\x02\x01c\x0a\x02ch\x05\0\x10\x04\0\x11subscribe-receive\x01\x11\x01\
-j\0\x01\x0d\x01@\x01\x02gc\x09\0\x12\x04\0\x1aupdate-guest-configuration\x01\x13\
-\x01@\x01\x01m\x03\0\x12\x04\0\x10complete-message\x01\x14\x04\0\x0fabandon-mess\
-age\x01\x14\x03\x01#wasi:messaging/consumer@0.2.0-draft\x05\x06\x01B\x0e\x02\x03\
-\x02\x01\x01\x04\0\x06client\x03\0\0\x02\x03\x02\x01\x03\x04\0\x07channel\x03\0\x02\
-\x02\x03\x02\x01\x02\x04\0\x07message\x03\0\x04\x02\x03\x02\x01\x04\x04\0\x05err\
-or\x03\0\x06\x01i\x01\x01p\x05\x01i\x07\x01j\0\x01\x0a\x01@\x03\x01c\x08\x02ch\x03\
-\x01m\x09\0\x0b\x04\0\x04send\x01\x0c\x03\x01#wasi:messaging/producer@0.2.0-draf\
-t\x05\x07\x01B\x0e\x02\x03\x02\x01\x02\x04\0\x07message\x03\0\0\x02\x03\x02\x01\x05\
-\x04\0\x13guest-configuration\x03\0\x02\x02\x03\x02\x01\x04\x04\0\x05error\x03\0\
-\x04\x01i\x05\x01j\x01\x03\x01\x06\x01@\0\0\x07\x04\0\x09configure\x01\x08\x01p\x01\
-\x01j\0\x01\x06\x01@\x01\x02ms\x09\0\x0a\x04\0\x07handler\x01\x0b\x04\x01*wasi:m\
-essaging/messaging-guest@0.2.0-draft\x05\x08\x04\x01\x1dcomponent:messaging/mess\
-aging\x04\0\x0b\x0f\x01\0\x09messaging\x03\0\0\0G\x09producers\x01\x0cprocessed-\
-by\x02\x0dwit-component\x070.202.0\x10wit-bindgen-rust\x060.24.0";
+/messaging-types@0.2.0-draft\x05\0\x02\x03\0\0\x06client\x02\x03\0\0\x07channel\x02\
+\x03\0\0\x07message\x02\x03\0\0\x05error\x01B\x0e\x02\x03\x02\x01\x01\x04\0\x06c\
+lient\x03\0\0\x02\x03\x02\x01\x02\x04\0\x07channel\x03\0\x02\x02\x03\x02\x01\x03\
+\x04\0\x07message\x03\0\x04\x02\x03\x02\x01\x04\x04\0\x05error\x03\0\x06\x01i\x01\
+\x01p\x05\x01i\x07\x01j\0\x01\x0a\x01@\x03\x01c\x08\x02ch\x03\x01m\x09\0\x0b\x04\
+\0\x04send\x01\x0c\x03\x01#wasi:messaging/producer@0.2.0-draft\x05\x05\x02\x03\0\
+\0\x13guest-configuration\x01B\x1a\x02\x03\x02\x01\x01\x04\0\x06client\x03\0\0\x02\
+\x03\x02\x01\x03\x04\0\x07message\x03\0\x02\x02\x03\x02\x01\x02\x04\0\x07channel\
+\x03\0\x04\x02\x03\x02\x01\x04\x04\0\x05error\x03\0\x06\x02\x03\x02\x01\x06\x04\0\
+\x13guest-configuration\x03\0\x08\x01i\x01\x01p\x03\x01k\x0b\x01i\x07\x01j\x01\x0c\
+\x01\x0d\x01@\x03\x01c\x0a\x02ch\x05\x0et-millisecondsy\0\x0e\x04\0\x15subscribe\
+-try-receive\x01\x0f\x01j\x01\x0b\x01\x0d\x01@\x02\x01c\x0a\x02ch\x05\0\x10\x04\0\
+\x11subscribe-receive\x01\x11\x01j\0\x01\x0d\x01@\x01\x02gc\x09\0\x12\x04\0\x1au\
+pdate-guest-configuration\x01\x13\x01@\x01\x01m\x03\0\x12\x04\0\x10complete-mess\
+age\x01\x14\x04\0\x0fabandon-message\x01\x14\x03\x01#wasi:messaging/consumer@0.2\
+.0-draft\x05\x07\x01B\x0e\x02\x03\x02\x01\x03\x04\0\x07message\x03\0\0\x02\x03\x02\
+\x01\x06\x04\0\x13guest-configuration\x03\0\x02\x02\x03\x02\x01\x04\x04\0\x05err\
+or\x03\0\x04\x01i\x05\x01j\x01\x03\x01\x06\x01@\0\0\x07\x04\0\x09configure\x01\x08\
+\x01p\x01\x01j\0\x01\x06\x01@\x01\x02ms\x09\0\x0a\x04\0\x07handler\x01\x0b\x04\x01\
+*wasi:messaging/messaging-guest@0.2.0-draft\x05\x08\x04\x01\x1dcomponent:messagi\
+ng/messaging\x04\0\x0b\x0f\x01\0\x09messaging\x03\0\0\0G\x09producers\x01\x0cpro\
+cessed-by\x02\x0dwit-component\x070.202.0\x10wit-bindgen-rust\x060.24.0";
 
 #[inline(never)]
 #[doc(hidden)]
