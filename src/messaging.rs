@@ -9,38 +9,81 @@ use std::task::{Context, Poll};
 use anyhow::anyhow;
 use bytes::Bytes;
 use futures::stream::{self, Stream, StreamExt};
+use http_body_util::BodyExt;
+use hyper::body::Incoming;
+use hyper::server::conn::http1;
+use hyper::service::service_fn;
+use hyper::Request;
+use tokio::net::TcpListener;
 use wasi_messaging::bindings::wasi::messaging::messaging_types::{
     Error, FormatSpec, GuestConfiguration, Message,
 };
 use wasi_messaging::bindings::Messaging;
 use wasi_messaging::{self, MessagingView, RuntimeClient, RuntimeSubscriber};
 use wasmtime::component::{Component, InstancePre, Linker, Resource};
+use wasmtime::StoreLimits; // StoreLimitsBuilder
 use wasmtime::{Engine, Store};
 use wasmtime_wasi::{ResourceTable, WasiCtx, WasiCtxBuilder, WasiView};
+use wasmtime_wasi_http::body::HyperOutgoingBody;
+use wasmtime_wasi_http::io::TokioIo;
+use wasmtime_wasi_http::proxy::{self, Proxy};
+use wasmtime_wasi_http::{hyper_response_error, WasiHttpCtx, WasiHttpView};
 
 /// Start and run NATS for the specified wasm component.
-pub async fn serve(engine: Engine, addr: String, wasm: String) -> anyhow::Result<()> {
+pub async fn serve(
+    engine: Engine, http_addr: String, msg_addr: String, wasm: String,
+) -> anyhow::Result<()> {
     let handler = HandlerProxy::new(engine.clone(), wasm)?;
 
-    // connect to NATS
-    let client = Client::connect(addr).await?;
+    let msg_handler = handler.clone();
+    tokio::spawn(async move {
+        // connect to NATS
+        let client = Client::connect(msg_addr).await?;
 
-    // subscribe to channels
-    let mut subscribers = vec![];
-    for ch in &handler.channels().await? {
-        let subscriber = client.subscribe(ch.clone()).await?;
-        subscribers.push(subscriber);
-    }
-
-    // process messages until terminated
-    let mut messages = stream::select_all(subscribers);
-    while let Some(message) = messages.next().await {
-        let handler = handler.clone();
-        let client = client.clone();
-        if let Err(e) = tokio::spawn(async move { handler.message(client, message).await }).await {
-            eprintln!("Error: {:?}", e);
+        // subscribe to channels
+        let mut subscribers = vec![];
+        for ch in &msg_handler.channels().await? {
+            let subscriber = client.subscribe(ch.clone()).await?;
+            subscribers.push(subscriber);
         }
-    }
+
+        // process messages until terminated
+        let mut messages = stream::select_all(subscribers);
+        while let Some(message) = messages.next().await {
+            let handler = msg_handler.clone();
+            let client = client.clone();
+            if let Err(e) =
+                tokio::spawn(async move { handler.message(client, message).await }).await
+            {
+                eprintln!("Error: {:?}", e);
+            }
+        }
+
+        Ok::<(), anyhow::Error>(())
+    });
+
+    tokio::spawn(async move {
+        let listener = TcpListener::bind(http_addr).await?;
+        println!("Listening on: {}", listener.local_addr()?);
+
+        loop {
+            let (stream, _) = listener.accept().await?;
+            let io = TokioIo::new(stream);
+            let handler = handler.clone();
+
+            tokio::spawn(async move {
+                if let Err(e) = http1::Builder::new()
+                    .keep_alive(true)
+                    .serve_connection(io, service_fn(|req| handler.clone().request(req)))
+                    .await
+                {
+                    eprintln!("error: {e:?}");
+                }
+            });
+        }
+
+        Ok::<(), anyhow::Error>(())
+    });
 
     Ok(())
 }
@@ -59,6 +102,7 @@ impl HandlerProxy {
         let mut linker = Linker::new(&engine);
         wasmtime_wasi::add_to_linker_async(&mut linker)?;
         Messaging::add_to_linker(&mut linker, |t| t)?;
+        proxy::add_only_http_to_linker(&mut linker)?;
 
         let component = Component::from_file(&engine, wasm)?;
         let instance_pre = linker.instantiate_pre(&component)?;
@@ -75,7 +119,8 @@ impl HandlerProxy {
         {
             Ok(gc) => gc,
             Err(e) => {
-                let err = store.data_mut().table().get(&e)?;
+                // let err = store.data_mut().table().get(&e)?;
+                let err = WasiView::table(store.data_mut()).get(&e)?;
                 return Err(anyhow!(err.to_string()));
             }
         };
@@ -98,11 +143,60 @@ impl HandlerProxy {
         if let Err(e) =
             messaging.wasi_messaging_messaging_guest().call_handler(&mut store, &[message]).await?
         {
-            let err = store.data_mut().table().get(&e)?;
+            // let err = store.data_mut().table().get(&e)?;
+            let err = WasiView::table(store.data_mut()).get(&e)?;
             return Err(anyhow!(err.to_string()));
         }
 
         Ok(())
+    }
+
+    // Forward NATS message to the wasm Guest.
+    async fn request(
+        self, request: Request<Incoming>,
+    ) -> anyhow::Result<hyper::Response<HyperOutgoingBody>> {
+        let (sender, receiver) = tokio::sync::oneshot::channel();
+        let engine = self.engine.clone();
+        // let req_id = self.next_id.fetch_add(1, Ordering::Relaxed);
+        let instance_pre = self.instance_pre.clone();
+
+        let task = tokio::spawn(async move {
+            let mut store = Store::new(&engine, Host::new());
+            store.limiter(|t| &mut t.limits);
+
+            let (parts, body) = request.into_parts();
+            let req = hyper::Request::from_parts(parts, body.map_err(hyper_response_error).boxed());
+
+            let req = store.data_mut().new_incoming_request(req)?;
+            let out = store.data_mut().new_response_outparam(sender)?;
+
+            let (proxy, _) = Proxy::instantiate_pre(&mut store, &instance_pre).await?;
+
+            // call guest with request
+            proxy.wasi_http_incoming_handler().call_handle(&mut store, req, out).await
+        });
+
+        match receiver.await {
+            Ok(Ok(resp)) => Ok(resp),
+            Ok(Err(e)) => Err(e.into()),
+            Err(_) => {
+                // An error in the receiver (`RecvError`) only indicates that the
+                // task exited before a response was sent (i.e., the sender was
+                // dropped); it does not describe the underlying cause of failure.
+                // Instead we retrieve and propagate the error from inside the task
+                // which should more clearly tell the user what went wrong. Note
+                // that we assume the task has already exited at this point so the
+                // `await` should resolve immediately.
+                let e = match task.await {
+                    Ok(r) => {
+                        r.expect_err("if the receiver has an error, the task must have failed")
+                    }
+                    Err(e) => e.into(),
+                };
+
+                Err(anyhow!("guest never invoked `response-outparam::set` method: {e:?}"))
+            }
+        }
     }
 }
 
@@ -112,6 +206,8 @@ struct Host {
     keys: HashMap<String, u32>,
     table: ResourceTable,
     ctx: WasiCtx,
+    http_ctx: WasiHttpCtx,
+    limits: StoreLimits,
 }
 
 impl Host {
@@ -121,13 +217,14 @@ impl Host {
             keys: HashMap::default(),
             table: ResourceTable::default(),
             ctx: WasiCtxBuilder::new().inherit_args().inherit_env().inherit_stdio().build(),
+            http_ctx: WasiHttpCtx {},
+            limits: StoreLimits::default(),
         }
     }
 
     // Add a new client to the host state.
     fn add_client(&mut self, client: Client) -> anyhow::Result<Resource<wasi_messaging::Client>> {
         let name = client.name.clone();
-        // let client = wasi_messaging::Client::new(Box::new(client));
         let client: wasi_messaging::Client = Box::new(client);
 
         let resource = self.table.push(client)?;
@@ -170,6 +267,16 @@ impl WasiView for Host {
 
     fn ctx(&mut self) -> &mut WasiCtx {
         &mut self.ctx
+    }
+}
+
+impl WasiHttpView for Host {
+    fn table(&mut self) -> &mut wasmtime::component::ResourceTable {
+        &mut self.table
+    }
+
+    fn ctx(&mut self) -> &mut WasiHttpCtx {
+        &mut self.http_ctx
     }
 }
 

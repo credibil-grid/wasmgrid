@@ -1,4 +1,3 @@
-mod http;
 mod messaging;
 
 use anyhow::Error;
@@ -34,15 +33,17 @@ pub async fn main() -> wasmtime::Result<()> {
     // start messaging Host
     let e = engine.clone();
     let w = args.wasm.clone();
-    if let Err(e) = tokio::spawn(async move { messaging::serve(e, args.nats_addr, w).await }).await
+    if let Err(e) =
+        tokio::spawn(async move { messaging::serve(e, args.http_addr, args.nats_addr, w).await })
+            .await
     {
         eprintln!("Error: {:?}", e);
     };
 
-    // start Http server
-    let e = engine.clone();
-    let w = args.wasm.clone();
-    tokio::spawn(async move { http::serve(e, args.http_addr, w).await });
+    // // start Http server
+    // let e = engine.clone();
+    // let w = args.wasm.clone();
+    // tokio::spawn(async move { http::serve(e, args.http_addr, w).await });
 
     shutdown().await
 }
