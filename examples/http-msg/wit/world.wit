@@ -1,12 +1,19 @@
 package component:http-msg;
 
 world imports {
-	import wasi:http/incoming-handler@0.2.0;
-	import wasi:messaging/producer@0.2.0-draft;
-	import wasi:messaging/consumer@0.2.0-draft;
+	include wasi:http/imports@0.2.0;
+	include wasi:messaging/imports@0.2.0-draft;
+
+	// import wasi:http/incoming-handler@0.2.0;
+
+	// import wasi:http/incoming-handler@0.2.0;
+	// import wasi:messaging/producer@0.2.0-draft;
+	// import wasi:messaging/consumer@0.2.0-draft;
 }
 
 world messaging {
 	include imports;
+
 	export wasi:messaging/messaging-guest@0.2.0-draft;
+	export wasi:http/incoming-handler@0.2.0;
 }

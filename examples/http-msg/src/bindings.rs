@@ -3,6 +3,92 @@
 #[allow(dead_code)]
 pub mod wasi {
     #[allow(dead_code)]
+    pub mod cli {
+        #[allow(dead_code, clippy::all)]
+        pub mod stdout {
+            #[used]
+            #[doc(hidden)]
+            #[cfg(target_arch = "wasm32")]
+            static __FORCE_SECTION_REF: fn() =
+                super::super::super::__link_custom_section_describing_imports;
+            pub type OutputStream = super::super::super::wasi::io::streams::OutputStream;
+            #[allow(unused_unsafe, clippy::all)]
+            pub fn get_stdout() -> OutputStream {
+                unsafe {
+                    #[cfg(target_arch = "wasm32")]
+                    #[link(wasm_import_module = "wasi:cli/stdout@0.2.0")]
+                    extern "C" {
+                        #[link_name = "get-stdout"]
+                        fn wit_import() -> i32;
+                    }
+
+                    #[cfg(not(target_arch = "wasm32"))]
+                    fn wit_import() -> i32 {
+                        unreachable!()
+                    }
+                    let ret = wit_import();
+                    super::super::super::wasi::io::streams::OutputStream::from_handle(ret as u32)
+                }
+            }
+        }
+
+        #[allow(dead_code, clippy::all)]
+        pub mod stderr {
+            #[used]
+            #[doc(hidden)]
+            #[cfg(target_arch = "wasm32")]
+            static __FORCE_SECTION_REF: fn() =
+                super::super::super::__link_custom_section_describing_imports;
+            pub type OutputStream = super::super::super::wasi::io::streams::OutputStream;
+            #[allow(unused_unsafe, clippy::all)]
+            pub fn get_stderr() -> OutputStream {
+                unsafe {
+                    #[cfg(target_arch = "wasm32")]
+                    #[link(wasm_import_module = "wasi:cli/stderr@0.2.0")]
+                    extern "C" {
+                        #[link_name = "get-stderr"]
+                        fn wit_import() -> i32;
+                    }
+
+                    #[cfg(not(target_arch = "wasm32"))]
+                    fn wit_import() -> i32 {
+                        unreachable!()
+                    }
+                    let ret = wit_import();
+                    super::super::super::wasi::io::streams::OutputStream::from_handle(ret as u32)
+                }
+            }
+        }
+
+        #[allow(dead_code, clippy::all)]
+        pub mod stdin {
+            #[used]
+            #[doc(hidden)]
+            #[cfg(target_arch = "wasm32")]
+            static __FORCE_SECTION_REF: fn() =
+                super::super::super::__link_custom_section_describing_imports;
+            pub type InputStream = super::super::super::wasi::io::streams::InputStream;
+            #[allow(unused_unsafe, clippy::all)]
+            pub fn get_stdin() -> InputStream {
+                unsafe {
+                    #[cfg(target_arch = "wasm32")]
+                    #[link(wasm_import_module = "wasi:cli/stdin@0.2.0")]
+                    extern "C" {
+                        #[link_name = "get-stdin"]
+                        fn wit_import() -> i32;
+                    }
+
+                    #[cfg(not(target_arch = "wasm32"))]
+                    fn wit_import() -> i32 {
+                        unreachable!()
+                    }
+                    let ret = wit_import();
+                    super::super::super::wasi::io::streams::InputStream::from_handle(ret as u32)
+                }
+            }
+        }
+    }
+    #[allow(dead_code)]
     pub mod clocks {
         #[allow(dead_code, clippy::all)]
         pub mod monotonic_clock {
@@ -100,6 +186,100 @@ pub mod wasi {
                     }
                     let ret = wit_import(_rt::as_i64(when));
                     super::super::super::wasi::io::poll::Pollable::from_handle(ret as u32)
+                }
+            }
+        }
+
+        #[allow(dead_code, clippy::all)]
+        pub mod wall_clock {
+            #[used]
+            #[doc(hidden)]
+            #[cfg(target_arch = "wasm32")]
+            static __FORCE_SECTION_REF: fn() =
+                super::super::super::__link_custom_section_describing_imports;
+            /// A time and date in seconds plus nanoseconds.
+            #[repr(C)]
+            #[derive(Clone, Copy)]
+            pub struct Datetime {
+                pub seconds: u64,
+                pub nanoseconds: u32,
+            }
+            impl ::core::fmt::Debug for Datetime {
+                fn fmt(&self, f: &mut ::core::fmt::Formatter<'_>) -> ::core::fmt::Result {
+                    f.debug_struct("Datetime")
+                        .field("seconds", &self.seconds)
+                        .field("nanoseconds", &self.nanoseconds)
+                        .finish()
+                }
+            }
+            #[allow(unused_unsafe, clippy::all)]
+            /// Read the current value of the clock.
+            ///
+            /// This clock is not monotonic, therefore calling this function repeatedly
+            /// will not necessarily produce a sequence of non-decreasing values.
+            ///
+            /// The returned timestamps represent the number of seconds since
+            /// 1970-01-01T00:00:00Z, also known as [POSIX's Seconds Since the Epoch],
+            /// also known as [Unix Time].
+            ///
+            /// The nanoseconds field of the output is always less than 1000000000.
+            ///
+            /// [POSIX's Seconds Since the Epoch]: https://pubs.opengroup.org/onlinepubs/9699919799/xrat/V4_xbd_chap04.html#tag_21_04_16
+            /// [Unix Time]: https://en.wikipedia.org/wiki/Unix_time
+            pub fn now() -> Datetime {
+                unsafe {
+                    #[repr(align(8))]
+                    struct RetArea([::core::mem::MaybeUninit<u8>; 16]);
+                    let mut ret_area = RetArea([::core::mem::MaybeUninit::uninit(); 16]);
+                    let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
+                    #[cfg(target_arch = "wasm32")]
+                    #[link(wasm_import_module = "wasi:clocks/wall-clock@0.2.0")]
+                    extern "C" {
+                        #[link_name = "now"]
+                        fn wit_import(_: *mut u8);
+                    }
+
+                    #[cfg(not(target_arch = "wasm32"))]
+                    fn wit_import(_: *mut u8) {
+                        unreachable!()
+                    }
+                    wit_import(ptr0);
+                    let l1 = *ptr0.add(0).cast::<i64>();
+                    let l2 = *ptr0.add(8).cast::<i32>();
+                    Datetime {
+                        seconds: l1 as u64,
+                        nanoseconds: l2 as u32,
+                    }
+                }
+            }
+            #[allow(unused_unsafe, clippy::all)]
+            /// Query the resolution of the clock.
+            ///
+            /// The nanoseconds field of the output is always less than 1000000000.
+            pub fn resolution() -> Datetime {
+                unsafe {
+                    #[repr(align(8))]
+                    struct RetArea([::core::mem::MaybeUninit<u8>; 16]);
+                    let mut ret_area = RetArea([::core::mem::MaybeUninit::uninit(); 16]);
+                    let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
+                    #[cfg(target_arch = "wasm32")]
+                    #[link(wasm_import_module = "wasi:clocks/wall-clock@0.2.0")]
+                    extern "C" {
+                        #[link_name = "resolution"]
+                        fn wit_import(_: *mut u8);
+                    }
+
+                    #[cfg(not(target_arch = "wasm32"))]
+                    fn wit_import(_: *mut u8) {
+                        unreachable!()
+                    }
+                    wit_import(ptr0);
+                    let l1 = *ptr0.add(0).cast::<i64>();
+                    let l2 = *ptr0.add(8).cast::<i32>();
+                    Datetime {
+                        seconds: l1 as u64,
+                        nanoseconds: l2 as u32,
+                    }
                 }
             }
         }
@@ -5846,42 +6026,528 @@ pub mod wasi {
         }
 
         #[allow(dead_code, clippy::all)]
-        pub mod incoming_handler {
+        pub mod outgoing_handler {
             #[used]
             #[doc(hidden)]
             #[cfg(target_arch = "wasm32")]
             static __FORCE_SECTION_REF: fn() =
                 super::super::super::__link_custom_section_describing_imports;
-            pub type IncomingRequest = super::super::super::wasi::http::types::IncomingRequest;
-            pub type ResponseOutparam = super::super::super::wasi::http::types::ResponseOutparam;
+            use super::super::super::_rt;
+            pub type OutgoingRequest = super::super::super::wasi::http::types::OutgoingRequest;
+            pub type RequestOptions = super::super::super::wasi::http::types::RequestOptions;
+            pub type FutureIncomingResponse =
+                super::super::super::wasi::http::types::FutureIncomingResponse;
+            pub type ErrorCode = super::super::super::wasi::http::types::ErrorCode;
             #[allow(unused_unsafe, clippy::all)]
-            /// This function is invoked with an incoming HTTP Request, and a resource
-            /// `response-outparam` which provides the capability to reply with an HTTP
-            /// Response. The response is sent by calling the `response-outparam.set`
-            /// method, which allows execution to continue after the response has been
-            /// sent. This enables both streaming to the response body, and performing other
-            /// work.
+            /// This function is invoked with an outgoing HTTP Request, and it returns
+            /// a resource `future-incoming-response` which represents an HTTP Response
+            /// which may arrive in the future.
             ///
-            /// The implementor of this function must write a response to the
-            /// `response-outparam` before returning, or else the caller will respond
-            /// with an error on its behalf.
-            pub fn handle(request: IncomingRequest, response_out: ResponseOutparam) {
+            /// The `options` argument accepts optional parameters for the HTTP
+            /// protocol's transport layer.
+            ///
+            /// This function may return an error if the `outgoing-request` is invalid
+            /// or not allowed to be made. Otherwise, protocol errors are reported
+            /// through the `future-incoming-response`.
+            pub fn handle(
+                request: OutgoingRequest, options: Option<RequestOptions>,
+            ) -> Result<FutureIncomingResponse, ErrorCode> {
                 unsafe {
+                    #[repr(align(8))]
+                    struct RetArea([::core::mem::MaybeUninit<u8>; 40]);
+                    let mut ret_area = RetArea([::core::mem::MaybeUninit::uninit(); 40]);
+                    let (result0_0, result0_1) = match &options {
+                        Some(e) => (1i32, (e).take_handle() as i32),
+                        None => (0i32, 0i32),
+                    };
+                    let ptr1 = ret_area.0.as_mut_ptr().cast::<u8>();
                     #[cfg(target_arch = "wasm32")]
-                    #[link(wasm_import_module = "wasi:http/incoming-handler@0.2.0")]
+                    #[link(wasm_import_module = "wasi:http/outgoing-handler@0.2.0")]
                     extern "C" {
                         #[link_name = "handle"]
-                        fn wit_import(_: i32, _: i32);
+                        fn wit_import(_: i32, _: i32, _: i32, _: *mut u8);
                     }
 
                     #[cfg(not(target_arch = "wasm32"))]
-                    fn wit_import(_: i32, _: i32) {
+                    fn wit_import(_: i32, _: i32, _: i32, _: *mut u8) {
                         unreachable!()
                     }
-                    wit_import(
-                        (&request).take_handle() as i32,
-                        (&response_out).take_handle() as i32,
-                    );
+                    wit_import((&request).take_handle() as i32, result0_0, result0_1, ptr1);
+                    let l2 = i32::from(*ptr1.add(0).cast::<u8>());
+                    match l2 {
+                        0 => {
+                            let e = {
+                                let l3 = *ptr1.add(8).cast::<i32>();
+
+                                super::super::super::wasi::http::types::FutureIncomingResponse::from_handle(l3 as u32)
+                            };
+                            Ok(e)
+                        }
+                        1 => {
+                            let e = {
+                                let l4 = i32::from(*ptr1.add(8).cast::<u8>());
+                                use super::super::super::wasi::http::types::ErrorCode as V66;
+                                let v66 = match l4 {
+                                    0 => V66::DnsTimeout,
+                                    1 => {
+                                        let e66 = {
+                                            let l5 = i32::from(*ptr1.add(16).cast::<u8>());
+                                            let l9 = i32::from(*ptr1.add(28).cast::<u8>());
+
+                                            super::super::super::wasi::http::types::DnsErrorPayload{
+                        rcode: match l5 {
+                          0 => None,
+                          1 => {
+                            let e = {
+                              let l6 = *ptr1.add(20).cast::<*mut u8>();
+                              let l7 = *ptr1.add(24).cast::<usize>();
+                              let len8 = l7;
+                              let bytes8 = _rt::Vec::from_raw_parts(l6.cast(), len8, len8);
+
+                              _rt::string_lift(bytes8)
+                            };
+                            Some(e)
+                          }
+                          _ => _rt::invalid_enum_discriminant(),
+                        },
+                        info_code: match l9 {
+                          0 => None,
+                          1 => {
+                            let e = {
+                              let l10 = i32::from(*ptr1.add(30).cast::<u16>());
+
+                              l10 as u16
+                            };
+                            Some(e)
+                          }
+                          _ => _rt::invalid_enum_discriminant(),
+                        },
+                      }
+                                        };
+                                        V66::DnsError(e66)
+                                    }
+                                    2 => V66::DestinationNotFound,
+                                    3 => V66::DestinationUnavailable,
+                                    4 => V66::DestinationIpProhibited,
+                                    5 => V66::DestinationIpUnroutable,
+                                    6 => V66::ConnectionRefused,
+                                    7 => V66::ConnectionTerminated,
+                                    8 => V66::ConnectionTimeout,
+                                    9 => V66::ConnectionReadTimeout,
+                                    10 => V66::ConnectionWriteTimeout,
+                                    11 => V66::ConnectionLimitReached,
+                                    12 => V66::TlsProtocolError,
+                                    13 => V66::TlsCertificateError,
+                                    14 => {
+                                        let e66 = {
+                                            let l11 = i32::from(*ptr1.add(16).cast::<u8>());
+                                            let l13 = i32::from(*ptr1.add(20).cast::<u8>());
+
+                                            super::super::super::wasi::http::types::TlsAlertReceivedPayload{
+                        alert_id: match l11 {
+                          0 => None,
+                          1 => {
+                            let e = {
+                              let l12 = i32::from(*ptr1.add(17).cast::<u8>());
+
+                              l12 as u8
+                            };
+                            Some(e)
+                          }
+                          _ => _rt::invalid_enum_discriminant(),
+                        },
+                        alert_message: match l13 {
+                          0 => None,
+                          1 => {
+                            let e = {
+                              let l14 = *ptr1.add(24).cast::<*mut u8>();
+                              let l15 = *ptr1.add(28).cast::<usize>();
+                              let len16 = l15;
+                              let bytes16 = _rt::Vec::from_raw_parts(l14.cast(), len16, len16);
+
+                              _rt::string_lift(bytes16)
+                            };
+                            Some(e)
+                          }
+                          _ => _rt::invalid_enum_discriminant(),
+                        },
+                      }
+                                        };
+                                        V66::TlsAlertReceived(e66)
+                                    }
+                                    15 => V66::HttpRequestDenied,
+                                    16 => V66::HttpRequestLengthRequired,
+                                    17 => {
+                                        let e66 = {
+                                            let l17 = i32::from(*ptr1.add(16).cast::<u8>());
+
+                                            match l17 {
+                                                0 => None,
+                                                1 => {
+                                                    let e = {
+                                                        let l18 = *ptr1.add(24).cast::<i64>();
+
+                                                        l18 as u64
+                                                    };
+                                                    Some(e)
+                                                }
+                                                _ => _rt::invalid_enum_discriminant(),
+                                            }
+                                        };
+                                        V66::HttpRequestBodySize(e66)
+                                    }
+                                    18 => V66::HttpRequestMethodInvalid,
+                                    19 => V66::HttpRequestUriInvalid,
+                                    20 => V66::HttpRequestUriTooLong,
+                                    21 => {
+                                        let e66 = {
+                                            let l19 = i32::from(*ptr1.add(16).cast::<u8>());
+
+                                            match l19 {
+                                                0 => None,
+                                                1 => {
+                                                    let e = {
+                                                        let l20 = *ptr1.add(20).cast::<i32>();
+
+                                                        l20 as u32
+                                                    };
+                                                    Some(e)
+                                                }
+                                                _ => _rt::invalid_enum_discriminant(),
+                                            }
+                                        };
+                                        V66::HttpRequestHeaderSectionSize(e66)
+                                    }
+                                    22 => {
+                                        let e66 = {
+                                            let l21 = i32::from(*ptr1.add(16).cast::<u8>());
+
+                                            match l21 {
+                                                0 => None,
+                                                1 => {
+                                                    let e = {
+                                                        let l22 =
+                                                            i32::from(*ptr1.add(20).cast::<u8>());
+                                                        let l26 =
+                                                            i32::from(*ptr1.add(32).cast::<u8>());
+
+                                                        super::super::super::wasi::http::types::FieldSizePayload{
+                              field_name: match l22 {
+                                0 => None,
+                                1 => {
+                                  let e = {
+                                    let l23 = *ptr1.add(24).cast::<*mut u8>();
+                                    let l24 = *ptr1.add(28).cast::<usize>();
+                                    let len25 = l24;
+                                    let bytes25 = _rt::Vec::from_raw_parts(l23.cast(), len25, len25);
+
+                                    _rt::string_lift(bytes25)
+                                  };
+                                  Some(e)
+                                }
+                                _ => _rt::invalid_enum_discriminant(),
+                              },
+                              field_size: match l26 {
+                                0 => None,
+                                1 => {
+                                  let e = {
+                                    let l27 = *ptr1.add(36).cast::<i32>();
+
+                                    l27 as u32
+                                  };
+                                  Some(e)
+                                }
+                                _ => _rt::invalid_enum_discriminant(),
+                              },
+                            }
+                                                    };
+                                                    Some(e)
+                                                }
+                                                _ => _rt::invalid_enum_discriminant(),
+                                            }
+                                        };
+                                        V66::HttpRequestHeaderSize(e66)
+                                    }
+                                    23 => {
+                                        let e66 = {
+                                            let l28 = i32::from(*ptr1.add(16).cast::<u8>());
+
+                                            match l28 {
+                                                0 => None,
+                                                1 => {
+                                                    let e = {
+                                                        let l29 = *ptr1.add(20).cast::<i32>();
+
+                                                        l29 as u32
+                                                    };
+                                                    Some(e)
+                                                }
+                                                _ => _rt::invalid_enum_discriminant(),
+                                            }
+                                        };
+                                        V66::HttpRequestTrailerSectionSize(e66)
+                                    }
+                                    24 => {
+                                        let e66 = {
+                                            let l30 = i32::from(*ptr1.add(16).cast::<u8>());
+                                            let l34 = i32::from(*ptr1.add(28).cast::<u8>());
+
+                                            super::super::super::wasi::http::types::FieldSizePayload{
+                        field_name: match l30 {
+                          0 => None,
+                          1 => {
+                            let e = {
+                              let l31 = *ptr1.add(20).cast::<*mut u8>();
+                              let l32 = *ptr1.add(24).cast::<usize>();
+                              let len33 = l32;
+                              let bytes33 = _rt::Vec::from_raw_parts(l31.cast(), len33, len33);
+
+                              _rt::string_lift(bytes33)
+                            };
+                            Some(e)
+                          }
+                          _ => _rt::invalid_enum_discriminant(),
+                        },
+                        field_size: match l34 {
+                          0 => None,
+                          1 => {
+                            let e = {
+                              let l35 = *ptr1.add(32).cast::<i32>();
+
+                              l35 as u32
+                            };
+                            Some(e)
+                          }
+                          _ => _rt::invalid_enum_discriminant(),
+                        },
+                      }
+                                        };
+                                        V66::HttpRequestTrailerSize(e66)
+                                    }
+                                    25 => V66::HttpResponseIncomplete,
+                                    26 => {
+                                        let e66 = {
+                                            let l36 = i32::from(*ptr1.add(16).cast::<u8>());
+
+                                            match l36 {
+                                                0 => None,
+                                                1 => {
+                                                    let e = {
+                                                        let l37 = *ptr1.add(20).cast::<i32>();
+
+                                                        l37 as u32
+                                                    };
+                                                    Some(e)
+                                                }
+                                                _ => _rt::invalid_enum_discriminant(),
+                                            }
+                                        };
+                                        V66::HttpResponseHeaderSectionSize(e66)
+                                    }
+                                    27 => {
+                                        let e66 = {
+                                            let l38 = i32::from(*ptr1.add(16).cast::<u8>());
+                                            let l42 = i32::from(*ptr1.add(28).cast::<u8>());
+
+                                            super::super::super::wasi::http::types::FieldSizePayload{
+                        field_name: match l38 {
+                          0 => None,
+                          1 => {
+                            let e = {
+                              let l39 = *ptr1.add(20).cast::<*mut u8>();
+                              let l40 = *ptr1.add(24).cast::<usize>();
+                              let len41 = l40;
+                              let bytes41 = _rt::Vec::from_raw_parts(l39.cast(), len41, len41);
+
+                              _rt::string_lift(bytes41)
+                            };
+                            Some(e)
+                          }
+                          _ => _rt::invalid_enum_discriminant(),
+                        },
+                        field_size: match l42 {
+                          0 => None,
+                          1 => {
+                            let e = {
+                              let l43 = *ptr1.add(32).cast::<i32>();
+
+                              l43 as u32
+                            };
+                            Some(e)
+                          }
+                          _ => _rt::invalid_enum_discriminant(),
+                        },
+                      }
+                                        };
+                                        V66::HttpResponseHeaderSize(e66)
+                                    }
+                                    28 => {
+                                        let e66 = {
+                                            let l44 = i32::from(*ptr1.add(16).cast::<u8>());
+
+                                            match l44 {
+                                                0 => None,
+                                                1 => {
+                                                    let e = {
+                                                        let l45 = *ptr1.add(24).cast::<i64>();
+
+                                                        l45 as u64
+                                                    };
+                                                    Some(e)
+                                                }
+                                                _ => _rt::invalid_enum_discriminant(),
+                                            }
+                                        };
+                                        V66::HttpResponseBodySize(e66)
+                                    }
+                                    29 => {
+                                        let e66 = {
+                                            let l46 = i32::from(*ptr1.add(16).cast::<u8>());
+
+                                            match l46 {
+                                                0 => None,
+                                                1 => {
+                                                    let e = {
+                                                        let l47 = *ptr1.add(20).cast::<i32>();
+
+                                                        l47 as u32
+                                                    };
+                                                    Some(e)
+                                                }
+                                                _ => _rt::invalid_enum_discriminant(),
+                                            }
+                                        };
+                                        V66::HttpResponseTrailerSectionSize(e66)
+                                    }
+                                    30 => {
+                                        let e66 = {
+                                            let l48 = i32::from(*ptr1.add(16).cast::<u8>());
+                                            let l52 = i32::from(*ptr1.add(28).cast::<u8>());
+
+                                            super::super::super::wasi::http::types::FieldSizePayload{
+                        field_name: match l48 {
+                          0 => None,
+                          1 => {
+                            let e = {
+                              let l49 = *ptr1.add(20).cast::<*mut u8>();
+                              let l50 = *ptr1.add(24).cast::<usize>();
+                              let len51 = l50;
+                              let bytes51 = _rt::Vec::from_raw_parts(l49.cast(), len51, len51);
+
+                              _rt::string_lift(bytes51)
+                            };
+                            Some(e)
+                          }
+                          _ => _rt::invalid_enum_discriminant(),
+                        },
+                        field_size: match l52 {
+                          0 => None,
+                          1 => {
+                            let e = {
+                              let l53 = *ptr1.add(32).cast::<i32>();
+
+                              l53 as u32
+                            };
+                            Some(e)
+                          }
+                          _ => _rt::invalid_enum_discriminant(),
+                        },
+                      }
+                                        };
+                                        V66::HttpResponseTrailerSize(e66)
+                                    }
+                                    31 => {
+                                        let e66 = {
+                                            let l54 = i32::from(*ptr1.add(16).cast::<u8>());
+
+                                            match l54 {
+                                                0 => None,
+                                                1 => {
+                                                    let e = {
+                                                        let l55 = *ptr1.add(20).cast::<*mut u8>();
+                                                        let l56 = *ptr1.add(24).cast::<usize>();
+                                                        let len57 = l56;
+                                                        let bytes57 = _rt::Vec::from_raw_parts(
+                                                            l55.cast(),
+                                                            len57,
+                                                            len57,
+                                                        );
+
+                                                        _rt::string_lift(bytes57)
+                                                    };
+                                                    Some(e)
+                                                }
+                                                _ => _rt::invalid_enum_discriminant(),
+                                            }
+                                        };
+                                        V66::HttpResponseTransferCoding(e66)
+                                    }
+                                    32 => {
+                                        let e66 = {
+                                            let l58 = i32::from(*ptr1.add(16).cast::<u8>());
+
+                                            match l58 {
+                                                0 => None,
+                                                1 => {
+                                                    let e = {
+                                                        let l59 = *ptr1.add(20).cast::<*mut u8>();
+                                                        let l60 = *ptr1.add(24).cast::<usize>();
+                                                        let len61 = l60;
+                                                        let bytes61 = _rt::Vec::from_raw_parts(
+                                                            l59.cast(),
+                                                            len61,
+                                                            len61,
+                                                        );
+
+                                                        _rt::string_lift(bytes61)
+                                                    };
+                                                    Some(e)
+                                                }
+                                                _ => _rt::invalid_enum_discriminant(),
+                                            }
+                                        };
+                                        V66::HttpResponseContentCoding(e66)
+                                    }
+                                    33 => V66::HttpResponseTimeout,
+                                    34 => V66::HttpUpgradeFailed,
+                                    35 => V66::HttpProtocolError,
+                                    36 => V66::LoopDetected,
+                                    37 => V66::ConfigurationError,
+                                    n => {
+                                        debug_assert_eq!(n, 38, "invalid enum discriminant");
+                                        let e66 = {
+                                            let l62 = i32::from(*ptr1.add(16).cast::<u8>());
+
+                                            match l62 {
+                                                0 => None,
+                                                1 => {
+                                                    let e = {
+                                                        let l63 = *ptr1.add(20).cast::<*mut u8>();
+                                                        let l64 = *ptr1.add(24).cast::<usize>();
+                                                        let len65 = l64;
+                                                        let bytes65 = _rt::Vec::from_raw_parts(
+                                                            l63.cast(),
+                                                            len65,
+                                                            len65,
+                                                        );
+
+                                                        _rt::string_lift(bytes65)
+                                                    };
+                                                    Some(e)
+                                                }
+                                                _ => _rt::invalid_enum_discriminant(),
+                                            }
+                                        };
+                                        V66::InternalError(e66)
+                                    }
+                                };
+
+                                v66
+                            };
+                            Err(e)
+                        }
+                        _ => _rt::invalid_enum_discriminant(),
+                    }
                 }
             }
         }
@@ -8219,11 +8885,131 @@ pub mod wasi {
             }
         }
     }
+    #[allow(dead_code)]
+    pub mod random {
+        #[allow(dead_code, clippy::all)]
+        pub mod random {
+            #[used]
+            #[doc(hidden)]
+            #[cfg(target_arch = "wasm32")]
+            static __FORCE_SECTION_REF: fn() =
+                super::super::super::__link_custom_section_describing_imports;
+            use super::super::super::_rt;
+            #[allow(unused_unsafe, clippy::all)]
+            /// Return `len` cryptographically-secure random or pseudo-random bytes.
+            ///
+            /// This function must produce data at least as cryptographically secure and
+            /// fast as an adequately seeded cryptographically-secure pseudo-random
+            /// number generator (CSPRNG). It must not block, from the perspective of
+            /// the calling program, under any circumstances, including on the first
+            /// request and on requests for numbers of bytes. The returned data must
+            /// always be unpredictable.
+            ///
+            /// This function must always return fresh data. Deterministic environments
+            /// must omit this function, rather than implementing it with deterministic
+            /// data.
+            pub fn get_random_bytes(len: u64) -> _rt::Vec<u8> {
+                unsafe {
+                    #[repr(align(4))]
+                    struct RetArea([::core::mem::MaybeUninit<u8>; 8]);
+                    let mut ret_area = RetArea([::core::mem::MaybeUninit::uninit(); 8]);
+                    let ptr0 = ret_area.0.as_mut_ptr().cast::<u8>();
+                    #[cfg(target_arch = "wasm32")]
+                    #[link(wasm_import_module = "wasi:random/random@0.2.0")]
+                    extern "C" {
+                        #[link_name = "get-random-bytes"]
+                        fn wit_import(_: i64, _: *mut u8);
+                    }
+
+                    #[cfg(not(target_arch = "wasm32"))]
+                    fn wit_import(_: i64, _: *mut u8) {
+                        unreachable!()
+                    }
+                    wit_import(_rt::as_i64(&len), ptr0);
+                    let l1 = *ptr0.add(0).cast::<*mut u8>();
+                    let l2 = *ptr0.add(4).cast::<usize>();
+                    let len3 = l2;
+                    _rt::Vec::from_raw_parts(l1.cast(), len3, len3)
+                }
+            }
+            #[allow(unused_unsafe, clippy::all)]
+            /// Return a cryptographically-secure random or pseudo-random `u64` value.
+            ///
+            /// This function returns the same type of data as `get-random-bytes`,
+            /// represented as a `u64`.
+            pub fn get_random_u64() -> u64 {
+                unsafe {
+                    #[cfg(target_arch = "wasm32")]
+                    #[link(wasm_import_module = "wasi:random/random@0.2.0")]
+                    extern "C" {
+                        #[link_name = "get-random-u64"]
+                        fn wit_import() -> i64;
+                    }
+
+                    #[cfg(not(target_arch = "wasm32"))]
+                    fn wit_import() -> i64 {
+                        unreachable!()
+                    }
+                    let ret = wit_import();
+                    ret as u64
+                }
+            }
+        }
+    }
 }
 #[allow(dead_code)]
 pub mod exports {
     #[allow(dead_code)]
     pub mod wasi {
+        #[allow(dead_code)]
+        pub mod http {
+            #[allow(dead_code, clippy::all)]
+            pub mod incoming_handler {
+                #[used]
+                #[doc(hidden)]
+                #[cfg(target_arch = "wasm32")]
+                static __FORCE_SECTION_REF: fn() =
+                    super::super::super::super::__link_custom_section_describing_imports;
+                use super::super::super::super::_rt;
+                pub type IncomingRequest =
+                    super::super::super::super::wasi::http::types::IncomingRequest;
+                pub type ResponseOutparam =
+                    super::super::super::super::wasi::http::types::ResponseOutparam;
+                #[doc(hidden)]
+                #[allow(non_snake_case)]
+                pub unsafe fn _export_handle_cabi<T: Guest>(arg0: i32, arg1: i32) {
+                    #[cfg(target_arch = "wasm32")]
+                    _rt::run_ctors_once();
+                    T::handle(super::super::super::super::wasi::http::types::IncomingRequest::from_handle(arg0 as u32), super::super::super::super::wasi::http::types::ResponseOutparam::from_handle(arg1 as u32));
+                }
+                pub trait Guest {
+                    /// This function is invoked with an incoming HTTP Request, and a resource
+                    /// `response-outparam` which provides the capability to reply with an HTTP
+                    /// Response. The response is sent by calling the `response-outparam.set`
+                    /// method, which allows execution to continue after the response has been
+                    /// sent. This enables both streaming to the response body, and performing other
+                    /// work.
+                    ///
+                    /// The implementor of this function must write a response to the
+                    /// `response-outparam` before returning, or else the caller will respond
+                    /// with an error on its behalf.
+                    fn handle(request: IncomingRequest, response_out: ResponseOutparam);
+                }
+                #[doc(hidden)]
+
+                macro_rules! __export_wasi_http_incoming_handler_0_2_0_cabi{
+          ($ty:ident with_types_in $($path_to_types:tt)*) => (const _: () = {
+
+            #[export_name = "wasi:http/incoming-handler@0.2.0#handle"]
+            unsafe extern "C" fn export_handle(arg0: i32,arg1: i32,) {
+              $($path_to_types)*::_export_handle_cabi::<$ty>(arg0, arg1)
+            }
+          };);
+        }
+                #[doc(hidden)]
+                pub(crate) use __export_wasi_http_incoming_handler_0_2_0_cabi;
+            }
+        }
         #[allow(dead_code)]
         pub mod messaging {
             #[allow(dead_code, clippy::all)]
@@ -8396,42 +9182,42 @@ pub mod exports {
                             let l4 = i32::from(*base.add(12).cast::<u8>());
 
                             super::super::super::super::wasi::messaging::messaging_types::Message{
-                data: _rt::Vec::from_raw_parts(l0.cast(), len2, len2),
-                format: super::super::super::super::wasi::messaging::messaging_types::FormatSpec::_lift(l3 as u8),
-                metadata: match l4 {
-                  0 => None,
-                  1 => {
-                    let e = {
-                      let l5 = *base.add(16).cast::<*mut u8>();
-                      let l6 = *base.add(20).cast::<usize>();
-                      let base13 = l5;
-                      let len13 = l6;
-                      let mut result13 = _rt::Vec::with_capacity(len13);
-                      for i in 0..len13 {
-                        let base = base13.add(i * 16);
-                        let e13 = {
-                          let l7 = *base.add(0).cast::<*mut u8>();
-                          let l8 = *base.add(4).cast::<usize>();
-                          let len9 = l8;
-                          let bytes9 = _rt::Vec::from_raw_parts(l7.cast(), len9, len9);
-                          let l10 = *base.add(8).cast::<*mut u8>();
-                          let l11 = *base.add(12).cast::<usize>();
-                          let len12 = l11;
-                          let bytes12 = _rt::Vec::from_raw_parts(l10.cast(), len12, len12);
+              data: _rt::Vec::from_raw_parts(l0.cast(), len2, len2),
+              format: super::super::super::super::wasi::messaging::messaging_types::FormatSpec::_lift(l3 as u8),
+              metadata: match l4 {
+                0 => None,
+                1 => {
+                  let e = {
+                    let l5 = *base.add(16).cast::<*mut u8>();
+                    let l6 = *base.add(20).cast::<usize>();
+                    let base13 = l5;
+                    let len13 = l6;
+                    let mut result13 = _rt::Vec::with_capacity(len13);
+                    for i in 0..len13 {
+                      let base = base13.add(i * 16);
+                      let e13 = {
+                        let l7 = *base.add(0).cast::<*mut u8>();
+                        let l8 = *base.add(4).cast::<usize>();
+                        let len9 = l8;
+                        let bytes9 = _rt::Vec::from_raw_parts(l7.cast(), len9, len9);
+                        let l10 = *base.add(8).cast::<*mut u8>();
+                        let l11 = *base.add(12).cast::<usize>();
+                        let len12 = l11;
+                        let bytes12 = _rt::Vec::from_raw_parts(l10.cast(), len12, len12);
 
-                          (_rt::string_lift(bytes9), _rt::string_lift(bytes12))
-                        };
-                        result13.push(e13);
-                      }
-                      _rt::cabi_dealloc(base13, len13 * 16, 4);
+                        (_rt::string_lift(bytes9), _rt::string_lift(bytes12))
+                      };
+                      result13.push(e13);
+                    }
+                    _rt::cabi_dealloc(base13, len13 * 16, 4);
 
-                      result13
-                    };
-                    Some(e)
-                  }
-                  _ => _rt::invalid_enum_discriminant(),
-                },
-              }
+                    result13
+                  };
+                  Some(e)
+                }
+                _ => _rt::invalid_enum_discriminant(),
+              },
+            }
                         };
                         result14.push(e14);
                     }
@@ -8459,22 +9245,22 @@ pub mod exports {
                 #[doc(hidden)]
 
                 macro_rules! __export_wasi_messaging_messaging_guest_0_2_0_draft_cabi{
-          ($ty:ident with_types_in $($path_to_types:tt)*) => (const _: () = {
+        ($ty:ident with_types_in $($path_to_types:tt)*) => (const _: () = {
 
-            #[export_name = "wasi:messaging/messaging-guest@0.2.0-draft#configure"]
-            unsafe extern "C" fn export_configure() -> *mut u8 {
-              $($path_to_types)*::_export_configure_cabi::<$ty>()
-            }
-            #[export_name = "cabi_post_wasi:messaging/messaging-guest@0.2.0-draft#configure"]
-            unsafe extern "C" fn _post_return_configure(arg0: *mut u8,) {
-              $($path_to_types)*::__post_return_configure::<$ty>(arg0)
-            }
-            #[export_name = "wasi:messaging/messaging-guest@0.2.0-draft#handler"]
-            unsafe extern "C" fn export_handler(arg0: *mut u8,arg1: usize,) -> *mut u8 {
-              $($path_to_types)*::_export_handler_cabi::<$ty>(arg0, arg1)
-            }
-          };);
-        }
+          #[export_name = "wasi:messaging/messaging-guest@0.2.0-draft#configure"]
+          unsafe extern "C" fn export_configure() -> *mut u8 {
+            $($path_to_types)*::_export_configure_cabi::<$ty>()
+          }
+          #[export_name = "cabi_post_wasi:messaging/messaging-guest@0.2.0-draft#configure"]
+          unsafe extern "C" fn _post_return_configure(arg0: *mut u8,) {
+            $($path_to_types)*::__post_return_configure::<$ty>(arg0)
+          }
+          #[export_name = "wasi:messaging/messaging-guest@0.2.0-draft#handler"]
+          unsafe extern "C" fn export_handler(arg0: *mut u8,arg1: usize,) -> *mut u8 {
+            $($path_to_types)*::_export_handler_cabi::<$ty>(arg0, arg1)
+          }
+        };);
+      }
                 #[doc(hidden)]
                 pub(crate) use __export_wasi_messaging_messaging_guest_0_2_0_draft_cabi;
                 #[repr(align(4))]
@@ -8741,6 +9527,7 @@ macro_rules! __export_messaging_impl {
   ($ty:ident) => (self::export!($ty with_types_in self););
   ($ty:ident with_types_in $($path_to_types_root:tt)*) => (
   $($path_to_types_root)*::exports::wasi::messaging::messaging_guest::__export_wasi_messaging_messaging_guest_0_2_0_draft_cabi!($ty with_types_in $($path_to_types_root)*::exports::wasi::messaging::messaging_guest);
+  $($path_to_types_root)*::exports::wasi::http::incoming_handler::__export_wasi_http_incoming_handler_0_2_0_cabi!($ty with_types_in $($path_to_types_root)*::exports::wasi::http::incoming_handler);
   )
 }
 #[doc(inline)]
@@ -8749,11 +9536,11 @@ pub(crate) use __export_messaging_impl as export;
 #[cfg(target_arch = "wasm32")]
 #[link_section = "component-type:wit-bindgen:0.24.0:messaging:encoded world"]
 #[doc(hidden)]
-pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 7398] = *b"\
-\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\xe68\x01A\x02\x01A\x20\
-\x01B\x16\x04\0\x06client\x03\x01\x04\0\x05error\x03\x01\x01s\x04\0\x07channel\x03\
-\0\x02\x01p\x03\x01o\x02ss\x01p\x05\x01k\x06\x01r\x02\x08channels\x04\x0aextensi\
-ons\x07\x04\0\x13guest-configuration\x03\0\x08\x01m\x06\x0bcloudevents\x04http\x04\
+pub static __WIT_BINDGEN_COMPONENT_TYPE: [u8; 8102] = *b"\
+\0asm\x0d\0\x01\0\0\x19\x16wit-component-encoding\x04\0\x07\xa6>\x01A\x02\x01A0\x01\
+B\x16\x04\0\x06client\x03\x01\x04\0\x05error\x03\x01\x01s\x04\0\x07channel\x03\0\
+\x02\x01p\x03\x01o\x02ss\x01p\x05\x01k\x06\x01r\x02\x08channels\x04\x0aextension\
+s\x07\x04\0\x13guest-configuration\x03\0\x08\x01m\x06\x0bcloudevents\x04http\x04\
 amqp\x04mqtt\x05kafka\x03raw\x04\0\x0bformat-spec\x03\0\x0a\x01p}\x01r\x03\x04da\
 ta\x0c\x06format\x0b\x08metadata\x07\x04\0\x07message\x03\0\x0d\x01i\0\x01i\x01\x01\
 j\x01\x0f\x01\x10\x01@\x01\x04names\0\x11\x04\0\x16[static]client.connect\x01\x12\
@@ -8875,33 +9662,49 @@ trailers\xf2\0\0\x81\x01\x04\0\x1c[static]outgoing-body.finish\x01\x82\x01\x01h0
 be\x01\x84\x01\x01i+\x01j\x01\x85\x01\x01\x1b\x01j\x01\x86\x01\0\x01k\x87\x01\x01\
 @\x01\x04self\x83\x01\0\x88\x01\x04\0$[method]future-incoming-response.get\x01\x89\
 \x01\x01h\x07\x01k\x1b\x01@\x01\x03err\x8a\x01\0\x8b\x01\x04\0\x0fhttp-error-cod\
-e\x01\x8c\x01\x03\x01\x15wasi:http/types@0.2.0\x05\x0a\x02\x03\0\x05\x10incoming\
--request\x02\x03\0\x05\x11response-outparam\x01B\x08\x02\x03\x02\x01\x0b\x04\0\x10\
-incoming-request\x03\0\0\x02\x03\x02\x01\x0c\x04\0\x11response-outparam\x03\0\x02\
-\x01i\x01\x01i\x03\x01@\x02\x07request\x04\x0cresponse-out\x05\x01\0\x04\0\x06ha\
-ndle\x01\x06\x03\x01\x20wasi:http/incoming-handler@0.2.0\x05\x0d\x02\x03\0\0\x06\
-client\x02\x03\0\0\x07channel\x02\x03\0\0\x07message\x02\x03\0\0\x05error\x01B\x0e\
-\x02\x03\x02\x01\x0e\x04\0\x06client\x03\0\0\x02\x03\x02\x01\x0f\x04\0\x07channe\
-l\x03\0\x02\x02\x03\x02\x01\x10\x04\0\x07message\x03\0\x04\x02\x03\x02\x01\x11\x04\
-\0\x05error\x03\0\x06\x01i\x01\x01p\x05\x01i\x07\x01j\0\x01\x0a\x01@\x03\x01c\x08\
-\x02ch\x03\x01m\x09\0\x0b\x04\0\x04send\x01\x0c\x03\x01#wasi:messaging/producer@\
-0.2.0-draft\x05\x12\x02\x03\0\0\x13guest-configuration\x01B\x1a\x02\x03\x02\x01\x0e\
-\x04\0\x06client\x03\0\0\x02\x03\x02\x01\x10\x04\0\x07message\x03\0\x02\x02\x03\x02\
-\x01\x0f\x04\0\x07channel\x03\0\x04\x02\x03\x02\x01\x11\x04\0\x05error\x03\0\x06\
-\x02\x03\x02\x01\x13\x04\0\x13guest-configuration\x03\0\x08\x01i\x01\x01p\x03\x01\
-k\x0b\x01i\x07\x01j\x01\x0c\x01\x0d\x01@\x03\x01c\x0a\x02ch\x05\x0et-millisecond\
-sy\0\x0e\x04\0\x15subscribe-try-receive\x01\x0f\x01j\x01\x0b\x01\x0d\x01@\x02\x01\
-c\x0a\x02ch\x05\0\x10\x04\0\x11subscribe-receive\x01\x11\x01j\0\x01\x0d\x01@\x01\
-\x02gc\x09\0\x12\x04\0\x1aupdate-guest-configuration\x01\x13\x01@\x01\x01m\x03\0\
-\x12\x04\0\x10complete-message\x01\x14\x04\0\x0fabandon-message\x01\x14\x03\x01#\
-wasi:messaging/consumer@0.2.0-draft\x05\x14\x01B\x0e\x02\x03\x02\x01\x10\x04\0\x07\
-message\x03\0\0\x02\x03\x02\x01\x13\x04\0\x13guest-configuration\x03\0\x02\x02\x03\
-\x02\x01\x11\x04\0\x05error\x03\0\x04\x01i\x05\x01j\x01\x03\x01\x06\x01@\0\0\x07\
-\x04\0\x09configure\x01\x08\x01p\x01\x01j\0\x01\x06\x01@\x01\x02ms\x09\0\x0a\x04\
-\0\x07handler\x01\x0b\x04\x01*wasi:messaging/messaging-guest@0.2.0-draft\x05\x15\
-\x04\x01\x1ccomponent:http-msg/messaging\x04\0\x0b\x0f\x01\0\x09messaging\x03\0\0\
-\0G\x09producers\x01\x0cprocessed-by\x02\x0dwit-component\x070.202.0\x10wit-bind\
-gen-rust\x060.24.0";
+e\x01\x8c\x01\x03\x01\x15wasi:http/types@0.2.0\x05\x0a\x01B\x05\x01p}\x01@\x01\x03\
+lenw\0\0\x04\0\x10get-random-bytes\x01\x01\x01@\0\0w\x04\0\x0eget-random-u64\x01\
+\x02\x03\x01\x18wasi:random/random@0.2.0\x05\x0b\x01B\x05\x02\x03\x02\x01\x09\x04\
+\0\x0doutput-stream\x03\0\0\x01i\x01\x01@\0\0\x02\x04\0\x0aget-stdout\x01\x03\x03\
+\x01\x15wasi:cli/stdout@0.2.0\x05\x0c\x01B\x05\x02\x03\x02\x01\x09\x04\0\x0doutp\
+ut-stream\x03\0\0\x01i\x01\x01@\0\0\x02\x04\0\x0aget-stderr\x01\x03\x03\x01\x15w\
+asi:cli/stderr@0.2.0\x05\x0d\x01B\x05\x02\x03\x02\x01\x08\x04\0\x0cinput-stream\x03\
+\0\0\x01i\x01\x01@\0\0\x02\x04\0\x09get-stdin\x01\x03\x03\x01\x14wasi:cli/stdin@\
+0.2.0\x05\x0e\x02\x03\0\x05\x10outgoing-request\x02\x03\0\x05\x0frequest-options\
+\x02\x03\0\x05\x18future-incoming-response\x02\x03\0\x05\x0aerror-code\x01B\x0f\x02\
+\x03\x02\x01\x0f\x04\0\x10outgoing-request\x03\0\0\x02\x03\x02\x01\x10\x04\0\x0f\
+request-options\x03\0\x02\x02\x03\x02\x01\x11\x04\0\x18future-incoming-response\x03\
+\0\x04\x02\x03\x02\x01\x12\x04\0\x0aerror-code\x03\0\x06\x01i\x01\x01i\x03\x01k\x09\
+\x01i\x05\x01j\x01\x0b\x01\x07\x01@\x02\x07request\x08\x07options\x0a\0\x0c\x04\0\
+\x06handle\x01\x0d\x03\x01\x20wasi:http/outgoing-handler@0.2.0\x05\x13\x01B\x05\x01\
+r\x02\x07secondsw\x0bnanosecondsy\x04\0\x08datetime\x03\0\0\x01@\0\0\x01\x04\0\x03\
+now\x01\x02\x04\0\x0aresolution\x01\x02\x03\x01\x1cwasi:clocks/wall-clock@0.2.0\x05\
+\x14\x02\x03\0\0\x06client\x02\x03\0\0\x07channel\x02\x03\0\0\x07message\x02\x03\
+\0\0\x05error\x01B\x0e\x02\x03\x02\x01\x15\x04\0\x06client\x03\0\0\x02\x03\x02\x01\
+\x16\x04\0\x07channel\x03\0\x02\x02\x03\x02\x01\x17\x04\0\x07message\x03\0\x04\x02\
+\x03\x02\x01\x18\x04\0\x05error\x03\0\x06\x01i\x01\x01p\x05\x01i\x07\x01j\0\x01\x0a\
+\x01@\x03\x01c\x08\x02ch\x03\x01m\x09\0\x0b\x04\0\x04send\x01\x0c\x03\x01#wasi:m\
+essaging/producer@0.2.0-draft\x05\x19\x02\x03\0\0\x13guest-configuration\x01B\x1a\
+\x02\x03\x02\x01\x15\x04\0\x06client\x03\0\0\x02\x03\x02\x01\x17\x04\0\x07messag\
+e\x03\0\x02\x02\x03\x02\x01\x16\x04\0\x07channel\x03\0\x04\x02\x03\x02\x01\x18\x04\
+\0\x05error\x03\0\x06\x02\x03\x02\x01\x1a\x04\0\x13guest-configuration\x03\0\x08\
+\x01i\x01\x01p\x03\x01k\x0b\x01i\x07\x01j\x01\x0c\x01\x0d\x01@\x03\x01c\x0a\x02c\
+h\x05\x0et-millisecondsy\0\x0e\x04\0\x15subscribe-try-receive\x01\x0f\x01j\x01\x0b\
+\x01\x0d\x01@\x02\x01c\x0a\x02ch\x05\0\x10\x04\0\x11subscribe-receive\x01\x11\x01\
+j\0\x01\x0d\x01@\x01\x02gc\x09\0\x12\x04\0\x1aupdate-guest-configuration\x01\x13\
+\x01@\x01\x01m\x03\0\x12\x04\0\x10complete-message\x01\x14\x04\0\x0fabandon-mess\
+age\x01\x14\x03\x01#wasi:messaging/consumer@0.2.0-draft\x05\x1b\x01B\x0e\x02\x03\
+\x02\x01\x17\x04\0\x07message\x03\0\0\x02\x03\x02\x01\x1a\x04\0\x13guest-configu\
+ration\x03\0\x02\x02\x03\x02\x01\x18\x04\0\x05error\x03\0\x04\x01i\x05\x01j\x01\x03\
+\x01\x06\x01@\0\0\x07\x04\0\x09configure\x01\x08\x01p\x01\x01j\0\x01\x06\x01@\x01\
+\x02ms\x09\0\x0a\x04\0\x07handler\x01\x0b\x04\x01*wasi:messaging/messaging-guest\
+@0.2.0-draft\x05\x1c\x02\x03\0\x05\x10incoming-request\x02\x03\0\x05\x11response\
+-outparam\x01B\x08\x02\x03\x02\x01\x1d\x04\0\x10incoming-request\x03\0\0\x02\x03\
+\x02\x01\x1e\x04\0\x11response-outparam\x03\0\x02\x01i\x01\x01i\x03\x01@\x02\x07\
+request\x04\x0cresponse-out\x05\x01\0\x04\0\x06handle\x01\x06\x04\x01\x20wasi:ht\
+tp/incoming-handler@0.2.0\x05\x1f\x04\x01\x1ccomponent:http-msg/messaging\x04\0\x0b\
+\x0f\x01\0\x09messaging\x03\0\0\0G\x09producers\x01\x0cprocessed-by\x02\x0dwit-c\
+omponent\x070.202.0\x10wit-bindgen-rust\x060.24.0";
 
 #[inline(never)]
 #[doc(hidden)]

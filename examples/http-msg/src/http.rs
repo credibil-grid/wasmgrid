@@ -2,12 +2,12 @@ use anyhow::{anyhow, Result};
 use http::header::CONTENT_TYPE; // AUTHORIZATION
 use http::Uri;
 use serde_json::json;
-use wasi::exports::http::incoming_handler::Guest;
-use wasi::http::types::{
-    Fields, IncomingRequest, OutgoingBody, OutgoingResponse, ResponseOutparam,
-};
 
 use super::GuestImpl;
+use crate::bindings::exports::wasi::http::incoming_handler::Guest;
+use crate::bindings::wasi::http::types::{
+    Fields, IncomingRequest, OutgoingBody, OutgoingResponse, ResponseOutparam,
+};
 
 impl Guest for GuestImpl {
     fn handle(request: IncomingRequest, response: ResponseOutparam) {

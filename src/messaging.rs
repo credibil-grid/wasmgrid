@@ -57,7 +57,7 @@ impl HandlerProxy {
     // Create a new HandlerProxy for the specified wasm Guest.
     fn new(engine: Engine, wasm: String) -> anyhow::Result<Self> {
         let mut linker = Linker::new(&engine);
-        wasmtime_wasi::add_to_linker_sync(&mut linker)?;
+        wasmtime_wasi::add_to_linker_async(&mut linker)?;
         Messaging::add_to_linker(&mut linker, |t| t)?;
 
         let component = Component::from_file(&engine, wasm)?;
