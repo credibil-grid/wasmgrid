@@ -9,16 +9,22 @@ use hyper::server::conn::http1;
 use hyper::service::service_fn;
 use hyper::Request;
 use tokio::net::TcpListener;
+use wasmtime::component::Linker;
 use wasmtime::Store;
+use wasmtime_wasi::WasiView;
 use wasmtime_wasi_http::body::HyperOutgoingBody;
 use wasmtime_wasi_http::io::TokioIo;
 use wasmtime_wasi_http::proxy::Proxy;
 use wasmtime_wasi_http::{hyper_response_error, proxy, WasiHttpCtx, WasiHttpView};
 
-use crate::handler::{HandlerProxy, State};
+use crate::handler::{HandlerProxy, Plugin, State};
 
-pub fn add_to_linker(linker: &mut wasmtime::component::Linker<State>) -> anyhow::Result<()> {
-    proxy::add_only_http_to_linker(linker)
+pub struct Handler;
+
+impl Plugin for Handler {
+    fn add_to_linker(&self, linker: &mut Linker<State>) -> anyhow::Result<()> {
+        proxy::add_only_http_to_linker(linker)
+    }
 }
 
 /// Start and run NATS for the specified wasm component.
@@ -98,7 +104,7 @@ impl HandlerProxy {
 
 impl WasiHttpView for State {
     fn table(&mut self) -> &mut wasmtime::component::ResourceTable {
-        &mut self.table
+        WasiView::table(self)
     }
 
     fn ctx(&mut self) -> &mut WasiHttpCtx {

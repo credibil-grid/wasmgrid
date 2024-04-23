@@ -5,6 +5,8 @@ mod msg;
 use anyhow::Error;
 use clap::Parser;
 
+use crate::handler::{HandlerProxy, Plugin};
+
 /// Host wasm runtime for a vault service that stores signing keys and credentials for a Verifiable
 /// Credential wallet.
 #[derive(Parser, Debug)]
@@ -25,18 +27,23 @@ struct Args {
 #[tokio::main]
 pub async fn main() -> wasmtime::Result<()> {
     let args = Args::parse();
-    let handler = handler::HandlerProxy::new(args.wasm)?;
+
+    let mut plugins = Vec::<&dyn Plugin>::new();
+    plugins.push(&http::Handler {});
+    plugins.push(&msg::Handler {});
+
+    let handler = HandlerProxy::new(args.wasm, plugins)?;
 
     // start messaging server
     let h = handler.clone();
     if let Err(e) = tokio::spawn(async move { msg::serve(h, args.nats_addr).await }).await {
-        eprintln!("Error: {:?}", e);
+        eprintln!("Error: {e:?}");
     };
 
     // start http server
     let h = handler.clone();
     if let Err(e) = tokio::spawn(async move { http::serve(h, args.http_addr).await }).await {
-        eprintln!("Error: {:?}", e);
+        eprintln!("Error: {e:?}");
     };
 
     shutdown().await

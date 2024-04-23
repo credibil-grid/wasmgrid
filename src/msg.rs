@@ -13,20 +13,24 @@ use wasi_messaging::bindings::wasi::messaging::messaging_types::{
 };
 use wasi_messaging::bindings::Messaging;
 use wasi_messaging::{self, MessagingView, RuntimeClient, RuntimeSubscriber};
-use wasmtime::component::Resource;
+use wasmtime::component::{Linker, Resource};
 use wasmtime::Store;
 use wasmtime_wasi::WasiView;
 
-use crate::handler::{HandlerProxy, State};
+use crate::handler::{HandlerProxy, Plugin, State};
 
-pub fn add_to_linker(linker: &mut wasmtime::component::Linker<State>) -> anyhow::Result<()> {
-    Messaging::add_to_linker(linker, |t| t)
+pub struct Handler;
+
+impl Plugin for Handler {
+    fn add_to_linker(&self, linker: &mut Linker<State>) -> anyhow::Result<()> {
+        Messaging::add_to_linker(linker, |t| t)
+    }
 }
 
 /// Start and run NATS for the specified wasm component.
 pub async fn serve(handler: HandlerProxy, addr: String) -> anyhow::Result<()> {
     let client = Client::connect(addr.clone()).await?;
-    println!("Connected to NATS: {}", addr);
+    println!("Connected to NATS: {addr}");
 
     // subscribe to channels
     let mut subscribers = vec![];
@@ -41,7 +45,7 @@ pub async fn serve(handler: HandlerProxy, addr: String) -> anyhow::Result<()> {
         let handler = handler.clone();
         let client = client.clone();
         if let Err(e) = tokio::spawn(async move { handler.message(client, message).await }).await {
-            eprintln!("Error: {:?}", e);
+            eprintln!("Error: {e:?}");
         }
     }
 
@@ -97,7 +101,7 @@ impl State {
         let name = client.name.clone();
         let client: wasi_messaging::Client = Box::new(client);
 
-        let resource = self.table.push(client)?;
+        let resource = self.table().push(client)?;
         self.keys.insert(name, resource.rep());
 
         Ok(resource)

@@ -10,8 +10,13 @@ use wasmtime::{Config, Engine};
 use wasmtime_wasi::{ResourceTable, WasiCtx, WasiCtxBuilder, WasiView};
 use wasmtime_wasi_http::WasiHttpCtx;
 
-// HandlerProxy is a proxy for the wasm messaging State, wrapping calls to the Guest's
-// messaging API.
+pub trait Plugin {
+    fn add_to_linker(&self, linker: &mut Linker<State>) -> anyhow::Result<()>;
+}
+
+//// HandlerProxy is a proxy for the wasm messaging State, wrapping calls to the Guest's
+/// messaging API.
+#[allow(clippy::module_name_repetitions)]
 #[derive(Clone)]
 pub struct HandlerProxy {
     pub engine: Engine,
@@ -19,8 +24,8 @@ pub struct HandlerProxy {
 }
 
 impl HandlerProxy {
-    // Create a new HandlerProxy for the specified wasm Guest.
-    pub fn new(wasm: String) -> anyhow::Result<Self> {
+    /// Create a new HandlerProxy for the specified wasm Guest.
+    pub fn new(wasm: String, plugins: Vec<&dyn Plugin>) -> anyhow::Result<Self> {
         let mut config = Config::new();
         config.async_support(true);
         let engine = Engine::new(&config)?;
@@ -28,9 +33,10 @@ impl HandlerProxy {
         let mut linker = Linker::new(&engine);
         wasmtime_wasi::add_to_linker_async(&mut linker)?;
 
-        // link specific runtime modules
-        crate::msg::add_to_linker(&mut linker)?;
-        crate::http::add_to_linker(&mut linker)?;
+        // link plugins
+        for p in plugins {
+            p.add_to_linker(&mut linker)?;
+        }
 
         let component = Component::from_file(&engine, wasm)?;
         let instance_pre = linker.instantiate_pre(&component)?;
@@ -39,18 +45,18 @@ impl HandlerProxy {
     }
 }
 
-// State implements messaging host interfaces. In addition, it holds the host-defined
-// state used by the wasm runtime [`Store`].
+/// State implements messaging host interfaces. In addition, it holds the host-defined
+/// state used by the wasm runtime [`Store`].
 pub struct State {
     pub keys: HashMap<String, u32>,
-    pub table: ResourceTable,
+    table: ResourceTable,
     ctx: WasiCtx,
     pub http_ctx: WasiHttpCtx,
     pub limits: StoreLimits,
 }
 
 impl State {
-    // Create a new State instance.
+    /// Create a new State instance.
     pub fn new() -> Self {
         Self {
             keys: HashMap::default(),
