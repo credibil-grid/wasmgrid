@@ -1301,13 +1301,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "messaging"
-version = "0.1.0"
-dependencies = [
- "wit-bindgen-rt 0.24.0",
-]
-
-[[package]]
 name = "miniz_oxide"
 version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1325,6 +1318,13 @@ dependencies = [
  "libc",
  "wasi 0.11.0+wasi-snapshot-preview1",
  "windows-sys 0.48.0",
+]
+
+[[package]]
+name = "msg"
+version = "0.1.0"
+dependencies = [
+ "wit-bindgen-rt 0.24.0",
 ]
 
 [[package]]
