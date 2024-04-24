@@ -10,7 +10,7 @@ use wasmtime::{Config, Engine, Store};
 use wasmtime_wasi::{ResourceTable, WasiCtx, WasiCtxBuilder, WasiView};
 use wasmtime_wasi_http::WasiHttpCtx;
 
-/// Runtime represents a particular runtime capability depended on by wasm 
+/// Runtime represents a particular runtime capability depended on by wasm
 /// components. For example, an HTTP server or a message broker.
 #[async_trait::async_trait]
 pub trait Runtime: Send {
@@ -106,7 +106,12 @@ pub struct State {
 
 impl State {
     /// Create a new State instance.
-     fn new() -> Self {
+    fn new() -> Self {
+        // let mut ctx = WasiCtxBuilder::new();
+        // ctx.arg("./foo.wasm");
+        // ctx.arg("--help");
+        // ctx.env("FOO", "bar");
+
         Self {
             table: ResourceTable::default(),
             ctx: WasiCtxBuilder::new().inherit_args().inherit_env().inherit_stdio().build(),
