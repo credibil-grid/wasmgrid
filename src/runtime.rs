@@ -10,22 +10,60 @@ use wasmtime::{Config, Engine, Store};
 use wasmtime_wasi::{ResourceTable, WasiCtx, WasiCtxBuilder, WasiView};
 use wasmtime_wasi_http::WasiHttpCtx;
 
-pub trait Plugin {
+/// Plugin represents a runtime wasm host.
+#[async_trait::async_trait]
+pub trait Plugin: Send {
+    /// Add the plugin to the wasm component linker.
     fn add_to_linker(&self, linker: &mut Linker<State>) -> anyhow::Result<()>;
+
+    /// Start and run the plugin.
+    async fn run(&self, handler: Runtime) -> anyhow::Result<()>;
 }
 
-//// HandlerProxy is a proxy for the wasm messaging State, wrapping calls to the Guest's
-/// messaging API.
-#[allow(clippy::module_name_repetitions)]
+/// Runtime for a wasm component.
 #[derive(Clone)]
-pub struct HandlerProxy {
+pub struct Runtime {
     engine: Engine,
     instance_pre: InstancePre<State>,
 }
 
-impl HandlerProxy {
-    /// Create a new HandlerProxy for the specified wasm Guest.
-    pub fn new(wasm: String, plugins: Vec<&dyn Plugin>) -> anyhow::Result<Self> {
+impl Runtime {
+    /// Returns a [`Store`] for use when calling guests.
+    pub fn store(&self) -> Store<State> {
+        let mut store = Store::new(&self.engine, State::new());
+        store.limiter(|t| &mut t.limits);
+        store
+    }
+
+    /// Returns a "pre-instantiated" Instance — an efficient form of instantiation
+    /// where import type-checking and lookup has been resolved.
+    pub fn instance_pre(&self) -> &InstancePre<State> {
+        &self.instance_pre
+    }
+}
+
+#[derive(Default)]
+pub struct Builder {
+    plugins: Vec<Box<dyn Plugin>>,
+}
+
+impl Builder {
+    /// Create a new Builder instance.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Add a plugin to the wasm runtime.
+    pub fn plugin<P>(mut self, plugin: P) -> Self
+    where
+        P: Plugin + 'static,
+    {
+        self.plugins.push(Box::new(plugin));
+        self
+    }
+
+    /// Run the wasm component with the specified plugins.
+    pub fn run(self, wasm: String) -> anyhow::Result<()> {
         let mut config = Config::new();
         config.async_support(true);
         let engine = Engine::new(&config)?;
@@ -34,25 +72,22 @@ impl HandlerProxy {
         wasmtime_wasi::add_to_linker_async(&mut linker)?;
 
         // link plugins
-        for p in plugins {
+        for p in &self.plugins {
             p.add_to_linker(&mut linker)?;
         }
 
         let component = Component::from_file(&engine, wasm)?;
         let instance_pre = linker.instantiate_pre(&component)?;
 
-        Ok(Self { engine, instance_pre })
-    }
+        let rt = Runtime { engine, instance_pre };
 
-    /// Create [`Store`].
-    pub fn store(&self) -> Store<State> {
-        let mut store = Store::new(&self.engine, State::new());
-        store.limiter(|t| &mut t.limits);
-        store
-    }
+        // start plugins
+        for p in self.plugins {
+            let rt = rt.clone();
+            tokio::spawn(async move { p.run(rt).await });
+        }
 
-    pub fn instance_pre(&self) -> &InstancePre<State> {
-        &self.instance_pre
+        Ok(())
     }
 }
 

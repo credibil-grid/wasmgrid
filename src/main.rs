@@ -1,11 +1,9 @@
-mod handler;
 mod http;
 mod msg;
+mod runtime;
 
 use anyhow::Error;
 use clap::Parser;
-
-use crate::handler::{HandlerProxy, Plugin};
 
 /// Host wasm runtime for a vault service that stores signing keys and credentials for a Verifiable
 /// Credential wallet.
@@ -28,19 +26,10 @@ struct Args {
 pub async fn main() -> wasmtime::Result<()> {
     let args = Args::parse();
 
-    let mut plugins = Vec::<&dyn Plugin>::new();
-    plugins.push(&http::Handler {});
-    plugins.push(&msg::Handler {});
-
-    let handler = HandlerProxy::new(args.wasm, plugins)?;
-
-    // start messaging server
-    let h = handler.clone();
-    tokio::spawn(async move { msg::serve(h, args.nats_addr).await });
-
-    // start http server
-    let h = handler.clone();
-    tokio::spawn(async move { http::serve(h, args.http_addr).await });
+    runtime::Builder::new()
+        .plugin(http::Plugin::new(args.http_addr))
+        .plugin(msg::Plugin::new(args.nats_addr))
+        .run(args.wasm)?;
 
     shutdown().await
 }

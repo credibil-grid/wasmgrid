@@ -16,42 +16,51 @@ use wasmtime_wasi_http::io::TokioIo;
 use wasmtime_wasi_http::proxy::Proxy;
 use wasmtime_wasi_http::{hyper_response_error, proxy, WasiHttpCtx, WasiHttpView};
 
-use crate::handler::{HandlerProxy, Plugin, State};
+use crate::runtime::{self, Runtime, State};
 
-pub struct Handler;
+pub struct Plugin {
+    pub addr: String,
+}
 
-impl Plugin for Handler {
+impl Plugin {
+    pub fn new(addr: String) -> Self {
+        Self { addr }
+    }
+}
+
+#[async_trait::async_trait]
+impl runtime::Plugin for Plugin {
     fn add_to_linker(&self, linker: &mut Linker<State>) -> anyhow::Result<()> {
         proxy::add_only_http_to_linker(linker)
     }
-}
 
-/// Start and run NATS for the specified wasm component.
-pub async fn serve(handler: HandlerProxy, addr: String) -> anyhow::Result<()> {
-    let listener = TcpListener::bind(addr).await?;
-    println!("Listening on: {}", listener.local_addr()?);
+    /// Start and run NATS for the specified wasm component.
+    async fn run(&self, handler: Runtime) -> anyhow::Result<()> {
+        let listener = TcpListener::bind(&self.addr).await?;
+        println!("Listening on: {}", listener.local_addr()?);
 
-    // listen for requests until terminated
-    loop {
-        let (stream, _) = listener.accept().await?;
-        let io = TokioIo::new(stream);
-        let handler = handler.clone();
+        // listen for requests until terminated
+        loop {
+            let (stream, _) = listener.accept().await?;
+            let io = TokioIo::new(stream);
+            let handler = handler.clone();
 
-        tokio::spawn(async move {
-            if let Err(e) = http1::Builder::new()
-                .keep_alive(true)
-                .serve_connection(io, service_fn(|req| handler.clone().request(req)))
-                .await
-            {
-                eprintln!("error: {e:?}");
-            }
-        });
+            tokio::spawn(async move {
+                if let Err(e) = http1::Builder::new()
+                    .keep_alive(true)
+                    .serve_connection(io, service_fn(|req| handler.clone().request(req)))
+                    .await
+                {
+                    eprintln!("error: {e:?}");
+                }
+            });
+        }
+
+        // Ok(())
     }
-
-    // Ok(())
 }
 
-impl HandlerProxy {
+impl Runtime {
     // Forward NATS message to the wasm Guest.
     async fn request(
         self, request: Request<Incoming>,

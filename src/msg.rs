@@ -16,42 +16,53 @@ use wasi_messaging::{self, MessagingView, RuntimeClient, RuntimeSubscriber};
 use wasmtime::component::{Linker, Resource};
 use wasmtime_wasi::WasiView;
 
-use crate::handler::{HandlerProxy, Plugin, State};
+use crate::runtime::{self, Runtime, State};
 
-pub struct Handler;
+pub struct Plugin {
+    pub addr: String,
+}
 
-impl Plugin for Handler {
+impl Plugin {
+    pub fn new(addr: String) -> Self {
+        Self { addr }
+    }
+}
+
+#[async_trait::async_trait]
+impl runtime::Plugin for Plugin {
     fn add_to_linker(&self, linker: &mut Linker<State>) -> anyhow::Result<()> {
         Messaging::add_to_linker(linker, |t| t)
     }
-}
 
-/// Start and run NATS for the specified wasm component.
-pub async fn serve(handler: HandlerProxy, addr: String) -> anyhow::Result<()> {
-    let client = Client::connect(addr.clone()).await?;
-    println!("Connected to NATS: {addr}");
+    /// Start and run NATS for the specified wasm component.
+    async fn run(&self, handler: Runtime) -> anyhow::Result<()> {
+        let client = Client::connect(self.addr.clone()).await?;
+        println!("Connected to NATS: {}", self.addr);
 
-    // subscribe to channels
-    let mut subscribers = vec![];
-    for ch in &handler.channels().await? {
-        let subscriber = client.subscribe(ch.clone()).await?;
-        subscribers.push(subscriber);
-    }
-
-    // process messages until terminated
-    let mut messages = stream::select_all(subscribers);
-    while let Some(message) = messages.next().await {
-        let handler = handler.clone();
-        let client = client.clone();
-        if let Err(e) = tokio::spawn(async move { handler.message(client, message).await }).await {
-            eprintln!("Error: {e:?}");
+        // subscribe to channels
+        let mut subscribers = vec![];
+        for ch in &handler.channels().await? {
+            let subscriber = client.subscribe(ch.clone()).await?;
+            subscribers.push(subscriber);
         }
-    }
 
-    Ok(())
+        // process messages until terminated
+        let mut messages = stream::select_all(subscribers);
+        while let Some(message) = messages.next().await {
+            let handler = handler.clone();
+            let client = client.clone();
+            if let Err(e) =
+                tokio::spawn(async move { handler.message(client, message).await }).await
+            {
+                eprintln!("Error: {e:?}");
+            }
+        }
+
+        Ok(())
+    }
 }
 
-impl HandlerProxy {
+impl Runtime {
     // Return the list of channels the Guest wants to subscribe to.
     async fn channels(&self) -> anyhow::Result<Vec<String>> {
         let mut store = self.store();
