@@ -63,6 +63,7 @@ pub struct State {
     ctx: WasiCtx,
     limits: StoreLimits,
 
+    // TODO factor out http_ctx and msg_ctx into respective plugins
     pub http_ctx: WasiHttpCtx,
     pub msg_ctx: HashMap<String, u32>,
 }
