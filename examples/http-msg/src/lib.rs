@@ -8,5 +8,6 @@ mod messaging;
 use crate::messaging::Messaging;
 use crate::http::Http;
 
+// export guest implementations
 wasi::http::proxy::export!(Http);
 crate::bindings::export!(Messaging with_types_in crate::bindings);
