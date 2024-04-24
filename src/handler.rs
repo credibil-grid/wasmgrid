@@ -6,7 +6,7 @@ use std::collections::HashMap;
 
 use wasmtime::component::{Component, InstancePre, Linker};
 use wasmtime::StoreLimits; // StoreLimitsBuilder
-use wasmtime::{Config, Engine};
+use wasmtime::{Config, Engine, Store};
 use wasmtime_wasi::{ResourceTable, WasiCtx, WasiCtxBuilder, WasiView};
 use wasmtime_wasi_http::WasiHttpCtx;
 
@@ -19,8 +19,8 @@ pub trait Plugin {
 #[allow(clippy::module_name_repetitions)]
 #[derive(Clone)]
 pub struct HandlerProxy {
-    pub engine: Engine,
-    pub instance_pre: InstancePre<State>,
+    engine: Engine,
+    instance_pre: InstancePre<State>,
 }
 
 impl HandlerProxy {
@@ -43,27 +43,40 @@ impl HandlerProxy {
 
         Ok(Self { engine, instance_pre })
     }
+
+    /// Create [`Store`].
+    pub fn store(&self) -> Store<State> {
+        let mut store = Store::new(&self.engine, State::new());
+        store.limiter(|t| &mut t.limits);
+        store
+    }
+
+    pub fn instance_pre(&self) -> &InstancePre<State> {
+        &self.instance_pre
+    }
 }
 
 /// State implements messaging host interfaces. In addition, it holds the host-defined
 /// state used by the wasm runtime [`Store`].
 pub struct State {
-    pub keys: HashMap<String, u32>,
     table: ResourceTable,
     ctx: WasiCtx,
+    limits: StoreLimits,
+
     pub http_ctx: WasiHttpCtx,
-    pub limits: StoreLimits,
+    pub msg_ctx: HashMap<String, u32>,
 }
 
 impl State {
     /// Create a new State instance.
     pub fn new() -> Self {
         Self {
-            keys: HashMap::default(),
             table: ResourceTable::default(),
             ctx: WasiCtxBuilder::new().inherit_args().inherit_env().inherit_stdio().build(),
-            http_ctx: WasiHttpCtx {},
             limits: StoreLimits::default(),
+
+            http_ctx: WasiHttpCtx {},
+            msg_ctx: HashMap::default(),
         }
     }
 }

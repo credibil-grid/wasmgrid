@@ -14,7 +14,6 @@ use wasi_messaging::bindings::wasi::messaging::messaging_types::{
 use wasi_messaging::bindings::Messaging;
 use wasi_messaging::{self, MessagingView, RuntimeClient, RuntimeSubscriber};
 use wasmtime::component::{Linker, Resource};
-use wasmtime::Store;
 use wasmtime_wasi::WasiView;
 
 use crate::handler::{HandlerProxy, Plugin, State};
@@ -55,8 +54,8 @@ pub async fn serve(handler: HandlerProxy, addr: String) -> anyhow::Result<()> {
 impl HandlerProxy {
     // Return the list of channels the Guest wants to subscribe to.
     async fn channels(&self) -> anyhow::Result<Vec<String>> {
-        let mut store = Store::new(&self.engine, State::new());
-        let (messaging, _) = Messaging::instantiate_pre(&mut store, &self.instance_pre).await?;
+        let mut store = self.store();
+        let (messaging, _) = Messaging::instantiate_pre(&mut store, self.instance_pre()).await?;
 
         let gc = match messaging.wasi_messaging_messaging_guest().call_configure(&mut store).await?
         {
@@ -79,8 +78,8 @@ impl HandlerProxy {
         // add client to ResourceTable
         host.add_client(client)?;
 
-        let mut store = Store::new(&self.engine, host);
-        let (messaging, _) = Messaging::instantiate_pre(&mut store, &self.instance_pre).await?;
+        let mut store = self.store();
+        let (messaging, _) = Messaging::instantiate_pre(&mut store, self.instance_pre()).await?;
 
         // call guest with message
         if let Err(e) =
@@ -102,7 +101,7 @@ impl State {
         let client: wasi_messaging::Client = Box::new(client);
 
         let resource = self.table().push(client)?;
-        self.keys.insert(name, resource.rep());
+        self.msg_ctx.insert(name, resource.rep());
 
         Ok(resource)
     }
@@ -112,7 +111,7 @@ impl State {
 #[async_trait::async_trait]
 impl MessagingView for State {
     async fn connect(&mut self, name: String) -> anyhow::Result<Resource<wasi_messaging::Client>> {
-        let resource = if let Some(key) = self.keys.get(&name) {
+        let resource = if let Some(key) = self.msg_ctx.get(&name) {
             // reuse existing connection
             Resource::new_own(*key)
         } else {

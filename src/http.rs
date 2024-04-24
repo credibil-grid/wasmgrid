@@ -10,7 +10,6 @@ use hyper::service::service_fn;
 use hyper::Request;
 use tokio::net::TcpListener;
 use wasmtime::component::Linker;
-use wasmtime::Store;
 use wasmtime_wasi::WasiView;
 use wasmtime_wasi_http::body::HyperOutgoingBody;
 use wasmtime_wasi_http::io::TokioIo;
@@ -58,13 +57,10 @@ impl HandlerProxy {
         self, request: Request<Incoming>,
     ) -> anyhow::Result<hyper::Response<HyperOutgoingBody>> {
         let (sender, receiver) = tokio::sync::oneshot::channel();
-        let engine = self.engine.clone();
         // let req_id = self.next_id.fetch_add(1, Ordering::Relaxed);
-        let instance_pre = self.instance_pre.clone();
 
         let task = tokio::spawn(async move {
-            let mut store = Store::new(&engine, State::new());
-            store.limiter(|t| &mut t.limits);
+            let mut store = self.store();
 
             let (parts, body) = request.into_parts();
             let req = hyper::Request::from_parts(parts, body.map_err(hyper_response_error).boxed());
@@ -72,7 +68,7 @@ impl HandlerProxy {
             let req = store.data_mut().new_incoming_request(req)?;
             let out = store.data_mut().new_response_outparam(sender)?;
 
-            let (proxy, _) = Proxy::instantiate_pre(&mut store, &instance_pre).await?;
+            let (proxy, _) = Proxy::instantiate_pre(&mut store, self.instance_pre()).await?;
 
             // call guest with request
             proxy.wasi_http_incoming_handler().call_handle(&mut store, req, out).await
