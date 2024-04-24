@@ -72,8 +72,7 @@ impl System {
         {
             Ok(gc) => gc,
             Err(e) => {
-                // let err = store.data_mut().table().get(&e)?;
-                let err = WasiView::table(store.data_mut()).get(&e)?;
+                let err = store.data_mut().table().get(&e)?;
                 return Err(anyhow!(err.to_string()));
             }
         };
@@ -94,8 +93,7 @@ impl System {
         if let Err(e) =
             messaging.wasi_messaging_messaging_guest().call_handler(&mut store, &[message]).await?
         {
-            // let err = store.data_mut().table().get(&e)?;
-            let err = WasiView::table(store.data_mut()).get(&e)?;
+            let err = store.data_mut().table().get(&e)?;
             return Err(anyhow!(err.to_string()));
         }
 
