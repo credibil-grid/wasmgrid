@@ -10,7 +10,8 @@ use wasmtime::{Config, Engine, Store};
 use wasmtime_wasi::{ResourceTable, WasiCtx, WasiCtxBuilder, WasiView};
 use wasmtime_wasi_http::WasiHttpCtx;
 
-/// Runtime represents a runtime wasm host.
+/// Runtime represents a particular runtime capability depended on by wasm 
+/// components. For example, an HTTP server or a message broker.
 #[async_trait::async_trait]
 pub trait Runtime: Send {
     /// Add the runtime to the wasm component linker.
