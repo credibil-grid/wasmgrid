@@ -16,7 +16,7 @@ use wasi_messaging::{self, MessagingView, RuntimeClient, RuntimeSubscriber};
 use wasmtime::component::{Linker, Resource};
 use wasmtime_wasi::WasiView;
 
-use crate::system::{self, System, State};
+use crate::system::{self, State, System};
 
 pub struct Runtime {
     pub addr: String,
@@ -83,13 +83,11 @@ impl System {
 
     // Forward NATS message to the wasm Guest.
     async fn message(&self, client: Client, message: Message) -> anyhow::Result<()> {
-        // set up host state
-        let mut host = State::new();
+        let mut store = self.store();
 
         // add client to ResourceTable
-        host.add_client(client)?;
+        store.data_mut().add_client(client)?;
 
-        let mut store = self.store();
         let (messaging, _) = Messaging::instantiate_pre(&mut store, self.instance_pre()).await?;
 
         // call guest with message

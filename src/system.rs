@@ -106,7 +106,7 @@ pub struct State {
 
 impl State {
     /// Create a new State instance.
-    pub fn new() -> Self {
+     fn new() -> Self {
         Self {
             table: ResourceTable::default(),
             ctx: WasiCtxBuilder::new().inherit_args().inherit_env().inherit_stdio().build(),
