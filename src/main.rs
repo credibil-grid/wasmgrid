@@ -5,8 +5,6 @@ mod runtime;
 use anyhow::Error;
 use clap::Parser;
 
-/// Host wasm runtime for a vault service that stores signing keys and credentials for a Verifiable
-/// Credential wallet.
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct Args {

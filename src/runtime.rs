@@ -76,9 +76,9 @@ impl Builder {
             p.add_to_linker(&mut linker)?;
         }
 
+        // pre-instantiate component
         let component = Component::from_file(&engine, wasm)?;
         let instance_pre = linker.instantiate_pre(&component)?;
-
         let rt = Runtime { engine, instance_pre };
 
         // start plugins
