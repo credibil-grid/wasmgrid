@@ -1,4 +1,4 @@
-//! # Http Runtime
+//! # Http System
 //!
 //! This module implements a wasi:http runtime.
 
@@ -16,26 +16,26 @@ use wasmtime_wasi_http::io::TokioIo;
 use wasmtime_wasi_http::proxy::Proxy;
 use wasmtime_wasi_http::{hyper_response_error, proxy, WasiHttpCtx, WasiHttpView};
 
-use crate::runtime::{self, Runtime, State};
+use crate::system::{self, System, State};
 
-pub struct Plugin {
+pub struct Runtime {
     pub addr: String,
 }
 
-impl Plugin {
+impl Runtime {
     pub fn new(addr: String) -> Self {
         Self { addr }
     }
 }
 
 #[async_trait::async_trait]
-impl runtime::Plugin for Plugin {
+impl system::Runtime for Runtime {
     fn add_to_linker(&self, linker: &mut Linker<State>) -> anyhow::Result<()> {
         proxy::add_only_http_to_linker(linker)
     }
 
     /// Start and run NATS for the specified wasm component.
-    async fn run(&self, handler: Runtime) -> anyhow::Result<()> {
+    async fn run(&self, handler: System) -> anyhow::Result<()> {
         let listener = TcpListener::bind(&self.addr).await?;
         println!("Listening on: {}", listener.local_addr()?);
 
@@ -60,7 +60,7 @@ impl runtime::Plugin for Plugin {
     }
 }
 
-impl Runtime {
+impl System {
     // Forward NATS message to the wasm Guest.
     async fn request(
         self, request: Request<Incoming>,

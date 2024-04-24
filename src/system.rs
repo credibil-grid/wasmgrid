@@ -1,4 +1,4 @@
-//! # NATS Messaging Runtime
+//! # NATS Messaging System
 //!
 //! This module implements a NATS wasi:messaging runtime.
 
@@ -10,24 +10,24 @@ use wasmtime::{Config, Engine, Store};
 use wasmtime_wasi::{ResourceTable, WasiCtx, WasiCtxBuilder, WasiView};
 use wasmtime_wasi_http::WasiHttpCtx;
 
-/// Plugin represents a runtime wasm host.
+/// Runtime represents a runtime wasm host.
 #[async_trait::async_trait]
-pub trait Plugin: Send {
-    /// Add the plugin to the wasm component linker.
+pub trait Runtime: Send {
+    /// Add the runtime to the wasm component linker.
     fn add_to_linker(&self, linker: &mut Linker<State>) -> anyhow::Result<()>;
 
-    /// Start and run the plugin.
-    async fn run(&self, handler: Runtime) -> anyhow::Result<()>;
+    /// Start and run the runtime.
+    async fn run(&self, handler: System) -> anyhow::Result<()>;
 }
 
-/// Runtime for a wasm component.
+/// System for a wasm component.
 #[derive(Clone)]
-pub struct Runtime {
+pub struct System {
     engine: Engine,
     instance_pre: InstancePre<State>,
 }
 
-impl Runtime {
+impl System {
     /// Returns a [`Store`] for use when calling guests.
     pub fn store(&self) -> Store<State> {
         let mut store = Store::new(&self.engine, State::new());
@@ -44,7 +44,7 @@ impl Runtime {
 
 #[derive(Default)]
 pub struct Builder {
-    plugins: Vec<Box<dyn Plugin>>,
+    plugins: Vec<Box<dyn Runtime>>,
 }
 
 impl Builder {
@@ -53,12 +53,12 @@ impl Builder {
         Self::default()
     }
 
-    /// Add a plugin to the wasm runtime.
-    pub fn plugin<P>(mut self, plugin: P) -> Self
+    /// Add a runtime to the wasm runtime.
+    pub fn runtime<P>(mut self, runtime: P) -> Self
     where
-        P: Plugin + 'static,
+        P: Runtime + 'static,
     {
-        self.plugins.push(Box::new(plugin));
+        self.plugins.push(Box::new(runtime));
         self
     }
 
@@ -79,7 +79,7 @@ impl Builder {
         // pre-instantiate component
         let component = Component::from_file(&engine, wasm)?;
         let instance_pre = linker.instantiate_pre(&component)?;
-        let rt = Runtime { engine, instance_pre };
+        let rt = System { engine, instance_pre };
 
         // start plugins
         for p in self.plugins {

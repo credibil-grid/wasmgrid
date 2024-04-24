@@ -1,4 +1,4 @@
-//! # NATS Messaging Runtime
+//! # NATS Messaging System
 //!
 //! This module implements a NATS wasi:messaging runtime.
 
@@ -16,26 +16,26 @@ use wasi_messaging::{self, MessagingView, RuntimeClient, RuntimeSubscriber};
 use wasmtime::component::{Linker, Resource};
 use wasmtime_wasi::WasiView;
 
-use crate::runtime::{self, Runtime, State};
+use crate::system::{self, System, State};
 
-pub struct Plugin {
+pub struct Runtime {
     pub addr: String,
 }
 
-impl Plugin {
+impl Runtime {
     pub fn new(addr: String) -> Self {
         Self { addr }
     }
 }
 
 #[async_trait::async_trait]
-impl runtime::Plugin for Plugin {
+impl system::Runtime for Runtime {
     fn add_to_linker(&self, linker: &mut Linker<State>) -> anyhow::Result<()> {
         Messaging::add_to_linker(linker, |t| t)
     }
 
     /// Start and run NATS for the specified wasm component.
-    async fn run(&self, handler: Runtime) -> anyhow::Result<()> {
+    async fn run(&self, handler: System) -> anyhow::Result<()> {
         let client = Client::connect(self.addr.clone()).await?;
         println!("Connected to NATS: {}", self.addr);
 
@@ -62,7 +62,7 @@ impl runtime::Plugin for Plugin {
     }
 }
 
-impl Runtime {
+impl System {
     // Return the list of channels the Guest wants to subscribe to.
     async fn channels(&self) -> anyhow::Result<Vec<String>> {
         let mut store = self.store();

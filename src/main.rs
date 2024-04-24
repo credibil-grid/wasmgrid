@@ -1,6 +1,6 @@
 mod http;
 mod msg;
-mod runtime;
+mod system;
 
 use anyhow::Error;
 use clap::Parser;
@@ -24,9 +24,9 @@ struct Args {
 pub async fn main() -> wasmtime::Result<()> {
     let args = Args::parse();
 
-    runtime::Builder::new()
-        .plugin(http::Plugin::new(args.http_addr))
-        .plugin(msg::Plugin::new(args.nats_addr))
+    system::Builder::new()
+        .runtime(http::Runtime::new(args.http_addr))
+        .runtime(msg::Runtime::new(args.nats_addr))
         .run(args.wasm)?;
 
     shutdown().await
