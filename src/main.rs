@@ -36,15 +36,11 @@ pub async fn main() -> wasmtime::Result<()> {
 
     // start messaging server
     let h = handler.clone();
-    if let Err(e) = tokio::spawn(async move { msg::serve(h, args.nats_addr).await }).await {
-        eprintln!("Error: {e:?}");
-    };
+    tokio::spawn(async move { msg::serve(h, args.nats_addr).await });
 
     // start http server
     let h = handler.clone();
-    if let Err(e) = tokio::spawn(async move { http::serve(h, args.http_addr).await }).await {
-        eprintln!("Error: {e:?}");
-    };
+    tokio::spawn(async move { http::serve(h, args.http_addr).await });
 
     shutdown().await
 }

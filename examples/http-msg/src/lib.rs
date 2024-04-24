@@ -7,17 +7,22 @@ use anyhow::{anyhow, Result};
 use http::header::CONTENT_TYPE; // AUTHORIZATION
 use http::Uri;
 use serde_json::json;
-use wasi::exports::http::incoming_handler::Guest;
+use wasi::exports::http::incoming_handler::Guest as HttpGuest;
 use wasi::http::types::{
     Fields, IncomingRequest, OutgoingBody, OutgoingResponse, ResponseOutparam,
 };
 
-use crate::bindings::wasi::messaging::messaging_types::FormatSpec;
-use crate::bindings::wasi::messaging::producer::{self, Client, Message};
+use crate::bindings::exports::wasi::messaging::messaging_guest::Guest as MsgGuest;
+use crate::bindings::wasi::messaging::messaging_types::{
+    Client, Error, FormatSpec, GuestConfiguration, Message,
+};
+use crate::bindings::wasi::messaging::producer;
 
-struct HttpGuest;
+// trait DualGuest: HttpGuest + MsgGuest {}
 
-impl Guest for HttpGuest {
+struct MyGuest;
+
+impl HttpGuest for MyGuest {
     fn handle(request: IncomingRequest, response: ResponseOutparam) {
         // set up response in case of early failure
         let headers = Fields::new();
@@ -51,6 +56,20 @@ impl Guest for HttpGuest {
         out_stream.blocking_write_and_flush(content.as_slice()).unwrap();
         drop(out_stream);
         OutgoingBody::finish(out_body, None).unwrap();
+    }
+}
+
+impl MsgGuest for MyGuest {
+    fn configure() -> Result<GuestConfiguration, Error> {
+        Ok(GuestConfiguration {
+            channels: vec!["a".to_string(), "b".to_string(), "c".to_string()],
+            extensions: None,
+        })
+    }
+
+    fn handler(msgs: Vec<Message>) -> Result<(), Error> {
+        println!("Hello from messaging guest");
+        Ok(())
     }
 }
 
@@ -146,4 +165,6 @@ impl<'a> Request<'a> {
     // }
 }
 
-wasi::http::proxy::export!(HttpGuest);
+
+crate::bindings::export!(MyGuest with_types_in crate::bindings);
+// wasi::http::proxy::export!(MyGuest);
