@@ -80,12 +80,12 @@ impl Builder {
         // pre-instantiate component
         let component = Component::from_file(&engine, wasm)?;
         let instance_pre = linker.instantiate_pre(&component)?;
-        let rt = System { engine, instance_pre };
+        let system = System { engine, instance_pre };
 
         // start plugins
         for p in self.plugins {
-            let rt = rt.clone();
-            tokio::spawn(async move { p.run(rt).await });
+            let system = system.clone();
+            tokio::spawn(async move { p.run(system).await });
         }
 
         Ok(())

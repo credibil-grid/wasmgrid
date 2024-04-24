@@ -86,12 +86,11 @@ async fn handle_request(
         Ok(Ok(resp)) => Ok(resp),
         Ok(Err(e)) => Err(e.into()),
         Err(_) => {
-            // Retrieve the actual task error.
+            // retrieve the inner task error
             let e = match task.await {
                 Ok(r) => r.expect_err("if the receiver has an error, the task must have failed"),
                 Err(e) => e.into(),
             };
-
             Err(anyhow!("guest never invoked `response-outparam::set` method: {e:?}"))
         }
     }
