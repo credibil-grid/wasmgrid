@@ -45,7 +45,7 @@ impl System {
 
 #[derive(Default)]
 pub struct Builder {
-    plugins: Vec<Box<dyn Runtime>>,
+    runtimes: Vec<Box<dyn Runtime>>,
 }
 
 impl Builder {
@@ -59,11 +59,11 @@ impl Builder {
     where
         P: Runtime + 'static,
     {
-        self.plugins.push(Box::new(runtime));
+        self.runtimes.push(Box::new(runtime));
         self
     }
 
-    /// Run the wasm component with the specified plugins.
+    /// Run the wasm component with the specified runtimes.
     pub fn run(self, wasm: String) -> anyhow::Result<()> {
         let mut config = Config::new();
         config.async_support(true);
@@ -72,9 +72,9 @@ impl Builder {
         let mut linker = Linker::new(&engine);
         wasmtime_wasi::add_to_linker_async(&mut linker)?;
 
-        // link plugins
-        for p in &self.plugins {
-            p.add_to_linker(&mut linker)?;
+        // link each runtime
+        for rt in &self.runtimes {
+            rt.add_to_linker(&mut linker)?;
         }
 
         // pre-instantiate component
@@ -82,10 +82,10 @@ impl Builder {
         let instance_pre = linker.instantiate_pre(&component)?;
         let system = System { engine, instance_pre };
 
-        // start plugins
-        for p in self.plugins {
+        // start runtimes
+        for rt in self.runtimes {
             let system = system.clone();
-            tokio::spawn(async move { p.run(system).await });
+            tokio::spawn(async move { rt.run(system).await });
         }
 
         Ok(())
@@ -99,7 +99,7 @@ pub struct State {
     ctx: WasiCtx,
     limits: StoreLimits,
 
-    // TODO factor out http_ctx and msg_ctx into respective plugins
+    // TODO factor out http_ctx and msg_ctx into respective runtimes
     pub http_ctx: WasiHttpCtx,
     pub msg_ctx: HashMap<String, u32>,
 }
