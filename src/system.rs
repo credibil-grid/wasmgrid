@@ -108,6 +108,7 @@ impl State {
             ctx: WasiCtxBuilder::new().inherit_args().inherit_env().inherit_stdio().build(),
             limits: StoreLimits::default(),
 
+            // TODO: wrap Hashmap in custom type to create accessors
             metadata: HashMap::default(),
         }
     }
