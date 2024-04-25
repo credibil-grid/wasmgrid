@@ -10,7 +10,7 @@ use hyper::service::service_fn;
 use hyper::Request;
 use tokio::net::TcpListener;
 use wasmtime::component::Linker;
-use wasmtime_wasi::WasiView;
+use wasmtime_wasi::{ResourceTable, WasiView};
 use wasmtime_wasi_http::body::HyperOutgoingBody;
 use wasmtime_wasi_http::io::TokioIo;
 use wasmtime_wasi_http::proxy::Proxy;
@@ -97,7 +97,7 @@ async fn handle_request(
 }
 
 impl WasiHttpView for State {
-    fn table(&mut self) -> &mut wasmtime::component::ResourceTable {
+    fn table(&mut self) -> &mut ResourceTable {
         WasiView::table(self)
     }
 

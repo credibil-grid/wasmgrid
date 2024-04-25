@@ -5,7 +5,7 @@
 use std::collections::HashMap;
 
 use wasmtime::component::{Component, InstancePre, Linker};
-use wasmtime::StoreLimits; // StoreLimitsBuilder
+use wasmtime::StoreLimits;
 use wasmtime::{Config, Engine, Store};
 use wasmtime_wasi::{ResourceTable, WasiCtx, WasiCtxBuilder, WasiView};
 use wasmtime_wasi_http::WasiHttpCtx;
