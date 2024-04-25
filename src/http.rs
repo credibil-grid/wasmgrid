@@ -74,8 +74,10 @@ async fn handle_request(
         let req = hyper::Request::from_parts(parts, body.map_err(hyper_response_error).boxed());
 
         let mut store = system.store();
-        let req = store.data_mut().new_incoming_request(req)?;
-        let out = store.data_mut().new_response_outparam(sender)?;
+        let state = store.data_mut();
+        let req = state.new_incoming_request(req)?;
+        let out = state.new_response_outparam(sender)?;
+        state.metadata.insert("wasi_http_ctx".to_string(), Box::new(WasiHttpCtx {}));
 
         // call guest with request
         let (proxy, _) = Proxy::instantiate_pre(&mut store, system.instance_pre()).await?;
@@ -102,7 +104,6 @@ impl WasiHttpView for State {
     }
 
     fn ctx(&mut self) -> &mut WasiHttpCtx {
-        &mut self.http_ctx
-        // self.metadata.get_mut("http_ctx").unwrap()
+        self.metadata.get_mut("wasi_http_ctx").unwrap().downcast_mut::<WasiHttpCtx>().unwrap()
     }
 }

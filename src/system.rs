@@ -2,12 +2,12 @@
 //!
 //! This module implements a NATS wasi:messaging runtime.
 
+use std::any::Any;
 use std::collections::HashMap;
 
 use wasmtime::component::{Component, InstancePre, Linker};
 use wasmtime::{Config, Engine, Store, StoreLimits};
 use wasmtime_wasi::{ResourceTable, WasiCtx, WasiCtxBuilder, WasiView};
-use wasmtime_wasi_http::WasiHttpCtx;
 
 /// Runtime represents a particular runtime capability depended on by wasm
 /// components. For example, an HTTP server or a message broker.
@@ -88,6 +88,8 @@ impl Builder {
     }
 }
 
+pub type Metadata = Box<dyn Any + Send>;
+
 /// State implements messaging host interfaces. In addition, it holds the host-defined
 /// state used by the wasm runtime [`Store`].
 pub struct State {
@@ -95,10 +97,7 @@ pub struct State {
     ctx: WasiCtx,
     limits: StoreLimits,
 
-    // TODO factor out http_ctx and msg_ctx into respective runtimes
-    pub http_ctx: WasiHttpCtx,
-    pub msg_ctx: HashMap<String, u32>,
-    // pub metadata: HashMap<String, WasiHttpCtx>,
+    pub metadata: HashMap<String, Metadata>,
 }
 
 impl State {
@@ -109,9 +108,7 @@ impl State {
             ctx: WasiCtxBuilder::new().inherit_args().inherit_env().inherit_stdio().build(),
             limits: StoreLimits::default(),
 
-            http_ctx: WasiHttpCtx {},
-            msg_ctx: HashMap::default(),
-            // metadata: HashMap::default(),
+            metadata: HashMap::default(),
         }
     }
 }

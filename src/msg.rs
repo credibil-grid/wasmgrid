@@ -103,9 +103,8 @@ impl State {
     fn add_client(&mut self, client: Client) -> anyhow::Result<Resource<wasi_messaging::Client>> {
         let name = client.name.clone();
         let client: wasi_messaging::Client = Box::new(client);
-
         let resource = self.table().push(client)?;
-        self.msg_ctx.insert(name, resource.rep());
+        self.metadata.insert(name, Box::new(resource.rep()));
 
         Ok(resource)
     }
@@ -115,8 +114,9 @@ impl State {
 #[async_trait::async_trait]
 impl MessagingView for State {
     async fn connect(&mut self, name: String) -> anyhow::Result<Resource<wasi_messaging::Client>> {
-        let resource = if let Some(key) = self.msg_ctx.get(&name) {
+        let resource = if let Some(key) = self.metadata.get(&name) {
             // reuse existing connection
+            let key = key.downcast_ref::<u32>().unwrap();
             Resource::new_own(*key)
         } else {
             // create a new connection
