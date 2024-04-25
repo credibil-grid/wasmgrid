@@ -103,5 +103,6 @@ impl WasiHttpView for State {
 
     fn ctx(&mut self) -> &mut WasiHttpCtx {
         &mut self.http_ctx
+        // self.metadata.get_mut("http_ctx").unwrap()
     }
 }

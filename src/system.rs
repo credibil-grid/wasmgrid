@@ -98,6 +98,7 @@ pub struct State {
     // TODO factor out http_ctx and msg_ctx into respective runtimes
     pub http_ctx: WasiHttpCtx,
     pub msg_ctx: HashMap<String, u32>,
+    // pub metadata: HashMap<String, WasiHttpCtx>,
 }
 
 impl State {
@@ -110,6 +111,7 @@ impl State {
 
             http_ctx: WasiHttpCtx {},
             msg_ctx: HashMap::default(),
+            // metadata: HashMap::default(),
         }
     }
 }
