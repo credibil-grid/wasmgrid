@@ -20,8 +20,7 @@ impl Guest for MessagingGuest {
     }
 
     // Whenever a message is received on a subscribed channel, the host will call this
-    // function. Once the message has been handled, the host should kill the Wasm
-    // instance.
+    // function. Once done, the host should kill the wasm instance.
     fn handler(msgs: Vec<Message>) -> Result<(), Error> {
         for msg in msgs {
             // get channel
