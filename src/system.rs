@@ -5,8 +5,7 @@
 use std::collections::HashMap;
 
 use wasmtime::component::{Component, InstancePre, Linker};
-use wasmtime::StoreLimits;
-use wasmtime::{Config, Engine, Store};
+use wasmtime::{Config, Engine, Store, StoreLimits};
 use wasmtime_wasi::{ResourceTable, WasiCtx, WasiCtxBuilder, WasiView};
 use wasmtime_wasi_http::WasiHttpCtx;
 
@@ -55,10 +54,7 @@ impl Builder {
     }
 
     /// Add a runtime to the wasm runtime.
-    pub fn runtime<P>(mut self, runtime: P) -> Self
-    where
-        P: Runtime + 'static,
-    {
+    pub fn runtime(mut self, runtime: impl Runtime + 'static) -> Self {
         self.runtimes.push(Box::new(runtime));
         self
     }
