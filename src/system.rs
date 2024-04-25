@@ -107,11 +107,6 @@ pub struct State {
 impl State {
     /// Create a new State instance.
     fn new() -> Self {
-        // let mut ctx = WasiCtxBuilder::new();
-        // ctx.arg("./foo.wasm");
-        // ctx.arg("--help");
-        // ctx.env("FOO", "bar");
-
         Self {
             table: ResourceTable::default(),
             ctx: WasiCtxBuilder::new().inherit_args().inherit_env().inherit_stdio().build(),
