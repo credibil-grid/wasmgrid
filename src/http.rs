@@ -18,18 +18,18 @@ use wasmtime_wasi_http::{hyper_response_error, proxy, WasiHttpCtx, WasiHttpView}
 
 use crate::system::{self, State, System};
 
-pub struct Runtime {
+pub struct Capability {
     pub addr: String,
 }
 
-impl Runtime {
+impl Capability {
     pub fn new(addr: String) -> Self {
         Self { addr }
     }
 }
 
 #[async_trait::async_trait]
-impl system::Runtime for Runtime {
+impl system::Capability for Capability {
     fn add_to_linker(&self, linker: &mut Linker<State>) -> anyhow::Result<()> {
         proxy::add_only_http_to_linker(linker)
     }

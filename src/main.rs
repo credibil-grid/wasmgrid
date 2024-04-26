@@ -25,8 +25,8 @@ pub async fn main() -> wasmtime::Result<()> {
     let args = Args::parse();
 
     system::Builder::new()
-        .runtime(http::Runtime::new(args.http_addr))
-        .runtime(msg::Runtime::new(args.nats_addr))
+        .capability(http::Capability::new(args.http_addr))
+        .capability(msg::Capability::new(args.nats_addr))
         .run(args.wasm)?;
 
     shutdown().await

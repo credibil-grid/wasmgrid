@@ -18,18 +18,18 @@ use wasmtime_wasi::WasiView;
 
 use crate::system::{self, State, System};
 
-pub struct Runtime {
+pub struct Capability {
     pub addr: String,
 }
 
-impl Runtime {
+impl Capability {
     pub fn new(addr: String) -> Self {
         Self { addr }
     }
 }
 
 #[async_trait::async_trait]
-impl system::Runtime for Runtime {
+impl system::Capability for Capability {
     fn add_to_linker(&self, linker: &mut Linker<State>) -> anyhow::Result<()> {
         Messaging::add_to_linker(linker, |t| t)
     }

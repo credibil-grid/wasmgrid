@@ -9,10 +9,10 @@ use wasmtime::component::{Component, InstancePre, Linker};
 use wasmtime::{Config, Engine, Store, StoreLimits};
 use wasmtime_wasi::{ResourceTable, WasiCtx, WasiCtxBuilder, WasiView};
 
-/// Runtime represents a particular runtime capability depended on by wasm
+/// Capability represents a particular runtime capability depended on by wasm
 /// components. For example, an HTTP server or a message broker.
 #[async_trait::async_trait]
-pub trait Runtime: Send {
+pub trait Capability: Send {
     /// Add the runtime to the wasm component linker.
     fn add_to_linker(&self, linker: &mut Linker<State>) -> anyhow::Result<()>;
 
@@ -44,7 +44,7 @@ impl System {
 
 #[derive(Default)]
 pub struct Builder {
-    runtimes: Vec<Box<dyn Runtime>>,
+    runtimes: Vec<Box<dyn Capability>>,
 }
 
 impl Builder {
@@ -54,8 +54,8 @@ impl Builder {
     }
 
     /// Add a runtime to the wasm runtime.
-    pub fn runtime(mut self, runtime: impl Runtime + 'static) -> Self {
-        self.runtimes.push(Box::new(runtime));
+    pub fn capability(mut self, capability: impl Capability + 'static) -> Self {
+        self.runtimes.push(Box::new(capability));
         self
     }
 
