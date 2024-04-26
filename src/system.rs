@@ -13,7 +13,7 @@ use wasmtime_wasi::{ResourceTable, WasiCtx, WasiCtxBuilder, WasiView};
 /// components. For example, an HTTP server or a message broker.
 #[async_trait::async_trait]
 pub trait Capability: Send {
-    /// Add the runtime to the wasm component linker.
+    /// Add the capability to the wasm component linker.
     fn add_to_linker(&self, linker: &mut Linker<State>) -> anyhow::Result<()>;
 
     /// Start and run the runtime.
@@ -44,7 +44,7 @@ impl System {
 
 #[derive(Default)]
 pub struct Builder {
-    runtimes: Vec<Box<dyn Capability>>,
+    capabilities: Vec<Box<dyn Capability>>,
 }
 
 impl Builder {
@@ -53,13 +53,13 @@ impl Builder {
         Self::default()
     }
 
-    /// Add a runtime to the wasm runtime.
+    /// Add a capability to the wasm runtime.
     pub fn capability(mut self, capability: impl Capability + 'static) -> Self {
-        self.runtimes.push(Box::new(capability));
+        self.capabilities.push(Box::new(capability));
         self
     }
 
-    /// Run the wasm component with the specified runtimes.
+    /// Run the wasm component with the specified capabilities.
     pub fn run(self, wasm: String) -> anyhow::Result<()> {
         let mut config = Config::new();
         config.async_support(true);
@@ -69,7 +69,7 @@ impl Builder {
         wasmtime_wasi::add_to_linker_async(&mut linker)?;
 
         // link each runtime
-        for rt in &self.runtimes {
+        for rt in &self.capabilities {
             rt.add_to_linker(&mut linker)?;
         }
 
@@ -78,8 +78,8 @@ impl Builder {
         let instance_pre = linker.instantiate_pre(&component)?;
         let system = System { engine, instance_pre };
 
-        // start runtimes
-        for rt in self.runtimes {
+        // start capabilities
+        for rt in self.capabilities {
             let system = system.clone();
             tokio::spawn(async move { rt.run(system).await });
         }
