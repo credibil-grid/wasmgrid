@@ -1,4 +1,4 @@
-//! # Http System
+//! # Http Runtime
 //!
 //! This module implements a wasi:http runtime.
 
@@ -16,7 +16,7 @@ use wasmtime_wasi_http::io::TokioIo;
 use wasmtime_wasi_http::proxy::Proxy;
 use wasmtime_wasi_http::{hyper_response_error, proxy, WasiHttpCtx, WasiHttpView};
 
-use crate::system::{self, State, System};
+use crate::runtime::{self, Runtime, State};
 
 pub struct Capability {
     pub addr: String,
@@ -29,13 +29,13 @@ impl Capability {
 }
 
 #[async_trait::async_trait]
-impl system::Capability for Capability {
+impl runtime::Capability for Capability {
     fn add_to_linker(&self, linker: &mut Linker<State>) -> anyhow::Result<()> {
         proxy::add_only_http_to_linker(linker)
     }
 
     /// Start and run NATS for the specified wasm component.
-    async fn run(&self, system: System) -> anyhow::Result<()> {
+    async fn run(&self, runtime: Runtime) -> anyhow::Result<()> {
         let listener = TcpListener::bind(&self.addr).await?;
         println!("Listening on: {}", listener.local_addr()?);
 
@@ -43,12 +43,12 @@ impl system::Capability for Capability {
         loop {
             let (stream, _) = listener.accept().await?;
             let io = TokioIo::new(stream);
-            let system = system.clone();
+            let runtime = runtime.clone();
 
             tokio::spawn(async move {
                 if let Err(e) = http1::Builder::new()
                     .keep_alive(true)
-                    .serve_connection(io, service_fn(|req| handle_request(&system, req)))
+                    .serve_connection(io, service_fn(|req| handle_request(&runtime, req)))
                     .await
                 {
                     eprintln!("error: {e:?}");
@@ -62,25 +62,25 @@ impl system::Capability for Capability {
 
 // Forward NATS message to the wasm Guest.
 async fn handle_request(
-    system: &System, request: Request<Incoming>,
+    runtime: &Runtime, request: Request<Incoming>,
 ) -> anyhow::Result<hyper::Response<HyperOutgoingBody>> {
     let (sender, receiver) = tokio::sync::oneshot::channel();
     // let req_id = self.next_id.fetch_add(1, Ordering::Relaxed);
 
-    let system = system.clone();
+    let runtime = runtime.clone();
 
     let task = tokio::spawn(async move {
         let (parts, body) = request.into_parts();
         let req = hyper::Request::from_parts(parts, body.map_err(hyper_response_error).boxed());
 
-        let mut store = system.store();
+        let mut store = runtime.store();
         let state = store.data_mut();
         let req = state.new_incoming_request(req)?;
         let out = state.new_response_outparam(sender)?;
         state.metadata.insert("wasi_http_ctx".to_string(), Box::new(WasiHttpCtx {}));
 
         // call guest with request
-        let (proxy, _) = Proxy::instantiate_pre(&mut store, system.instance_pre()).await?;
+        let (proxy, _) = Proxy::instantiate_pre(&mut store, runtime.instance_pre()).await?;
         proxy.wasi_http_incoming_handler().call_handle(&mut store, req, out).await
     });
 

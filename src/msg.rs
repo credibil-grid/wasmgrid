@@ -1,4 +1,4 @@
-//! # NATS Messaging System
+//! # NATS Messaging Runtime
 //!
 //! This module implements a NATS wasi:messaging runtime.
 
@@ -16,7 +16,7 @@ use wasi_messaging::{self, MessagingView, RuntimeClient, RuntimeSubscriber};
 use wasmtime::component::{Linker, Resource};
 use wasmtime_wasi::WasiView;
 
-use crate::system::{self, State, System};
+use crate::runtime::{self, Runtime, State};
 
 pub struct Capability {
     pub addr: String,
@@ -29,13 +29,13 @@ impl Capability {
 }
 
 #[async_trait::async_trait]
-impl system::Capability for Capability {
+impl runtime::Capability for Capability {
     fn add_to_linker(&self, linker: &mut Linker<State>) -> anyhow::Result<()> {
         Messaging::add_to_linker(linker, |t| t)
     }
 
     /// Start and run NATS for the specified wasm component.
-    async fn run(&self, system: System) -> anyhow::Result<()> {
+    async fn run(&self, system: Runtime) -> anyhow::Result<()> {
         let client = Client::connect(self.addr.clone()).await?;
         println!("Connected to NATS: {}", self.addr);
 
@@ -63,7 +63,7 @@ impl system::Capability for Capability {
 }
 
 // Return the channels the Guest wants to subscribe to.
-async fn channels(system: &System) -> anyhow::Result<Vec<String>> {
+async fn channels(system: &Runtime) -> anyhow::Result<Vec<String>> {
     let mut store = system.store();
     let (messaging, _) = Messaging::instantiate_pre(&mut store, system.instance_pre()).await?;
 
@@ -79,7 +79,7 @@ async fn channels(system: &System) -> anyhow::Result<Vec<String>> {
 }
 
 // Forward NATS message to the wasm Guest.
-async fn handle_message(system: &System, client: Client, message: Message) -> anyhow::Result<()> {
+async fn handle_message(system: &Runtime, client: Client, message: Message) -> anyhow::Result<()> {
     let mut store = system.store();
 
     // add client to ResourceTable

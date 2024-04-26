@@ -1,6 +1,4 @@
-//! # NATS Messaging System
-//!
-//! This module implements a NATS wasi:messaging runtime.
+//! # WebAssembly Runtime
 
 use std::any::Any;
 use std::collections::HashMap;
@@ -17,17 +15,17 @@ pub trait Capability: Send {
     fn add_to_linker(&self, linker: &mut Linker<State>) -> anyhow::Result<()>;
 
     /// Start and run the runtime.
-    async fn run(&self, handler: System) -> anyhow::Result<()>;
+    async fn run(&self, handler: Runtime) -> anyhow::Result<()>;
 }
 
-/// System for a wasm component.
+/// Runtime for a wasm component.
 #[derive(Clone)]
-pub struct System {
+pub struct Runtime {
     engine: Engine,
     instance_pre: InstancePre<State>,
 }
 
-impl System {
+impl Runtime {
     /// Returns a [`Store`] for use when calling guests.
     pub fn store(&self) -> Store<State> {
         let mut store = Store::new(&self.engine, State::new());
@@ -76,7 +74,7 @@ impl Builder {
         // pre-instantiate component
         let component = Component::from_file(&engine, wasm)?;
         let instance_pre = linker.instantiate_pre(&component)?;
-        let system = System { engine, instance_pre };
+        let system = Runtime { engine, instance_pre };
 
         // start capabilities
         for rt in self.capabilities {
