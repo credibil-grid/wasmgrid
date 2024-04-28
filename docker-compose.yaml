@@ -1,0 +1,9 @@
+version: '3.8'
+
+services:
+  wasm:
+    build: .
+    ports:
+      - "8080"
+    volumes:
+      - ./target/wasm32-wasi/release/http.wasm:/app.wasm

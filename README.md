@@ -24,3 +24,27 @@ Build and run the Messaging host and example guest.
 Build and run the Http host and example guest.
 
 See [examples/http/README.md](examples/http/README.md).
+
+
+## Docker Build
+
+In order to use the scratch image we need to build a statically linked (elf) binary. This can be done by using the `x86_64-unknown-linux-musl` target.
+
+To build the docker image:
+
+```bash
+docker build -t acrcredibil.azurecr.io/demo/wasmgrid .
+```
+
+To test/debug build locally:
+
+```bash
+# brew install FiloSottile/musl-cross/musl-cross
+brew tap messense/macos-cross-toolchains
+brew install x86_64-unknown-linux-musl
+```
+
+```bash
+cargo build --package wasmgrid --target x86_64-unknown-linux-musl --release
+```
+

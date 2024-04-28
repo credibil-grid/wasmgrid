@@ -2394,6 +2394,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "wasmgrid"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-nats",
+ "async-trait",
+ "bytes",
+ "clap",
+ "futures",
+ "http-body-util",
+ "hyper",
+ "tokio",
+ "wasi-messaging",
+ "wasmtime",
+ "wasmtime-wasi",
+ "wasmtime-wasi-http",
+]
+
+[[package]]
 name = "wasmparser"
 version = "0.202.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2412,25 +2431,6 @@ checksum = "ab1cc9508685eef9502e787f4d4123745f5651a1e29aec047645d3cac1e2da7a"
 dependencies = [
  "anyhow",
  "wasmparser",
-]
-
-[[package]]
-name = "wasmrun"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "async-nats",
- "async-trait",
- "bytes",
- "clap",
- "futures",
- "http-body-util",
- "hyper",
- "tokio",
- "wasi-messaging",
- "wasmtime",
- "wasmtime-wasi",
- "wasmtime-wasi-http",
 ]
 
 [[package]]

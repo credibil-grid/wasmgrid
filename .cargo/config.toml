@@ -1,0 +1,8 @@
+[build]
+
+[env]
+CC_x86_64-unknown-linux-musl = "x86_64-linux-musl-gcc"
+
+[target.x86_64-unknown-linux-musl]
+# linker = "x86_64-linux-musl-gcc" # not working
+rustflags = ["-Clinker=x86_64-linux-musl-gcc"]

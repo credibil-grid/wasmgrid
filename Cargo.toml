@@ -1,16 +1,16 @@
 
 [package]
-name = "wasmrun"
+name = "wasmgrid"
 description = "WASI Component runtime"
 version = "0.1.0"
 authors.workspace = true
 edition.workspace = true
-default-run = "wasmrun"
+default-run = "wasmgrid"
 rust-version.workspace = true
 
 [[bin]]
 path = "src/main.rs"
-name = "wasmrun"
+name = "wasmgrid"
 
 [lints]
 workspace = true
@@ -60,3 +60,4 @@ futures = "0.3.30"
 tracing = "0.1.40"
 wasmtime = { version = "20.0.0", features = ["component-model"] }
 wasmtime-wasi = "20.0.0"
+
