@@ -1,9 +1,9 @@
 # 1. Install `wit-deps` from source (https://github.com/bytecodealliance/wit-deps)
 # 2. Add external dependencies to deps.toml
-# 3. Run `wit-deps` to import dependenciess specified in deps.toml:
+# 3. Run `wit-deps` to import dependencies specified in deps.toml:
 # 
 # ```sh
-# wit-deps --manifest crates/wasi-keyvalue/wit/deps.toml --deps crates/wasi-keyvalue/wit/deps
+# cd crates/wasi-keyvalue && wit-deps && cd ../..
 # ```
 
 keyvalue = "https://github.com/WebAssembly/wasi-keyvalue/archive/main.tar.gz"
