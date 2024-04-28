@@ -1,5 +1,6 @@
 mod http;
-mod msg;
+mod keyvalue;
+mod messaging;
 mod runtime;
 
 use anyhow::Error;
@@ -26,7 +27,8 @@ pub async fn main() -> wasmtime::Result<()> {
 
     runtime::Builder::new()
         .capability(http::Capability::new(args.http_addr))
-        .capability(msg::Capability::new(args.nats_addr))
+        .capability(messaging::Capability::new(args.nats_addr.clone()))
+        .capability(keyvalue::Capability::new(args.nats_addr))
         .run(args.wasm)?;
 
     shutdown().await

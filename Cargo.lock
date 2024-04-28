@@ -2417,6 +2417,7 @@ dependencies = [
  "http-body-util",
  "hyper",
  "tokio",
+ "wasi-keyvalue",
  "wasi-messaging",
  "wasmtime",
  "wasmtime-wasi",
