@@ -1,4 +1,4 @@
-package component:http-msg;
+package component:wasi-messaging;
 
 world imports {
 	import wasi:messaging/producer@0.2.0-draft;

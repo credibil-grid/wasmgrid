@@ -2308,6 +2308,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "wasi-keyvalue"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "bytes",
+ "futures",
+ "tokio",
+ "tracing",
+ "wasmtime",
+ "wasmtime-wasi",
+]
+
+[[package]]
 name = "wasi-messaging"
 version = "0.1.0"
 dependencies = [

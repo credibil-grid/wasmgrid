@@ -3,7 +3,7 @@
 # 3. Run `wit-deps` to import dependenciess specified in deps.toml:
 # 
 # ```sh
-# wit-deps --manifest crates/wasi-messaging/wit/deps.toml --deps crates/wasi-messaging/wit/deps
+# wit-deps --manifest crates/wasi-keyvalue/wit/deps.toml --deps crates/wasi-keyvalue/wit/deps
 # ```
 
-messaging = "https://github.com/WebAssembly/wasi-messaging/archive/main.tar.gz"
+keyvalue = "https://github.com/WebAssembly/wasi-keyvalue/archive/main.tar.gz"
