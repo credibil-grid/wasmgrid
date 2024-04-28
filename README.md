@@ -1,4 +1,4 @@
-# Wasm Runtime
+# Wasm Grid Runtime
 
 An interim runtime for running WASI WebAssembly components.
 

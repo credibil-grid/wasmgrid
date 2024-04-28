@@ -9,7 +9,7 @@ impl<T: KeyValueView> store::Host for T {
     async fn open(
         &mut self, identifier: String,
     ) -> wasmtime::Result<Result<Resource<Bucket>, store::Error>> {
-        todo!("implement open")
+        Ok(Ok(T::open(self, identifier).await?))
     }
 }
 
@@ -18,34 +18,40 @@ impl<T: KeyValueView> store::HostBucket for T {
     async fn get(
         &mut self, bucket: Resource<Bucket>, key: String,
     ) -> wasmtime::Result<Result<Option<Vec<u8>>, store::Error>> {
-        todo!("implement open")
+        let bucket = self.table().get_mut(&bucket)?;
+        Ok(Ok(Some(bucket.get(key).await?)))
     }
 
     async fn set(
         &mut self, bucket: Resource<Bucket>, key: String, value: Vec<u8>,
     ) -> wasmtime::Result<Result<(), store::Error>, wasmtime::Error> {
-        todo!()
+        let bucket = self.table().get_mut(&bucket)?;
+        Ok(Ok(bucket.set(key, value).await?))
     }
 
     async fn delete(
         &mut self, bucket: Resource<Bucket>, key: String,
     ) -> Result<Result<(), store::Error>, wasmtime::Error> {
-        todo!()
+        let bucket = self.table().get_mut(&bucket)?;
+        Ok(Ok(bucket.delete(key).await?))
     }
 
     async fn exists(
         &mut self, bucket: Resource<Bucket>, key: String,
     ) -> wasmtime::Result<Result<bool, store::Error>> {
-        todo!("implement open")
+        let bucket = self.table().get_mut(&bucket)?;
+        Ok(Ok(bucket.exists(key).await?))
     }
 
     async fn list_keys(
-        &mut self, _: Resource<Bucket>, _: Option<u64>,
+        &mut self, bucket: Resource<Bucket>, keys: Option<u64>,
     ) -> Result<Result<KeyResponse, store::Error>, wasmtime::Error> {
-        todo!()
+        let bucket = self.table().get_mut(&bucket)?;
+        Ok(Ok(bucket.list_keys(keys).await?))
     }
 
     fn drop(&mut self, bucket: Resource<Bucket>) -> Result<(), wasmtime::Error> {
-        todo!()
+        let bucket = self.table().get_mut(&bucket)?;
+        bucket.close()
     }
 }

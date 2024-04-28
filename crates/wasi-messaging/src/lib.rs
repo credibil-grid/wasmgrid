@@ -17,7 +17,6 @@ pub type Subscriber = Pin<Box<dyn RuntimeSubscriber>>;
 pub mod bindings {
     pub use anyhow::Error;
 
-    // pub use wasi::messaging::*;
     pub use super::Client;
 
     wasmtime::component::bindgen!({
