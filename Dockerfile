@@ -15,6 +15,7 @@ RUN adduser \
     "wasm"
 
 WORKDIR /app
+
 # COPY ./ .
 COPY /Cargo.toml /Cargo.toml
 COPY /src /src

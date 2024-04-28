@@ -33,7 +33,7 @@ In order to use the scratch image we need to build a statically linked (elf) bin
 To build the docker image:
 
 ```bash
-docker build -t acrcredibil.azurecr.io/demo/wasmgrid .
+docker build --platform=linux/amd64 -t acrcredibil.azurecr.io/demo/wasmgrid .
 ```
 
 To test/debug build locally:
