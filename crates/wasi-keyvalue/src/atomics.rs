@@ -11,6 +11,7 @@ impl<T: KeyValueView> atomics::Host for T {
     async fn increment(
         &mut self, bucket: Resource<Bucket>, key: String, delta: u64,
     ) -> wasmtime::Result<Result<u64, Error>> {
-        todo!("implement increment")
+        let bucket = self.table().get_mut(&bucket)?;
+        Ok(Ok(bucket.increment(key, delta).await?))
     }
 }

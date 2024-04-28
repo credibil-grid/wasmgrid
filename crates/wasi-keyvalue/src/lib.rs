@@ -13,8 +13,6 @@ pub type Bucket = Box<dyn RuntimeBucket>;
 
 /// Wrap generation of wit bindings to simplify exports
 pub mod bindings {
-    pub use anyhow::Error;
-
     pub use super::Bucket;
 
     wasmtime::component::bindgen!({
@@ -24,7 +22,6 @@ pub mod bindings {
         async: true,
         with: {
             "wasi:keyvalue/store/bucket": Bucket,
-        //     "wasi:keyvalue/keyvalue-types/error": Error,
         },
         // trappable_error_type: {
         //     "wasi:keyvalue/keyvalue-types/error" => Error,
@@ -44,6 +41,9 @@ pub trait KeyValueView: WasiView + Send {
 /// to runtime functionality.
 #[async_trait::async_trait]
 pub trait RuntimeBucket: Sync + Send {
+    // ------------------------------------------------------------------------
+    // Store
+    // ------------------------------------------------------------------------
     async fn get(&mut self, key: String) -> anyhow::Result<Vec<u8>>;
 
     async fn set(&mut self, key: String, value: Vec<u8>) -> anyhow::Result<()>;
@@ -55,4 +55,18 @@ pub trait RuntimeBucket: Sync + Send {
     async fn list_keys(&mut self, keys_: Option<u64>) -> anyhow::Result<KeyResponse>;
 
     fn close(&mut self) -> anyhow::Result<()>;
+
+    // ------------------------------------------------------------------------
+    // Atomics
+    // ------------------------------------------------------------------------
+    async fn increment(&mut self, key: String, delta: u64) -> anyhow::Result<u64>;
+
+    // ------------------------------------------------------------------------
+    // Batch
+    // ------------------------------------------------------------------------
+    async fn get_many(&mut self, keys: Vec<String>) -> anyhow::Result<Vec<(String, Vec<u8>)>>;
+
+    async fn set_many(&mut self, key_values: Vec<(String, Vec<u8>)>) -> anyhow::Result<()>;
+
+    async fn delete_many(&mut self, keys: Vec<String>) -> anyhow::Result<()>;
 }

@@ -60,4 +60,3 @@ futures = "0.3.30"
 tracing = "0.1.40"
 wasmtime = { version = "20.0.0", features = ["component-model"] }
 wasmtime-wasi = "20.0.0"
-
