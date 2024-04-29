@@ -35,13 +35,13 @@ impl runtime::Capability for Capability {
     }
 
     /// Start and run NATS for the specified wasm component.
-    async fn run(&self, system: Runtime) -> anyhow::Result<()> {
+    async fn run(&self, runtime: Runtime) -> anyhow::Result<()> {
         let client = Client::connect(self.addr.clone()).await?;
         println!("Connected to NATS: {}", self.addr);
 
         // subscribe to channels
         let mut subscribers = vec![];
-        for ch in channels(&system).await? {
+        for ch in channels(&runtime).await? {
             let subscriber = client.subscribe(ch.clone()).await?;
             subscribers.push(subscriber);
         }
@@ -49,10 +49,10 @@ impl runtime::Capability for Capability {
         // process messages until terminated
         let mut messages = stream::select_all(subscribers);
         while let Some(message) = messages.next().await {
-            let system = system.clone();
+            let runtime = runtime.clone();
             let client = client.clone();
             if let Err(e) =
-                tokio::spawn(async move { handle_message(&system, client, message).await }).await
+                tokio::spawn(async move { handle_message(&runtime, client, message).await }).await
             {
                 eprintln!("Error: {e:?}");
             }
@@ -63,9 +63,9 @@ impl runtime::Capability for Capability {
 }
 
 // Return the channels the Guest wants to subscribe to.
-async fn channels(system: &Runtime) -> anyhow::Result<Vec<String>> {
-    let mut store = system.store();
-    let (messaging, _) = Messaging::instantiate_pre(&mut store, system.instance_pre()).await?;
+async fn channels(runtime: &Runtime) -> anyhow::Result<Vec<String>> {
+    let mut store = runtime.store();
+    let (messaging, _) = Messaging::instantiate_pre(&mut store, runtime.instance_pre()).await?;
 
     let gc = match messaging.wasi_messaging_messaging_guest().call_configure(&mut store).await? {
         Ok(gc) => gc,
@@ -79,13 +79,13 @@ async fn channels(system: &Runtime) -> anyhow::Result<Vec<String>> {
 }
 
 // Forward NATS message to the wasm Guest.
-async fn handle_message(system: &Runtime, client: Client, message: Message) -> anyhow::Result<()> {
-    let mut store = system.store();
+async fn handle_message(runtime: &Runtime, client: Client, message: Message) -> anyhow::Result<()> {
+    let mut store = runtime.store();
 
     // add client to ResourceTable
     store.data_mut().add_client(client)?;
 
-    let (messaging, _) = Messaging::instantiate_pre(&mut store, system.instance_pre()).await?;
+    let (messaging, _) = Messaging::instantiate_pre(&mut store, runtime.instance_pre()).await?;
 
     // call guest with message
     if let Err(e) =

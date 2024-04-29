@@ -2,7 +2,9 @@
 //!
 //! This module implements a NATS wasi:messaging runtime.
 
-// use anyhow::anyhow;
+use std::sync::OnceLock;
+
+use anyhow::anyhow;
 use async_nats::jetstream;
 use wasi_keyvalue::bindings::wasi::keyvalue::store::KeyResponse;
 use wasi_keyvalue::bindings::Keyvalue;
@@ -11,6 +13,8 @@ use wasmtime::component::{Linker, Resource};
 use wasmtime_wasi::WasiView;
 
 use crate::runtime::{self, Runtime, State};
+
+static JETSTREAM: OnceLock<jetstream::Context> = OnceLock::new();
 
 pub struct Capability {
     pub addr: String,
@@ -29,14 +33,10 @@ impl runtime::Capability for Capability {
     }
 
     /// Start and run NATS for the specified wasm component.
-    async fn run(&self, system: Runtime) -> anyhow::Result<()> {
-        // create JetStream context
+    async fn run(&self, _runtime: Runtime) -> anyhow::Result<()> {
+        // create JetStream context and store in global state
         let client = async_nats::connect(&self.addr).await?;
-        let jetstream = jetstream::new(client);
-
-        // save context to state
-        let store = &mut system.store();
-        store.data_mut().metadata.insert("context".to_string(), Box::new(jetstream));
+        JETSTREAM.get_or_init(|| jetstream::new(client));
 
         println!("Connected to NATS: {}", self.addr);
 
@@ -51,10 +51,9 @@ impl KeyValueView for State {
         &mut self, identifier: String,
     ) -> anyhow::Result<Resource<wasi_keyvalue::Bucket>> {
         // open bucket specified by identifier
-        // let jetstream =
-        //     self.metadata.get("context").unwrap().downcast_ref::<jetstream::Context>().unwrap();
-        let client = async_nats::connect("demo.nats.io").await?;
-        let jetstream = jetstream::new(client);
+        let Some(jetstream) = JETSTREAM.get() else {
+            return Err(anyhow!("JetStream not initialized"));
+        };
         let bucket = Bucket::new(&jetstream, identifier.clone()).await?;
 
         // save opened bucket to state
