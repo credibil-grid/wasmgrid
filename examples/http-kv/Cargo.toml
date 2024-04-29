@@ -1,0 +1,29 @@
+[package]
+name = "http-kv"
+description = "WASM guest for secure, isolated and distributed storage of wallet keys and credentials"
+version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+
+[lib]
+crate-type = ["cdylib"]
+
+[lints]
+workspace = true
+
+[dependencies]
+wit-bindgen-rt = "0.24.0"
+anyhow.workspace = true
+http = "1.1.0"
+serde_json = "1.0.116"
+wasi = "0.13.0"
+
+[package.metadata.component]
+package = "component:keyvalue"
+
+[package.metadata.component.target]
+world = "keyvalue"
+# path = "wit"
+
+[package.metadata.component.target.dependencies]
+"wasi:keyvalue" = { path = "wit/deps/keyvalue" }

@@ -1,3 +1,6 @@
+#![feature(let_chains)]
+mod bindings;
+
 use anyhow::{anyhow, Result};
 use http::header::CONTENT_TYPE; // AUTHORIZATION
 use http::Uri;
@@ -7,12 +10,11 @@ use wasi::http::types::{
     Fields, IncomingRequest, OutgoingBody, OutgoingResponse, ResponseOutparam,
 };
 
-use crate::bindings::wasi::messaging::messaging_types::{Client, FormatSpec, Message};
-use crate::bindings::wasi::messaging::producer;
+use crate::bindings::wasi::keyvalue::store;
 
-pub struct Http;
+struct HttpGuest;
 
-impl Guest for Http {
+impl Guest for HttpGuest {
     fn handle(request: IncomingRequest, response: ResponseOutparam) {
         // set up response in case of early failure
         let headers = Fields::new();
@@ -52,22 +54,20 @@ impl Guest for Http {
 fn hello(request: &Request) -> Result<Vec<u8>> {
     println!("request.uri: {}", request.uri());
 
-    let client = Client::connect("demo.nats.io").unwrap();
-    let message = Message {
-        data: b"Hello World".to_vec(),
-        format: FormatSpec::Raw,
-        metadata: None,
-    };
-    producer::send(client, &"b".to_string(), &[message]).expect("should send");
-
-    let req: serde_json::Value = serde_json::from_slice(&request.body()?)?;
+    let body = request.body()?;
+    let req: serde_json::Value = serde_json::from_slice(&body)?;
     println!("json: {:?}", req);
+
+    let bucket = store::open("my_bucket")?;
+    bucket.set("my_key", &body)?;
 
     let resp = json!({
         "message": "Hello, World!"
     });
     serde_json::to_vec(&resp).map_err(Into::into)
 }
+
+wasi::http::proxy::export!(HttpGuest);
 
 #[derive(Debug)]
 pub struct Request<'a> {

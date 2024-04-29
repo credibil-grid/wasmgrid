@@ -1049,6 +1049,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "http-kv"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "http 1.1.0",
+ "serde_json",
+ "wasi 0.13.0+wasi-0.2.0",
+ "wit-bindgen-rt 0.24.0",
+]
+
+[[package]]
 name = "http-msg"
 version = "0.1.0"
 dependencies = [

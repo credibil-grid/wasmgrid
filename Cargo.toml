@@ -9,8 +9,8 @@ default-run = "wasmgrid"
 rust-version.workspace = true
 
 [[bin]]
-path = "src/main.rs"
 name = "wasmgrid"
+path = "src/main.rs"
 
 [lints]
 workspace = true
