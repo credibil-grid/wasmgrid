@@ -44,10 +44,10 @@ impl<T: KeyValueView> store::HostBucket for T {
     }
 
     async fn list_keys(
-        &mut self, bucket: Resource<Bucket>, keys: Option<u64>,
+        &mut self, bucket: Resource<Bucket>, cursor: Option<u64>,
     ) -> Result<Result<KeyResponse, store::Error>, wasmtime::Error> {
         let bucket = self.table().get_mut(&bucket)?;
-        Ok(Ok(bucket.list_keys(keys).await?))
+        Ok(Ok(bucket.list_keys(cursor).await?))
     }
 
     fn drop(&mut self, bucket: Resource<Bucket>) -> Result<(), wasmtime::Error> {

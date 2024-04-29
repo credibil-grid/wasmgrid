@@ -1,4 +1,6 @@
 #![feature(let_chains)]
+
+#[allow(warnings)]
 mod bindings;
 
 use anyhow::{anyhow, Result};

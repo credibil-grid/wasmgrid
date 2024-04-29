@@ -12,11 +12,11 @@ crate-type = ["cdylib"]
 workspace = true
 
 [dependencies]
-wit-bindgen-rt = "0.24.0"
 anyhow.workspace = true
 http = "1.1.0"
 serde_json = "1.0.116"
 wasi = "0.13.0"
+wit-bindgen-rt = "0.24.0"
 
 [package.metadata.component]
 package = "component:keyvalue"

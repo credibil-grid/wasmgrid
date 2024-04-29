@@ -1,4 +1,4 @@
-//! # WASI KeyValue Host
+//! # WASI Key/Value Host
 
 mod atomics;
 mod batch;
@@ -52,8 +52,11 @@ pub trait RuntimeBucket: Sync + Send {
 
     async fn exists(&mut self, key: String) -> anyhow::Result<bool>;
 
-    async fn list_keys(&mut self, keys_: Option<u64>) -> anyhow::Result<KeyResponse>;
+    async fn list_keys(&mut self, cursor: Option<u64>) -> anyhow::Result<KeyResponse>;
 
+    /// Close the bucket. This may be a no-op for some backends.
+    ///
+    /// # Errors
     fn close(&mut self) -> anyhow::Result<()>;
 
     // ------------------------------------------------------------------------

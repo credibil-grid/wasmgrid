@@ -155,18 +155,18 @@ impl<'a> Request<'a> {
         p_and_q.parse::<Uri>().unwrap_or_else(|_| Uri::default())
     }
 
-    fn body(&self) -> Result<Vec<u8>> {
-        let body = self.inner.consume().map_err(|()| anyhow!("error consuming request body"))?;
-        let stream = body.stream().map_err(|()| anyhow!("error getting body stream"))?;
+    // fn body(&self) -> Result<Vec<u8>> {
+    //     let body = self.inner.consume().map_err(|()| anyhow!("error consuming request body"))?;
+    //     let stream = body.stream().map_err(|()| anyhow!("error getting body stream"))?;
 
-        // Read the entire body into a buffer.
-        let mut buffer = Vec::new();
-        while let Ok(bytes) = stream.read(1000)
-            && !bytes.is_empty()
-        {
-            buffer.extend_from_slice(&bytes);
-        }
+    //     // Read the entire body into a buffer.
+    //     let mut buffer = Vec::new();
+    //     while let Ok(bytes) = stream.read(1000)
+    //         && !bytes.is_empty()
+    //     {
+    //         buffer.extend_from_slice(&bytes);
+    //     }
 
-        Ok(buffer)
-    }
+    //     Ok(buffer)
+    // }
 }

@@ -152,8 +152,8 @@ impl Client {
     }
 }
 
-// Implement the [`wasi_messaging::RuntimeClient`] trait for Client. This trait
-// implementation is used by the messaging State to interact with the NATS client.
+// Implement the [`wasi_messaging::RuntimeClient`] trait for Client. The implementation
+// allows the wasi-messaging host to interact with NATS messaging.
 #[async_trait::async_trait]
 impl RuntimeClient for Client {
     async fn subscribe(&self, ch: String) -> anyhow::Result<wasi_messaging::Subscriber> {
@@ -169,13 +169,13 @@ impl RuntimeClient for Client {
 }
 
 // // Subscriber holds a reference to the the NATS client. It is used to implement the
-// [`wasi_messaging::RuntimeClient`] trait used by the messaging State.
+// [`wasi_messaging::RuntimeClient`] trait used by the messaging host.
 struct Subscriber {
     inner: async_nats::Subscriber,
 }
 
 // Implement the [`wasi_messaging::RuntimeClient`] trait for Client. This trait
-// implementation is used by the messaging State to interact with the NATS client.
+// implementation is used by the messaging host to interact with the NATS client.
 #[async_trait::async_trait]
 impl RuntimeSubscriber for Subscriber {
     async fn unsubscribe(&mut self) -> anyhow::Result<()> {
