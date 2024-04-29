@@ -6,7 +6,7 @@ Build the example guest:
 cargo component build --package msg --release
 ```
 
-Run the guest using the `wasmrun` runtime:
+Run the guest using the `wasmgrid` runtime:
 
 ```bash
 cargo run -- ./target/wasm32-wasi/release/msg.wasm

@@ -3,7 +3,7 @@ version: '3.8'
 services:
   wasm:
     build: .
-    image: acrcredibil.azurecr.io/demo/wasmgrid
+    image: wasmgrid
     ports:
       - "8080"
     volumes:

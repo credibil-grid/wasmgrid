@@ -7,20 +7,20 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "http-msg",
+            "name": "http-kv",
             "cargo": {
                 "args": [
                     "build",
-                    "--bin=wasmrun",
-                    "--package=wasmrun"
+                    "--bin=wasmgrid",
+                    "--package=wasmgrid"
                 ],
                 "filter": {
-                    "name": "wasmrun",
+                    "name": "wasmgrid",
                     "kind": "bin"
                 }
             },
             "args": [
-                "./target/wasm32-wasi/release/http_msg.wasm"
+                "./target/wasm32-wasi/release/http_kv.wasm"
             ],
             "cwd": "${workspaceFolder}"
         },
@@ -31,11 +31,11 @@
             "cargo": {
                 "args": [
                     "build",
-                    "--bin=wasmrun",
-                    "--package=wasmrun"
+                    "--bin=wasmgrid",
+                    "--package=wasmgrid"
                 ],
                 "filter": {
-                    "name": "wasmrun",
+                    "name": "wasmgrid",
                     "kind": "bin"
                 }
             },

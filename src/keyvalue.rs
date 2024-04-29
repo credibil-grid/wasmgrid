@@ -31,7 +31,7 @@ impl runtime::Capability for Capability {
     /// Start and run NATS for the specified wasm component.
     async fn run(&self, system: Runtime) -> anyhow::Result<()> {
         // create JetStream context
-        let client = async_nats::connect(self.addr.clone()).await?;
+        let client = async_nats::connect(&self.addr).await?;
         let jetstream = jetstream::new(client);
 
         // save context to state
@@ -51,9 +51,11 @@ impl KeyValueView for State {
         &mut self, identifier: String,
     ) -> anyhow::Result<Resource<wasi_keyvalue::Bucket>> {
         // open bucket specified by identifier
-        let jetstream =
-            self.metadata.get("context").unwrap().downcast_ref::<jetstream::Context>().unwrap();
-        let bucket = Bucket::new(jetstream, identifier.clone()).await?;
+        // let jetstream =
+        //     self.metadata.get("context").unwrap().downcast_ref::<jetstream::Context>().unwrap();
+        let client = async_nats::connect("demo.nats.io").await?;
+        let jetstream = jetstream::new(client);
+        let bucket = Bucket::new(&jetstream, identifier.clone()).await?;
 
         // save opened bucket to state
         let bucket: wasi_keyvalue::Bucket = Box::new(bucket);

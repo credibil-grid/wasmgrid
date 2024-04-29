@@ -1,3 +1,5 @@
+# See https://shaneutt.com/blog/rust-fast-small-docker-image-builds
+
 FROM --platform=linux/amd64 rust:alpine3.19 as builder
 
 RUN rustup update && \

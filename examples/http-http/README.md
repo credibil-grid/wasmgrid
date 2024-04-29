@@ -10,11 +10,11 @@ First, start the downstream service:
 # build the http guest
 cargo component build --package http --release
 
-# build the `wasmrun` binary
+# build the `wasmgrid` binary
 cargo build
 
 # run the binary (on localhost:8080)
-./target/debug/wasmrun --http-addr localhost:8080 ./target/wasm32-wasi/release/http.wasm
+./target/debug/wasmgrid --http-addr localhost:8080 ./target/wasm32-wasi/release/http.wasm
 ```
 
 Build the example guest:
