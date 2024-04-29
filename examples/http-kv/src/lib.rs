@@ -58,8 +58,20 @@ fn hello(request: &Request) -> Result<Vec<u8>> {
     let req: serde_json::Value = serde_json::from_slice(&body)?;
     println!("json: {:?}", req);
 
-    let bucket = store::open("my_bucket")?;
+    let bucket = match store::open("credibil_bucket") {
+        Ok(bucket) => bucket,
+        Err(err) => {
+            println!("error opening bucket: {:?}", err);
+            return Err(err.into());
+        }
+    };
+
+    println!("bucket: {:?}", bucket);
     bucket.set("my_key", &body)?;
+
+    // check for previous value
+    let res = bucket.get("my_key");
+    println!("found val: {:?}", res);
 
     let resp = json!({
         "message": "Hello, World!"

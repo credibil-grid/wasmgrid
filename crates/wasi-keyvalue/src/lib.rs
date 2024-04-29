@@ -44,7 +44,7 @@ pub trait RuntimeBucket: Sync + Send {
     // ------------------------------------------------------------------------
     // Store
     // ------------------------------------------------------------------------
-    async fn get(&mut self, key: String) -> anyhow::Result<Vec<u8>>;
+    async fn get(&mut self, key: String) -> anyhow::Result<Option<Vec<u8>>>;
 
     async fn set(&mut self, key: String, value: Vec<u8>) -> anyhow::Result<()>;
 

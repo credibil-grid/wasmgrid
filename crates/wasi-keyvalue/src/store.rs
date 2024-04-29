@@ -19,7 +19,7 @@ impl<T: KeyValueView> store::HostBucket for T {
         &mut self, bucket: Resource<Bucket>, key: String,
     ) -> wasmtime::Result<Result<Option<Vec<u8>>, store::Error>> {
         let bucket = self.table().get_mut(&bucket)?;
-        Ok(Ok(Some(bucket.get(key).await?)))
+        Ok(Ok(bucket.get(key).await?))
     }
 
     async fn set(
@@ -51,7 +51,8 @@ impl<T: KeyValueView> store::HostBucket for T {
     }
 
     fn drop(&mut self, bucket: Resource<Bucket>) -> Result<(), wasmtime::Error> {
-        let bucket = self.table().get_mut(&bucket)?;
-        bucket.close()
+        let b = self.table().get_mut(&bucket)?;
+        b.close()?;
+        Ok(self.table().delete(bucket).map(|_| ())?)
     }
 }

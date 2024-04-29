@@ -6,6 +6,7 @@ use std::sync::OnceLock;
 
 use anyhow::anyhow;
 use async_nats::jetstream;
+use bytes::Bytes;
 use wasi_keyvalue::bindings::wasi::keyvalue::store::KeyResponse;
 use wasi_keyvalue::bindings::Keyvalue;
 use wasi_keyvalue::{self, KeyValueView, RuntimeBucket};
@@ -94,12 +95,12 @@ impl RuntimeBucket for Bucket {
     // ------------------------------------------------------------------------
     // Store
     // ------------------------------------------------------------------------
-    async fn get(&mut self, key: String) -> anyhow::Result<Vec<u8>> {
-        unimplemented!("get")
+    async fn get(&mut self, key: String) -> anyhow::Result<Option<Vec<u8>>> {
+        Ok(self.inner.get(key).await?.map(|v| v.to_vec()))
     }
 
     async fn set(&mut self, key: String, value: Vec<u8>) -> anyhow::Result<()> {
-        unimplemented!("set")
+        Ok(self.inner.put(key, Bytes::from(value)).await.map(|_| ())?)
     }
 
     async fn delete(&mut self, key: String) -> anyhow::Result<()> {
@@ -115,7 +116,8 @@ impl RuntimeBucket for Bucket {
     }
 
     fn close(&mut self) -> anyhow::Result<()> {
-        unimplemented!("close")
+        // LATER: Can a JetStream bucket be closed?
+        Ok(())
     }
 
     // ------------------------------------------------------------------------
