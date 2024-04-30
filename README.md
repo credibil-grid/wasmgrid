@@ -30,10 +30,17 @@ See [examples/http/README.md](examples/http/README.md).
 
 In order to use the scratch image we need to build a statically linked (elf) binary. This can be done by using the `x86_64-unknown-linux-musl` target.
 
-To build the docker image:
+Build the docker image:
 
 ```bash
 docker build --platform=linux/amd64 -t acrcredibil.azurecr.io/demo/wasmgrid .
+```
+
+Push to Azure:
+
+```bash
+az acr login --name acrcredibil
+docker push acrcredibil.azurecr.io/demo/wasmgrid
 ```
 
 To test/debug build locally:

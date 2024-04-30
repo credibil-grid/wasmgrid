@@ -1,6 +1,6 @@
 # See https://shaneutt.com/blog/rust-fast-small-docker-image-builds
 
-FROM --platform=linux/amd64 rust:alpine3.19 as builder
+FROM rust:alpine3.19 as builder
 
 RUN rustup update && \
     rustup target add x86_64-unknown-linux-musl
@@ -32,5 +32,5 @@ COPY --from=builder /etc/group /etc/group
 COPY --from=builder --chown=wasm:wasm /target/x86_64-unknown-linux-musl/release/wasmgrid /app/wasmgrid
 
 USER wasm:wasm
-
+EXPOSE 8080
 CMD ["/app/wasmgrid", "/app.wasm"]

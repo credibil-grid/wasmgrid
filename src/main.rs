@@ -13,7 +13,7 @@ struct Args {
     wasm: String,
 
     /// The http host.
-    #[arg(long, default_value = "localhost:8080")]
+    #[arg(long, default_value = "0.0.0.0:8080")]
     http_addr: String,
 
     /// The NATS host.

@@ -3,8 +3,9 @@ version: '3.8'
 services:
   wasm:
     build: .
-    image: wasmgrid
+    image: acrcredibil.azurecr.io/demo/wasmgrid
+    platform: linux/amd64
     ports:
-      - "8080"
+      - 8080:8080
     volumes:
-      - ./target/wasm32-wasi/release/http.wasm:/app.wasm
+      - ./target/wasm32-wasi/release/http_kv.wasm:/app.wasm
