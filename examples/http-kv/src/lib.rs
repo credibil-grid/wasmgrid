@@ -13,6 +13,7 @@ use wasi::http::types::{
 };
 
 use crate::bindings::wasi::keyvalue::store;
+// use wasi_keyvalue::bindings::wasi::keyvalue::store;
 
 struct HttpGuest;
 
@@ -68,7 +69,6 @@ fn hello(request: &Request) -> Result<Vec<u8>> {
         }
     };
 
-    println!("bucket: {:?}", bucket);
     bucket.set("my_key", &body)?;
 
     // check for previous value
