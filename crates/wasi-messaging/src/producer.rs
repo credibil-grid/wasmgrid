@@ -11,7 +11,7 @@ impl<T: MessagingView> producer::Host for T {
     async fn send(
         &mut self, client: Resource<Client>, ch: String, messages: Vec<Message>,
     ) -> wasmtime::Result<anyhow::Result<(), Resource<Error>>> {
-        println!("send: {:?}", ch);
+        tracing::debug!("send: {:?}", ch);
 
         let client = self.table().get(&client)?;
 

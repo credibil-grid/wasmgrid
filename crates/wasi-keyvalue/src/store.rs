@@ -1,4 +1,4 @@
-// use anyhow::Error;
+use tracing::info;
 use wasmtime::component::Resource;
 
 use crate::bindings::wasi::keyvalue::store::{self, Bucket, KeyResponse};
@@ -15,9 +15,11 @@ impl<T: KeyValueView> store::Host for T {
 
 #[async_trait::async_trait]
 impl<T: KeyValueView> store::HostBucket for T {
+    // #[tracing::instrument(level = "debug")]
     async fn get(
         &mut self, bucket: Resource<Bucket>, key: String,
     ) -> wasmtime::Result<Result<Option<Vec<u8>>, store::Error>> {
+        info!(target: "HostBucket::get", key = key);
         let bucket = self.table().get_mut(&bucket)?;
         Ok(Ok(bucket.get(key).await?))
     }

@@ -5,6 +5,8 @@ mod runtime;
 
 use anyhow::Error;
 use clap::Parser;
+use tracing::Level;
+use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -24,6 +26,13 @@ struct Args {
 #[tokio::main]
 pub async fn main() -> wasmtime::Result<()> {
     let args = Args::parse();
+
+    // tracing
+    let subscriber = FmtSubscriber::builder()
+        .with_env_filter(EnvFilter::from_default_env())
+        .with_max_level(Level::INFO)
+        .finish();
+    tracing::subscriber::set_global_default(subscriber).expect("set subscriber");
 
     runtime::Builder::new()
         .capability(http::Capability::new(args.http_addr))

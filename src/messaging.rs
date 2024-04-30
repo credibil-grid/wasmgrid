@@ -37,7 +37,7 @@ impl runtime::Capability for Capability {
     /// Start and run NATS for the specified wasm component.
     async fn run(&self, runtime: Runtime) -> anyhow::Result<()> {
         let client = Client::connect(self.addr.clone()).await?;
-        println!("Connected to NATS: {}", self.addr);
+        tracing::info!(target: "messaging", "connected to NATS on {}", self.addr);
 
         // subscribe to channels
         let mut subscribers = vec![];

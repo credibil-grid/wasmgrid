@@ -14,9 +14,6 @@ workspace = true
 [dependencies]
 anyhow.workspace = true
 async-trait.workspace = true
-# bytes.workspace = true
-# futures.workspace = true
-# tokio = { version = "1.37.0", features = ["time"] }
 tracing.workspace = true
 wasmtime.workspace = true
 wasmtime-wasi.workspace = true
