@@ -54,7 +54,7 @@ impl runtime::Capability for Capability {
             if let Err(e) =
                 tokio::spawn(async move { handle_message(&runtime, client, message).await }).await
             {
-                eprintln!("Error: {e:?}");
+                tracing::error!("error processing message {e:?}");
             }
         }
 
@@ -64,6 +64,10 @@ impl runtime::Capability for Capability {
 
 // Return the channels the Guest wants to subscribe to.
 async fn channels(runtime: &Runtime) -> anyhow::Result<Vec<String>> {
+    tracing::debug!("channels");
+
+    // FIXME: use component().exports() to determine if the wasm module exports the
+    // wasi:messaging/messaging-guest@0.2.0-draft interface.
     let mut store = runtime.store();
     let (messaging, _) = Messaging::instantiate_pre(&mut store, runtime.instance_pre()).await?;
 
@@ -80,9 +84,10 @@ async fn channels(runtime: &Runtime) -> anyhow::Result<Vec<String>> {
 
 // Forward NATS message to the wasm Guest.
 async fn handle_message(runtime: &Runtime, client: Client, message: Message) -> anyhow::Result<()> {
-    let mut store = runtime.store();
+    tracing::debug!("handle_message");
 
     // add client to ResourceTable
+    let mut store = runtime.store();
     store.data_mut().add_client(client)?;
 
     let (messaging, _) = Messaging::instantiate_pre(&mut store, runtime.instance_pre()).await?;
@@ -114,6 +119,8 @@ impl State {
 #[async_trait::async_trait]
 impl MessagingView for State {
     async fn connect(&mut self, name: String) -> anyhow::Result<Resource<wasi_messaging::Client>> {
+        tracing::debug!("MessagingView::connect {name}");
+
         let resource = if let Some(key) = self.metadata.get(&name) {
             // reuse existing connection
             let key = key.downcast_ref::<u32>().unwrap();
@@ -131,7 +138,7 @@ impl MessagingView for State {
     async fn update_configuration(
         &mut self, _gc: GuestConfiguration,
     ) -> anyhow::Result<(), Resource<Error>> {
-        tracing::debug!("TODO: update_configuration");
+        tracing::debug!("MessagingView::update_configuration {_gc:?}");
         Ok(())
     }
 }
@@ -147,6 +154,8 @@ pub struct Client {
 impl Client {
     // Create a new Client for the specified NATS server.
     async fn connect(name: String) -> anyhow::Result<Self> {
+        tracing::trace!("Client::connect {name}");
+
         let inner = async_nats::connect(&name).await?;
         Ok(Self { name, inner })
     }
@@ -157,6 +166,8 @@ impl Client {
 #[async_trait::async_trait]
 impl RuntimeClient for Client {
     async fn subscribe(&self, ch: String) -> anyhow::Result<wasi_messaging::Subscriber> {
+        tracing::debug!("RuntimeClient::subscribe {ch}");
+
         let subscriber = Subscriber {
             inner: self.inner.subscribe(ch).await?,
         };
@@ -164,6 +175,7 @@ impl RuntimeClient for Client {
     }
 
     async fn publish(&self, ch: String, data: Bytes) -> anyhow::Result<()> {
+        tracing::debug!("RuntimeClient::publish {ch}");
         Ok(self.inner.publish(ch, data).await?)
     }
 }
@@ -179,6 +191,7 @@ struct Subscriber {
 #[async_trait::async_trait]
 impl RuntimeSubscriber for Subscriber {
     async fn unsubscribe(&mut self) -> anyhow::Result<()> {
+        tracing::debug!("RuntimeSubscriber::unsubscribe");
         Ok(self.inner.unsubscribe().await?)
     }
 }

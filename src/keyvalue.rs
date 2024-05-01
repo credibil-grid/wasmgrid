@@ -38,10 +38,9 @@ impl runtime::Capability for Capability {
     async fn run(&self, _runtime: Runtime) -> anyhow::Result<()> {
         // create JetStream context and store in global state
         let client = async_nats::connect(&self.addr).await?;
-        JETSTREAM.get_or_init(|| jetstream::new(client));
-
         tracing::info!("connected to NATS on {}", self.addr);
 
+        JETSTREAM.get_or_init(|| jetstream::new(client));
         Ok(())
     }
 }
@@ -49,20 +48,19 @@ impl runtime::Capability for Capability {
 // Implement the [`wasi_keyvalue::KeyValueView`]` trait for State.
 #[async_trait::async_trait]
 impl KeyValueView for State {
+    // Open bucket specified by identifier, save to state and return as a resource.
     async fn open(
         &mut self, identifier: String,
     ) -> anyhow::Result<Resource<wasi_keyvalue::Bucket>> {
-        // open bucket specified by identifier
         let Some(jetstream) = JETSTREAM.get() else {
             return Err(anyhow!("JetStream not initialized"));
         };
+
+        // open bucket and save to state
         let bucket = Bucket::new(jetstream, identifier.clone()).await?;
-
-        // save opened bucket to state
         let bucket: wasi_keyvalue::Bucket = Box::new(bucket);
-        let resource = self.table().push(bucket)?;
 
-        Ok(resource)
+        Ok(self.table().push(bucket)?)
     }
 }
 
@@ -70,7 +68,6 @@ impl KeyValueView for State {
 // [`wasi_keyvalue::RuntimeBucket`] trait used by the messaging State.
 #[derive(Clone)]
 pub struct Bucket {
-    // identifier: String,
     inner: jetstream::kv::Store,
 }
 
@@ -97,28 +94,34 @@ impl RuntimeBucket for Bucket {
     // Store
     // ------------------------------------------------------------------------
     async fn get(&mut self, key: String) -> anyhow::Result<Option<Vec<u8>>> {
+        tracing::debug!("RuntimeBucket::get {key}");
         Ok(self.inner.get(key).await?.map(|v| v.to_vec()))
     }
 
     async fn set(&mut self, key: String, value: Vec<u8>) -> anyhow::Result<()> {
+        tracing::debug!("RuntimeBucket::set {key}");
         Ok(self.inner.put(key, Bytes::from(value)).await.map(|_| ())?)
     }
 
     async fn delete(&mut self, key: String) -> anyhow::Result<()> {
+        tracing::debug!("RuntimeBucket::delete {key}");
         Ok(self.inner.delete(key).await?)
     }
 
     async fn exists(&mut self, key: String) -> anyhow::Result<bool> {
+        tracing::debug!("RuntimeBucket::exists {key}");
         Ok(self.inner.get(key).await?.is_some())
     }
 
     async fn list_keys(&mut self, cursor: Option<u64>) -> anyhow::Result<KeyResponse> {
+        tracing::debug!("RuntimeBucket::list_keys {cursor:?}");
         let keys = self.inner.keys().await?.try_collect::<Vec<String>>().await?;
         Ok(KeyResponse { keys, cursor })
     }
 
     // LATER: Can a JetStream bucket be closed?
     fn close(&mut self) -> anyhow::Result<()> {
+        tracing::debug!("RuntimeBucket::close");
         Ok(())
     }
 
@@ -126,6 +129,8 @@ impl RuntimeBucket for Bucket {
     // Atomics
     // ------------------------------------------------------------------------
     async fn increment(&mut self, key: String, delta: u64) -> anyhow::Result<u64> {
+        tracing::debug!("RuntimeBucket::increment {key}, {delta}");
+
         let value = self.inner.get(&key).await?.unwrap_or_default();
 
         // increment value by delta
@@ -144,6 +149,8 @@ impl RuntimeBucket for Bucket {
     // Batch
     // ------------------------------------------------------------------------
     async fn get_many(&mut self, keys: Vec<String>) -> anyhow::Result<Vec<(String, Vec<u8>)>> {
+        tracing::debug!("RuntimeBucket::get_many {keys:?}");
+
         let mut results = Vec::new();
         for key in keys {
             let value = self.inner.get(&key).await?;
@@ -155,6 +162,8 @@ impl RuntimeBucket for Bucket {
     }
 
     async fn set_many(&mut self, key_values: Vec<(String, Vec<u8>)>) -> anyhow::Result<()> {
+        tracing::debug!("RuntimeBucket::set_many {key_values:?}");
+
         for (key, value) in key_values {
             self.inner.put(key, Bytes::from(value)).await?;
         }
@@ -162,6 +171,8 @@ impl RuntimeBucket for Bucket {
     }
 
     async fn delete_many(&mut self, keys: Vec<String>) -> anyhow::Result<()> {
+        tracing::debug!("RuntimeBucket::delete_many {keys:?}");
+
         for key in keys {
             self.inner.delete(key).await?;
         }

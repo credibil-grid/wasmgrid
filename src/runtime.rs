@@ -79,7 +79,11 @@ impl Builder {
         // start capabilities
         for rt in self.capabilities {
             let system = system.clone();
-            tokio::spawn(async move { rt.run(system).await });
+            tokio::spawn(async move {
+                if let Err(e) = rt.run(system).await {
+                    tracing::error!("runtime error: {e}");
+                }
+            });
         }
 
         Ok(())

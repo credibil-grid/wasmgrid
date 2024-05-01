@@ -37,7 +37,7 @@ impl runtime::Capability for Capability {
     /// Start and run NATS for the specified wasm component.
     async fn run(&self, runtime: Runtime) -> anyhow::Result<()> {
         let listener = TcpListener::bind(&self.addr).await?;
-        tracing::info!("listening on: {}", listener.local_addr()?);
+        tracing::info!("listening for http requests on: {}", listener.local_addr()?);
 
         // listen for requests until terminated
         loop {
@@ -55,8 +55,6 @@ impl runtime::Capability for Capability {
                 }
             });
         }
-
-        // Ok(())
     }
 }
 
@@ -80,6 +78,7 @@ async fn handle_request(
         state.metadata.insert("wasi_http_ctx".to_string(), Box::new(WasiHttpCtx {}));
 
         // call guest with request
+        tracing::debug!("calling guest with request");
         let (proxy, _) = Proxy::instantiate_pre(&mut store, runtime.instance_pre()).await?;
         proxy.wasi_http_incoming_handler().call_handle(&mut store, req, out).await
     });
@@ -90,10 +89,10 @@ async fn handle_request(
         Err(_) => {
             // retrieve the inner task error
             let e = match task.await {
-                Ok(r) => r.expect_err("if the receiver has an error, the task must have failed"),
+                Ok(r) => r.expect_err("if the receiver has an error, the task failed"),
                 Err(e) => e.into(),
             };
-            Err(anyhow!("guest never invoked `response-outparam::set` method: {e:?}"))
+            Err(anyhow!("guest did not invoke `response-outparam::set`: {e:?}"))
         }
     }
 }
