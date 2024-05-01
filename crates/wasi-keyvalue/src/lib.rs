@@ -13,6 +13,7 @@ pub type Bucket = Box<dyn RuntimeBucket>;
 
 /// Wrap generation of wit bindings to simplify exports
 pub mod bindings {
+    #![allow(clippy::future_not_send)]
     pub use super::Bucket;
 
     wasmtime::component::bindgen!({

@@ -1,3 +1,5 @@
+#![allow(clippy::redundant_pub_crate)]
+
 mod http;
 mod keyvalue;
 mod messaging;

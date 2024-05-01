@@ -23,7 +23,7 @@ pub struct Capability {
 }
 
 impl Capability {
-    pub fn new(addr: String) -> Self {
+    pub const fn new(addr: String) -> Self {
         Self { addr }
     }
 }

@@ -35,7 +35,7 @@ impl Runtime {
 
     /// Returns a "pre-instantiated" Instance — an efficient form of instantiation
     /// where import type-checking and lookup has been resolved.
-    pub fn instance_pre(&self) -> &InstancePre<State> {
+    pub const fn instance_pre(&self) -> &InstancePre<State> {
         &self.instance_pre
     }
 }

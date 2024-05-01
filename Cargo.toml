@@ -52,7 +52,7 @@ unused_import_braces = "warn"
 [workspace.lints.clippy]
 all = "warn"
 pedantic = "warn"
-# nursery = "warn"
+nursery = "warn"
 
 [workspace.dependencies]
 anyhow = "1.0.82"

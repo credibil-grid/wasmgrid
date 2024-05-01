@@ -15,6 +15,7 @@ pub type Subscriber = Pin<Box<dyn RuntimeSubscriber>>;
 
 /// Wrap generation of wit bindings to simplify exports
 pub mod bindings {
+    #![allow(clippy::future_not_send)]
     pub use anyhow::Error;
 
     pub use super::Client;
@@ -64,6 +65,7 @@ impl<T: MessagingView> HostClient for T {
     async fn connect(
         &mut self, name: String,
     ) -> wasmtime::Result<anyhow::Result<Resource<Client>, Resource<Error>>> {
+        tracing::debug!("connect: name={}", name);
         Ok(Ok(T::connect(self, name).await?))
     }
 
