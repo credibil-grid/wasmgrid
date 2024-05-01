@@ -6,7 +6,8 @@ mod runtime;
 use anyhow::Error;
 use clap::Parser;
 use tracing::Level;
-use tracing_subscriber::{EnvFilter, FmtSubscriber};
+// use tracing_subscriber::{EnvFilter, FmtSubscriber};
+use tracing_subscriber::FmtSubscriber;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -29,8 +30,9 @@ pub async fn main() -> wasmtime::Result<()> {
 
     // tracing
     let subscriber = FmtSubscriber::builder()
-        .with_env_filter(EnvFilter::from_default_env())
-        .with_max_level(Level::INFO)
+        // .with_env_filter(EnvFilter::from_default_env())
+        .with_max_level(Level::DEBUG)
+        // .with_env_filter("wasmgrid=info")
         .finish();
     tracing::subscriber::set_global_default(subscriber).expect("set subscriber");
 

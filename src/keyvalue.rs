@@ -40,7 +40,7 @@ impl runtime::Capability for Capability {
         let client = async_nats::connect(&self.addr).await?;
         JETSTREAM.get_or_init(|| jetstream::new(client));
 
-        tracing::info!(target: "keyvalue", "connected to NATS on {}", self.addr);
+        tracing::info!("connected to NATS on {}", self.addr);
 
         Ok(())
     }

@@ -37,7 +37,7 @@ impl runtime::Capability for Capability {
     /// Start and run NATS for the specified wasm component.
     async fn run(&self, runtime: Runtime) -> anyhow::Result<()> {
         let listener = TcpListener::bind(&self.addr).await?;
-        tracing::info!(target: "http", "listening on: {}", listener.local_addr()?);
+        tracing::info!("listening on: {}", listener.local_addr()?);
 
         // listen for requests until terminated
         loop {
@@ -51,7 +51,7 @@ impl runtime::Capability for Capability {
                     .serve_connection(io, service_fn(|req| handle_request(&runtime, req)))
                     .await
                 {
-                    tracing::error!(target: "http", "connection error: {e:?}");
+                    tracing::error!("connection error: {e:?}");
                 }
             });
         }

@@ -81,7 +81,7 @@ impl<T: MessagingView> HostError for T {
     }
 
     fn drop(&mut self, err: Resource<Error>) -> wasmtime::Result<()> {
-        println!("TODO: implement drop for {err:?}");
+        tracing::warn!("TODO: implement drop for {err:?}");
         Ok(())
     }
 }

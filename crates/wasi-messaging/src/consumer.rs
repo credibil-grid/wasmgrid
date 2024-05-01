@@ -47,7 +47,7 @@ impl<T: MessagingView> consumer::Host for T {
     async fn complete_message(
         &mut self, msg: Message,
     ) -> wasmtime::Result<anyhow::Result<(), Resource<Error>>> {
-        println!("TODO: implement complete_message: {:?}", msg.metadata);
+        tracing::warn!("TODO: implement complete_message: {:?}", msg.metadata);
         Ok(Ok(()))
     }
 
@@ -55,7 +55,7 @@ impl<T: MessagingView> consumer::Host for T {
     async fn abandon_message(
         &mut self, msg: Message,
     ) -> wasmtime::Result<anyhow::Result<(), Resource<Error>>> {
-        println!("TODO: implement abandon_message: {:?}", msg.metadata);
+        tracing::warn!("TODO: implement abandon_message: {:?}", msg.metadata);
         Ok(Ok(()))
     }
 }

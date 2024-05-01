@@ -37,7 +37,7 @@ impl runtime::Capability for Capability {
     /// Start and run NATS for the specified wasm component.
     async fn run(&self, runtime: Runtime) -> anyhow::Result<()> {
         let client = Client::connect(self.addr.clone()).await?;
-        tracing::info!(target: "messaging", "connected to NATS on {}", self.addr);
+        tracing::info!("connected to NATS on {}", self.addr);
 
         // subscribe to channels
         let mut subscribers = vec![];
@@ -131,7 +131,7 @@ impl MessagingView for State {
     async fn update_configuration(
         &mut self, _gc: GuestConfiguration,
     ) -> anyhow::Result<(), Resource<Error>> {
-        println!("TODO: update_configuration");
+        tracing::debug!("TODO: update_configuration");
         Ok(())
     }
 }
