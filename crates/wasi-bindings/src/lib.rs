@@ -27,7 +27,7 @@ mod keyvalue_bindings {
 /// Export bindings in a similar manner to the [`wasi`](https://github.com/bytecodealliance/wasi)
 /// API.
 pub mod keyvalue {
-    // pub use crate::keyvalue::export;
+    pub use crate::keyvalue_bindings::export;
     pub use crate::keyvalue_bindings::wasi::keyvalue::*;
 
     pub mod exports {
