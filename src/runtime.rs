@@ -11,6 +11,7 @@ use wasmtime_wasi::{ResourceTable, WasiCtx, WasiCtxBuilder, WasiView};
 /// components. For example, an HTTP server or a message broker.
 #[async_trait::async_trait]
 pub trait Capability: Send {
+    /// Returns the wasi namespace the capability supports. For example, `wasi:http`.
     fn namespace(&self) -> &str;
 
     /// Add the capability to the wasm component linker.
@@ -74,6 +75,7 @@ impl Builder {
         }
 
         // pre-instantiate component
+        // include_bytes!(wasm);
         let component = Component::from_file(&engine, wasm)?;
         let instance_pre = linker.instantiate_pre(&component)?;
         let runtime = Runtime { engine, instance_pre };

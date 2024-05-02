@@ -7,12 +7,6 @@ can support components based on the [`wasi-cloud-core`](https://github.com/WebAs
 
 ## Quick Start
 
-Install `cargo-component`:
-
-```bash
-cargo install cargo-component
-```
-
 ### Messaging Example
 
 Build and run the Messaging host and example guest.
@@ -25,10 +19,10 @@ Build and run the Http host and example guest.
 
 See [examples/http/README.md](examples/http/README.md).
 
-
 ## Docker Build
 
-In order to use the scratch image we need to build a statically linked (elf) binary. This can be done by using the `x86_64-unknown-linux-musl` target.
+In order to use the `scratch` image we need to build a statically linked (elf) binary
+using the `musl`C library.
 
 Build the docker image:
 

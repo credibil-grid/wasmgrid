@@ -22,7 +22,6 @@ async-trait.workspace = true
 bytes.workspace = true
 clap = { version = "4.5.4", features = ["derive"] }
 futures.workspace = true
-# log = "0.4.21"
 http-body-util = "0.1.1"
 hyper = "1.3.1"
 tokio = { version = "1.37.0", features = ["full"] }
@@ -34,6 +33,11 @@ wasmtime.workspace = true
 wasmtime-wasi.workspace = true
 wasmtime-wasi-http = "20.0.0"
 
+[profile.release]
+lto = true
+opt-level = "s"
+strip = true
+
 [workspace]
 members = [".", "crates/*", "examples/*"]
 resolver = "2"
@@ -41,7 +45,7 @@ resolver = "2"
 [workspace.package]
 edition = "2021"
 authors = ["Credibil"]
-rust-version = "1.77.0"
+rust-version = "1.77.2"
 
 [workspace.lints.rust]
 unused_extern_crates = "warn"
@@ -60,5 +64,5 @@ async-trait = "0.1.80"
 bytes = "1.6.0"
 futures = "0.3.30"
 tracing = "0.1.40"
-wasmtime = { version = "20.0.0", features = ["component-model"] }
+wasmtime = { version = "20.0.0", default-features = false, features = ["runtime", "component-model", "winch"] }
 wasmtime-wasi = "20.0.0"
