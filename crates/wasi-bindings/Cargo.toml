@@ -1,0 +1,17 @@
+[package]
+name = "wasi-bindings"
+description = "WASM guest for secure, isolated and distributed storage of wallet keys and credentials"
+version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[lints]
+workspace = true
+
+[dependencies]
+wit-bindgen = "0.24.0"
+wit-bindgen-rt = "0.24.0"
+

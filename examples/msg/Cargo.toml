@@ -12,15 +12,15 @@ crate-type = ["cdylib"]
 workspace = true
 
 [dependencies]
-# bitflags = "2.5.0"
-wit-bindgen-rt = "0.24.0"
+wasi-bindings = { path = "../../crates/wasi-bindings" }
 
-[package.metadata.component]
-package = "component:messaging"
+# [package.metadata.component]
+# package = "component:messaging"
 
-[package.metadata.component.target]
-world = "messaging"
-# path = "wit"
+# [package.metadata.component.target]
+# world = "messaging"
+# # path = "wit"
 
-[package.metadata.component.target.dependencies]
-"wasi:messaging" = { path = "wit/deps/messaging" }
+# [package.metadata.component.target.dependencies]
+# "wasi:messaging" = { path = "wit/deps/messaging" }
+# wit-bindgen-rt = "0.24.0"

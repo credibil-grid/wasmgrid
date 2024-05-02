@@ -1,11 +1,8 @@
-#[allow(warnings)]
-mod bindings;
-
-use crate::bindings::exports::wasi::messaging::messaging_guest::Guest;
-use crate::bindings::wasi::messaging::messaging_types::{
+use wasi_bindings::messaging::exports::messaging_guest::Guest;
+use wasi_bindings::messaging::messaging_types::{
     self, Channel, Client, Error, GuestConfiguration, Message,
 };
-use crate::bindings::wasi::messaging::{consumer, producer};
+use wasi_bindings::messaging::{consumer, producer};
 
 struct MessagingGuest;
 
@@ -76,4 +73,4 @@ impl Guest for MessagingGuest {
     }
 }
 
-crate::bindings::export!(MessagingGuest with_types_in crate::bindings);
+wasi_bindings::messaging::export!(MessagingGuest with_types_in wasi_bindings::messaging);
