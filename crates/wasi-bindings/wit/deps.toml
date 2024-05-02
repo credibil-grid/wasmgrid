@@ -7,3 +7,4 @@
 # ```
 
 messaging = "https://github.com/WebAssembly/wasi-messaging/archive/main.tar.gz"
+keyvalue = "https://github.com/WebAssembly/wasi-keyvalue/archive/main.tar.gz"

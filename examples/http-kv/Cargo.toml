@@ -17,14 +17,4 @@ http = "1.1.0"
 serde_json = "1.0.116"
 tracing.workspace = true
 wasi = "0.13.0"
-wit-bindgen-rt = "0.24.0"
-
-[package.metadata.component]
-package = "component:keyvalue"
-
-[package.metadata.component.target]
-world = "keyvalue"
-# path = "wit"
-
-[package.metadata.component.target.dependencies]
-"wasi:keyvalue" = { path = "wit/deps/keyvalue" }
+wasi-bindings = { path = "../../crates/wasi-bindings" }

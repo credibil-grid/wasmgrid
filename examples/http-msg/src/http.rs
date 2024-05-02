@@ -6,9 +6,8 @@ use wasi::exports::http::incoming_handler::Guest;
 use wasi::http::types::{
     Fields, IncomingRequest, OutgoingBody, OutgoingResponse, ResponseOutparam,
 };
-
-use crate::bindings::wasi::messaging::messaging_types::{Client, FormatSpec, Message};
-use crate::bindings::wasi::messaging::producer;
+use wasi_bindings::messaging::messaging_types::{Client, FormatSpec, Message};
+use wasi_bindings::messaging::producer;
 
 pub struct Http;
 

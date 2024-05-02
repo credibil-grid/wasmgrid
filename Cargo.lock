@@ -1062,7 +1062,7 @@ dependencies = [
  "serde_json",
  "tracing",
  "wasi 0.13.0+wasi-0.2.0",
- "wit-bindgen-rt 0.24.0",
+ "wasi-bindings",
 ]
 
 [[package]]
@@ -1074,7 +1074,7 @@ dependencies = [
  "serde_json",
  "tracing",
  "wasi 0.13.0+wasi-0.2.0",
- "wit-bindgen-rt 0.24.0",
+ "wasi-bindings",
 ]
 
 [[package]]
@@ -2446,7 +2446,6 @@ name = "wasi-bindings"
 version = "0.1.0"
 dependencies = [
  "wit-bindgen",
- "wit-bindgen-rt 0.24.0",
 ]
 
 [[package]]

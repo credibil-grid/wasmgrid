@@ -13,5 +13,4 @@ workspace = true
 
 [dependencies]
 wit-bindgen = "0.24.0"
-wit-bindgen-rt = "0.24.0"
-
+# wit-bindgen-rt = "0.24.0"

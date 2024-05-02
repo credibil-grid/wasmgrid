@@ -1,8 +1,5 @@
 #![feature(let_chains)]
 
-#[allow(warnings)]
-mod bindings;
-
 use anyhow::{anyhow, Result};
 use http::header::CONTENT_TYPE; // AUTHORIZATION
 use http::Uri;
@@ -11,9 +8,7 @@ use wasi::exports::http::incoming_handler::Guest;
 use wasi::http::types::{
     Fields, IncomingRequest, OutgoingBody, OutgoingResponse, ResponseOutparam,
 };
-
-use crate::bindings::wasi::keyvalue::store;
-// use wasi_keyvalue::bindings::wasi::keyvalue::store;
+use wasi_bindings::keyvalue::store;
 
 struct HttpGuest;
 

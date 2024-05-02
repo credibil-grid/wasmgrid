@@ -1,10 +1,13 @@
-package component:messaging;
-
-world imports {
-	include wasi:messaging/imports@0.2.0-draft;
-}
+package component:bindings;
 
 world messaging {
-	include imports;
+	include wasi:messaging/imports@0.2.0-draft;
 	export wasi:messaging/messaging-guest@0.2.0-draft;
+}
+
+world keyvalue {
+	import wasi:keyvalue/store@0.2.0-draft;
+	import wasi:keyvalue/atomics@0.2.0-draft;
+	import wasi:keyvalue/batch@0.2.0-draft;
+	export wasi:keyvalue/watcher@0.2.0-draft;
 }

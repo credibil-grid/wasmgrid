@@ -1,8 +1,8 @@
-use crate::bindings::exports::wasi::messaging::messaging_guest::Guest;
-use crate::bindings::wasi::messaging::messaging_types::{
+use wasi_bindings::messaging::exports::wasi::messaging::messaging_guest::Guest;
+use wasi_bindings::messaging::messaging_types::{
     self, Channel, Client, Error, GuestConfiguration, Message,
 };
-use crate::bindings::wasi::messaging::{consumer, producer};
+use wasi_bindings::messaging::{consumer, producer};
 
 pub struct Messaging;
 

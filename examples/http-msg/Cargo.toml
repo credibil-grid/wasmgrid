@@ -17,16 +17,4 @@ http = "1.1.0"
 serde_json = "1.0.116"
 tracing.workspace = true
 wasi = "0.13.0"
-wit-bindgen-rt = { version = "0.24.0", features = ["bitflags"] }
-
-[package.metadata.component]
-package = "component:http-msg"
-
-[package.metadata.component.dependencies]
-
-[package.metadata.component.target]
-world = "messaging"
-# path = "wit"
-
-[package.metadata.component.target.dependencies]
-"wasi:messaging" = { path = "wit/deps/messaging" }
+wasi-bindings = { path = "../../crates/wasi-bindings" }
