@@ -30,6 +30,10 @@ impl Capability {
 
 #[async_trait::async_trait]
 impl runtime::Capability for Capability {
+    fn component_type(&self) -> &str {
+        "wasi:http"
+    }
+
     fn add_to_linker(&self, linker: &mut Linker<State>) -> anyhow::Result<()> {
         proxy::add_only_http_to_linker(linker)
     }

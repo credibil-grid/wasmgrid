@@ -11,6 +11,8 @@ use wasmtime_wasi::{ResourceTable, WasiCtx, WasiCtxBuilder, WasiView};
 /// components. For example, an HTTP server or a message broker.
 #[async_trait::async_trait]
 pub trait Capability: Send {
+    fn component_type(&self) -> &str;
+
     /// Add the capability to the wasm component linker.
     fn add_to_linker(&self, linker: &mut Linker<State>) -> anyhow::Result<()>;
 
@@ -67,23 +69,33 @@ impl Builder {
         wasmtime_wasi::add_to_linker_async(&mut linker)?;
 
         // link each runtime
-        for rt in &self.capabilities {
-            rt.add_to_linker(&mut linker)?;
+        for cap in &self.capabilities {
+            cap.add_to_linker(&mut linker)?;
         }
 
         // pre-instantiate component
         let component = Component::from_file(&engine, wasm)?;
         let instance_pre = linker.instantiate_pre(&component)?;
-        let system = Runtime { engine, instance_pre };
+        let runtime = Runtime { engine, instance_pre };
 
         // start capabilities
-        for rt in self.capabilities {
-            let system = system.clone();
-            tokio::spawn(async move {
-                if let Err(e) = rt.run(system).await {
-                    tracing::error!("runtime error: {e}");
-                }
-            });
+        for cap in self.capabilities {
+            // check whether capability is required by the wasm component
+            let component = runtime.instance_pre().component().component_type();
+            let store = runtime.store();
+            let name_space = cap.component_type();
+            if !component.imports(store.engine()).any(|e| e.0.starts_with(name_space))
+                && !component.exports(store.engine()).any(|e| e.0.starts_with(name_space))
+            {
+                tracing::warn!("{name_space} not found, capability will not be started");
+            } else {
+                let runtime = runtime.clone();
+                tokio::spawn(async move {
+                    if let Err(e) = cap.run(runtime).await {
+                        tracing::error!("runtime error: {e}");
+                    }
+                });
+            }
         }
 
         Ok(())

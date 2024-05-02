@@ -13,7 +13,7 @@ use wasi_messaging::bindings::wasi::messaging::messaging_types::{
 };
 use wasi_messaging::bindings::Messaging;
 use wasi_messaging::{self, MessagingView, RuntimeClient, RuntimeSubscriber};
-use wasmtime::component::{Linker, Resource};
+use wasmtime::component::{self, Linker, Resource};
 use wasmtime_wasi::WasiView;
 
 use crate::runtime::{self, Runtime, State};
@@ -30,6 +30,10 @@ impl Capability {
 
 #[async_trait::async_trait]
 impl runtime::Capability for Capability {
+    fn component_type(&self) -> &str {
+        "wasi:messaging"
+    }
+
     fn add_to_linker(&self, linker: &mut Linker<State>) -> anyhow::Result<()> {
         Messaging::add_to_linker(linker, |t| t)
     }
