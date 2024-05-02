@@ -30,7 +30,7 @@ impl Capability {
 
 #[async_trait::async_trait]
 impl runtime::Capability for Capability {
-        fn component_type(&self) -> &str {
+    fn component_type(&self) -> &str {
         "wasi:keyvalue"
     }
 
@@ -39,7 +39,7 @@ impl runtime::Capability for Capability {
     }
 
     /// Start and run NATS for the specified wasm component.
-    async fn run(&self, runtime: Runtime) -> anyhow::Result<()> {
+    async fn run(&self, _runtime: Runtime) -> anyhow::Result<()> {
         // create JetStream context and store in global state
         let client = async_nats::connect(&self.addr).await?;
         tracing::info!("connected to NATS on {}", self.addr);

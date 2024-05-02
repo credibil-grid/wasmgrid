@@ -88,14 +88,16 @@ impl Builder {
                 && !component.exports(store.engine()).any(|e| e.0.starts_with(name_space))
             {
                 tracing::warn!("{name_space} not found, capability will not be started");
-            } else {
-                let runtime = runtime.clone();
-                tokio::spawn(async move {
-                    if let Err(e) = cap.run(runtime).await {
-                        tracing::error!("runtime error: {e}");
-                    }
-                });
+                continue;
             }
+
+            // start capability
+            let runtime = runtime.clone();
+            tokio::spawn(async move {
+                if let Err(e) = cap.run(runtime).await {
+                    tracing::error!("error starting capability: {e}");
+                }
+            });
         }
 
         Ok(())

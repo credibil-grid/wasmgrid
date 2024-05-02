@@ -13,7 +13,7 @@ use wasi_messaging::bindings::wasi::messaging::messaging_types::{
 };
 use wasi_messaging::bindings::Messaging;
 use wasi_messaging::{self, MessagingView, RuntimeClient, RuntimeSubscriber};
-use wasmtime::component::{self, Linker, Resource};
+use wasmtime::component::{Linker, Resource};
 use wasmtime_wasi::WasiView;
 
 use crate::runtime::{self, Runtime, State};
