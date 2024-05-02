@@ -84,7 +84,7 @@ async fn channels(runtime: &Runtime) -> anyhow::Result<Vec<String>> {
 
 // Forward NATS message to the wasm Guest.
 async fn handle_message(runtime: &Runtime, client: Client, message: Message) -> anyhow::Result<()> {
-    tracing::debug!("handle_message");
+    tracing::debug!("handle_message: {message:?}");
 
     // add client to ResourceTable
     let mut store = runtime.store();
