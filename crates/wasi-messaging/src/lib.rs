@@ -65,12 +65,13 @@ impl<T: MessagingView> HostClient for T {
     async fn connect(
         &mut self, name: String,
     ) -> wasmtime::Result<anyhow::Result<Resource<Client>, Resource<Error>>> {
-        tracing::debug!("connect: name={}", name);
+        tracing::debug!("connect {name}");
         Ok(Ok(T::connect(self, name).await?))
     }
 
     // Drop the specified client resource.
     fn drop(&mut self, client: Resource<Client>) -> wasmtime::Result<()> {
+        tracing::debug!("drop");
         self.table().delete(client)?;
         Ok(())
     }
@@ -79,11 +80,13 @@ impl<T: MessagingView> HostClient for T {
 #[async_trait::async_trait]
 impl<T: MessagingView> HostError for T {
     async fn trace(&mut self) -> wasmtime::Result<String> {
-        Ok(String::from("TODO: trace HostError"))
+        tracing::warn!("FIXME: trace HostError");
+        Ok(String::from("trace HostError"))
     }
 
     fn drop(&mut self, err: Resource<Error>) -> wasmtime::Result<()> {
-        tracing::warn!("TODO: implement drop for {err:?}");
+        tracing::debug!("drop for Resource<Error>");
+        self.table().delete(err)?;
         Ok(())
     }
 }

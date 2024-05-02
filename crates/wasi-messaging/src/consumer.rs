@@ -13,6 +13,8 @@ impl<T: MessagingView> consumer::Host for T {
     async fn subscribe_try_receive(
         &mut self, client: Resource<Client>, ch: String, t_milliseconds: u32,
     ) -> wasmtime::Result<anyhow::Result<Option<Vec<Message>>, Resource<Error>>> {
+        tracing::debug!("Host::subscribe_try_receive {ch}, {t_milliseconds}");
+
         // subscribe to channel
         let client = self.table().get(&client)?;
         let mut subscriber = client.subscribe(ch).await?;
@@ -29,6 +31,8 @@ impl<T: MessagingView> consumer::Host for T {
     async fn subscribe_receive(
         &mut self, client: Resource<Client>, ch: String,
     ) -> wasmtime::Result<anyhow::Result<Vec<Message>, Resource<Error>>> {
+        tracing::debug!("Host::subscribe_receive {ch}");
+
         let client = self.table().get(&client)?;
         let mut subscriber = client.subscribe(ch).await?;
         let messages = subscriber.by_ref().take(1).collect().await;
@@ -40,6 +44,7 @@ impl<T: MessagingView> consumer::Host for T {
     async fn update_guest_configuration(
         &mut self, gc: GuestConfiguration,
     ) -> wasmtime::Result<anyhow::Result<(), Resource<Error>>> {
+        tracing::debug!("Host::update_guest_configuration");
         Ok(self.update_configuration(gc).await)
     }
 
@@ -47,7 +52,7 @@ impl<T: MessagingView> consumer::Host for T {
     async fn complete_message(
         &mut self, msg: Message,
     ) -> wasmtime::Result<anyhow::Result<(), Resource<Error>>> {
-        tracing::warn!("TODO: implement complete_message: {:?}", msg.metadata);
+        tracing::warn!("FIXME: implement Host::complete_message: {:?}", msg.metadata);
         Ok(Ok(()))
     }
 
@@ -55,7 +60,7 @@ impl<T: MessagingView> consumer::Host for T {
     async fn abandon_message(
         &mut self, msg: Message,
     ) -> wasmtime::Result<anyhow::Result<(), Resource<Error>>> {
-        tracing::warn!("TODO: implement abandon_message: {:?}", msg.metadata);
+        tracing::warn!("FIXME: implement Host::abandon_message: {:?}", msg.metadata);
         Ok(Ok(()))
     }
 }
