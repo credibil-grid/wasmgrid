@@ -1,6 +1,7 @@
-//! # Http Runtime
+//! # WASI Http Runtime
 //!
-//! This module implements a wasi:http runtime.
+//! This module implements a runtime capability for `wasi:http`
+//! (<https://github.com/WebAssembly/wasi-http>).
 
 use anyhow::anyhow;
 use http_body_util::BodyExt;

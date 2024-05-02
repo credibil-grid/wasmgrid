@@ -64,5 +64,5 @@ async-trait = "0.1.80"
 bytes = "1.6.0"
 futures = "0.3.30"
 tracing = "0.1.40"
-wasmtime = { version = "20.0.0", default-features = false, features = ["runtime", "component-model", "winch"] }
+wasmtime = { version = "20.0.0", default-features = false, features = ["runtime", "cranelift", "component-model"] }
 wasmtime-wasi = "20.0.0"

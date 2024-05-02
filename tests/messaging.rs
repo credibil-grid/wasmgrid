@@ -1,10 +1,14 @@
 use tokio::time;
 
-// Send `COUNT` messages to each of the subjects a, b, and c.
+// Send messages to each of the subjects a, b, and c.
 #[tokio::test]
 async fn publish() {
     const COUNT: usize = 2;
 
+    // start NATS test server
+    // launch the runtime
+
+    // publish messages
     let client = async_nats::connect("demo.nats.io").await.unwrap();
 
     for i in 0..COUNT {

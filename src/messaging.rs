@@ -1,6 +1,7 @@
-//! # NATS Messaging Runtime
+//! # WASI Messaging Runtime
 //!
-//! This module implements a NATS wasi:messaging runtime.
+//! This module implements a runtime capability for `wasi:messaging`
+//! (<https://github.com/WebAssembly/wasi-messaging>).
 
 use std::pin::Pin;
 use std::task::{Context, Poll};

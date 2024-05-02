@@ -1,6 +1,7 @@
-//! # JetStream Key/Value Runtime
+//! # WASI Key/Value Runtime
 //!
-//! This module implements a NATS wasi:messaging runtime.
+//! This module implements a runtime capability for `wasi:keyvalue`
+//! (<https://github.com/WebAssembly/wasi-keyvalue>).
 
 use std::sync::OnceLock;
 
