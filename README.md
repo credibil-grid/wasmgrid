@@ -49,3 +49,5 @@ brew install x86_64-unknown-linux-musl
 cargo build --package wasmgrid --target x86_64-unknown-linux-musl --release
 ```
 
+See <https://docs.wasmtime.dev/examples-minimal.html/> for more information on 
+optimising embedded `wasmtime`builds.
