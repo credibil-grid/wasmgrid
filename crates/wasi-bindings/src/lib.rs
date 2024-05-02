@@ -1,3 +1,11 @@
+//! # WASI Bindings
+//!
+//! This generates and exports WASI Guest bindings for local wit worlds.
+//! The bindings are exported in as similar a manner to those in the Bytecode
+//! Alliance's [wasi] crate.
+//!
+//! [wasi]: https://github.com/bytecodealliance/wasi
+
 mod messaging_bindings {
     wit_bindgen::generate!({
         world: "messaging",
@@ -5,8 +13,8 @@ mod messaging_bindings {
     });
 }
 
-/// Export bindings in a similar manner to the [`wasi`](https://github.com/bytecodealliance/wasi)
-/// API.
+/// Bindings for the `wasi:messaging` world.
+/// See (<https://github.com/WebAssembly/wasi-messaging/>)
 pub mod messaging {
     pub use crate::messaging_bindings::export;
     pub use crate::messaging_bindings::wasi::messaging::*;
@@ -24,8 +32,8 @@ mod keyvalue_bindings {
     });
 }
 
-/// Export bindings in a similar manner to the [`wasi`](https://github.com/bytecodealliance/wasi)
-/// API.
+/// Bindings for the `wasi:keyvalue` world.
+/// See (<https://github.com/WebAssembly/wasi-keyvalue/>)
 pub mod keyvalue {
     pub use crate::keyvalue_bindings::export;
     pub use crate::keyvalue_bindings::wasi::keyvalue::*;
