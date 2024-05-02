@@ -11,7 +11,7 @@ use wasmtime_wasi::{ResourceTable, WasiCtx, WasiCtxBuilder, WasiView};
 /// components. For example, an HTTP server or a message broker.
 #[async_trait::async_trait]
 pub trait Capability: Send {
-    fn component_type(&self) -> &str;
+    fn namespace(&self) -> &str;
 
     /// Add the capability to the wasm component linker.
     fn add_to_linker(&self, linker: &mut Linker<State>) -> anyhow::Result<()>;
@@ -83,11 +83,11 @@ impl Builder {
             // check whether capability is required by the wasm component
             let component = runtime.instance_pre().component().component_type();
             let store = runtime.store();
-            let name_space = cap.component_type();
-            if !component.imports(store.engine()).any(|e| e.0.starts_with(name_space))
-                && !component.exports(store.engine()).any(|e| e.0.starts_with(name_space))
+            let namespace = cap.namespace();
+            if !component.imports(store.engine()).any(|e| e.0.starts_with(namespace))
+                && !component.exports(store.engine()).any(|e| e.0.starts_with(namespace))
             {
-                tracing::warn!("{name_space} not found, capability will not be started");
+                tracing::warn!("{namespace} not found, capability will not be started");
                 continue;
             }
 

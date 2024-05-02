@@ -30,7 +30,7 @@ impl Capability {
 
 #[async_trait::async_trait]
 impl runtime::Capability for Capability {
-    fn component_type(&self) -> &str {
+    fn namespace(&self) -> &str {
         "wasi:messaging"
     }
 
