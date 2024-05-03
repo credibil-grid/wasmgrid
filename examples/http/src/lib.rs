@@ -13,6 +13,7 @@ struct HttpGuest;
 
 impl Guest for HttpGuest {
     fn handle(request: IncomingRequest, response: ResponseOutparam) {
+        
         // set up response in case of early failure
         let headers = Fields::new();
         let _ = headers.set(&CONTENT_TYPE.to_string(), &[b"application/json".to_vec()]);

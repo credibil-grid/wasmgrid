@@ -3,9 +3,12 @@
 use std::any::Any;
 use std::collections::HashMap;
 
+use bytes::Bytes;
 use wasmtime::component::{Component, InstancePre, Linker};
 use wasmtime::{Config, Engine, Store, StoreLimits};
-use wasmtime_wasi::{ResourceTable, WasiCtx, WasiCtxBuilder, WasiView};
+use wasmtime_wasi::{
+    HostOutputStream, ResourceTable, StreamError, StreamResult, WasiCtx, WasiCtxBuilder, WasiView,
+};
 
 /// Capability represents a particular runtime capability depended on by wasm
 /// components. For example, an HTTP server or a message broker.
@@ -89,7 +92,7 @@ impl Builder {
             if !component.imports(store.engine()).any(|e| e.0.starts_with(namespace))
                 && !component.exports(store.engine()).any(|e| e.0.starts_with(namespace))
             {
-                tracing::warn!("{namespace} not found, capability will not be started");
+                tracing::debug!("{namespace} not found, capability will not be started");
                 continue;
             }
 
@@ -121,9 +124,16 @@ pub struct State {
 impl State {
     /// Create a new State instance.
     fn new() -> Self {
+        let mut ctx = WasiCtxBuilder::new();
+        ctx.inherit_args();
+        ctx.inherit_env();
+        ctx.inherit_stdin();
+        ctx.stdout(Stdout {});
+        ctx.stderr(Errout {});
+
         Self {
             table: ResourceTable::default(),
-            ctx: WasiCtxBuilder::new().inherit_args().inherit_env().inherit_stdio().build(),
+            ctx: ctx.build(),
             limits: StoreLimits::default(),
 
             // TODO: wrap Hashmap in custom type to create accessors
@@ -140,5 +150,79 @@ impl WasiView for State {
 
     fn ctx(&mut self) -> &mut WasiCtx {
         &mut self.ctx
+    }
+}
+
+// Implement debug tracing for Guests by capturing stdout.
+struct Stdout;
+
+impl wasmtime_wasi::StdoutStream for Stdout {
+    fn stream(&self) -> Box<dyn HostOutputStream> {
+        Box::new(StdoutStream {})
+    }
+
+    fn isatty(&self) -> bool {
+        false
+    }
+}
+
+struct StdoutStream;
+
+#[async_trait::async_trait]
+impl wasmtime_wasi::Subscribe for StdoutStream {
+    async fn ready(&mut self) {}
+}
+
+impl wasmtime_wasi::HostOutputStream for StdoutStream {
+    fn write(&mut self, bytes: Bytes) -> StreamResult<()> {
+        let out = String::from_utf8(bytes.to_vec())
+            .map_err(|e| StreamError::LastOperationFailed(anyhow::anyhow!(e)))?;
+        tracing::debug!(target: "wasmgrid::guest", "{out}");
+        Ok(())
+    }
+
+    fn flush(&mut self) -> StreamResult<()> {
+        Ok(())
+    }
+
+    fn check_write(&mut self) -> StreamResult<usize> {
+        Ok(1024 * 1024)
+    }
+}
+
+// Implement error tracing for Guests by capturing stderr.
+struct Errout;
+
+impl wasmtime_wasi::StdoutStream for Errout {
+    fn stream(&self) -> Box<dyn HostOutputStream> {
+        Box::new(ErroutStream {})
+    }
+
+    fn isatty(&self) -> bool {
+        false
+    }
+}
+
+struct ErroutStream;
+
+#[async_trait::async_trait]
+impl wasmtime_wasi::Subscribe for ErroutStream {
+    async fn ready(&mut self) {}
+}
+
+impl wasmtime_wasi::HostOutputStream for ErroutStream {
+    fn write(&mut self, bytes: Bytes) -> StreamResult<()> {
+        let out = String::from_utf8(bytes.to_vec())
+            .map_err(|e| StreamError::LastOperationFailed(anyhow::anyhow!(e)))?;
+        tracing::error!(target: "wasmgrid::guest", "{out}");
+        Ok(())
+    }
+
+    fn flush(&mut self) -> StreamResult<()> {
+        Ok(())
+    }
+
+    fn check_write(&mut self) -> StreamResult<usize> {
+        Ok(1024 * 1024)
     }
 }
