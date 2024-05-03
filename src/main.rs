@@ -35,7 +35,7 @@ pub async fn main() -> wasmtime::Result<()> {
         // .with_max_level(tracing::Level::DEBUG)
         .with_env_filter("wasmgrid=debug")
         .finish();
-    tracing::subscriber::set_global_default(subscriber).expect("set subscriber");
+    tracing::subscriber::set_global_default(subscriber)?;
 
     runtime::Builder::new()
         .capability(http::Capability::new(args.http_addr))
