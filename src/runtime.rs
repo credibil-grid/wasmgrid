@@ -3,6 +3,7 @@
 use std::any::Any;
 use std::collections::HashMap;
 
+use anyhow::anyhow;
 use bytes::Bytes;
 use wasmtime::component::{Component, InstancePre, Linker};
 use wasmtime::{Config, Engine, Store, StoreLimits};
@@ -176,7 +177,7 @@ impl wasmtime_wasi::Subscribe for StdoutStream {
 impl wasmtime_wasi::HostOutputStream for StdoutStream {
     fn write(&mut self, bytes: Bytes) -> StreamResult<()> {
         let out = String::from_utf8(bytes.to_vec())
-            .map_err(|e| StreamError::LastOperationFailed(anyhow::anyhow!(e)))?;
+            .map_err(|e| StreamError::LastOperationFailed(anyhow!(e)))?;
         tracing::debug!(target: "wasmgrid::guest", "{out}");
         Ok(())
     }
@@ -213,7 +214,7 @@ impl wasmtime_wasi::Subscribe for ErroutStream {
 impl wasmtime_wasi::HostOutputStream for ErroutStream {
     fn write(&mut self, bytes: Bytes) -> StreamResult<()> {
         let out = String::from_utf8(bytes.to_vec())
-            .map_err(|e| StreamError::LastOperationFailed(anyhow::anyhow!(e)))?;
+            .map_err(|e| StreamError::LastOperationFailed(anyhow!(e)))?;
         tracing::error!(target: "wasmgrid::guest", "{out}");
         Ok(())
     }

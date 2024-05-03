@@ -32,6 +32,7 @@ wasi-messaging = { path = "crates/wasi-messaging" }
 wasmtime.workspace = true
 wasmtime-wasi.workspace = true
 wasmtime-wasi-http = "20.0.0"
+wasi-crypto = { version = "0.1.14", features = ["wasmtime"] }
 
 [profile.release]
 lto = true
