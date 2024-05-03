@@ -10,7 +10,7 @@ impl<T: MessagingView> producer::Host for T {
     // Publish Guest messages to the specified channel.
     async fn send(
         &mut self, client: Resource<Client>, ch: String, messages: Vec<Message>,
-    ) -> wasmtime::Result<anyhow::Result<(), Resource<Error>>> {
+    ) -> wasmtime::Result<Result<(), Resource<Error>>> {
         tracing::debug!("Host::send: {:?}", ch);
 
         let client = self.table().get(&client)?;

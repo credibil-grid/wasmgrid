@@ -12,7 +12,7 @@ use crate::MessagingView;
 impl<T: MessagingView> consumer::Host for T {
     async fn subscribe_try_receive(
         &mut self, client: Resource<Client>, ch: String, t_milliseconds: u32,
-    ) -> wasmtime::Result<anyhow::Result<Option<Vec<Message>>, Resource<Error>>> {
+    ) -> wasmtime::Result<Result<Option<Vec<Message>>, Resource<Error>>> {
         tracing::debug!("Host::subscribe_try_receive {ch}, {t_milliseconds}");
 
         // subscribe to channel
@@ -30,7 +30,7 @@ impl<T: MessagingView> consumer::Host for T {
 
     async fn subscribe_receive(
         &mut self, client: Resource<Client>, ch: String,
-    ) -> wasmtime::Result<anyhow::Result<Vec<Message>, Resource<Error>>> {
+    ) -> wasmtime::Result<Result<Vec<Message>, Resource<Error>>> {
         tracing::debug!("Host::subscribe_receive {ch}");
 
         let client = self.table().get(&client)?;
@@ -43,7 +43,7 @@ impl<T: MessagingView> consumer::Host for T {
 
     async fn update_guest_configuration(
         &mut self, gc: GuestConfiguration,
-    ) -> wasmtime::Result<anyhow::Result<(), Resource<Error>>> {
+    ) -> wasmtime::Result<Result<(), Resource<Error>>> {
         tracing::debug!("Host::update_guest_configuration");
         Ok(self.update_configuration(gc).await)
     }
@@ -51,7 +51,7 @@ impl<T: MessagingView> consumer::Host for T {
     // TODO: implement complete_message
     async fn complete_message(
         &mut self, msg: Message,
-    ) -> wasmtime::Result<anyhow::Result<(), Resource<Error>>> {
+    ) -> wasmtime::Result<Result<(), Resource<Error>>> {
         tracing::warn!("FIXME: implement Host::complete_message: {:?}", msg.metadata);
         Ok(Ok(()))
     }
@@ -59,7 +59,7 @@ impl<T: MessagingView> consumer::Host for T {
     // TODO: implement abandon_message
     async fn abandon_message(
         &mut self, msg: Message,
-    ) -> wasmtime::Result<anyhow::Result<(), Resource<Error>>> {
+    ) -> wasmtime::Result<Result<(), Resource<Error>>> {
         tracing::warn!("FIXME: implement Host::abandon_message: {:?}", msg.metadata);
         Ok(Ok(()))
     }

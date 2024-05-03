@@ -1,0 +1,28 @@
+interface signature-types {
+    /// Error type for signature operations. The implementation must be provided
+    /// by the host.
+    resource error {
+        trace: static func() -> string;    
+    }
+
+    /// Supported signing suites.
+    record signing-suite {
+        /// Algorithm returns the algorithm used by the signer.
+        algorithm: algorithm,
+
+        /// The verification method the verifier should use to verify the signer's
+        /// signature. This is typically a DID URL + # + verification key ID.
+        verification-method: string,
+    }
+        
+    variant algorithm {
+        /// EcdsaSecp256k1Signature2019. 
+        /// (Verification method = EcdsaSecp256k1VerificationKey2019).
+        es256k,
+
+        /// JsonWebSignature2020. 
+        /// (Verification method = JsonWebKey2020).
+        eddsa,
+    }
+
+}

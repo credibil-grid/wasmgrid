@@ -1,4 +1,3 @@
-// use anyhow::Error;
 use wasmtime::component::Resource;
 
 use crate::bindings::wasi::keyvalue::atomics;
