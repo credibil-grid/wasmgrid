@@ -6,6 +6,25 @@
 //!
 //! [wasi]: https://github.com/bytecodealliance/wasi
 
+mod keyvalue_bindings {
+    wit_bindgen::generate!({
+        world: "keyvalue",
+        pub_export_macro: true
+    });
+}
+
+/// Bindings for the `wasi:keyvalue` world.
+/// See (<https://github.com/WebAssembly/wasi-keyvalue/>)
+pub mod keyvalue {
+    pub use crate::keyvalue_bindings::export;
+    pub use crate::keyvalue_bindings::wasi::keyvalue::*;
+
+    pub mod exports {
+        pub use crate::keyvalue_bindings::exports::wasi;
+        pub use crate::keyvalue_bindings::exports::wasi::keyvalue::*;
+    }
+}
+
 mod messaging_bindings {
     wit_bindgen::generate!({
         world: "messaging",
@@ -25,21 +44,14 @@ pub mod messaging {
     }
 }
 
-mod keyvalue_bindings {
+mod signature_bindings {
     wit_bindgen::generate!({
-        world: "keyvalue",
-        pub_export_macro: true
+        world: "signature",
+        // pub_export_macro: true
     });
 }
 
-/// Bindings for the `wasi:keyvalue` world.
-/// See (<https://github.com/WebAssembly/wasi-keyvalue/>)
-pub mod keyvalue {
-    pub use crate::keyvalue_bindings::export;
-    pub use crate::keyvalue_bindings::wasi::keyvalue::*;
-
-    pub mod exports {
-        pub use crate::keyvalue_bindings::exports::wasi;
-        pub use crate::keyvalue_bindings::exports::wasi::keyvalue::*;
-    }
+/// Bindings for the `wasi:signature` world.
+pub mod signature {
+    pub use crate::signature_bindings::wasi::signature::*;
 }

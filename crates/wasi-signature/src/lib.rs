@@ -1,12 +1,10 @@
 //! # WASI Key/Value Host
 
-mod signer;
-mod verifier;
-
-// use wasmtime::component::Resource;
+use wasmtime::component::Resource;
 use wasmtime_wasi::WasiView;
 
-use crate::bindings::wasi::signature::signature_types::SigningSuite;
+use crate::bindings::wasi::signature::signature_types::{self, Error, SigningSuite};
+use crate::bindings::wasi::signature::{signer, verifier};
 
 /// Wrap generation of wit bindings to simplify exports
 pub mod bindings {
@@ -19,9 +17,9 @@ pub mod bindings {
         path: "wit",
         tracing: true,
         async: true,
-        with: {
-            "wasi:signature/signature-types/error": Error,
-        },
+        // with: {
+        //     "wasi:signature/signature-types/error": Error,
+        // },
         // trappable_error_type: {
         //     "wasi:keyvalue/keyvalue-types/error" => Error,
         // },
@@ -40,39 +38,45 @@ pub trait SignatureView: WasiView + Send {
     async fn verify(&mut self, msg: Vec<u8>, signature: Vec<u8>) -> anyhow::Result<()>;
 }
 
-// /// RuntimeBucket is implemented by the runtime to provide this host with access
-// /// to runtime functionality.
-// #[async_trait::async_trait]
-// pub trait RuntimeBucket: Sync + Send {
-//     // ------------------------------------------------------------------------
-//     // Store
-//     // ------------------------------------------------------------------------
-//     async fn get(&mut self, key: String) -> anyhow::Result<Option<Vec<u8>>>;
+// Implement the [`signer::Host`]` trait for SignatureView impls.
+#[async_trait::async_trait]
+impl<T: SignatureView> signer::Host for T {
+    async fn sign(&mut self, msg: Vec<u8>) -> wasmtime::Result<Result<Vec<u8>, Resource<Error>>> {
+        tracing::debug!("Host::sign");
+        Ok(Ok(T::sign(self, msg).await?))
+    }
 
-//     async fn set(&mut self, key: String, value: Vec<u8>) -> anyhow::Result<()>;
+    async fn suite(&mut self) -> wasmtime::Result<SigningSuite> {
+        tracing::debug!("Host::suite");
+        T::suite(self).await
+    }
+}
 
-//     async fn delete(&mut self, key: String) -> anyhow::Result<()>;
+// Implement the [`verifier::Host`]` trait for SignatureView impls.
+#[async_trait::async_trait]
+impl<T: SignatureView> verifier::Host for T {
+    async fn verify(
+        &mut self, msg: Vec<u8>, signature: Vec<u8>,
+    ) -> wasmtime::Result<Result<(), Resource<Error>>> {
+        tracing::debug!("Host::verify");
+        Ok(Ok(T::verify(self, msg, signature).await?))
+    }
+}
 
-//     async fn exists(&mut self, key: String) -> anyhow::Result<bool>;
+// Implement the [`signature_types::Host`] trait for SignatureView impls.
+impl<T: SignatureView> signature_types::Host for T {}
 
-//     async fn list_keys(&mut self, cursor: Option<u64>) -> anyhow::Result<KeyResponse>;
+// Implement the [`signature_types::HostError`] trait for SignatureView impls.
+#[async_trait::async_trait]
+impl<T: SignatureView> signature_types::HostError for T {
+    async fn trace(&mut self) -> wasmtime::Result<String> {
+        tracing::warn!("FIXME: trace HostError");
+        Ok(String::from("trace HostError"))
+    }
 
-//     /// Close the bucket. This may be a no-op for some backends.
-//     ///
-//     /// # Errors
-//     fn close(&mut self) -> anyhow::Result<()>;
-
-//     // ------------------------------------------------------------------------
-//     // Atomics
-//     // ------------------------------------------------------------------------
-//     async fn increment(&mut self, key: String, delta: u64) -> anyhow::Result<u64>;
-
-//     // ------------------------------------------------------------------------
-//     // Batch
-//     // ------------------------------------------------------------------------
-//     async fn get_many(&mut self, keys: Vec<String>) -> anyhow::Result<Vec<(String, Vec<u8>)>>;
-
-//     async fn set_many(&mut self, key_values: Vec<(String, Vec<u8>)>) -> anyhow::Result<()>;
-
-//     async fn delete_many(&mut self, keys: Vec<String>) -> anyhow::Result<()>;
-// }
+    fn drop(&mut self, err: Resource<Error>) -> wasmtime::Result<()> {
+        tracing::debug!("drop for Resource<Error>");
+        self.table().delete(err)?;
+        Ok(())
+    }
+}

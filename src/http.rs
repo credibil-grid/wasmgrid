@@ -1,4 +1,4 @@
-//! # WASI Http Runtime
+//! # WASI Http Capability
 //!
 //! This module implements a runtime capability for `wasi:http`
 //! (<https://github.com/WebAssembly/wasi-http>).
@@ -39,7 +39,7 @@ impl runtime::Capability for Capability {
         proxy::add_only_http_to_linker(linker)
     }
 
-    /// Start and run NATS for the specified wasm component.
+    /// Provide http proxy capability the specified wasm component.
     async fn run(&self, runtime: Runtime) -> anyhow::Result<()> {
         let listener = TcpListener::bind(&self.addr).await?;
         tracing::info!("listening for http requests on: {}", listener.local_addr()?);

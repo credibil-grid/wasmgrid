@@ -6,5 +6,6 @@
 # cd crates/wasi-bindings && wit-deps && cd ../..
 # ```
 
-messaging = "https://github.com/WebAssembly/wasi-messaging/archive/main.tar.gz"
-keyvalue = "https://github.com/WebAssembly/wasi-keyvalue/archive/main.tar.gz"
+messaging = "../../wasi-messaging/wit/deps/messaging"
+keyvalue = "../../wasi-keyvalue/wit/deps/keyvalue"
+signature = "../../wasi-signature/wit"

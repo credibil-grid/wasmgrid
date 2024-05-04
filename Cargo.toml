@@ -19,16 +19,20 @@ workspace = true
 anyhow.workspace = true
 async-nats = "0.34.0"
 async-trait.workspace = true
+base64ct = { version = "1.6.0", features = ["std"] }
 bytes.workspace = true
 clap = { version = "4.5.4", features = ["derive"] }
+ecdsa = "0.16.9"
 futures.workspace = true
 http-body-util = "0.1.1"
 hyper = "1.3.1"
+k256 = "0.13.3"
 tokio = { version = "1.37.0", features = ["signal"] }
 tracing.workspace = true
 tracing-subscriber = { version = "0.3.18", features = ["env-filter", "fmt"] }
 wasi-keyvalue = { path = "crates/wasi-keyvalue" }
 wasi-messaging = { path = "crates/wasi-messaging" }
+wasi-signature = { path = "crates/wasi-signature" }
 wasmtime.workspace = true
 wasmtime-wasi.workspace = true
 wasmtime-wasi-http = "20.0.0"

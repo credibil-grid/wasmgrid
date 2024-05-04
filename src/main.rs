@@ -4,6 +4,7 @@ mod http;
 mod keyvalue;
 mod messaging;
 mod runtime;
+mod signature;
 
 use anyhow::Error;
 use clap::Parser;

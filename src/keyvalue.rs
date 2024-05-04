@@ -1,4 +1,4 @@
-//! # WASI Key/Value Runtime
+//! # WASI Key/Value Capability
 //!
 //! This module implements a runtime capability for `wasi:keyvalue`
 //! (<https://github.com/WebAssembly/wasi-keyvalue>).
@@ -39,7 +39,7 @@ impl runtime::Capability for Capability {
         Keyvalue::add_to_linker(linker, |t| t)
     }
 
-    /// Start and run NATS for the specified wasm component.
+    /// Provide key/value storage capability for the specified wasm component.
     async fn run(&self, _runtime: Runtime) -> anyhow::Result<()> {
         // create JetStream context and store in global state
         let client = async_nats::connect(&self.addr).await?;

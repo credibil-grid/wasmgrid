@@ -1,4 +1,4 @@
-//! # WASI Messaging Runtime
+//! # WASI Messaging Capability
 //!
 //! This module implements a runtime capability for `wasi:messaging`
 //! (<https://github.com/WebAssembly/wasi-messaging>).
@@ -39,7 +39,7 @@ impl runtime::Capability for Capability {
         Messaging::add_to_linker(linker, |t| t)
     }
 
-    /// Start and run NATS for the specified wasm component.
+    /// Provide messaging capability for the specified wasm component.
     async fn run(&self, runtime: Runtime) -> anyhow::Result<()> {
         let client = Client::connect(self.addr.clone()).await?;
         tracing::info!("connected to NATS on {}", self.addr);
@@ -71,8 +71,6 @@ impl runtime::Capability for Capability {
 async fn channels(runtime: &Runtime) -> anyhow::Result<Vec<String>> {
     tracing::debug!("channels");
 
-    // FIXME: use component().exports() to determine if the wasm module exports the
-    // wasi:messaging/messaging-guest@0.2.0-draft interface.
     let mut store = runtime.store();
     let (messaging, _) = Messaging::instantiate_pre(&mut store, runtime.instance_pre()).await?;
 
