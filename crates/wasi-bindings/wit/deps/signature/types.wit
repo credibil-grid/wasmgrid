@@ -31,10 +31,10 @@ interface signature-types {
     /// [IANA_JOSE]: https://www.iana.org/assignments/jose/jose.xhtml
     variant signature-algorithm {
         /// `secp256k1` curve for signing suite  EcdsaSecp256k1Signature2019. 
-        ES256K,
+        es256k,
 
         /// `ed22519` curve for signing suite JsonWebSignature2020.
-        EdDSA,
+        eddsa,
     }
 
 }
