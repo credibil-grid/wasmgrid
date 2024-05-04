@@ -23,10 +23,8 @@ pub struct Capability {
     pub addr: String,
 }
 
-impl Capability {
-    pub const fn new(addr: String) -> Self {
-        Self { addr }
-    }
+pub const fn new(addr: String) -> Capability {
+    Capability { addr }
 }
 
 #[async_trait::async_trait]

@@ -1,15 +1,14 @@
 #![allow(clippy::redundant_pub_crate)]
 
-mod http;
-mod keyvalue;
-mod messaging;
+mod capabilities;
 mod runtime;
-mod signature;
 
 use anyhow::Error;
 use clap::Parser;
 // use tracing_subscriber::{EnvFilter, FmtSubscriber};
 use tracing_subscriber::FmtSubscriber;
+
+use crate::capabilities::{http, keyvalue, messaging, signature};
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -39,9 +38,10 @@ pub async fn main() -> wasmtime::Result<()> {
     tracing::subscriber::set_global_default(subscriber)?;
 
     runtime::Builder::new()
-        .capability(http::Capability::new(args.http_addr))
-        .capability(messaging::Capability::new(args.nats_addr.clone()))
-        .capability(keyvalue::Capability::new(args.nats_addr))
+        .capability(http::new(args.http_addr))
+        .capability(messaging::new(args.nats_addr.clone()))
+        .capability(keyvalue::new(args.nats_addr))
+        .capability(signature::new())
         .run(args.wasm)?;
 
     shutdown().await
