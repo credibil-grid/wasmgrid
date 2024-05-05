@@ -4,6 +4,7 @@ use anyhow::{anyhow, Result};
 use http::header::CONTENT_TYPE; // AUTHORIZATION
 use http::Uri;
 use serde_json::json;
+use tracing_subscriber::{EnvFilter, FmtSubscriber};
 use wasi::exports::http::incoming_handler::Guest;
 use wasi::http::types::{
     Fields, IncomingRequest, OutgoingBody, OutgoingResponse, ResponseOutparam,
@@ -14,6 +15,10 @@ struct HttpGuest;
 
 impl Guest for HttpGuest {
     fn handle(request: IncomingRequest, response: ResponseOutparam) {
+        let subscriber =
+            FmtSubscriber::builder().with_env_filter(EnvFilter::from_default_env()).finish();
+        tracing::subscriber::set_global_default(subscriber).expect("should set subscriber");
+
         // set up response in case of early failure
         let headers = Fields::new();
         let _ = headers.set(&CONTENT_TYPE.to_string(), &[b"application/json".to_vec()]);

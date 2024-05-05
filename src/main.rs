@@ -43,8 +43,8 @@ pub async fn main() -> wasmtime::Result<()> {
         // env::set_var("RUST_LOG", "wasmgrid=debug,http_sql=debug");
     }
 
-    let http_addr = env::var("HTTP_ADDR").unwrap_or(DEF_HTTP_ADDR.to_string());
-    let nats_cnn = env::var("NATS_CNN").unwrap_or(DEF_NATS_CNN.to_string());
+    let http_addr = env::var("HTTP_ADDR").unwrap_or_else(|_| DEF_HTTP_ADDR.to_string());
+    let nats_cnn = env::var("NATS_CNN").unwrap_or_else(|_| DEF_NATS_CNN.to_string());
     let mgo_cnn = env::var("MGO_CNN").expect("MGO_CNN should be set");
 
     // tracing

@@ -1,3 +1,4 @@
+use tracing_subscriber::{EnvFilter, FmtSubscriber};
 use wasi_bindings::messaging::exports::messaging_guest::Guest;
 use wasi_bindings::messaging::messaging_types::{
     self, Channel, Client, Error, GuestConfiguration, Message,
@@ -19,6 +20,10 @@ impl Guest for MessagingGuest {
     // Whenever a message is received on a subscribed channel, the host will call this
     // function. Once done, the host should kill the wasm instance.
     fn handler(msgs: Vec<Message>) -> Result<(), Error> {
+        let subscriber =
+            FmtSubscriber::builder().with_env_filter(EnvFilter::from_default_env()).finish();
+        tracing::subscriber::set_global_default(subscriber).expect("should set subscriber");
+
         for msg in msgs {
             // get channel
             let Some(metadata) = &msg.metadata else {
