@@ -25,10 +25,7 @@ struct Args {
     nats_addr: String,
 
     /// The `MongoDB` connection string.
-    #[arg(
-        long,
-        default_value = "mongodb+srv://oidc-user:fCNpCf-PJNuum9A_7CkFGa-wqsnUUH@cluster0.uqnlxl8.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
-    )]
+    #[arg(long)]
     mgo_cnn: String,
 }
 
@@ -40,7 +37,7 @@ pub async fn main() -> wasmtime::Result<()> {
     let subscriber = FmtSubscriber::builder()
         // .with_env_filter(EnvFilter::from_default_env())
         // .with_max_level(tracing::Level::DEBUG)
-        .with_env_filter("wasmgrid=debug,wasi_sql=debug")
+        .with_env_filter("wasmgrid=debug")
         .finish();
     tracing::subscriber::set_global_default(subscriber)?;
 
