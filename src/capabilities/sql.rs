@@ -115,7 +115,7 @@ impl ReadWriteView for State {
 
         let filter = mongodb::bson::doc! {};
         let md = db.database.collection::<Document>("issuer").find_one(Some(filter), None).await?;
-        println!("md: {:?}", md);
+        tracing::debug!("md: {:?}", md);
 
         Ok(0)
     }

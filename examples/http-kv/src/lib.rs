@@ -50,16 +50,16 @@ impl Guest for HttpGuest {
 }
 
 fn hello(request: &Request) -> Result<Vec<u8>> {
-    println!("request.uri: {}", request.uri());
+    tracing::debug!("request.uri: {}", request.uri());
 
     let body = request.body()?;
     let req: serde_json::Value = serde_json::from_slice(&body)?;
-    println!("json: {:?}", req);
+    tracing::debug!("json: {:?}", req);
 
     let bucket = match store::open("credibil_bucket") {
         Ok(bucket) => bucket,
         Err(err) => {
-            println!("error opening bucket: {:?}", err);
+            tracing::debug!("error opening bucket: {:?}", err);
             return Err(err.into());
         }
     };
@@ -68,7 +68,7 @@ fn hello(request: &Request) -> Result<Vec<u8>> {
 
     // check for previous value
     let res = bucket.get("my_key");
-    println!("found val: {:?}", res);
+    tracing::debug!("found val: {:?}", res);
 
     let resp = json!({
         "message": "Hello, World!"

@@ -49,10 +49,10 @@ impl Guest for HttpGuest {
 }
 
 fn hello(request: &Request) -> Result<Vec<u8>> {
-    println!("request.uri: {}", request.uri());
+    tracing::debug!("request.uri: {}", request.uri());
 
     let req: serde_json::Value = serde_json::from_slice(&request.body()?)?;
-    println!("json: {:?}", req);
+    tracing::debug!("json: {:?}", req);
 
     let resp = json!({
         "message": "Hello, World!"

@@ -1210,6 +1210,8 @@ dependencies = [
  "anyhow",
  "http 1.1.0",
  "serde_json",
+ "tracing",
+ "tracing-subscriber",
  "wasi 0.13.0+wasi-0.2.0",
 ]
 
@@ -1254,6 +1256,8 @@ dependencies = [
  "anyhow",
  "http 1.1.0",
  "serde_json",
+ "tracing",
+ "tracing-subscriber",
  "wasi 0.13.0+wasi-0.2.0",
 ]
 
@@ -1264,6 +1268,8 @@ dependencies = [
  "anyhow",
  "http 1.1.0",
  "serde_json",
+ "tracing",
+ "tracing-subscriber",
  "wasi 0.13.0+wasi-0.2.0",
  "wasi-bindings",
 ]
@@ -1275,6 +1281,8 @@ dependencies = [
  "anyhow",
  "http 1.1.0",
  "serde_json",
+ "tracing",
+ "tracing-subscriber",
  "wasi 0.13.0+wasi-0.2.0",
  "wasi-bindings",
 ]
@@ -1286,6 +1294,8 @@ dependencies = [
  "anyhow",
  "http 1.1.0",
  "serde_json",
+ "tracing",
+ "tracing-subscriber",
  "vercre-core",
  "wasi 0.13.0+wasi-0.2.0",
  "wasi-bindings",
@@ -1700,6 +1710,8 @@ dependencies = [
 name = "msg"
 version = "0.1.0"
 dependencies = [
+ "tracing",
+ "tracing-subscriber",
  "wasi-bindings",
 ]
 

@@ -40,7 +40,9 @@ pub async fn main() -> wasmtime::Result<()> {
     // env vars
     if cfg!(debug_assertions) {
         dotenv().ok();
+        // env::set_var("RUST_LOG", "wasmgrid=debug,http_sql=debug");
     }
+
     let http_addr = env::var("HTTP_ADDR").unwrap_or(DEF_HTTP_ADDR.to_string());
     let nats_cnn = env::var("NATS_CNN").unwrap_or(DEF_NATS_CNN.to_string());
     let mgo_cnn = env::var("MGO_CNN").expect("MGO_CNN should be set");
@@ -49,7 +51,6 @@ pub async fn main() -> wasmtime::Result<()> {
     let subscriber = FmtSubscriber::builder()
         .with_env_filter(EnvFilter::from_default_env())
         // .with_max_level(tracing::Level::DEBUG)
-        // .with_env_filter("wasmgrid=debug")
         .finish();
     tracing::subscriber::set_global_default(subscriber)?;
 

@@ -31,7 +31,7 @@ impl Guest for Messaging {
 
             match channel.as_str() {
                 "a" => {
-                    println!("Hello from guest channel a");
+                    tracing::debug!("Hello from guest channel a");
 
                     // unsubscribe from channel
                     consumer::update_guest_configuration(&GuestConfiguration {
@@ -45,7 +45,7 @@ impl Guest for Messaging {
                     let client = Client::connect("demo.nats.io").unwrap();
                     let msgs =
                         consumer::subscribe_try_receive(client, &Channel::from("d"), 100).unwrap();
-                    println!("channel d: {:?}", msgs);
+                    tracing::debug!("channel d: {:?}", msgs);
 
                     return consumer::complete_message(&msg);
                 }

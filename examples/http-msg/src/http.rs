@@ -49,7 +49,7 @@ impl Guest for Http {
 }
 
 fn hello(request: &Request) -> Result<Vec<u8>> {
-    println!("request.uri: {}", request.uri());
+    tracing::debug!("request.uri: {}", request.uri());
 
     let client = Client::connect("demo.nats.io").unwrap();
     let message = Message {
@@ -60,7 +60,7 @@ fn hello(request: &Request) -> Result<Vec<u8>> {
     producer::send(client, &"b".to_string(), &[message]).expect("should send");
 
     let req: serde_json::Value = serde_json::from_slice(&request.body()?)?;
-    println!("json: {:?}", req);
+    tracing::debug!("json: {:?}", req);
 
     let resp = json!({
         "message": "Hello, World!"

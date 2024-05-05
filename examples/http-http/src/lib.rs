@@ -53,7 +53,7 @@ impl Guest for HttpGuest {
 }
 
 fn call_downstream(request: &Request) -> Result<Vec<u8>> {
-    println!("request.uri: {}", request.uri());
+    tracing::debug!("request.uri: {}", request.uri());
 
     // build outgoing request
     let headers = Headers::new();
@@ -103,11 +103,11 @@ fn call_downstream(request: &Request) -> Result<Vec<u8>> {
     drop(fut_resp);
 
     let status = resp.status();
-    println!("status: {:?}", status);
+    tracing::debug!("status: {:?}", status);
 
     let headers_handle = resp.headers();
     let headers = headers_handle.entries();
-    println!("headers: {:?}", headers);
+    tracing::debug!("headers: {:?}", headers);
     drop(headers_handle);
 
     let resp_body = resp.consume().map_err(|()| anyhow!("incoming response has no body stream"))?;
