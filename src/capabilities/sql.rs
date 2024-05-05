@@ -23,7 +23,6 @@ use wasmtime_wasi::WasiView;
 
 use crate::runtime::{self, Runtime, State};
 
-const CNN_STRING:&str="mongodb+srv://oidc-user:fCNpCf-PJNuum9A_7CkFGa-wqsnUUH@cluster0.uqnlxl8.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
 static MONGODB: OnceLock<mongodb::Client> = OnceLock::new();
 
 pub struct Capability {
@@ -47,7 +46,7 @@ impl runtime::Capability for Capability {
     /// Provide sql capability for the specified wasm component.
     async fn run(&self, _: Runtime) -> anyhow::Result<()> {
         // Connect to MongoDB
-        let mut client_options = ClientOptions::parse(CNN_STRING).await?;
+        let mut client_options = ClientOptions::parse(&self.addr).await?;
         client_options.app_name = Some("Credibil Grid".to_string());
         let client = Client::with_options(client_options)?;
         MONGODB.get_or_init(|| client);
