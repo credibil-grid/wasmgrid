@@ -8,4 +8,5 @@
 
 messaging = "../../wasi-messaging/wit/deps/messaging"
 keyvalue = "../../wasi-keyvalue/wit/deps/keyvalue"
+sql = "../../wasi-sql/wit/deps/sql"
 signature = "../../wasi-signature/wit"

@@ -6,8 +6,8 @@
 use base64ct::{Base64UrlUnpadded, Encoding};
 use ecdsa::signature::Signer as _;
 use k256::Secp256k1;
-use wasi_signature::bindings::wasi::signature::signature_types::{
-    SignatureAlgorithm, SigningSuite,
+use wasi_signature::bindings::wasi::signature::types::{
+    Algorithm, SigningSuite,
 };
 use wasi_signature::bindings::Signature;
 use wasi_signature::{self, SignatureView};
@@ -55,7 +55,7 @@ impl SignatureView for State {
 
     async fn suite(&mut self) -> anyhow::Result<SigningSuite> {
         Ok(SigningSuite {
-            signature_algorithm: SignatureAlgorithm::Es256k,
+            algorithm: Algorithm::Es256k,
             verification_method: format!("{ISSUER_DID}#{VERIFY_KEY_ID}"),
         })
     }

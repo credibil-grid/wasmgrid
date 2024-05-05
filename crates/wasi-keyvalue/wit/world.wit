@@ -1,12 +1,6 @@
 package component:wasi-keyvalue;
 
-world imports {
-	import wasi:keyvalue/store@0.2.0-draft;
-	import wasi:keyvalue/atomics@0.2.0-draft;
-	import wasi:keyvalue/batch@0.2.0-draft;
-}
-
 world keyvalue {
-	include imports;
+	include wasi:keyvalue/imports@0.2.0-draft;
 	export wasi:keyvalue/watcher@0.2.0-draft;
 }

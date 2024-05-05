@@ -55,3 +55,15 @@ mod signature_bindings {
 pub mod signature {
     pub use crate::signature_bindings::wasi::signature::*;
 }
+
+mod sql_bindings {
+    wit_bindgen::generate!({
+        world: "sql",
+        // pub_export_macro: true
+    });
+}
+
+/// Bindings for the `wasi:signature` world.
+pub mod sql {
+    pub use crate::sql_bindings::wasi::sql::*;
+}

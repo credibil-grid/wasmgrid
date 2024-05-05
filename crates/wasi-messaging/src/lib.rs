@@ -16,6 +16,7 @@ pub type Subscriber = Pin<Box<dyn RuntimeSubscriber>>;
 /// Wrap generation of wit bindings to simplify exports
 pub mod bindings {
     #![allow(clippy::future_not_send)]
+
     pub use anyhow::Error;
 
     pub use super::Client;
@@ -65,13 +66,13 @@ impl<T: MessagingView> HostClient for T {
     async fn connect(
         &mut self, name: String,
     ) -> wasmtime::Result<anyhow::Result<Resource<Client>, Resource<Error>>> {
-        tracing::debug!("connect {name}");
+        tracing::debug!("HostClient::connect {name}");
         Ok(Ok(T::connect(self, name).await?))
     }
 
     // Drop the specified client resource.
     fn drop(&mut self, client: Resource<Client>) -> wasmtime::Result<()> {
-        tracing::debug!("drop");
+        tracing::debug!("HostClient::drop");
         self.table().delete(client)?;
         Ok(())
     }
@@ -80,12 +81,12 @@ impl<T: MessagingView> HostClient for T {
 #[async_trait::async_trait]
 impl<T: MessagingView> HostError for T {
     async fn trace(&mut self) -> wasmtime::Result<String> {
-        tracing::warn!("FIXME: trace HostError");
+        tracing::warn!("FIXME: HostError::trace");
         Ok(String::from("trace HostError"))
     }
 
     fn drop(&mut self, err: Resource<Error>) -> wasmtime::Result<()> {
-        tracing::debug!("drop for Resource<Error>");
+        tracing::debug!("HostError::drop");
         self.table().delete(err)?;
         Ok(())
     }

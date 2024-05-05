@@ -1,4 +1,4 @@
-interface signature-types {
+interface types {
     /// Error type for signature operations. The implementation must be provided
     /// by the host.
     resource error {
@@ -8,7 +8,7 @@ interface signature-types {
     /// Supported signing suites. See <https://www.w3.org/TR/vc-jws-2020/>.
     record signing-suite {
         /// Algorithm returns the algorithm used by the signer.
-        signature-algorithm: signature-algorithm,
+        algorithm: algorithm,
 
         /// The verification method the verifier should use to verify the signer's
         /// signature. This is typically a DID URL + # + verification key ID.
@@ -29,7 +29,7 @@ interface signature-types {
     /// 2. Message Digest: The message digest is computed using SHA-256.
     /// 
     /// [IANA_JOSE]: https://www.iana.org/assignments/jose/jose.xhtml
-    variant signature-algorithm {
+    variant algorithm {
         /// `secp256k1` curve for signing suite  EcdsaSecp256k1Signature2019. 
         es256k,
 

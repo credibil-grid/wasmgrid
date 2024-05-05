@@ -8,7 +8,7 @@ use clap::Parser;
 // use tracing_subscriber::{EnvFilter, FmtSubscriber};
 use tracing_subscriber::FmtSubscriber;
 
-use crate::capabilities::{http, keyvalue, messaging, signature};
+use crate::capabilities::{http, keyvalue, messaging, signature, sql};
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -23,6 +23,10 @@ struct Args {
     /// The NATS host.
     #[arg(long, default_value = "demo.nats.io")]
     nats_addr: String,
+
+    /// The MongoDB connection string.
+    #[arg(long, default_value = "demo.nats.io")]
+    mgo_cnn: String,
 }
 
 #[tokio::main]
@@ -33,7 +37,7 @@ pub async fn main() -> wasmtime::Result<()> {
     let subscriber = FmtSubscriber::builder()
         // .with_env_filter(EnvFilter::from_default_env())
         // .with_max_level(tracing::Level::DEBUG)
-        .with_env_filter("wasmgrid=debug")
+        .with_env_filter("wasmgrid=debug,wasi_sql=debug")
         .finish();
     tracing::subscriber::set_global_default(subscriber)?;
 
@@ -42,6 +46,7 @@ pub async fn main() -> wasmtime::Result<()> {
         .capability(messaging::new(args.nats_addr.clone()))
         .capability(keyvalue::new(args.nats_addr))
         .capability(signature::new())
+        .capability(sql::new(args.mgo_cnn))
         .run(args.wasm)?;
 
     shutdown().await

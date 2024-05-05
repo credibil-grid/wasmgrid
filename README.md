@@ -22,7 +22,7 @@ See [examples/http/README.md](examples/http/README.md).
 ## Docker Build
 
 In order to use the `scratch` image we need to build a statically linked (elf) binary
-using the `musl`C library.
+using the `musl` C library.
 
 Build the docker image:
 

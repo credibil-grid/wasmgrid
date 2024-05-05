@@ -27,7 +27,7 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "http",
+            "name": "http-sql",
             "cargo": {
                 "args": [
                     "build",
@@ -40,7 +40,7 @@
                 }
             },
             "args": [
-                "./target/wasm32-wasi/release/http.wasm"
+                "./target/wasm32-wasi/release/http_sql.wasm"
             ],
             "cwd": "${workspaceFolder}"
         },

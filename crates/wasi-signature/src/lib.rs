@@ -3,7 +3,7 @@
 use wasmtime::component::Resource;
 use wasmtime_wasi::WasiView;
 
-use crate::bindings::wasi::signature::signature_types::{self, Error, SigningSuite};
+use crate::bindings::wasi::signature::types::{self, Error, SigningSuite};
 use crate::bindings::wasi::signature::{signer, verifier};
 
 /// Wrap generation of wit bindings to simplify exports
@@ -63,12 +63,12 @@ impl<T: SignatureView> verifier::Host for T {
     }
 }
 
-// Implement the [`signature_types::Host`] trait for SignatureView impls.
-impl<T: SignatureView> signature_types::Host for T {}
+// Implement the [`types::Host`] trait for SignatureView impls.
+impl<T: SignatureView> types::Host for T {}
 
 // Implement the [`signature_types::HostError`] trait for SignatureView impls.
 #[async_trait::async_trait]
-impl<T: SignatureView> signature_types::HostError for T {
+impl<T: SignatureView> types::HostError for T {
     async fn trace(&mut self) -> wasmtime::Result<String> {
         tracing::warn!("FIXME: trace HostError");
         Ok(String::from("trace HostError"))
