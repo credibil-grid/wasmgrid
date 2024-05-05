@@ -144,7 +144,10 @@ impl StatementView for State {
         &mut self, query: String, _params: Vec<String>,
     ) -> anyhow::Result<Resource<types::Statement>> {
         tracing::debug!("StatementView::prepare");
-        let stmt: wasi_sql::Statement = Box::new(Statement::new(query)?);
+
+        let stmt = Statement::builder().sql(query).build()?;
+        let stmt: wasi_sql::Statement = Box::new(stmt);
+
         Ok(self.table().push(stmt)?)
     }
 
@@ -203,10 +206,35 @@ struct Statement {
 
 impl Statement {
     // Create a new Statement for the specified NATS server.
-    fn new(sql: String) -> anyhow::Result<Self> {
+    fn builder() -> StatementBuilder {
         tracing::trace!("Statement::new");
+        StatementBuilder::new()
+    }
+}
 
-        let Ok(ast) = Parser::parse_sql(&GenericDialect {}, &sql) else {
+#[derive(Default)]
+struct StatementBuilder {
+    // capabilities: Vec<Box<dyn Capability>>,
+    sql: String,
+}
+
+impl StatementBuilder {
+    /// Create a new Builder instance.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Set the sql statement.
+    pub fn sql(mut self, sql: String) -> Self {
+        self.sql = sql;
+        self
+    }
+
+    /// Run the wasm component with the specified capabilities.
+    pub fn build(self) -> anyhow::Result<Statement> {
+        tracing::trace!("StatementBuilder::build");
+
+        let Ok(ast) = Parser::parse_sql(&GenericDialect {}, &self.sql) else {
             return Err(anyhow!("invalid query"));
         };
 
@@ -226,7 +254,7 @@ impl Statement {
 
         // let filter = mongodb::bson::doc! {};
 
-        Ok(Self {
+        Ok(Statement {
             collection: collection.to_string(),
             filter: None,
         })

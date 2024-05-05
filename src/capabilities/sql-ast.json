@@ -1,0 +1,58 @@
+Query(Query { 
+    with: None, 
+    body: Select(Select { 
+        distinct: None, 
+        top: None, 
+        projection: [
+            Wildcard(WildcardAdditionalOptions { 
+                opt_ilike: None, 
+                opt_exclude: None,
+                opt_except: None,
+                opt_rename: None, 
+                opt_replace: None
+            })
+        ],
+        into: None, 
+        from: [
+            TableWithJoins { 
+                relation: Table { 
+                    name: ObjectName([
+                        Ident { 
+                            value: "metadata", 
+                            quote_style: None
+                        },
+                        Ident { 
+                            value: "issuer", 
+                            quote_style: None
+                        }
+                    ]), 
+                    alias: None, 
+                    args: None, 
+                    with_hints: [], 
+                    version: None, 
+                    partitions: []
+                }, 
+                joins: []
+            }
+        ], 
+        lateral_views: [], 
+        selection: None, 
+        group_by: Expressions([]), 
+        cluster_by: [], 
+        distribute_by: [], 
+        sort_by: [], 
+        having: None, 
+        named_window: [], 
+        qualify: None, 
+        window_before_qualify: false, 
+        value_table_mode: None, 
+        connect_by: None
+    }), 
+    order_by: [], 
+    limit: None, 
+    limit_by: [], 
+    offset: None, 
+    fetch: None, 
+    locks: [], 
+    for_clause: None
+})
