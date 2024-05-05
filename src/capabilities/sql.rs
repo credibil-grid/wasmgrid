@@ -51,7 +51,7 @@ impl runtime::Capability for Capability {
         let client = Client::with_options(client_options)?;
         MONGODB.get_or_init(|| client);
 
-        tracing::info!("connected to MongoDB on {}", self.addr);
+        tracing::info!("connected to MongoDB");
 
         Ok(())
     }

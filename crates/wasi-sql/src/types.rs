@@ -16,7 +16,7 @@ pub trait ConnectionView: WasiView + Send {
     async fn open(&mut self, name: String) -> anyhow::Result<Resource<Connection>>;
 
     /// Drop the connection.
-    /// 
+    ///
     /// # Errors
     fn drop(&mut self, rep: Resource<Connection>) -> anyhow::Result<()>;
 }

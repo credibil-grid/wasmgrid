@@ -41,7 +41,7 @@ impl runtime::Capability for Capability {
     async fn run(&self, _runtime: Runtime) -> anyhow::Result<()> {
         // create JetStream context and store in global state
         let client = async_nats::connect(&self.addr).await?;
-        tracing::info!("connected to NATS on {}", self.addr);
+        tracing::info!("connected to JetStream");
 
         JETSTREAM.get_or_init(|| jetstream::new(client));
         Ok(())

@@ -40,7 +40,7 @@ impl runtime::Capability for Capability {
     /// Provide messaging capability for the specified wasm component.
     async fn run(&self, runtime: Runtime) -> anyhow::Result<()> {
         let client = Client::connect(self.addr.clone()).await?;
-        tracing::info!("connected to NATS on {}", self.addr);
+        tracing::info!("connected to NATS");
 
         // subscribe to channels
         let mut subscribers = vec![];

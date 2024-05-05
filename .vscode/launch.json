@@ -22,7 +22,8 @@
             "args": [
                 "./target/wasm32-wasi/release/http_kv.wasm"
             ],
-            "cwd": "${workspaceFolder}"
+            "cwd": "${workspaceFolder}",
+            "envFile": "${workspaceRoot}/.env"
         },
         {
             "type": "lldb",
@@ -42,7 +43,8 @@
             "args": [
                 "./target/wasm32-wasi/release/http_sql.wasm"
             ],
-            "cwd": "${workspaceFolder}"
+            "cwd": "${workspaceFolder}",
+            "envFile": "${workspaceRoot}/.env"
         },
     ]
 }

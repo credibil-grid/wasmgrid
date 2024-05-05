@@ -7,6 +7,14 @@ can support components based on the [`wasi-cloud-core`](https://github.com/WebAs
 
 ## Quick Start
 
+Add a `.env` file in the root of the project with the following values:
+
+```bash
+RUST_LOG="wasmgrid=debug" # tracing log level
+MGO_CNN="<MongoDB connection string>"
+NATS_CNN="<NATS/Synadia connection string>"
+```
+
 ### Messaging Example
 
 Build and run the Messaging host and example guest.
