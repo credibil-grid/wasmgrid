@@ -11,7 +11,9 @@ use mongodb::options::ClientOptions;
 use mongodb::Client;
 use wasi_sql::bindings::wasi::sql::types::{self, Row};
 use wasi_sql::bindings::Sql;
-use wasi_sql::{self, RuntimeConnection, RuntimeStatement, SqlView};
+use wasi_sql::readwrite::ReadWriteView;
+use wasi_sql::types::{ConnectionView, ErrorView, StatementView};
+use wasi_sql::{self, RuntimeConnection, RuntimeStatement};
 use wasmtime::component::{Linker, Resource};
 use wasmtime_wasi::WasiView;
 
@@ -59,26 +61,26 @@ struct Metadata {
     issuer: String,
 }
 
-// Implement the [`wasi_sql::SqlView`]` trait for State.
+// Implement the [`wasi_sql::ReadWriteView`]` trait for State.
 #[async_trait::async_trait]
-impl SqlView for State {
+impl ReadWriteView for State {
     async fn query(
-        &mut self, cnn: Resource<types::Connection>, stmt: Resource<types::Statement>,
+        &mut self, c: Resource<types::Connection>, s: Resource<types::Statement>,
     ) -> anyhow::Result<Vec<Row>> {
-        tracing::debug!("SqlView::query");
+        tracing::debug!("ReadWriteView::query");
 
         let rt = self.table();
 
-        let cnn = rt.get(&cnn)?;
-        let Some(db) = cnn.as_ref().as_any().downcast_ref::<Connection>() else {
+        let c = rt.get(&c)?;
+        let Some(db) = c.as_ref().as_any().downcast_ref::<Connection>() else {
             return Err(anyhow!("invalid connection"));
         };
 
-        let stmt = rt.get(&stmt)?;
-        let Some(query) = stmt.as_ref().as_any().downcast_ref::<Statement>() else {
+        let s = rt.get(&s)?;
+        let Some(stmt) = s.as_ref().as_any().downcast_ref::<Statement>() else {
             return Err(anyhow!("invalid connection"));
         };
-        println!("{query:?}");
+        println!("{}", stmt.query);
 
         let filter = mongodb::bson::doc! {};
         let md = db.database.collection::<Metadata>("issuer").find_one(Some(filter), None).await;
@@ -89,43 +91,72 @@ impl SqlView for State {
 
     // TODO: implement update_configuration
     async fn exec(
-        &mut self, _: Resource<types::Connection>, _: Resource<types::Statement>,
-    ) -> anyhow::Result<Vec<u32>> {
-        tracing::debug!("SqlView::exec");
-        todo!()
-    }
+        &mut self, c: Resource<types::Connection>, s: Resource<types::Statement>,
+    ) -> anyhow::Result<u32> {
+        tracing::debug!("ReadWriteView::exec");
+        let rt = self.table();
 
+        let c = rt.get(&c)?;
+        let Some(db) = c.as_ref().as_any().downcast_ref::<Connection>() else {
+            return Err(anyhow!("invalid connection"));
+        };
+
+        let s = rt.get(&s)?;
+        let Some(stmt) = s.as_ref().as_any().downcast_ref::<Statement>() else {
+            return Err(anyhow!("invalid connection"));
+        };
+        println!("{}", stmt.query);
+
+        let filter = mongodb::bson::doc! {};
+        let md = db.database.collection::<Metadata>("issuer").find_one(Some(filter), None).await;
+        println!("md: {:?}", md);
+
+        Ok(0)
+    }
+}
+
+// Implement the [`wasi_sql::ConnectionView`]` trait for State.
+#[async_trait::async_trait]
+impl ConnectionView for State {
     async fn open(&mut self, name: String) -> anyhow::Result<Resource<types::Connection>> {
-        tracing::debug!("SqlView::open");
+        tracing::debug!("ConnectionView::open");
         let db: wasi_sql::Connection = Box::new(Connection::new(name.clone()).await?);
         Ok(self.table().push(db)?)
     }
 
-    fn drop_connection(&mut self, rep: Resource<types::Connection>) -> anyhow::Result<()> {
-        tracing::debug!("SqlView::drop_connection");
+    fn drop(&mut self, rep: Resource<types::Connection>) -> anyhow::Result<()> {
+        tracing::debug!("ConnectionView::drop");
         self.table().delete(rep).map_or_else(|e| Err(anyhow!(e)), |_| Ok(()))
     }
+}
 
+// Implement the [`wasi_sql::StatementView`]` trait for State.
+#[async_trait::async_trait]
+impl StatementView for State {
     async fn prepare(
         &mut self, query: String, _params: Vec<String>,
     ) -> anyhow::Result<Resource<types::Statement>> {
-        tracing::debug!("SqlView::prepare");
+        tracing::debug!("StatementView::prepare");
         let stmt: wasi_sql::Statement = Box::new(Statement::new(query));
         Ok(self.table().push(stmt)?)
     }
 
-    fn drop_statement(&mut self, rep: Resource<types::Statement>) -> anyhow::Result<()> {
-        tracing::debug!("SqlView::drop_statement");
+    fn drop(&mut self, rep: Resource<types::Statement>) -> anyhow::Result<()> {
+        tracing::debug!("StatementView::drop");
         self.table().delete(rep).map_or_else(|e| Err(anyhow!(e)), |_| Ok(()))
     }
+}
 
+// Implement the [`wasi_sql::ErrorView`]` trait for State.
+#[async_trait::async_trait]
+impl ErrorView for State {
     async fn trace(&mut self, _self_: Resource<types::Error>) -> String {
-        tracing::debug!("SqlView::trace");
+        tracing::debug!("ErrorView::trace");
         todo!()
     }
 
-    fn drop_error(&mut self, _rep: Resource<types::Error>) {
-        tracing::debug!("SqlView::drop_error");
+    fn drop(&mut self, _rep: Resource<types::Error>) {
+        tracing::debug!("ErrorView::drop");
         todo!()
     }
 }
@@ -134,7 +165,6 @@ impl SqlView for State {
 // [`wasi_sql::RuntimeConnection`] trait used by the sql State.
 #[derive(Debug)]
 struct Connection {
-    name: String,
     database: mongodb::Database,
 }
 
@@ -146,7 +176,7 @@ impl Connection {
         let client = MONGODB.get().ok_or(anyhow!("MongoDB not connected"))?;
         let database = client.database(&name);
 
-        Ok(Self { name, database })
+        Ok(Self { database })
     }
 }
 
@@ -157,7 +187,7 @@ impl RuntimeConnection for Connection {
 }
 
 // // Statement holds a reference to the the NATS client. It is used to implement the
-// [`wasi_sql::RuntimeConnection`] trait used by the sql host.
+// [`wasi_sql::RuntimeStatement`] trait used by the sql host.
 #[derive(Debug)]
 struct Statement {
     query: String,
@@ -170,6 +200,7 @@ impl Statement {
         Self { query }
     }
 }
+
 impl RuntimeStatement for Statement {
     fn as_any(&self) -> &dyn Any {
         self
