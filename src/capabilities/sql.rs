@@ -7,9 +7,13 @@ use std::any::Any;
 use std::sync::OnceLock;
 
 use anyhow::anyhow;
+use bson::Document;
 use mongodb::options::ClientOptions;
 use mongodb::Client;
-use wasi_sql::bindings::wasi::sql::types::{self, Row};
+use sqlparser::ast;
+use sqlparser::dialect::GenericDialect;
+use sqlparser::parser::Parser;
+use wasi_sql::bindings::wasi::sql::types::{self, DataType, Row};
 use wasi_sql::bindings::Sql;
 use wasi_sql::readwrite::ReadWriteView;
 use wasi_sql::types::{ConnectionView, ErrorView, StatementView};
@@ -54,13 +58,6 @@ impl runtime::Capability for Capability {
     }
 }
 
-use serde::Deserialize;
-
-#[derive(Debug, Deserialize)]
-struct Metadata {
-    issuer: String,
-}
-
 // Implement the [`wasi_sql::ReadWriteView`]` trait for State.
 #[async_trait::async_trait]
 impl ReadWriteView for State {
@@ -69,24 +66,35 @@ impl ReadWriteView for State {
     ) -> anyhow::Result<Vec<Row>> {
         tracing::debug!("ReadWriteView::query");
 
-        let rt = self.table();
+        let table = self.table();
 
-        let c = rt.get(&c)?;
+        // connection
+        let c = table.get(&c)?;
         let Some(db) = c.as_ref().as_any().downcast_ref::<Connection>() else {
             return Err(anyhow!("invalid connection"));
         };
 
-        let s = rt.get(&s)?;
+        // sql statement
+        let s = table.get(&s)?;
         let Some(stmt) = s.as_ref().as_any().downcast_ref::<Statement>() else {
             return Err(anyhow!("invalid connection"));
         };
-        println!("{}", stmt.query);
 
-        let filter = mongodb::bson::doc! {};
-        let md = db.database.collection::<Metadata>("issuer").find_one(Some(filter), None).await;
-        println!("md: {:?}", md);
+        let Some(md) = db
+            .database
+            .collection::<Document>(&stmt.collection)
+            .find_one(stmt.filter.clone(), None)
+            .await?
+        else {
+            return Err(anyhow!("not found"));
+        };
 
-        Ok(vec![])
+        let row = Row {
+            field_name: String::from("issuer"),
+            value: DataType::Binary(serde_json::to_vec(&md)?),
+        };
+
+        Ok(vec![row])
     }
 
     // TODO: implement update_configuration
@@ -102,13 +110,12 @@ impl ReadWriteView for State {
         };
 
         let s = rt.get(&s)?;
-        let Some(stmt) = s.as_ref().as_any().downcast_ref::<Statement>() else {
+        let Some(_stmt) = s.as_ref().as_any().downcast_ref::<Statement>() else {
             return Err(anyhow!("invalid connection"));
         };
-        println!("{}", stmt.query);
 
         let filter = mongodb::bson::doc! {};
-        let md = db.database.collection::<Metadata>("issuer").find_one(Some(filter), None).await;
+        let md = db.database.collection::<Document>("issuer").find_one(Some(filter), None).await?;
         println!("md: {:?}", md);
 
         Ok(0)
@@ -137,7 +144,7 @@ impl StatementView for State {
         &mut self, query: String, _params: Vec<String>,
     ) -> anyhow::Result<Resource<types::Statement>> {
         tracing::debug!("StatementView::prepare");
-        let stmt: wasi_sql::Statement = Box::new(Statement::new(query));
+        let stmt: wasi_sql::Statement = Box::new(Statement::new(query)?);
         Ok(self.table().push(stmt)?)
     }
 
@@ -190,14 +197,39 @@ impl RuntimeConnection for Connection {
 // [`wasi_sql::RuntimeStatement`] trait used by the sql host.
 #[derive(Debug)]
 struct Statement {
-    query: String,
+    collection: String,
+    filter: Option<Document>,
 }
 
 impl Statement {
     // Create a new Statement for the specified NATS server.
-    fn new(query: String) -> Self {
+    fn new(sql: String) -> anyhow::Result<Self> {
         tracing::trace!("Statement::new");
-        Self { query }
+
+        let Ok(ast) = Parser::parse_sql(&GenericDialect {}, &sql) else {
+            return Err(anyhow!("invalid query"));
+        };
+
+        // get table name
+        let ast::Statement::Query(query) = &ast[0] else {
+            return Err(anyhow!("invalid query"));
+        };
+        let ast::SetExpr::Select(body) = query.body.as_ref() else {
+            return Err(anyhow!("invalid query"));
+        };
+        let ast::TableFactor::Table { name, .. } = &body.from[0].relation else {
+            return Err(anyhow!("invalid query"));
+        };
+        let Some(collection) = &name.0.last() else {
+            return Err(anyhow!("invalid query"));
+        };
+
+        // let filter = mongodb::bson::doc! {};
+
+        Ok(Self {
+            collection: collection.to_string(),
+            filter: None,
+        })
     }
 }
 

@@ -4,11 +4,13 @@ use anyhow::{anyhow, Result};
 use http::header::CONTENT_TYPE; // AUTHORIZATION
 use http::Uri;
 use serde_json::json;
+use vercre_core::metadata::Issuer as IssuerMetadata;
 use wasi::exports::http::incoming_handler::Guest;
 use wasi::http::types::{
     Fields, IncomingRequest, OutgoingBody, OutgoingResponse, ResponseOutparam,
 };
 use wasi_bindings::sql::readwrite::{self, Connection, Statement};
+use wasi_bindings::sql::types::DataType;
 
 struct HttpGuest;
 
@@ -57,9 +59,15 @@ fn hello(request: &Request) -> Result<Vec<u8>> {
     println!("json: {:?}", req);
 
     let cnn = Connection::open("metadata").unwrap();
-    let query = Statement::prepare("SELECT * FROM metadata", &[]).unwrap();
+    let query = Statement::prepare("SELECT * FROM issuer", &[]).unwrap();
     let res = readwrite::query(&cnn, &query).unwrap();
-    println!("found val: {:?}", res);
+    let row = res[0].clone();
+
+    let DataType::Binary(md) = row.value else {
+        return Err(anyhow!("invalid row value"));
+    };
+    let md: IssuerMetadata = serde_json::from_slice(&md)?;
+    println!("md: {:?}", md);
 
     let resp = json!({
         "message": "Hello, World!"

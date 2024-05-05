@@ -6,9 +6,7 @@
 use base64ct::{Base64UrlUnpadded, Encoding};
 use ecdsa::signature::Signer as _;
 use k256::Secp256k1;
-use wasi_signature::bindings::wasi::signature::types::{
-    Algorithm, SigningSuite,
-};
+use wasi_signature::bindings::wasi::signature::types::{Algorithm, SigningSuite};
 use wasi_signature::bindings::Signature;
 use wasi_signature::{self, SignatureView};
 use wasmtime::component::Linker;

@@ -18,7 +18,7 @@ pub trait ConnectionView: WasiView + Send {
     fn drop(&mut self, rep: Resource<Connection>) -> anyhow::Result<()>;
 }
 
-/// Implement the [`types::HostConnection`]` trait for T (any concrete type that 
+/// Implement the [`types::HostConnection`]` trait for T (any concrete type that
 /// implements ConnectionView). Typically T is the runtime State object.
 #[async_trait::async_trait]
 impl<T: ConnectionView> types::HostConnection for T {
@@ -45,7 +45,7 @@ pub trait StatementView: WasiView + Send {
     fn drop(&mut self, rep: Resource<Statement>) -> anyhow::Result<()>;
 }
 
-/// Implement the [`types::HostStatement`]` trait for T (any concrete type that 
+/// Implement the [`types::HostStatement`]` trait for T (any concrete type that
 /// implements StatementView). Typically T is the runtime State object.
 #[async_trait::async_trait]
 impl<T: StatementView> types::HostStatement for T {
@@ -70,7 +70,7 @@ pub trait ErrorView: WasiView + Send {
     fn drop(&mut self, rep: Resource<Error>);
 }
 
-/// Implement the [`types::HostError`]` trait for T (any concrete type that 
+/// Implement the [`types::HostError`]` trait for T (any concrete type that
 /// implements ErrorView). Typically T is the runtime State object.
 #[async_trait::async_trait]
 impl<T: ErrorView> types::HostError for T {
