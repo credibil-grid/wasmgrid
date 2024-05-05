@@ -15,6 +15,9 @@ impl<T: ConnectionView + StatementView + ErrorView> types::Host for T {}
 pub trait ConnectionView: WasiView + Send {
     async fn open(&mut self, name: String) -> anyhow::Result<Resource<Connection>>;
 
+    /// Drop the connection.
+    /// 
+    /// # Errors
     fn drop(&mut self, rep: Resource<Connection>) -> anyhow::Result<()>;
 }
 
@@ -26,7 +29,7 @@ impl<T: ConnectionView> types::HostConnection for T {
         &mut self, _name: String,
     ) -> wasmtime::Result<Result<Resource<Connection>, Resource<Error>>> {
         tracing::debug!("Host::open");
-        T::open(self, _name).await.map(|r| Ok(r))
+        T::open(self, _name).await.map(Ok)
     }
 
     fn drop(&mut self, rep: Resource<Connection>) -> wasmtime::Result<()> {
@@ -42,6 +45,9 @@ pub trait StatementView: WasiView + Send {
         &mut self, query: String, params: Vec<String>,
     ) -> anyhow::Result<Resource<Statement>>;
 
+    /// Drop the statement.
+    ///
+    /// # Errors
     fn drop(&mut self, rep: Resource<Statement>) -> anyhow::Result<()>;
 }
 

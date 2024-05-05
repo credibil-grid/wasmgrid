@@ -24,7 +24,7 @@ struct Args {
     #[arg(long, default_value = "demo.nats.io")]
     nats_addr: String,
 
-    /// The MongoDB connection string.
+    /// The `MongoDB` connection string.
     #[arg(
         long,
         default_value = "mongodb+srv://oidc-user:fCNpCf-PJNuum9A_7CkFGa-wqsnUUH@cluster0.uqnlxl8.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"

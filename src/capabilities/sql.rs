@@ -126,7 +126,7 @@ impl ReadWriteView for State {
 impl ConnectionView for State {
     async fn open(&mut self, name: String) -> anyhow::Result<Resource<types::Connection>> {
         tracing::debug!("ConnectionView::open");
-        let db: wasi_sql::Connection = Box::new(Connection::new(name.clone()).await?);
+        let db: wasi_sql::Connection = Box::new(Connection::new(&name)?);
         Ok(self.table().push(db)?)
     }
 
@@ -179,11 +179,11 @@ struct Connection {
 
 impl Connection {
     // Create a new Connection for the specified NATS server.
-    async fn new(name: String) -> anyhow::Result<Self> {
+    fn new(name: &str) -> anyhow::Result<Self> {
         tracing::trace!("Connection::new {name}");
 
-        let client = MONGODB.get().ok_or(anyhow!("MongoDB not connected"))?;
-        let database = client.database(&name);
+        let client = MONGODB.get().ok_or_else(|| anyhow!("MongoDB not connected"))?;
+        let database = client.database(name);
 
         Ok(Self { database })
     }
@@ -237,16 +237,20 @@ impl StatementBuilder {
             return Err(anyhow!("invalid query"));
         };
 
-        // get table name
+        // first query
         let ast::Statement::Query(query) = &ast[0] else {
             return Err(anyhow!("invalid query"));
         };
-        let ast::SetExpr::Select(body) = query.body.as_ref() else {
+        // select statement
+        let ast::SetExpr::Select(select) = query.body.as_ref() else {
             return Err(anyhow!("invalid query"));
         };
-        let ast::TableFactor::Table { name, .. } = &body.from[0].relation else {
+        // table
+        let ast::TableFactor::Table { name, .. } = &select.from[0].relation else {
             return Err(anyhow!("invalid query"));
         };
+
+        // collection is last element in the name
         let Some(collection) = &name.0.last() else {
             return Err(anyhow!("invalid query"));
         };
