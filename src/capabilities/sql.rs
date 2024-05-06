@@ -220,7 +220,7 @@ impl Statement {
             return Err(anyhow!("invalid query: cannot parse {sql}"));
         };
 
-        if params.is_empty()  {
+        if params.is_empty() {
             return Err(anyhow!("invalid query: expected a parameter"));
         }
 
