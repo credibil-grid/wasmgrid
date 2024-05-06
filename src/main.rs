@@ -13,6 +13,7 @@ use tracing_subscriber::{EnvFilter, FmtSubscriber};
 use crate::capabilities::{http, keyvalue, messaging, signature, sql};
 
 const DEF_HTTP_ADDR: &str = "0.0.0.0:8080";
+const DEF_MGO_CNN: &str = "mongodb://localhost:27017";
 const DEF_NATS_CNN: &str = "demo.nats.io";
 
 #[derive(Parser, Debug)]
@@ -40,12 +41,12 @@ pub async fn main() -> wasmtime::Result<()> {
     // env vars
     if cfg!(debug_assertions) {
         dotenv().ok();
-        // env::set_var("RUST_LOG", "wasmgrid=debug,http_sql=debug");
+        env::set_var("RUST_LOG", "wasmgrid=debug,http_sql=debug");
     }
 
     let http_addr = env::var("HTTP_ADDR").unwrap_or_else(|_| DEF_HTTP_ADDR.to_string());
     let nats_cnn = env::var("NATS_CNN").unwrap_or_else(|_| DEF_NATS_CNN.to_string());
-    let mgo_cnn = env::var("MGO_CNN").expect("MGO_CNN should be set");
+    let mgo_cnn = env::var("MGO_CNN").unwrap_or_else(|_| DEF_MGO_CNN.to_string());
 
     // tracing
     let subscriber = FmtSubscriber::builder()

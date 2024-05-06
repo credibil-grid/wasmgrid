@@ -66,6 +66,8 @@ impl Builder {
 
     /// Run the wasm component with the specified capabilities.
     pub fn run(self, wasm: String) -> anyhow::Result<()> {
+        tracing::debug!("starting runtime");
+
         let mut config = Config::new();
         config.async_support(true);
         let engine = Engine::new(&config)?;
@@ -85,6 +87,7 @@ impl Builder {
         let runtime = Runtime { engine, instance_pre };
 
         // start capabilities
+        tracing::debug!("starting capabilites");
         for cap in self.capabilities {
             // check whether capability is required by the wasm component
             let component = runtime.instance_pre().component().component_type();
@@ -99,7 +102,9 @@ impl Builder {
 
             // start capability
             let runtime = runtime.clone();
+            let namespace = namespace.to_string();
             tokio::spawn(async move {
+                tracing::debug!("{namespace} starting");
                 if let Err(e) = cap.run(runtime).await {
                     tracing::error!("error starting capability: {e}");
                 }
