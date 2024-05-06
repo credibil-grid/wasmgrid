@@ -217,63 +217,20 @@ impl Statement {
         });
 
         let Some(caps) = re.captures(sql) else {
-            return Err(anyhow!("invalid query: {sql}"));
+            return Err(anyhow!("invalid query: cannot parse {sql}"));
         };
 
-        if params.len() != 1 {
-            return Err(anyhow!("invalid query: expected 1 parameter"));
+        if params.is_empty()  {
+            return Err(anyhow!("invalid query: expected a parameter"));
         }
 
-        // build a simple filter
+        // build simple filter
         let filter = Some(mongodb::bson::doc! {&caps["field"]: &params[0]});
 
         Ok(Self {
             collection: String::from(&caps["table"]),
             filter,
         })
-
-        // let mut results = vec![];
-        // for (_, [path, lineno, line]) in re.captures_iter(sql).map(|c| c.extract()) {
-        //     results.push((path, lineno.parse::<u64>()?, line));
-        // }
-
-        // SELECT \* FROM ([\w]+) WHERE ([\w]+) = '?'
-
-        // let Ok(ast) = Parser::parse_sql(&GenericDialect {}, sql) else {
-        //     return Err(anyhow!("invalid query"));
-        // };
-
-        // // first query
-        // let ast::Statement::Query(query) = &ast[0] else {
-        //     return Err(anyhow!("invalid query at least 1 statement"));
-        // };
-        // // select statement
-        // let ast::SetExpr::Select(select) = query.body.as_ref() else {
-        //     return Err(anyhow!("invalid query: expected SELECT statement"));
-        // };
-        // // table
-        // let ast::TableFactor::Table { name, .. } = &select.from[0].relation else {
-        //     return Err(anyhow!("invalid query: expected table name"));
-        // };
-
-        // // collection is last element in the name
-        // let Some(collection) = &name.0.last() else {
-        //     return Err(anyhow!("invalid query: expected table name"));
-        // };
-
-        // // where clause
-        // let Some(expr) = &select.selection else {
-        //     return Err(anyhow!("invalid query: expected WHERE clause"));
-        // };
-        // let ast::Expr::BinaryOp { left, .. } = expr else {
-        //     return Err(anyhow!("invalid query: expected WHERE in the form x = ?"));
-        // };
-        // let ast::Expr::Identifier(lhs) = left.as_ref() else {
-        //     return Err(anyhow!("invalid query: expected identifier"));
-        // };
-        // if params.len() != 1 {
-        //     return Err(anyhow!("invalid query: expected 1 parameter"));
-        // }
     }
 }
 
