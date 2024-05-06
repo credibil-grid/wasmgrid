@@ -31,6 +31,7 @@ k256 = "0.13.3"
 mongodb = "2.8.2"
 # serde = { version = "1.0.130", features = ["derive"] }
 dotenv = "0.15.0"
+regex = "1.10.4"
 serde_json = "1.0.116"
 sqlparser = "0.46.0"
 tokio = { version = "1.37.0", features = ["signal"] }
@@ -43,7 +44,6 @@ wasi-sql = { path = "crates/wasi-sql" }
 wasmtime.workspace = true
 wasmtime-wasi.workspace = true
 wasmtime-wasi-http = "20.0.1"
-regex = "1.10.4"
 
 [profile.release]
 lto = true

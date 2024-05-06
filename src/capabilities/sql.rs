@@ -227,7 +227,7 @@ impl Statement {
         // build a simple filter
         let filter = Some(mongodb::bson::doc! {&caps["field"]: &params[0]});
 
-        Ok(Statement {
+        Ok(Self {
             collection: String::from(&caps["table"]),
             filter,
         })
