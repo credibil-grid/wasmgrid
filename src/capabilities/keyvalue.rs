@@ -51,6 +51,19 @@ impl runtime::Capability for Capability {
     }
 }
 
+impl State {
+    // Get underlying JetStream Store from bucket Resource.
+    fn jetstream(
+        &mut self, bucket: &Resource<wasi_keyvalue::Bucket>,
+    ) -> anyhow::Result<jetstream::kv::Store> {
+        let bucket = self.table().get_mut(bucket)?;
+        let Some(bkt) = bucket.as_ref().as_any().downcast_ref::<Bucket>() else {
+            return Err(anyhow!("invalid JetStream store"));
+        };
+        Ok(bkt.0.clone())
+    }
+}
+
 // Implement the [`wasi_keyvalue::KeyValueView`]` trait for State.
 #[async_trait::async_trait]
 impl StoreView for State {
@@ -58,6 +71,8 @@ impl StoreView for State {
     async fn open(
         &mut self, identifier: String,
     ) -> anyhow::Result<Resource<wasi_keyvalue::Bucket>> {
+        tracing::debug!("StoreView::open {identifier}");
+        
         let Some(jetstream) = JETSTREAM.get() else {
             return Err(anyhow!("JetStream not initialized"));
         };
@@ -75,72 +90,49 @@ impl BucketView for State {
     async fn get(
         &mut self, bucket: Resource<wasi_keyvalue::Bucket>, key: String,
     ) -> anyhow::Result<Option<Vec<u8>>> {
-        tracing::debug!("RuntimeBucket::get {key}");
+        tracing::debug!("BucketView::get {key}");
 
-        let bucket = self.table().get_mut(&bucket)?;
-        let Some(bkt) = bucket.as_ref().as_any().downcast_ref::<Bucket>() else {
-            return Err(anyhow!("invalid connection"));
-        };
+        let jetstream = self.jetstream(&bucket)?;
 
-        Ok(bkt.inner.get(key).await?.map(|v| v.to_vec()))
+        Ok(jetstream.get(key).await?.map(|v| v.to_vec()))
     }
 
     async fn set(
         &mut self, bucket: Resource<wasi_keyvalue::Bucket>, key: String, value: Vec<u8>,
     ) -> anyhow::Result<()> {
-        tracing::debug!("RuntimeBucket::set {key}");
-
-        let bucket = self.table().get_mut(&bucket)?;
-        let Some(bkt) = bucket.as_ref().as_any().downcast_ref::<Bucket>() else {
-            return Err(anyhow!("invalid connection"));
-        };
-
-        Ok(bkt.inner.put(key, Bytes::from(value)).await.map(|_| ())?)
+        tracing::debug!("BucketView::set {key}");
+        let jetstream = self.jetstream(&bucket)?;
+        Ok(jetstream.put(key, Bytes::from(value)).await.map(|_| ())?)
     }
 
     async fn delete(
         &mut self, bucket: Resource<wasi_keyvalue::Bucket>, key: String,
     ) -> anyhow::Result<()> {
-        tracing::debug!("RuntimeBucket::delete {key}");
-
-        let bucket = self.table().get_mut(&bucket)?;
-        let Some(bkt) = bucket.as_ref().as_any().downcast_ref::<Bucket>() else {
-            return Err(anyhow!("invalid connection"));
-        };
-
-        Ok(bkt.inner.delete(key).await?)
+        tracing::debug!("BucketView::delete {key}");
+        let jetstream = self.jetstream(&bucket)?;
+        Ok(jetstream.delete(key).await?)
     }
 
     async fn exists(
         &mut self, bucket: Resource<wasi_keyvalue::Bucket>, key: String,
     ) -> anyhow::Result<bool> {
-        tracing::debug!("RuntimeBucket::exists {key}");
-
-        let bucket = self.table().get_mut(&bucket)?;
-        let Some(bkt) = bucket.as_ref().as_any().downcast_ref::<Bucket>() else {
-            return Err(anyhow!("invalid connection"));
-        };
-
-        Ok(bkt.inner.get(key).await?.is_some())
+        tracing::debug!("BucketView::exists {key}");
+        let jetstream = self.jetstream(&bucket)?;
+        Ok(jetstream.get(key).await?.is_some())
     }
 
     async fn list_keys(
         &mut self, bucket: Resource<wasi_keyvalue::Bucket>, cursor: Option<u64>,
     ) -> anyhow::Result<KeyResponse> {
-        tracing::debug!("RuntimeBucket::list_keys {cursor:?}");
-
-        let bucket = self.table().get_mut(&bucket)?;
-        let Some(bkt) = bucket.as_ref().as_any().downcast_ref::<Bucket>() else {
-            return Err(anyhow!("invalid connection"));
-        };
-
-        let keys = bkt.inner.keys().await?.try_collect::<Vec<String>>().await?;
+        tracing::debug!("BucketView::list_keys {cursor:?}");
+        let jetstream = self.jetstream(&bucket)?;
+        let keys = jetstream.keys().await?.try_collect::<Vec<String>>().await?;
         Ok(KeyResponse { keys, cursor })
     }
 
     // LATER: Can a JetStream bucket be closed?
     fn drop(&mut self, _: Resource<wasi_keyvalue::Bucket>) -> anyhow::Result<()> {
-        tracing::debug!("RuntimeBucket::drop");
+        tracing::debug!("BucketView::drop");
         Ok(())
     }
 }
@@ -150,13 +142,10 @@ impl AtomicsView for State {
     async fn increment(
         &mut self, bucket: Resource<wasi_keyvalue::Bucket>, key: String, delta: u64,
     ) -> anyhow::Result<u64> {
-        tracing::debug!("RuntimeBucket::increment {key}, {delta}");
+        tracing::debug!("AtomicsView::increment {key}, {delta}");
 
-        let bucket = self.table().get_mut(&bucket)?;
-        let Some(bkt) = bucket.as_ref().as_any().downcast_ref::<Bucket>() else {
-            return Err(anyhow!("invalid connection"));
-        };
-        let value = bkt.inner.get(key.clone()).await?.unwrap_or_default();
+        let jetstream = self.jetstream(&bucket)?;
+        let value = jetstream.get(key.clone()).await?.unwrap_or_default();
 
         // increment value by delta
         let slice: &[u8] = &value;
@@ -165,7 +154,7 @@ impl AtomicsView for State {
         buf[..len].copy_from_slice(&slice[..len]);
         let inc = u64::from_be_bytes(buf) + delta;
 
-        bkt.inner.put(key, Bytes::from((inc).to_be_bytes().to_vec())).await?;
+        jetstream.put(key, Bytes::from((inc).to_be_bytes().to_vec())).await?;
 
         Ok(inc)
     }
@@ -176,17 +165,13 @@ impl BatchView for State {
     async fn get_many(
         &mut self, bucket: Resource<wasi_keyvalue::Bucket>, keys: Vec<String>,
     ) -> anyhow::Result<Vec<Option<(String, Vec<u8>)>>> {
-        tracing::debug!("RuntimeBucket::get_many {keys:?}");
+        tracing::debug!("BatchView::get_many {keys:?}");
 
-        // get concrete bucket impl
-        let bucket = self.table().get_mut(&bucket)?;
-        let Some(bkt) = bucket.as_ref().as_any().downcast_ref::<Bucket>() else {
-            return Err(anyhow!("invalid connection"));
-        };
+        let jetstream = self.jetstream(&bucket)?;
 
         let mut results = Vec::new();
         for key in keys {
-            let value = bkt.inner.get(&key).await?;
+            let value = jetstream.get(&key).await?;
             if let Some(value) = value {
                 results.push(Some((key, value.to_vec())));
             }
@@ -198,34 +183,24 @@ impl BatchView for State {
     async fn set_many(
         &mut self, bucket: Resource<wasi_keyvalue::Bucket>, key_values: Vec<(String, Vec<u8>)>,
     ) -> anyhow::Result<()> {
-        tracing::debug!("RuntimeBucket::set_many {key_values:?}");
+        tracing::debug!("BatchView::set_many {key_values:?}");
 
-        // get concrete bucket impl
-        let bucket = self.table().get_mut(&bucket)?;
-        let Some(bkt) = bucket.as_ref().as_any().downcast_ref::<Bucket>() else {
-            return Err(anyhow!("invalid connection"));
-        };
-
+        let jetstream = self.jetstream(&bucket)?;
         for (key, value) in key_values {
-            bkt.inner.put(key, Bytes::from(value)).await?;
+            jetstream.put(key, Bytes::from(value)).await?;
         }
-        
+
         Ok(())
     }
 
     async fn delete_many(
         &mut self, bucket: Resource<wasi_keyvalue::Bucket>, keys: Vec<String>,
     ) -> anyhow::Result<()> {
-        tracing::debug!("RuntimeBucket::delete_many {keys:?}");
+        tracing::debug!("BatchView::delete_many {keys:?}");
 
-        // get concrete bucket impl
-        let bucket = self.table().get_mut(&bucket)?;
-        let Some(bkt) = bucket.as_ref().as_any().downcast_ref::<Bucket>() else {
-            return Err(anyhow!("invalid connection"));
-        };
-
+        let jetstream = self.jetstream(&bucket)?;
         for key in keys {
-            bkt.inner.delete(key).await?;
+            jetstream.delete(key).await?;
         }
 
         Ok(())
@@ -234,9 +209,7 @@ impl BatchView for State {
 
 // Bucket holds a reference to the the NATS bucket. It is used to implement the
 // [`wasi_keyvalue::RuntimeBucket`] trait used by the messaging State.
-struct Bucket {
-    inner: jetstream::kv::Store,
-}
+struct Bucket(jetstream::kv::Store);
 
 impl Bucket {
     // Create a new Bucket for the specified NATS server.
@@ -249,7 +222,7 @@ impl Bucket {
             })
             .await?;
 
-        Ok(Self { inner })
+        Ok(Self(inner))
     }
 }
 

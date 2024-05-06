@@ -35,10 +35,14 @@ pub trait BucketView: WasiView + Send {
 
     async fn exists(&mut self, bucket: Resource<Bucket>, key: String) -> anyhow::Result<bool>;
 
+    /// List keys in the bucket.
     async fn list_keys(
         &mut self, bucket: Resource<Bucket>, cursor: Option<u64>,
     ) -> anyhow::Result<KeyResponse>;
 
+    /// Drop the bucket and release any resources associated with it.
+    /// 
+    /// # Errors
     fn drop(&mut self, bucket: Resource<Bucket>) -> anyhow::Result<()>;
 }
 
@@ -81,6 +85,6 @@ impl<T: BucketView> store::HostBucket for T {
 
     fn drop(&mut self, bucket: Resource<Bucket>) -> Result<(), wasmtime::Error> {
         tracing::debug!("HostBucket::close");
-        Ok(T::drop(self, bucket)?)
+        T::drop(self, bucket)
     }
 }

@@ -6,6 +6,7 @@ use crate::bindings::wasi::keyvalue::store::{self, Bucket};
 
 /// AtomicsView is implemented by the runtime to support atomics in the runtime
 /// keyvalue implementation.
+#[allow(clippy::module_name_repetitions)]
 #[async_trait::async_trait]
 pub trait BatchView: WasiView + Send {
     async fn get_many(

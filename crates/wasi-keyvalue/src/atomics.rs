@@ -6,6 +6,7 @@ use crate::bindings::wasi::keyvalue::store::Error;
 
 /// AtomicsView is implemented by the runtime to support atomics in the runtime
 /// keyvalue implementation.
+#[allow(clippy::module_name_repetitions)]
 #[async_trait::async_trait]
 pub trait AtomicsView: WasiView + Send {
     async fn increment(
