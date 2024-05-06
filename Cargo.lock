@@ -3319,6 +3319,7 @@ dependencies = [
  "hyper",
  "k256",
  "mongodb",
+ "regex",
  "serde_json",
  "sqlparser",
  "tokio",

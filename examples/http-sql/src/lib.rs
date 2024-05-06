@@ -64,7 +64,11 @@ fn hello(request: &Request) -> Result<Vec<u8>> {
     tracing::debug!("json: {:?}", req);
 
     let cnn = Connection::open("metadata").unwrap();
-    let query = Statement::prepare("SELECT * FROM issuer", &[]).unwrap();
+    let query = Statement::prepare(
+        "SELECT * FROM issuer WHERE credential_issuer = '?'",
+        &["issuer".to_string()],
+    )
+    .unwrap();
     let res = readwrite::query(&cnn, &query).unwrap();
     let row = res[0].clone();
 

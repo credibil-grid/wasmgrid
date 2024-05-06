@@ -1,28 +1,47 @@
-Query(Query { 
+Query { 
     with: None, 
     body: Select(Select { 
         distinct: None, 
         top: None, 
         projection: [
-            Wildcard(WildcardAdditionalOptions { 
-                opt_ilike: None, 
-                opt_exclude: None,
-                opt_except: None,
-                opt_rename: None, 
-                opt_replace: None
-            })
-        ],
+            UnnamedExpr(Identifier(Ident { 
+                value: "a", 
+                quote_style: None
+            })), 
+            UnnamedExpr(Identifier(Ident { 
+                value: "b", 
+                quote_style: None
+            })), 
+            UnnamedExpr(Value(Number("123", false))), 
+            UnnamedExpr(Function(Function { 
+                name: ObjectName([Ident { 
+                    value: "myfunc", 
+                    quote_style: None
+                }]), 
+                args: List(FunctionArgumentList { 
+                    duplicate_treatment: 
+                    None, 
+                    args: [
+                        Unnamed(Expr(Identifier(Ident { 
+                            value: "b", 
+                            quote_style: None
+                        })))
+                    ], 
+                    clauses: []
+                }), 
+                filter: None, 
+                null_treatment: None, 
+                over: None, 
+                within_group: []
+            }))
+        ], 
         into: None, 
         from: [
             TableWithJoins { 
                 relation: Table { 
                     name: ObjectName([
                         Ident { 
-                            value: "metadata", 
-                            quote_style: None
-                        },
-                        Ident { 
-                            value: "issuer", 
+                            value: "table_1", 
                             quote_style: None
                         }
                     ]), 
@@ -36,7 +55,27 @@ Query(Query {
             }
         ], 
         lateral_views: [], 
-        selection: None, 
+        selection: Some(BinaryOp { 
+            left: BinaryOp { 
+                left: Identifier(Ident { 
+                    value: "a", 
+                    quote_style: None
+                }), 
+                op: Gt, right: Identifier(Ident { 
+                    value: "b", 
+                    quote_style: None
+                })
+            }, 
+            op: And, 
+            right: BinaryOp { 
+                left: Identifier(Ident { 
+                    value: "b", 
+                    quote_style: None
+                }), 
+                op: Lt, r
+                ight: Value(Number("100", false))
+            }
+        }), 
         group_by: Expressions([]), 
         cluster_by: [], 
         distribute_by: [], 
@@ -48,11 +87,28 @@ Query(Query {
         value_table_mode: None, 
         connect_by: None
     }), 
-    order_by: [], 
+    order_by: [
+        OrderByExpr { 
+            expr: Identifier(Ident { 
+                value: "a", 
+                quote_style: None
+            }), 
+            asc: Some(false), 
+            nulls_first: None
+        }, 
+        OrderByExpr { 
+            expr: Identifier(Ident { 
+                value: "b",
+                quote_style: None
+            }), 
+            asc: None, 
+            nulls_first: None
+        }
+    ], 
     limit: None, 
     limit_by: [], 
     offset: None, 
     fetch: None, 
     locks: [], 
     for_clause: None
-})
+}

@@ -10,9 +10,10 @@ use anyhow::anyhow;
 use bson::Document;
 use mongodb::options::ClientOptions;
 use mongodb::Client;
-use sqlparser::ast;
-use sqlparser::dialect::GenericDialect;
-use sqlparser::parser::Parser;
+use regex::Regex;
+// use sqlparser::ast;
+// use sqlparser::dialect::GenericDialect;
+// use sqlparser::parser::Parser;
 use wasi_sql::bindings::wasi::sql::types::{self, DataType, Row};
 use wasi_sql::bindings::Sql;
 use wasi_sql::readwrite::ReadWriteView;
@@ -140,11 +141,11 @@ impl ConnectionView for State {
 #[async_trait::async_trait]
 impl StatementView for State {
     async fn prepare(
-        &mut self, query: String, _params: Vec<String>,
+        &mut self, query: String, params: Vec<String>,
     ) -> anyhow::Result<Resource<types::Statement>> {
         tracing::debug!("StatementView::prepare");
 
-        let stmt = Statement::builder().sql(query).build()?;
+        let stmt = Statement::parse(&query, &params)?;
         let stmt: wasi_sql::Statement = Box::new(stmt);
 
         Ok(self.table().push(stmt)?)
@@ -203,64 +204,76 @@ struct Statement {
     filter: Option<Document>,
 }
 
+static SQL_REGEX: OnceLock<Regex> = OnceLock::new();
+
 impl Statement {
-    // Create a new Statement for the specified NATS server.
-    fn builder() -> StatementBuilder {
-        tracing::trace!("Statement::new");
-        StatementBuilder::new()
-    }
-}
+    // Parse the SQL query and return a Statement.
+    fn parse(sql: &str, params: &[String]) -> anyhow::Result<Self> {
+        tracing::trace!("Statement::parse");
 
-#[derive(Default)]
-struct StatementBuilder {
-    // capabilities: Vec<Box<dyn Capability>>,
-    sql: String,
-}
+        let re = SQL_REGEX.get_or_init(|| {
+            Regex::new(r"SELECT \* FROM (?<table>\w+) WHERE (?<field>\w+) = '?'")
+                .expect("regex should parse")
+        });
 
-impl StatementBuilder {
-    /// Create a new Builder instance.
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// Set the sql statement.
-    pub fn sql(mut self, sql: String) -> Self {
-        self.sql = sql;
-        self
-    }
-
-    /// Run the wasm component with the specified capabilities.
-    pub fn build(self) -> anyhow::Result<Statement> {
-        tracing::trace!("StatementBuilder::build");
-
-        let Ok(ast) = Parser::parse_sql(&GenericDialect {}, &self.sql) else {
-            return Err(anyhow!("invalid query"));
+        let Some(caps) = re.captures(sql) else {
+            return Err(anyhow!("invalid query: {sql}"));
         };
 
-        // first query
-        let ast::Statement::Query(query) = &ast[0] else {
-            return Err(anyhow!("invalid query"));
-        };
-        // select statement
-        let ast::SetExpr::Select(select) = query.body.as_ref() else {
-            return Err(anyhow!("invalid query"));
-        };
-        // table
-        let ast::TableFactor::Table { name, .. } = &select.from[0].relation else {
-            return Err(anyhow!("invalid query"));
-        };
+        if params.len() != 1 {
+            return Err(anyhow!("invalid query: expected 1 parameter"));
+        }
 
-        // collection is last element in the name
-        let Some(collection) = &name.0.last() else {
-            return Err(anyhow!("invalid query"));
-        };
-
-        // let filter = mongodb::bson::doc! {};
+        // build a simple filter
+        let filter = Some(mongodb::bson::doc! {&caps["field"]: &params[0]});
 
         Ok(Statement {
-            collection: collection.to_string(),
-            filter: None,
+            collection: String::from(&caps["table"]),
+            filter,
         })
+
+        // let mut results = vec![];
+        // for (_, [path, lineno, line]) in re.captures_iter(sql).map(|c| c.extract()) {
+        //     results.push((path, lineno.parse::<u64>()?, line));
+        // }
+
+        // SELECT \* FROM ([\w]+) WHERE ([\w]+) = '?'
+
+        // let Ok(ast) = Parser::parse_sql(&GenericDialect {}, sql) else {
+        //     return Err(anyhow!("invalid query"));
+        // };
+
+        // // first query
+        // let ast::Statement::Query(query) = &ast[0] else {
+        //     return Err(anyhow!("invalid query at least 1 statement"));
+        // };
+        // // select statement
+        // let ast::SetExpr::Select(select) = query.body.as_ref() else {
+        //     return Err(anyhow!("invalid query: expected SELECT statement"));
+        // };
+        // // table
+        // let ast::TableFactor::Table { name, .. } = &select.from[0].relation else {
+        //     return Err(anyhow!("invalid query: expected table name"));
+        // };
+
+        // // collection is last element in the name
+        // let Some(collection) = &name.0.last() else {
+        //     return Err(anyhow!("invalid query: expected table name"));
+        // };
+
+        // // where clause
+        // let Some(expr) = &select.selection else {
+        //     return Err(anyhow!("invalid query: expected WHERE clause"));
+        // };
+        // let ast::Expr::BinaryOp { left, .. } = expr else {
+        //     return Err(anyhow!("invalid query: expected WHERE in the form x = ?"));
+        // };
+        // let ast::Expr::Identifier(lhs) = left.as_ref() else {
+        //     return Err(anyhow!("invalid query: expected identifier"));
+        // };
+        // if params.len() != 1 {
+        //     return Err(anyhow!("invalid query: expected 1 parameter"));
+        // }
     }
 }
 

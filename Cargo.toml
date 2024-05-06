@@ -43,6 +43,7 @@ wasi-sql = { path = "crates/wasi-sql" }
 wasmtime.workspace = true
 wasmtime-wasi.workspace = true
 wasmtime-wasi-http = "20.0.1"
+regex = "1.10.4"
 
 [profile.release]
 lto = true
