@@ -4,16 +4,13 @@
 //! (<https://github.com/WebAssembly/wasi-sql>).
 
 use std::any::Any;
-use std::sync::OnceLock;
+use std::sync::{LazyLock, OnceLock};
 
 use anyhow::anyhow;
 use bson::Document;
 use mongodb::options::ClientOptions;
 use mongodb::Client;
 use regex::Regex;
-// use sqlparser::ast;
-// use sqlparser::dialect::GenericDialect;
-// use sqlparser::parser::Parser;
 use wasi_sql::bindings::wasi::sql::types::{self, DataType, Row};
 use wasi_sql::bindings::Sql;
 use wasi_sql::readwrite::ReadWriteView;
@@ -204,19 +201,17 @@ struct Statement {
     filter: Option<Document>,
 }
 
-static SQL_REGEX: OnceLock<Regex> = OnceLock::new();
+static SQL_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"SELECT \* FROM (?<table>\w+) WHERE (?<field>\w+) = '?'")
+        .expect("regex should parse")
+});
 
 impl Statement {
     // Parse the SQL query and return a Statement.
     fn parse(sql: &str, params: &[String]) -> anyhow::Result<Self> {
         tracing::trace!("Statement::parse");
 
-        let re = SQL_REGEX.get_or_init(|| {
-            Regex::new(r"SELECT \* FROM (?<table>\w+) WHERE (?<field>\w+) = '?'")
-                .expect("regex should parse")
-        });
-
-        let Some(caps) = re.captures(sql) else {
+        let Some(caps) = SQL_REGEX.captures(sql) else {
             return Err(anyhow!("invalid query: cannot parse {sql}"));
         };
 
