@@ -106,7 +106,7 @@ impl Builder {
             tokio::spawn(async move {
                 tracing::debug!("{namespace} starting");
                 if let Err(e) = cap.run(runtime).await {
-                    tracing::error!("error starting capability: {e}");
+                    tracing::error!("error starting {namespace}: {e}");
                 }
             });
         }
