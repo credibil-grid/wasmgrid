@@ -41,7 +41,7 @@ pub trait BucketView: WasiView + Send {
     ) -> anyhow::Result<KeyResponse>;
 
     /// Drop the bucket and release any resources associated with it.
-    /// 
+    ///
     /// # Errors
     fn drop(&mut self, bucket: Resource<Bucket>) -> anyhow::Result<()>;
 }

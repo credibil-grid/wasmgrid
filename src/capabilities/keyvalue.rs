@@ -72,7 +72,7 @@ impl StoreView for State {
         &mut self, identifier: String,
     ) -> anyhow::Result<Resource<wasi_keyvalue::Bucket>> {
         tracing::debug!("StoreView::open {identifier}");
-        
+
         let Some(jetstream) = JETSTREAM.get() else {
             return Err(anyhow!("JetStream not initialized"));
         };

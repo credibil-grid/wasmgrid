@@ -1,25 +1,23 @@
 //! # WASI Messaging Host
 
-mod consumer;
-mod producer;
+pub mod consumer;
+pub mod producer;
 
-use std::pin::Pin;
+use std::any::Any;
 
-use bytes::Bytes;
-use futures::stream::Stream;
 use wasmtime::component::Resource;
 use wasmtime_wasi::WasiView;
 
 pub type Client = Box<dyn RuntimeClient>;
-pub type Subscriber = Pin<Box<dyn RuntimeSubscriber>>;
+pub type Error = Box<dyn RuntimeError>;
 
 /// Wrap generation of wit bindings to simplify exports
 pub mod bindings {
     #![allow(clippy::future_not_send)]
 
-    pub use anyhow::Error;
+    // pub use anyhow::Error;
 
-    pub use super::Client;
+    pub use super::{Client, Error};
 
     wasmtime::component::bindgen!({
         world: "messaging",
@@ -38,31 +36,28 @@ pub mod bindings {
 
 // pub use crate::bindings::exports;
 use crate::bindings::wasi::messaging::messaging_types::{
-    self, Error, GuestConfiguration, HostClient, HostError, Message,
+    self, GuestConfiguration, HostClient, HostError,
 };
 
-/// MessageView is implemented by the messaging runtime to provide the host with
-/// access to runtime-specific functionality.
-#[allow(clippy::module_name_repetitions)]
-#[async_trait::async_trait]
-pub trait MessagingView: WasiView + Send {
-    async fn connect(&mut self, name: String) -> anyhow::Result<Resource<Client>>;
-
-    async fn update_configuration(
-        &mut self, gc: GuestConfiguration,
-    ) -> anyhow::Result<(), Resource<Error>>;
-}
-
 // Type T — the host — is provided by the messaging runtime.
-impl<T: MessagingView> messaging_types::Host for T {
+impl<T: ClientView + ErrorView> messaging_types::Host for T {
     // fn convert_error(&mut self, e: anyhow::Error) -> anyhow::Result<Error> {
     //     todo!()
     // }
 }
 
+/// MessageView is implemented by the messaging runtime to provide the host with
+/// access to runtime-specific functionality.
 #[async_trait::async_trait]
-impl<T: MessagingView> HostClient for T {
-    // Connect to the runtime's messaging server.
+pub trait ClientView: WasiView + Send {
+    async fn connect(&mut self, name: String) -> anyhow::Result<Resource<Client>>;
+
+    async fn update_configuration(&mut self, gc: GuestConfiguration) -> anyhow::Result<()>;
+}
+
+#[async_trait::async_trait]
+impl<T: ClientView + ErrorView> HostClient for T {
+    /// Connect to the runtime's messaging server.
     async fn connect(
         &mut self, name: String,
     ) -> wasmtime::Result<anyhow::Result<Resource<Client>, Resource<Error>>> {
@@ -70,7 +65,7 @@ impl<T: MessagingView> HostClient for T {
         Ok(Ok(T::connect(self, name).await?))
     }
 
-    // Drop the specified client resource.
+    /// Drop the specified client resource.
     fn drop(&mut self, client: Resource<Client>) -> wasmtime::Result<()> {
         tracing::debug!("HostClient::drop");
         self.table().delete(client)?;
@@ -79,16 +74,26 @@ impl<T: MessagingView> HostClient for T {
 }
 
 #[async_trait::async_trait]
-impl<T: MessagingView> HostError for T {
+pub trait ErrorView: WasiView + Send {
+    /// Return a string representation of the error.
+    async fn trace(&mut self) -> anyhow::Result<String>;
+
+    /// Drop the specified error resource.
+    ///
+    /// # Errors
+    fn drop(&mut self, err: Resource<Error>) -> anyhow::Result<()>;
+}
+
+#[async_trait::async_trait]
+impl<T: ErrorView> HostError for T {
     async fn trace(&mut self) -> wasmtime::Result<String> {
-        tracing::warn!("FIXME: HostError::trace");
-        Ok(String::from("trace HostError"))
+        tracing::debug!("HostError::trace");
+        Ok(T::trace(self).await?)
     }
 
-    fn drop(&mut self, err: Resource<Error>) -> wasmtime::Result<()> {
+    fn drop(&mut self, rep: Resource<Error>) -> wasmtime::Result<()> {
         tracing::debug!("HostError::drop");
-        self.table().delete(err)?;
-        Ok(())
+        T::drop(self, rep)
     }
 }
 
@@ -96,16 +101,12 @@ impl<T: MessagingView> HostError for T {
 /// to runtime functionality.
 #[async_trait::async_trait]
 pub trait RuntimeClient: Sync + Send {
-    /// Subscribe to the specified channel.
-    async fn subscribe(&self, ch: String) -> anyhow::Result<Subscriber>;
-
-    /// Publish a message to the specified channel.
-    async fn publish(&self, ch: String, data: Bytes) -> anyhow::Result<()>;
+    fn as_any(&self) -> &dyn Any;
 }
 
-/// RuntimeSubscriber is implemented by the runtime to provide the host with access
-/// to runtime subscriber functionality.
+/// RuntimeError is implemented by the runtime to provide the host with access
+/// to runtime error functionality.
 #[async_trait::async_trait]
-pub trait RuntimeSubscriber: Stream<Item = Message> + Send {
-    async fn unsubscribe(&mut self) -> anyhow::Result<()>;
+pub trait RuntimeError: Sync + Send {
+    fn as_any(&self) -> &dyn Any;
 }

@@ -1,25 +1,27 @@
-use bytes::Bytes;
 use wasmtime::component::Resource;
+use wasmtime_wasi::WasiView;
 
 use super::bindings::wasi::messaging::messaging_types::{Client, Error, Message};
 use super::bindings::wasi::messaging::producer;
-use crate::MessagingView;
+
+/// ProducerView is implemented by the messaging runtime to provide the host with
+/// access to runtime-specific functionality.
+#[allow(clippy::module_name_repetitions)]
+#[async_trait::async_trait]
+pub trait ProducerView: WasiView + Send {
+    /// Publish Guest messages to the specified channel.
+    async fn send(
+        &mut self, client: Resource<Client>, ch: String, messages: Vec<Message>,
+    ) -> anyhow::Result<()>;
+}
 
 #[async_trait::async_trait]
-impl<T: MessagingView> producer::Host for T {
-    // Publish Guest messages to the specified channel.
+impl<T: ProducerView> producer::Host for T {
     async fn send(
         &mut self, client: Resource<Client>, ch: String, messages: Vec<Message>,
     ) -> wasmtime::Result<Result<(), Resource<Error>>> {
         tracing::debug!("Host::send: {:?}", ch);
 
-        let client = self.table().get(&client)?;
-
-        for m in messages {
-            let data = Bytes::from(m.data.clone());
-            client.publish(ch.clone(), data).await?;
-        }
-
-        Ok(Ok(()))
+        Ok(Ok(T::send(self, client, ch, messages).await?))
     }
 }
