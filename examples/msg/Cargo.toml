@@ -12,6 +12,7 @@ crate-type = ["cdylib"]
 workspace = true
 
 [dependencies]
+anyhow.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 wasi-bindings = { path = "../../crates/wasi-bindings" }

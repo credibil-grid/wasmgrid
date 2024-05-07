@@ -9,13 +9,12 @@ use wasmtime::component::Resource;
 use wasmtime_wasi::WasiView;
 
 pub type Client = Box<dyn RuntimeClient>;
-pub type Error = Box<dyn RuntimeError>;
+// pub type Error = Box<dyn RuntimeError>;
+pub type Error = anyhow::Error;
 
 /// Wrap generation of wit bindings to simplify exports
 pub mod bindings {
     #![allow(clippy::future_not_send)]
-
-    // pub use anyhow::Error;
 
     pub use super::{Client, Error};
 
@@ -104,9 +103,9 @@ pub trait RuntimeClient: Sync + Send {
     fn as_any(&self) -> &dyn Any;
 }
 
-/// RuntimeError is implemented by the runtime to provide the host with access
-/// to runtime error functionality.
-#[async_trait::async_trait]
-pub trait RuntimeError: Sync + Send {
-    fn as_any(&self) -> &dyn Any;
-}
+// /// RuntimeError is implemented by the runtime to provide the host with access
+// /// to runtime error functionality.
+// #[async_trait::async_trait]
+// pub trait RuntimeError: Sync + Send {
+//     fn as_any(&self) -> &dyn Any;
+// }

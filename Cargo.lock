@@ -1710,6 +1710,7 @@ dependencies = [
 name = "msg"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "tracing",
  "tracing-subscriber",
  "wasi-bindings",
@@ -3172,6 +3173,7 @@ dependencies = [
 name = "wasi-bindings"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "wit-bindgen",
 ]
 

@@ -19,7 +19,7 @@ impl Guest for MessagingGuest {
 
     // Whenever a message is received on a subscribed channel, the host will call this
     // function. Once done, the host should kill the wasm instance.
-    fn handler(msgs: Vec<Message>) -> Result<(), Error> {
+    fn handler(msgs: Vec<Message>) -> anyhow::Result<(), Error> {
         let subscriber =
             FmtSubscriber::builder().with_env_filter(EnvFilter::from_default_env()).finish();
         tracing::subscriber::set_global_default(subscriber).expect("should set subscriber");
@@ -42,6 +42,7 @@ impl Guest for MessagingGuest {
                         channels: vec!["b".to_string(), "c".to_string()],
                         extensions: None,
                     })?;
+
                     return consumer::abandon_message(&msg);
                 }
                 "b" => {

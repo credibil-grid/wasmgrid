@@ -41,7 +41,7 @@ pub async fn main() -> wasmtime::Result<()> {
     // env vars
     if cfg!(debug_assertions) {
         dotenv().ok();
-        env::set_var("RUST_LOG", "wasmgrid=debug,http_sql=debug");
+        env::set_var("RUST_LOG", "wasmgrid=debug,http_kv=debug");
     }
 
     let http_addr = env::var("HTTP_ADDR").unwrap_or_else(|_| DEF_HTTP_ADDR.to_string());

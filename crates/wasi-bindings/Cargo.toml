@@ -12,4 +12,5 @@ crate-type = ["cdylib", "rlib"]
 workspace = true
 
 [dependencies]
+anyhow.workspace = true
 wit-bindgen = "0.24.0"

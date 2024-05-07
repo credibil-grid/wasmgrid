@@ -13,7 +13,7 @@ use wasi_messaging::bindings::wasi::messaging::messaging_types::{
 use wasi_messaging::bindings::Messaging;
 use wasi_messaging::consumer::ConsumerView;
 use wasi_messaging::producer::ProducerView;
-use wasi_messaging::{self, ClientView, ErrorView, RuntimeClient, RuntimeError};
+use wasi_messaging::{self, ClientView, ErrorView, RuntimeClient};
 use wasmtime::component::{Linker, Resource};
 use wasmtime_wasi::WasiView;
 
@@ -78,11 +78,11 @@ async fn channels(runtime: &Runtime) -> anyhow::Result<Vec<String>> {
         Ok(gc) => gc,
         Err(e) => {
             let error = store.data_mut().table().get(&e)?;
-            let Some(err) = error.as_ref().as_any().downcast_ref::<Error>() else {
-                return Err(anyhow!("invalid JetStream store"));
-            };
+            // let Some(err) = error.as_ref().as_any().downcast_ref::<Error>() else {
+            //     return Err(anyhow!("invalid JetStream store"));
+            // };
 
-            return Err(anyhow!(err.0.to_string()));
+            return Err(anyhow!(error.to_string()));
         }
     };
 
@@ -104,11 +104,11 @@ async fn handle_message(runtime: &Runtime, client: Client, message: Message) -> 
         messaging.wasi_messaging_messaging_guest().call_handler(&mut store, &[message]).await?
     {
         let error = store.data_mut().table().get(&e)?;
-        let Some(err) = error.as_ref().as_any().downcast_ref::<Error>() else {
-            return Err(anyhow!("invalid JetStream store"));
-        };
+        // let Some(err) = error.as_ref().as_any().downcast_ref::<Error>() else {
+        //     return Err(anyhow!("invalid JetStream store"));
+        // };
 
-        return Err(anyhow!(err.0.to_string()));
+        return Err(anyhow!(error.to_string()));
     }
 
     Ok(())
@@ -157,7 +157,7 @@ impl ConsumerView for State {
     async fn subscribe_try_receive(
         &mut self, client: Resource<wasi_messaging::Client>, ch: String, t_milliseconds: u32,
     ) -> anyhow::Result<Option<Vec<Message>>> {
-        tracing::debug!("Host::subscribe_try_receive {ch}, {t_milliseconds}");
+        tracing::debug!("ConsumerView::subscribe_try_receive {ch}, {t_milliseconds}");
 
         // subscribe to channel
         let client = self.table().get(&client)?;
@@ -180,7 +180,7 @@ impl ConsumerView for State {
     async fn subscribe_receive(
         &mut self, client: Resource<wasi_messaging::Client>, ch: String,
     ) -> anyhow::Result<Vec<Message>> {
-        tracing::debug!("Host::subscribe_receive {ch}");
+        tracing::debug!("ConsumerView::subscribe_receive {ch}");
 
         let client = self.table().get(&client)?;
         let Some(cli) = client.as_ref().as_any().downcast_ref::<Client>() else {
@@ -195,19 +195,19 @@ impl ConsumerView for State {
     }
 
     async fn update_guest_configuration(&mut self, gc: GuestConfiguration) -> anyhow::Result<()> {
-        tracing::debug!("Host::update_guest_configuration");
+        tracing::debug!("ConsumerView::update_guest_configuration");
         Ok(self.update_configuration(gc).await?)
     }
 
     // TODO: implement complete_message
     async fn complete_message(&mut self, msg: Message) -> anyhow::Result<()> {
-        tracing::warn!("FIXME: implement Host::complete_message: {:?}", msg.metadata);
+        tracing::warn!("FIXME: ConsumerView::complete_message: {:?}", msg.metadata);
         Ok(())
     }
 
     // TODO: implement abandon_message
     async fn abandon_message(&mut self, msg: Message) -> anyhow::Result<()> {
-        tracing::warn!("FIXME: implement Host::abandon_message: {:?}", msg.metadata);
+        tracing::warn!("FIXME: ConsumerView::abandon_message: {:?}", msg.metadata);
         Ok(())
     }
 }
@@ -217,7 +217,7 @@ impl ProducerView for State {
     async fn send(
         &mut self, client: Resource<wasi_messaging::Client>, ch: String, messages: Vec<Message>,
     ) -> anyhow::Result<()> {
-        tracing::debug!("Host::send: {:?}", ch);
+        tracing::debug!("ProducerView::send: {:?}", ch);
 
         let client = self.table().get(&client)?;
         let Some(cli) = client.as_ref().as_any().downcast_ref::<Client>() else {
@@ -282,14 +282,14 @@ impl RuntimeClient for Client {
     }
 }
 
-struct Error(anyhow::Error);
+// struct Error(anyhow::Error);
 
-#[async_trait::async_trait]
-impl RuntimeError for Error {
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
+// #[async_trait::async_trait]
+// impl RuntimeError for Error {
+//     fn as_any(&self) -> &dyn std::any::Any {
+//         self
+//     }
+// }
 
 #[allow(clippy::needless_pass_by_value)]
 fn to_message(m: async_nats::Message) -> Message {
