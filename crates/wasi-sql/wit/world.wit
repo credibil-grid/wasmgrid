@@ -1,5 +1,0 @@
-package component:wasi-sql;
-
-world sql {
-	include wasi:sql/imports@0.2.0-draft;
-}

@@ -21,7 +21,6 @@ static JETSTREAM: OnceLock<jetstream::Context> = OnceLock::new();
 
 mod bindings {
     #![allow(clippy::future_not_send)]
-    // pub use super::Bucket;
     pub use async_nats::jetstream::kv::Store as Bucket;
 
     wasmtime::component::bindgen!({
@@ -92,7 +91,7 @@ impl store::Host for State {
 
         // open bucket and save to state
         let bucket = new_bucket(jetstream, identifier.clone()).await?;
-        
+
         Ok(Ok(self.table().push(bucket)?))
     }
 }

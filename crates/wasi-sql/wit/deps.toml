@@ -1,9 +1,0 @@
-# 1. Install `wit-deps` from source (https://github.com/bytecodealliance/wit-deps)
-# 2. Add external dependencies to deps.toml
-# 3. Run `wit-deps` to import dependencies specified in deps.toml:
-# 
-# ```sh
-# cd crates/wasi-sql && wit-deps && cd ../..
-# ```
-
-sql = "https://github.com/WebAssembly/wasi-sql/archive/main.tar.gz"

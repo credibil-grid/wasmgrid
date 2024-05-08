@@ -37,7 +37,6 @@ tracing.workspace = true
 tracing-subscriber.workspace = true
 wasi-messaging = { path = "crates/wasi-messaging" }
 wasi-signature = { path = "crates/wasi-signature" }
-wasi-sql = { path = "crates/wasi-sql" }
 wasmtime.workspace = true
 wasmtime-wasi.workspace = true
 wasmtime-wasi-http = "20.0.1"
