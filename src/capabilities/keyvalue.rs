@@ -17,9 +17,6 @@ use wasmtime_wasi::WasiView;
 
 use crate::runtime::{self, Runtime, State};
 
-pub type Bucket = async_nats::jetstream::kv::Store;
-static JETSTREAM: OnceLock<jetstream::Context> = OnceLock::new();
-
 mod bindings {
     #![allow(clippy::future_not_send)]
     pub use super::Bucket;
@@ -37,6 +34,10 @@ mod bindings {
         // },
     });
 }
+
+pub type Bucket = async_nats::jetstream::kv::Store;
+
+static JETSTREAM: OnceLock<jetstream::Context> = OnceLock::new();
 
 pub struct Capability {
     pub addr: String,
