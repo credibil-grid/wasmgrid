@@ -5,6 +5,8 @@ services:
     build: .
     image: acrcredibil.azurecr.io/demo/wasmgrid
     platform: linux/amd64
+    environment:
+      - RUST_LOG=debug
     ports:
       - 8080:8080
     volumes:
