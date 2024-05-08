@@ -1,9 +1,0 @@
-# 1. Install `wit-deps` from source (https://github.com/bytecodealliance/wit-deps)
-# 2. Add external dependencies to deps.toml
-# 3. Run `wit-deps` to import dependenciess specified in deps.toml:
-# 
-# ```sh
-# cd crates/wasi-messaging && wit-deps && cd ../..
-# ```
-
-messaging = "https://github.com/WebAssembly/wasi-messaging/archive/main.tar.gz"

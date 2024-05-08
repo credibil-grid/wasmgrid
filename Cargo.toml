@@ -35,7 +35,6 @@ serde_json = "1.0.116"
 tokio = { version = "1.37.0", features = ["signal"] }
 tracing.workspace = true
 tracing-subscriber.workspace = true
-wasi-messaging = { path = "crates/wasi-messaging" }
 wasmtime.workspace = true
 wasmtime-wasi.workspace = true
 wasmtime-wasi-http = "20.0.1"

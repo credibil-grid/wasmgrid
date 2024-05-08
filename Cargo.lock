@@ -3193,17 +3193,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "wasi-messaging"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "async-trait",
- "tracing",
- "wasmtime",
- "wasmtime-wasi",
-]
-
-[[package]]
 name = "wasm-bindgen"
 version = "0.2.92"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3305,7 +3294,6 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber",
- "wasi-messaging",
  "wasmtime",
  "wasmtime-wasi",
  "wasmtime-wasi-http",

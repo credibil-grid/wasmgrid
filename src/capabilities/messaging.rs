@@ -3,21 +3,40 @@
 //! This module implements a runtime capability for `wasi:messaging`
 //! (<https://github.com/WebAssembly/wasi-messaging>).
 
-use anyhow::anyhow;
+pub use anyhow::{anyhow, Error};
+use bindings::wasi::messaging::messaging_types::{
+    self, FormatSpec, GuestConfiguration, HostClient, HostError, Message,
+};
+use bindings::wasi::messaging::{consumer, producer};
+use bindings::Messaging;
 use bytes::Bytes;
 use futures::stream::{self, StreamExt};
 use tokio::time::{sleep, Duration};
-use wasi_messaging::bindings::wasi::messaging::messaging_types::{
-    FormatSpec, GuestConfiguration, Message,
-};
-use wasi_messaging::bindings::Messaging;
-use wasi_messaging::consumer::ConsumerView;
-use wasi_messaging::producer::ProducerView;
-use wasi_messaging::{self, ClientView, ErrorView, RuntimeClient};
 use wasmtime::component::{Linker, Resource};
 use wasmtime_wasi::WasiView;
 
 use crate::runtime::{self, Runtime, State};
+
+/// Wrap generation of wit bindings to simplify exports
+mod bindings {
+    #![allow(clippy::future_not_send)]
+
+    pub use super::{Client, Error};
+
+    wasmtime::component::bindgen!({
+        world: "messaging",
+        path: "wit",
+        tracing: true,
+        async: true,
+        with: {
+            "wasi:messaging/messaging-types/client": Client,
+            "wasi:messaging/messaging-types/error": Error,
+        },
+        // trappable_error_type: {
+        //     "wasi:messaging/messaging-types/error" => Error,
+        // },
+    });
+}
 
 pub struct Capability {
     pub addr: String,
@@ -116,9 +135,9 @@ async fn handle_message(runtime: &Runtime, client: Client, message: Message) -> 
 
 impl State {
     // Add a new client to the host state.
-    fn add_client(&mut self, client: Client) -> anyhow::Result<Resource<wasi_messaging::Client>> {
+    fn add_client(&mut self, client: Client) -> anyhow::Result<Resource<bindings::Client>> {
         let name = client.name.clone();
-        let client: wasi_messaging::Client = Box::new(client);
+
         let resource = self.table().push(client)?;
         self.metadata.insert(name, Box::new(resource.rep()));
 
@@ -126,10 +145,31 @@ impl State {
     }
 }
 
+impl messaging_types::Host for State {
+    // fn convert_error(&mut self, e: anyhow::Error) -> anyhow::Result<Error> {
+    //     todo!()
+    // }
+}
+
+#[async_trait::async_trait]
+impl HostError for State {
+    async fn trace(&mut self) -> wasmtime::Result<String> {
+        tracing::debug!("HostError::trace");
+        todo!()
+    }
+
+    fn drop(&mut self, _rep: Resource<Error>) -> wasmtime::Result<()> {
+        tracing::debug!("HostError::drop");
+        todo!()
+    }
+}
+
 // Implement the [`wasi_messaging::MessagingView`]` trait for State.
 #[async_trait::async_trait]
-impl ClientView for State {
-    async fn connect(&mut self, name: String) -> anyhow::Result<Resource<wasi_messaging::Client>> {
+impl HostClient for State {
+    async fn connect(
+        &mut self, name: String,
+    ) -> wasmtime::Result<anyhow::Result<Resource<Client>, Resource<Error>>> {
         tracing::debug!("MessagingView::connect {name}");
 
         let resource = if let Some(key) = self.metadata.get(&name) {
@@ -142,30 +182,26 @@ impl ClientView for State {
             self.add_client(client)?
         };
 
-        Ok(resource)
+        Ok(Ok(resource))
     }
 
-    // TODO: implement update_configuration
-    async fn update_configuration(&mut self, _gc: GuestConfiguration) -> anyhow::Result<()> {
-        tracing::debug!("MessagingView::update_configuration {_gc:?}");
+    fn drop(&mut self, client: Resource<Client>) -> wasmtime::Result<()> {
+        tracing::debug!("HostClient::drop");
+        self.table().delete(client)?;
         Ok(())
     }
 }
 
 #[async_trait::async_trait]
-impl ConsumerView for State {
+impl consumer::Host for State {
     async fn subscribe_try_receive(
-        &mut self, client: Resource<wasi_messaging::Client>, ch: String, t_milliseconds: u32,
-    ) -> anyhow::Result<Option<Vec<Message>>> {
+        &mut self, client: Resource<bindings::Client>, ch: String, t_milliseconds: u32,
+    ) -> wasmtime::Result<Result<Option<Vec<Message>>, Resource<Error>>> {
         tracing::debug!("ConsumerView::subscribe_try_receive {ch}, {t_milliseconds}");
 
         // subscribe to channel
         let client = self.table().get(&client)?;
-        let Some(cli) = client.as_ref().as_any().downcast_ref::<Client>() else {
-            return Err(anyhow!("invalid JetStream store"));
-        };
-
-        let mut subscriber = cli.subscribe(ch).await?;
+        let mut subscriber = client.subscribe(ch).await?;
 
         // create stream that times out after t_milliseconds
         let stream =
@@ -174,74 +210,60 @@ impl ConsumerView for State {
 
         subscriber.unsubscribe().await?;
 
-        Ok(Some(messages))
+        Ok(Ok(Some(messages)))
     }
 
     async fn subscribe_receive(
-        &mut self, client: Resource<wasi_messaging::Client>, ch: String,
-    ) -> anyhow::Result<Vec<Message>> {
+        &mut self, client: Resource<bindings::Client>, ch: String,
+    ) -> wasmtime::Result<Result<Vec<Message>, Resource<Error>>> {
         tracing::debug!("ConsumerView::subscribe_receive {ch}");
 
         let client = self.table().get(&client)?;
-        let Some(cli) = client.as_ref().as_any().downcast_ref::<Client>() else {
-            return Err(anyhow!("invalid JetStream store"));
-        };
-
-        let mut subscriber = cli.subscribe(ch).await?;
+        let mut subscriber = client.subscribe(ch).await?;
         let messages = subscriber.by_ref().take(1).map(to_message).collect().await;
         // subscriber.unsubscribe().await?;
 
-        Ok(messages)
+        Ok(Ok(messages))
     }
 
-    async fn update_guest_configuration(&mut self, gc: GuestConfiguration) -> anyhow::Result<()> {
-        tracing::debug!("ConsumerView::update_guest_configuration");
-        Ok(self.update_configuration(gc).await?)
+    async fn update_guest_configuration(
+        &mut self, _gc: GuestConfiguration,
+    ) -> wasmtime::Result<Result<(), Resource<Error>>> {
+        tracing::warn!("TODO: ConsumerView::update_guest_configuration");
+        Ok(Ok(()))
     }
 
     // TODO: implement complete_message
-    async fn complete_message(&mut self, msg: Message) -> anyhow::Result<()> {
+    async fn complete_message(
+        &mut self, msg: Message,
+    ) -> wasmtime::Result<Result<(), Resource<Error>>> {
         tracing::warn!("FIXME: ConsumerView::complete_message: {:?}", msg.metadata);
-        Ok(())
+        Ok(Ok(()))
     }
 
     // TODO: implement abandon_message
-    async fn abandon_message(&mut self, msg: Message) -> anyhow::Result<()> {
+    async fn abandon_message(
+        &mut self, msg: Message,
+    ) -> wasmtime::Result<Result<(), Resource<Error>>> {
         tracing::warn!("FIXME: ConsumerView::abandon_message: {:?}", msg.metadata);
-        Ok(())
+        Ok(Ok(()))
     }
 }
 
 #[async_trait::async_trait]
-impl ProducerView for State {
+impl producer::Host for State {
     async fn send(
-        &mut self, client: Resource<wasi_messaging::Client>, ch: String, messages: Vec<Message>,
-    ) -> anyhow::Result<()> {
+        &mut self, client: Resource<bindings::Client>, ch: String, messages: Vec<Message>,
+    ) -> wasmtime::Result<Result<(), Resource<Error>>> {
         tracing::debug!("ProducerView::send: {:?}", ch);
 
         let client = self.table().get(&client)?;
-        let Some(cli) = client.as_ref().as_any().downcast_ref::<Client>() else {
-            return Err(anyhow!("invalid JetStream store"));
-        };
-
         for m in messages {
             let data = Bytes::from(m.data.clone());
-            cli.publish(ch.clone(), data).await?;
+            client.publish(ch.clone(), data).await?;
         }
 
-        Ok(())
-    }
-}
-
-#[async_trait::async_trait]
-impl ErrorView for State {
-    async fn trace(&mut self) -> anyhow::Result<String> {
-        tracing::warn!("FIXME: ErrorView::trace");
-        Ok(String::from("trace Error"))
-    }
-
-    fn drop(&mut self, _err: Resource<wasi_messaging::Error>) -> anyhow::Result<()> {
-        Ok(())
+        Ok(Ok(()))
     }
 }
 
@@ -272,24 +294,6 @@ impl Client {
         Ok(self.inner.publish(ch, data).await?)
     }
 }
-
-// Implement the [`wasi_messaging::RuntimeClient`] trait for Client. The implementation
-// allows the wasi-messaging host to interact with NATS messaging.
-#[async_trait::async_trait]
-impl RuntimeClient for Client {
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-// struct Error(anyhow::Error);
-
-// #[async_trait::async_trait]
-// impl RuntimeError for Error {
-//     fn as_any(&self) -> &dyn std::any::Any {
-//         self
-//     }
-// }
 
 #[allow(clippy::needless_pass_by_value)]
 fn to_message(m: async_nats::Message) -> Message {
