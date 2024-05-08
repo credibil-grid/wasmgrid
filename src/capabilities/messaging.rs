@@ -61,13 +61,16 @@ impl runtime::Capability for Capability {
 
     /// Provide messaging capability for the specified wasm component.
     async fn run(&self, runtime: Runtime) -> anyhow::Result<()> {
-        // let client = Client::connect(self.addr.clone()).await?;
         let client = async_nats::connect(&self.addr).await?;
         tracing::info!("connected to NATS");
 
+        // save client to ResourceTable for lookup
+        let mut store = runtime.store();
+        store.data_mut().save_client(self.addr.clone(), client.clone())?;
+
         // subscribe to channels
         let mut subscribers = vec![];
-        for ch in channels(&runtime).await? {
+        for ch in runtime.channels().await? {
             let subscriber = client.subscribe(ch.clone()).await?;
             subscribers.push(subscriber);
         }
@@ -76,15 +79,9 @@ impl runtime::Capability for Capability {
         let mut messages = stream::select_all(subscribers);
         while let Some(m) = messages.next().await {
             let runtime = runtime.clone();
-            let client = client.clone();
-            let name = self.addr.clone();
+            let msg = to_message(m);
 
-            if let Err(e) =
-                tokio::spawn(
-                    async move { handle_message(&runtime, name, client, to_message(m)).await },
-                )
-                .await
-            {
+            if let Err(e) = tokio::spawn(async move { runtime.handle_message(msg).await }).await {
                 tracing::error!("error processing message {e:?}");
             }
         }
@@ -93,55 +90,50 @@ impl runtime::Capability for Capability {
     }
 }
 
-// Return the channels the Guest wants to subscribe to.
-async fn channels(runtime: &Runtime) -> anyhow::Result<Vec<String>> {
-    tracing::debug!("channels");
+impl Runtime {
+    // Return the channels the Guest wants to subscribe to.
+    async fn channels(&self) -> anyhow::Result<Vec<String>> {
+        tracing::debug!("channels");
 
-    let mut store = runtime.store();
-    let (messaging, _) = Messaging::instantiate_pre(&mut store, runtime.instance_pre()).await?;
+        let mut store = self.store();
+        let (messaging, _) = Messaging::instantiate_pre(&mut store, self.instance_pre()).await?;
 
-    let gc = match messaging.wasi_messaging_messaging_guest().call_configure(&mut store).await? {
-        Ok(gc) => gc,
-        Err(e) => {
+        let gc = match messaging.wasi_messaging_messaging_guest().call_configure(&mut store).await?
+        {
+            Ok(gc) => gc,
+            Err(e) => {
+                let error = store.data_mut().table().get(&e)?;
+                return Err(anyhow!(error.to_string()));
+            }
+        };
+
+        Ok(gc.channels)
+    }
+
+    // Forward NATS message to the wasm Guest.
+    async fn handle_message(&self, message: Message) -> anyhow::Result<()> {
+        tracing::debug!("handle_message: {message:?}");
+
+        let mut store = self.store();
+        let (messaging, _) = Messaging::instantiate_pre(&mut store, self.instance_pre()).await?;
+
+        // call guest with message
+        if let Err(e) =
+            messaging.wasi_messaging_messaging_guest().call_handler(&mut store, &[message]).await?
+        {
             let error = store.data_mut().table().get(&e)?;
             return Err(anyhow!(error.to_string()));
         }
-    };
 
-    Ok(gc.channels)
-}
-
-// Forward NATS message to the wasm Guest.
-async fn handle_message(
-    runtime: &Runtime, name: String, client: Client, message: Message,
-) -> anyhow::Result<()> {
-    tracing::debug!("handle_message: {message:?}");
-
-    // add client to ResourceTable
-    let mut store = runtime.store();
-    store.data_mut().save_client(name, client)?;
-
-    let (messaging, _) = Messaging::instantiate_pre(&mut store, runtime.instance_pre()).await?;
-
-    // call guest with message
-    if let Err(e) =
-        messaging.wasi_messaging_messaging_guest().call_handler(&mut store, &[message]).await?
-    {
-        let error = store.data_mut().table().get(&e)?;
-        return Err(anyhow!(error.to_string()));
+        Ok(())
     }
-
-    Ok(())
 }
 
 impl State {
     // Add a new client to the host state.
-    fn save_client(
-        &mut self, name: String, client: Client,
-    ) -> anyhow::Result<Resource<bindings::Client>> {
+    fn save_client(&mut self, name: String, client: Client) -> anyhow::Result<Resource<Client>> {
         let resource = self.table().push(client)?;
         self.metadata.insert(name, Box::new(resource.rep()));
-
         Ok(resource)
     }
 }
@@ -183,7 +175,7 @@ impl HostClient for State {
 #[async_trait::async_trait]
 impl consumer::Host for State {
     async fn subscribe_try_receive(
-        &mut self, client: Resource<bindings::Client>, ch: String, t_milliseconds: u32,
+        &mut self, client: Resource<Client>, ch: String, t_milliseconds: u32,
     ) -> wasmtime::Result<Result<Option<Vec<Message>>, Resource<Error>>> {
         tracing::debug!("ConsumerView::subscribe_try_receive {ch}, {t_milliseconds}");
 
@@ -202,7 +194,7 @@ impl consumer::Host for State {
     }
 
     async fn subscribe_receive(
-        &mut self, client: Resource<bindings::Client>, ch: String,
+        &mut self, client: Resource<Client>, ch: String,
     ) -> wasmtime::Result<Result<Vec<Message>, Resource<Error>>> {
         tracing::debug!("ConsumerView::subscribe_receive {ch}");
 
@@ -241,7 +233,7 @@ impl consumer::Host for State {
 #[async_trait::async_trait]
 impl producer::Host for State {
     async fn send(
-        &mut self, client: Resource<bindings::Client>, ch: String, messages: Vec<Message>,
+        &mut self, client: Resource<Client>, ch: String, messages: Vec<Message>,
     ) -> wasmtime::Result<Result<(), Resource<Error>>> {
         tracing::debug!("producer::Host::send: {:?}", ch);
 
