@@ -1,6 +1,0 @@
-package component:wasi-keyvalue;
-
-world keyvalue {
-	include wasi:keyvalue/imports@0.2.0-draft;
-	export wasi:keyvalue/watcher@0.2.0-draft;
-}

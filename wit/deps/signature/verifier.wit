@@ -1,0 +1,8 @@
+/// Signer is used by implementers to provide signing functionality for
+/// Verifiable Credential issuance and Verifiable Presentation submissions.
+interface verifier {
+    use types.{error};
+
+    /// Sign the provided message.
+    verify: func(msg: list<u8>, signature: list<u8>) -> result<_, error>;
+}

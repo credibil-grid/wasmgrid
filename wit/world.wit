@@ -1,0 +1,19 @@
+package component:bindings;
+
+world keyvalue {
+	include wasi:keyvalue/imports@0.2.0-draft;
+	export wasi:keyvalue/watcher@0.2.0-draft;
+}
+
+world messaging {
+	include wasi:messaging/imports@0.2.0-draft;
+	export wasi:messaging/messaging-guest@0.2.0-draft;
+}
+
+world signature {
+	include wasi:signature/imports@0.1.0-draft;
+}
+
+world sql {
+	include wasi:sql/imports@0.2.0-draft;
+}
