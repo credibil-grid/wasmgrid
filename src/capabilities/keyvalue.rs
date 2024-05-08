@@ -66,6 +66,21 @@ impl runtime::Capability for Capability {
     }
 }
 
+// Create a new Bucket for the specified NATS server.
+async fn new_bucket(
+    jetstream: &jetstream::Context, identifier: String,
+) -> anyhow::Result<bindings::Bucket> {
+    let inner = jetstream
+        .create_key_value(jetstream::kv::Config {
+            bucket: identifier.clone(),
+            history: 10,
+            ..Default::default()
+        })
+        .await?;
+
+    Ok(inner)
+}
+
 impl State {
     // Get underlying JetStream Store from bucket Resource.
     fn store(
@@ -219,19 +234,4 @@ impl batch::Host for State {
 
         Ok(Ok(()))
     }
-}
-
-// Create a new Bucket for the specified NATS server.
-async fn new_bucket(
-    jetstream: &jetstream::Context, identifier: String,
-) -> anyhow::Result<bindings::Bucket> {
-    let inner = jetstream
-        .create_key_value(jetstream::kv::Config {
-            bucket: identifier.clone(),
-            history: 10,
-            ..Default::default()
-        })
-        .await?;
-
-    Ok(inner)
 }

@@ -11,7 +11,7 @@ use bindings::wasi::sql::types::{self, DataType, Error, Row};
 use bindings::Sql;
 use bson::Document;
 use mongodb::options::ClientOptions;
-use mongodb::Client;
+pub use mongodb::{Client, Database as Connection};
 use regex::Regex;
 use wasmtime::component::{Linker, Resource};
 use wasmtime_wasi::WasiView;
@@ -68,7 +68,6 @@ impl runtime::Capability for Capability {
         MONGODB.get_or_init(|| client);
 
         tracing::info!("connected to MongoDB");
-
         Ok(())
     }
 }
@@ -79,17 +78,13 @@ impl readwrite::Host for State {
     async fn query(
         &mut self, c: Resource<bindings::Connection>, s: Resource<bindings::Statement>,
     ) -> wasmtime::Result<Result<Vec<Row>, Resource<Error>>> {
-        tracing::debug!("ReadWriteView::query");
+        tracing::debug!("readwrite::Host::query");
 
         let table = self.table();
-
-        // connection
         let cnn = table.get(&c)?;
-        // sql statement
         let stmt = table.get(&s)?;
 
         let Some(md) = cnn
-            .database
             .collection::<Document>(&stmt.collection)
             .find_one(stmt.filter.clone(), None)
             .await?
@@ -109,14 +104,14 @@ impl readwrite::Host for State {
     async fn exec(
         &mut self, c: Resource<bindings::Connection>, s: Resource<bindings::Statement>,
     ) -> wasmtime::Result<Result<u32, Resource<Error>>> {
-        tracing::debug!("ReadWriteView::exec");
+        tracing::debug!("readwrite::Host::exec");
 
         let rt = self.table();
         let cnn = rt.get(&c)?;
         let _stmt = rt.get(&s)?;
 
         let filter = mongodb::bson::doc! {};
-        let md = cnn.database.collection::<Document>("issuer").find_one(Some(filter), None).await?;
+        let md = cnn.collection::<Document>("issuer").find_one(Some(filter), None).await?;
         tracing::debug!("md: {:?}", md);
 
         Ok(Ok(0))
@@ -125,72 +120,53 @@ impl readwrite::Host for State {
 
 impl types::Host for State {}
 
-// Implement the [`wasi_sql::ConnectionView`]` trait for State.
+// Implement the [`wasi::sql::HostConnection`]` trait for State.
 #[async_trait::async_trait]
 impl types::HostConnection for State {
     async fn open(
         &mut self, name: String,
     ) -> wasmtime::Result<Result<Resource<Connection>, Resource<Error>>> {
-        tracing::debug!("ConnectionView::open");
+        tracing::debug!("HostConnection::open");
 
-        let cnn = Connection::new(&name)?;
+        let client = MONGODB.get().ok_or_else(|| anyhow!("MongoDB not connected"))?;
+        let cnn = client.database(&name);
         Ok(Ok(self.table().push(cnn)?))
     }
 
     fn drop(&mut self, rep: Resource<bindings::Connection>) -> wasmtime::Result<()> {
-        tracing::debug!("ConnectionView::drop");
+        tracing::debug!("HostConnection::drop");
         self.table().delete(rep).map_or_else(|e| Err(anyhow!(e)), |_| Ok(()))
     }
 }
 
-// Implement the [`wasi_sql::StatementView`]` trait for State.
+// Implement the [`wasi::sql::HostStatement`]` trait for State.
 #[async_trait::async_trait]
 impl types::HostStatement for State {
     async fn prepare(
         &mut self, query: String, params: Vec<String>,
     ) -> wasmtime::Result<Result<Resource<bindings::Statement>, Resource<Error>>> {
-        tracing::debug!("StatementView::prepare");
-
+        tracing::debug!("HostStatement::prepare");
         let stmt = Statement::parse(&query, &params)?;
         Ok(Ok(self.table().push(stmt)?))
     }
 
     fn drop(&mut self, rep: Resource<bindings::Statement>) -> wasmtime::Result<()> {
-        tracing::debug!("StatementView::drop");
+        tracing::debug!("HostStatement::drop");
         self.table().delete(rep).map_or_else(|e| Err(anyhow!(e)), |_| Ok(()))
     }
 }
 
-// Implement the [`wasi_sql::ErrorView`]` trait for State.
+// Implement the [`wasi::sql::HostError`]` trait for State.
 #[async_trait::async_trait]
 impl types::HostError for State {
     async fn trace(&mut self, _self_: Resource<Error>) -> wasmtime::Result<String> {
-        tracing::debug!("ErrorView::trace");
+        tracing::debug!("HostError::trace");
         todo!()
     }
 
     fn drop(&mut self, _rep: Resource<Error>) -> wasmtime::Result<()> {
-        tracing::debug!("ErrorView::drop");
+        tracing::debug!("HostError::drop");
         todo!()
-    }
-}
-
-// Connection holds a reference to the the NATS client. It is used to implement the
-// [`wasi_sql::RuntimeConnection`] trait used by the sql State.
-#[derive(Debug)]
-pub struct Connection {
-    database: mongodb::Database,
-}
-
-impl Connection {
-    // Create a new Connection for the specified NATS server.
-    fn new(name: &str) -> anyhow::Result<Self> {
-        tracing::trace!("Connection::new {name}");
-
-        let client = MONGODB.get().ok_or_else(|| anyhow!("MongoDB not connected"))?;
-        let database = client.database(name);
-
-        Ok(Self { database })
     }
 }
 
