@@ -34,7 +34,7 @@ pub struct Runtime {
 
 impl Runtime {
     /// Returns a [`Store`] for use when calling guests.
-    pub fn store(&self) -> Store<State> {
+    pub fn new_store(&self) -> Store<State> {
         let mut store = Store::new(&self.engine, State::new());
         store.limiter(|t| &mut t.limits);
         store
@@ -91,7 +91,7 @@ impl Builder {
         for cap in self.capabilities {
             // check whether capability is required by the wasm component
             let component = runtime.instance_pre().component().component_type();
-            let store = runtime.store();
+            let store = runtime.new_store();
             let namespace = cap.namespace();
             if !component.imports(store.engine()).any(|e| e.0.starts_with(namespace))
                 && !component.exports(store.engine()).any(|e| e.0.starts_with(namespace))

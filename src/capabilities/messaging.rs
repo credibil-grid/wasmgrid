@@ -65,7 +65,7 @@ impl runtime::Capability for Capability {
         tracing::info!("connected to NATS");
 
         // save client to ResourceTable for lookup
-        let mut store = runtime.store();
+        let mut store = runtime.new_store();
         store.data_mut().save_client(self.addr.clone(), client.clone())?;
 
         // subscribe to channels
@@ -95,7 +95,7 @@ impl Runtime {
     async fn channels(&self) -> anyhow::Result<Vec<String>> {
         tracing::debug!("channels");
 
-        let mut store = self.store();
+        let mut store = self.new_store();
         let (messaging, _) = Messaging::instantiate_pre(&mut store, self.instance_pre()).await?;
 
         let gc = match messaging.wasi_messaging_messaging_guest().call_configure(&mut store).await?
@@ -114,7 +114,7 @@ impl Runtime {
     async fn handle_message(&self, message: Message) -> anyhow::Result<()> {
         tracing::debug!("handle_message: {message:?}");
 
-        let mut store = self.store();
+        let mut store = self.new_store();
         let (messaging, _) = Messaging::instantiate_pre(&mut store, self.instance_pre()).await?;
 
         // call guest with message

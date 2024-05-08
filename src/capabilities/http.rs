@@ -74,7 +74,7 @@ async fn handle_request(
         let (parts, body) = request.into_parts();
         let req = hyper::Request::from_parts(parts, body.map_err(hyper_response_error).boxed());
 
-        let mut store = runtime.store();
+        let mut store = runtime.new_store();
         let state = store.data_mut();
         let req = state.new_incoming_request(req)?;
         let out = state.new_response_outparam(sender)?;
