@@ -18,9 +18,9 @@ RUN adduser \
 
 WORKDIR /app
 
-# COPY ./ .
 COPY /Cargo.toml /Cargo.toml
 COPY /src /src
+COPY /wit /wit
 COPY /crates /crates
 COPY /examples /examples
 

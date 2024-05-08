@@ -1,5 +1,4 @@
 #![allow(clippy::redundant_pub_crate)]
-#![feature(lazy_cell)]
 
 mod capabilities;
 mod runtime;

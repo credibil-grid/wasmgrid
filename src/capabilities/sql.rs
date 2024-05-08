@@ -3,7 +3,7 @@
 //! This module implements a runtime capability for `wasi:sql`
 //! (<https://github.com/WebAssembly/wasi-sql>).
 
-use std::sync::{LazyLock, OnceLock};
+use std::sync::OnceLock;
 
 use anyhow::anyhow;
 use bindings::wasi::sql::readwrite;
@@ -184,17 +184,18 @@ pub struct Statement {
     filter: Option<Document>,
 }
 
-static SQL_REGEX: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"SELECT \* FROM (?<table>\w+) WHERE (?<field>\w+) = '?'")
-        .expect("regex should parse")
-});
+static SQL_REGEX: OnceLock<Regex> = OnceLock::new();
 
 impl Statement {
     // Parse the SQL query and return a Statement.
     fn parse(sql: &str, params: &[String]) -> anyhow::Result<Self> {
         tracing::trace!("Statement::parse");
 
-        let Some(caps) = SQL_REGEX.captures(sql) else {
+        let re = SQL_REGEX.get_or_init(|| {
+            Regex::new(r"SELECT \* FROM (?<table>\w+) WHERE (?<field>\w+) = '?'")
+                .expect("regex should parse")
+        });
+        let Some(caps) = re.captures(sql) else {
             return Err(anyhow!("invalid query: cannot parse {sql}"));
         };
 
