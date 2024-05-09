@@ -3133,7 +3133,7 @@ checksum = "830b7e5d4d90034032940e4ace0d9a9a057e7a45cd94e6c007832e39edb82f6d"
 [[package]]
 name = "vercre-core"
 version = "0.1.0-alpha.4"
-source = "git+https://github.com/vercre/vercre#a7fbe8bb36967130215b42dd1261d7f3197ccc22"
+source = "git+https://github.com/vercre/vercre#be575af59b16269fe383bbdf932f6fed241eeb44"
 dependencies = [
  "anyhow",
  "base64ct",
