@@ -10,8 +10,8 @@ use bindings::wasi::sql::readwrite;
 use bindings::wasi::sql::types::{self, DataType, Row};
 use bindings::Sql;
 use bson::Document;
-use mongodb::options::ClientOptions;
-pub use mongodb::Client;
+use mongodb::options::{ClientOptions, ReplaceOptions};
+use mongodb::{bson, Client};
 use regex::Regex;
 use wasmtime::component::{Linker, Resource};
 use wasmtime_wasi::WasiView;
@@ -96,7 +96,7 @@ impl readwrite::Host for State {
         };
 
         let row = Row {
-            field_name: String::from("issuer"),
+            field_name: String::from("document"),
             value: DataType::Binary(serde_json::to_vec(&doc)?),
         };
 
@@ -107,14 +107,18 @@ impl readwrite::Host for State {
     async fn exec(
         &mut self, c: Resource<Connection>, s: Resource<Statement>,
     ) -> wasmtime::Result<Result<u32, Resource<Error>>> {
-        tracing::warn!("TODO: implement readwrite::Host::exec");
+        tracing::debug!("readwrite::Host::exec");
 
         let rt = self.table();
         let cnn = rt.get(&c)?;
-        let _stmt = rt.get(&s)?;
+        let stmt = rt.get(&s)?;
 
-        let filter = mongodb::bson::doc! {};
-        let _doc = cnn.collection::<Document>("issuer").find_one(Some(filter), None).await?;
+        let query = stmt.filter.clone().unwrap();
+        let replacement = stmt.document.clone().unwrap();
+        let options = Some(ReplaceOptions::builder().upsert(true).build());
+
+        let coll = cnn.collection::<Document>(&stmt.collection);
+        let _doc = coll.replace_one(query, &replacement, options);
 
         Ok(Ok(0))
     }
@@ -182,33 +186,55 @@ impl types::HostError for State {
 pub struct Statement {
     collection: String,
     filter: Option<Document>,
+    document: Option<Document>,
 }
 
-static SQL_REGEX: OnceLock<Regex> = OnceLock::new();
+static QUERY_REGEX: OnceLock<Regex> = OnceLock::new();
 
 impl Statement {
     // Parse the SQL query and return a Statement.
     fn parse(sql: &str, params: &[String]) -> anyhow::Result<Self> {
         tracing::trace!("Statement::parse");
 
-        let re = SQL_REGEX.get_or_init(|| {
-            Regex::new(r"SELECT \* FROM (?<table>\w+) WHERE (?<field>\w+) = '?'")
-                .expect("regex should parse")
-        });
-        let Some(caps) = re.captures(sql) else {
-            return Err(anyhow!("invalid query: cannot parse {sql}"));
-        };
-
         if params.is_empty() {
             return Err(anyhow!("invalid query: expected a parameter"));
         }
 
-        // build simple filter
-        let filter = Some(mongodb::bson::doc! {&caps["field"]: &params[0]});
+        // query or exec?
+        if sql.starts_with("SELECT") {
+            let re = QUERY_REGEX.get_or_init(|| {
+                Regex::new(r"SELECT \* FROM (?<collection>\w+) WHERE (?<filter_col>\w+) = '?'")
+                    .expect("regex should parse")
+            });
+            let Some(caps) = re.captures(sql) else {
+                return Err(anyhow!("invalid query: query format should be: SELECT * FROM <collection> WHERE <filter_col> = '?'"));
+            };
 
-        Ok(Self {
-            collection: String::from(&caps["table"]),
-            filter,
-        })
+            // simple filter
+            let filter = bson::doc! {&caps["filter_col"]: &params[0]};
+
+            return Ok(Self {
+                collection: String::from(&caps["collection"]),
+                filter: Some(filter),
+                document: None,
+            });
+        } else {
+            let re = QUERY_REGEX.get_or_init(|| {
+                Regex::new(r"UPDATE (?<collection>\w+) SET (?<update_col>\w+) = '\?' WHERE (?<filter_col>\w+) = '\?'")
+                    .expect("regex should parse")
+            });
+            let Some(caps) = re.captures(sql) else {
+                return Err(anyhow!("invalid query: query format should be: UPDATE <collection> SET <update_col> WHERE <filter_col> = '?'"));
+            };
+
+            let filter = bson::doc! {&caps["filter_col"]: &params[1]};
+            let replacement: Document = serde_json::from_str(&params[0])?;
+
+            return Ok(Self {
+                collection: String::from(&caps["collection"]),
+                filter: Some(filter),
+                document: Some(replacement),
+            });
+        }
     }
 }
