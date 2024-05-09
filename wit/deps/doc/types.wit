@@ -1,0 +1,20 @@
+interface types {
+
+    resource document {
+        value: func() -> list<u8>;
+    }
+
+    resource filter {
+        value: func() -> list<tuple<string, string>>;
+    }
+    
+    /// An error resource type.
+    resource error {
+		trace: func() -> string;
+  	}
+    
+    /// A database connection.
+    resource database {
+        connect: static func(name: string) -> result<database, error>;
+    }
+}

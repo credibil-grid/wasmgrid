@@ -1,0 +1,15 @@
+interface readwrite {
+    use types.{database, document, error, filter};
+    
+    /// create.
+    // create: func(db: borrow<database>, d: borrow<document>) -> result<_, error>;
+
+    /// query.
+    query: func(db: borrow<database>, f: borrow<filter>) -> result<list<document>, error>;
+
+    /// update.
+    // update: func(db: borrow<database>, f: borrow<filter>, d: borrow<document>) -> result<_, error>;
+
+    /// delete.
+    // delete: func(db: borrow<database>, f: borrow<filter>) -> result<_, error>;
+}
