@@ -882,9 +882,9 @@ checksum = "5443807d6dff69373d433ab9ef5378ad8df50ca6298caf15de6e52e24aaf54d5"
 
 [[package]]
 name = "errno"
-version = "0.3.8"
+version = "0.3.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a258e46cdc063eb8519c00b9fc845fc47bcfca4130e2f08e88665ceda8474245"
+checksum = "534c5cf6194dfab3db3242765c03bbe257cf92f22b38f6bc0c58d59108a820ba"
 dependencies = [
  "libc",
  "windows-sys 0.52.0",
@@ -3133,7 +3133,7 @@ checksum = "830b7e5d4d90034032940e4ace0d9a9a057e7a45cd94e6c007832e39edb82f6d"
 [[package]]
 name = "vercre-core"
 version = "0.1.0-alpha.4"
-source = "git+https://github.com/vercre/vercre#82ae2f54ce6829932f44f1901887c31e92c04825"
+source = "git+https://github.com/vercre/vercre#a7fbe8bb36967130215b42dd1261d7f3197ccc22"
 dependencies = [
  "anyhow",
  "base64ct",
