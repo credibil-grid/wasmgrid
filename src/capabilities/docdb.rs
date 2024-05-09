@@ -6,9 +6,9 @@
 // use std::sync::OnceLock;
 
 use anyhow::anyhow;
-use bindings::wasi::doc::readwrite;
-use bindings::wasi::doc::types; //::{self, DataType, Row};
-use bindings::Doc;
+use bindings::wasi::docdb::readwrite;
+use bindings::wasi::docdb::types; //::{self, DataType, Row};
+use bindings::Docdb;
 // use bson::Document;
 use mongodb::options::{ClientOptions, ReplaceOptions};
 // use mongodb::{bson, Client};
@@ -24,15 +24,15 @@ mod bindings {
     pub use super::{Database, Document, Error, Filter};
 
     wasmtime::component::bindgen!({
-        world: "doc",
+        world: "docdb",
         path: "wit",
         tracing: true,
         async: true,
         with: {
-            "wasi:doc/types/database": Database,
-            "wasi:doc/types/document": Document,
-            "wasi:doc/types/filter": Filter,
-            "wasi:doc/types/error": Error,
+            "wasi:docdb/types/database": Database,
+            "wasi:docdb/types/document": Document,
+            "wasi:docdb/types/filter": Filter,
+            "wasi:docdb/types/error": Error,
         }
     });
 }
@@ -60,7 +60,7 @@ impl runtime::Capability for Capability {
     }
 
     fn add_to_linker(&self, linker: &mut Linker<State>) -> anyhow::Result<()> {
-        Doc::add_to_linker(linker, |t| t)
+        Docdb::add_to_linker(linker, |t| t)
     }
 
     /// Provide sql capability for the specified wasm component.
