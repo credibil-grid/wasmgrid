@@ -9,8 +9,7 @@ use anyhow::anyhow;
 use bindings::wasi::docdb::readwrite;
 use bindings::wasi::docdb::types::{self, HostDatabase, HostError, HostStatement};
 use bindings::Docdb;
-use mongodb::options::ClientOptions;
-use mongodb::options::ReplaceOptions;
+use mongodb::options::{ClientOptions, ReplaceOptions};
 use mongodb::Client;
 use wasmtime::component::{Linker, Resource};
 use wasmtime_wasi::WasiView;
@@ -42,7 +41,7 @@ static MONGODB: OnceLock<mongodb::Client> = OnceLock::new();
 
 pub struct Statement {
     collection: String,
-    filter: Option<bson::Document>,
+    conditions: Option<bson::Document>,
 }
 
 pub struct Capability {
@@ -106,7 +105,7 @@ impl readwrite::Host for State {
 
         let Some(doc) = database
             .collection::<bson::Document>(&stmt.collection)
-            .find_one(stmt.filter.clone(), None)
+            .find_one(stmt.conditions.clone(), None)
             .await?
         else {
             return Err(anyhow!("document not found"));
@@ -126,7 +125,7 @@ impl readwrite::Host for State {
         let stmt = table.get(&s)?;
 
         let doc: bson::Document = serde_json::from_slice(&d)?;
-        let Some(query) = stmt.filter.clone() else {
+        let Some(query) = stmt.conditions.clone() else {
             return Err(anyhow!("filter not found"));
         };
         let options = ReplaceOptions::builder().upsert(true).build();
@@ -144,7 +143,7 @@ impl readwrite::Host for State {
         let database = table.get(&db)?;
         let stmt = table.get(&s)?;
 
-        let Some(query) = stmt.filter.clone() else {
+        let Some(query) = stmt.conditions.clone() else {
             return Err(anyhow!("filter not found"));
         };
         let _ =
@@ -180,17 +179,17 @@ impl HostDatabase for State {
 #[async_trait::async_trait]
 impl HostStatement for State {
     async fn prepare(
-        &mut self, collection: String, keyvalues: Vec<(String, String)>,
+        &mut self, collection: String, conditions: Vec<(String, String)>,
     ) -> wasmtime::Result<Result<Resource<Statement>, Resource<Error>>> {
         tracing::debug!("HostFilter::prepare");
 
-        let mut filter = bson::Document::new();
-        for (k, v) in keyvalues {
-            filter.insert(k, v);
+        let mut doc = bson::Document::new();
+        for (k, v) in conditions {
+            doc.insert(k, v);
         }
         let query = Statement {
             collection,
-            filter: Some(filter),
+            conditions: Some(doc),
         };
 
         Ok(Ok(self.table().push(query)?))

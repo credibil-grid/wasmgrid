@@ -5,7 +5,7 @@ interface types {
     }
 
     resource statement {
-        prepare: static func(collection: string, filter: list<tuple<string, string>>) -> result<statement, error>;
+        prepare: static func(collection: string, conditions: list<tuple<string, string>>) -> result<statement, error>;
     }
 
     /// An error resource type.
