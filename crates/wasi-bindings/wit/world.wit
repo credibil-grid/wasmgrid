@@ -18,6 +18,3 @@ world signature {
 	include wasi:signature/imports@0.1.0-draft;
 }
 
-world sql {
-	include wasi:sql/imports@0.2.0-draft;
-}

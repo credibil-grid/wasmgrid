@@ -10,8 +10,8 @@ use wasi::exports::http::incoming_handler::Guest;
 use wasi::http::types::{
     Fields, IncomingRequest, OutgoingBody, OutgoingResponse, ResponseOutparam,
 };
-use wasi_bindings::sql::readwrite::{self, Connection, Statement};
-use wasi_bindings::sql::types::DataType;
+use wasi_bindings::docdb::readwrite;
+use wasi_bindings::docdb::types::{Database, Statement};
 
 struct HttpGuest;
 
@@ -63,19 +63,17 @@ fn hello(request: &Request) -> Result<Vec<u8>> {
     let req: serde_json::Value = serde_json::from_slice(&body)?;
     tracing::debug!("json: {:?}", req);
 
-    let cnn = Connection::open("metadata").unwrap();
+    let db = Database::connect("issuance").unwrap();
     let query = Statement::prepare(
-        "SELECT * FROM issuer WHERE credential_issuer = '?'",
-        &["issuer".to_string()],
+        "issuer",
+        &[(String::from("credential_issuer"), "https://issuance.demo.credibil.io".to_string())],
     )
-    .unwrap();
-    let res = readwrite::query(&cnn, &query).unwrap();
-    let row = res[0].clone();
+    .map_err(|e| anyhow!(e.trace()))?;
 
-    let DataType::Binary(md) = row.value else {
-        return Err(anyhow!("invalid row value"));
-    };
-    let md: IssuerMetadata = serde_json::from_slice(&md)?;
+    let results = readwrite::find(&db, &query).map_err(|e| anyhow!(e.trace()))?;
+    let doc = results.first().ok_or_else(|| anyhow!("No issuer metadata found"))?;
+
+    let md: IssuerMetadata = serde_json::from_slice(&doc)?;
     tracing::debug!("md: {:?}", md);
 
     let resp = json!({

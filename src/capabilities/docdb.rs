@@ -7,7 +7,7 @@ use std::sync::OnceLock;
 
 use anyhow::anyhow;
 use bindings::wasi::docdb::readwrite;
-use bindings::wasi::docdb::types::{self, HostDatabase, HostError, HostQuery};
+use bindings::wasi::docdb::types::{self, HostDatabase, HostError, HostStatement};
 use bindings::Docdb;
 // use bson::Document;
 use mongodb::options::ClientOptions;
@@ -20,7 +20,7 @@ use crate::runtime::{self, Runtime, State};
 mod bindings {
     #![allow(clippy::future_not_send)]
 
-    pub use super::{Database, Error, Query};
+    pub use super::{Database, Error, Statement};
 
     wasmtime::component::bindgen!({
         world: "docdb",
@@ -29,7 +29,7 @@ mod bindings {
         async: true,
         with: {
             "wasi:docdb/types/database": Database,
-            "wasi:docdb/types/query": Query,
+            "wasi:docdb/types/statement": Statement,
             "wasi:docdb/types/error": Error,
         }
     });
@@ -40,7 +40,7 @@ pub type Error = anyhow::Error;
 
 static MONGODB: OnceLock<mongodb::Client> = OnceLock::new();
 
-pub struct Query {
+pub struct Statement {
     collection: String,
     filter: Option<bson::Document>,
 }
@@ -80,18 +80,33 @@ impl runtime::Capability for Capability {
 // Implement the [`wasi_sql::ReadWriteView`]` trait for State.
 #[async_trait::async_trait]
 impl readwrite::Host for State {
+    async fn insert(
+        &mut self, db: Resource<Database>, s: Resource<Statement>, d: Vec<u8>,
+    ) -> wasmtime::Result<Result<(), Resource<Error>>> {
+        tracing::debug!("readwrite::Host::query");
+
+        let table = self.table();
+        let database = table.get(&db)?;
+        let stmt = table.get(&s)?;
+
+        let doc: bson::Document = serde_json::from_slice(&d)?;
+        let _ = database.collection(&stmt.collection).insert_one(doc, None).await?;
+
+        Ok(Ok(()))
+    }
+
     async fn find(
-        &mut self, db: Resource<Database>, q: Resource<Query>,
+        &mut self, db: Resource<Database>, s: Resource<Statement>,
     ) -> wasmtime::Result<Result<Vec<Vec<u8>>, Resource<Error>>> {
         tracing::debug!("readwrite::Host::query");
 
         let table = self.table();
         let database = table.get(&db)?;
-        let query = table.get(&q)?;
+        let stmt = table.get(&s)?;
 
         let Some(doc) = database
-            .collection::<bson::Document>(&query.collection)
-            .find_one(query.filter.clone(), None)
+            .collection::<bson::Document>(&stmt.collection)
+            .find_one(stmt.filter.clone(), None)
             .await?
         else {
             return Err(anyhow!("document not found"));
@@ -99,6 +114,42 @@ impl readwrite::Host for State {
 
         let ser = serde_json::to_vec(&doc)?;
         Ok(Ok(vec![ser]))
+    }
+
+    async fn update(
+        &mut self, db: Resource<Database>, s: Resource<Statement>, d: Vec<u8>,
+    ) -> wasmtime::Result<Result<(), Resource<Error>>> {
+        tracing::debug!("readwrite::Host::query");
+
+        let table = self.table();
+        let database = table.get(&db)?;
+        let stmt = table.get(&s)?;
+
+        let doc: bson::Document = serde_json::from_slice(&d)?;
+        let Some(query) = stmt.filter.clone() else {
+            return Err(anyhow!("filter not found"));
+        };
+        let _ = database.collection(&stmt.collection).replace_one(query, doc, None).await?;
+
+        Ok(Ok(()))
+    }
+
+    async fn delete(
+        &mut self, db: Resource<Database>, s: Resource<Statement>,
+    ) -> wasmtime::Result<Result<(), Resource<Error>>> {
+        tracing::debug!("readwrite::Host::query");
+
+        let table = self.table();
+        let database = table.get(&db)?;
+        let stmt = table.get(&s)?;
+
+        let Some(query) = stmt.filter.clone() else {
+            return Err(anyhow!("filter not found"));
+        };
+        let _ =
+            database.collection::<bson::Document>(&stmt.collection).delete_one(query, None).await?;
+
+        Ok(Ok(()))
     }
 }
 
@@ -124,19 +175,19 @@ impl HostDatabase for State {
     }
 }
 
-// Implement the [`HostQuery`]` trait for State.
+// Implement the [`HostStatement`]` trait for State.
 #[async_trait::async_trait]
-impl HostQuery for State {
+impl HostStatement for State {
     async fn prepare(
         &mut self, collection: String, keyvalues: Vec<(String, String)>,
-    ) -> wasmtime::Result<Result<Resource<Query>, Resource<Error>>> {
+    ) -> wasmtime::Result<Result<Resource<Statement>, Resource<Error>>> {
         tracing::debug!("HostFilter::prepare");
 
         let mut filter = bson::Document::new();
         for (k, v) in keyvalues {
             filter.insert(k, v);
         }
-        let query = Query {
+        let query = Statement {
             collection,
             filter: Some(filter),
         };
@@ -144,7 +195,7 @@ impl HostQuery for State {
         Ok(Ok(self.table().push(query)?))
     }
 
-    fn drop(&mut self, rep: Resource<Query>) -> wasmtime::Result<()> {
+    fn drop(&mut self, rep: Resource<Statement>) -> wasmtime::Result<()> {
         tracing::debug!("HostFilter::drop");
         self.table().delete(rep)?;
         Ok(())

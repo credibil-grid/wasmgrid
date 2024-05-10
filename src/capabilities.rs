@@ -9,4 +9,3 @@ pub(crate) mod http;
 pub(crate) mod keyvalue;
 pub(crate) mod messaging;
 pub(crate) mod signature;
-pub(crate) mod sql;

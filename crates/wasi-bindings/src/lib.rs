@@ -66,13 +66,3 @@ pub mod signature {
     pub use crate::signature_bindings::wasi::signature::*;
 }
 
-mod sql_bindings {
-    wit_bindgen::generate!({
-        world: "sql",
-    });
-}
-
-/// Bindings for the `wasi:sql` world.
-pub mod sql {
-    pub use crate::sql_bindings::wasi::sql::*;
-}

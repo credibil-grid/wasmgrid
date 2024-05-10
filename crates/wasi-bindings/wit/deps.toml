@@ -9,5 +9,4 @@
 docdb = "../../../wit/deps/docdb"
 messaging = "../../../wit/deps/messaging"
 keyvalue = "../../../wit/deps/keyvalue"
-sql = "../../../wit/deps/sql"
 signature = "../../../wit/deps/signature"
