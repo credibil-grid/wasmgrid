@@ -9,8 +9,8 @@ use anyhow::anyhow;
 use bindings::wasi::docdb::readwrite;
 use bindings::wasi::docdb::types::{self, HostDatabase, HostError, HostStatement};
 use bindings::Docdb;
-// use bson::Document;
 use mongodb::options::ClientOptions;
+use mongodb::options::ReplaceOptions;
 use mongodb::Client;
 use wasmtime::component::{Linker, Resource};
 use wasmtime_wasi::WasiView;
@@ -83,7 +83,7 @@ impl readwrite::Host for State {
     async fn insert(
         &mut self, db: Resource<Database>, s: Resource<Statement>, d: Vec<u8>,
     ) -> wasmtime::Result<Result<(), Resource<Error>>> {
-        tracing::debug!("readwrite::Host::query");
+        tracing::debug!("readwrite::Host::insert");
 
         let table = self.table();
         let database = table.get(&db)?;
@@ -98,7 +98,7 @@ impl readwrite::Host for State {
     async fn find(
         &mut self, db: Resource<Database>, s: Resource<Statement>,
     ) -> wasmtime::Result<Result<Vec<Vec<u8>>, Resource<Error>>> {
-        tracing::debug!("readwrite::Host::query");
+        tracing::debug!("readwrite::Host::find");
 
         let table = self.table();
         let database = table.get(&db)?;
@@ -119,7 +119,7 @@ impl readwrite::Host for State {
     async fn update(
         &mut self, db: Resource<Database>, s: Resource<Statement>, d: Vec<u8>,
     ) -> wasmtime::Result<Result<(), Resource<Error>>> {
-        tracing::debug!("readwrite::Host::query");
+        tracing::debug!("readwrite::Host::update");
 
         let table = self.table();
         let database = table.get(&db)?;
@@ -129,7 +129,8 @@ impl readwrite::Host for State {
         let Some(query) = stmt.filter.clone() else {
             return Err(anyhow!("filter not found"));
         };
-        let _ = database.collection(&stmt.collection).replace_one(query, doc, None).await?;
+        let options = ReplaceOptions::builder().upsert(true).build();
+        let _ = database.collection(&stmt.collection).replace_one(query, doc, options).await?;
 
         Ok(Ok(()))
     }
@@ -137,7 +138,7 @@ impl readwrite::Host for State {
     async fn delete(
         &mut self, db: Resource<Database>, s: Resource<Statement>,
     ) -> wasmtime::Result<Result<(), Resource<Error>>> {
-        tracing::debug!("readwrite::Host::query");
+        tracing::debug!("readwrite::Host::delete");
 
         let table = self.table();
         let database = table.get(&db)?;
