@@ -218,23 +218,23 @@ impl Statement {
                 filter: Some(filter),
                 document: None,
             });
-        } else {
-            let re = QUERY_REGEX.get_or_init(|| {
+        }
+
+        let re = QUERY_REGEX.get_or_init(|| {
                 Regex::new(r"UPDATE (?<collection>\w+) SET (?<update_col>\w+) = '\?' WHERE (?<filter_col>\w+) = '\?'")
                     .expect("regex should parse")
             });
-            let Some(caps) = re.captures(sql) else {
-                return Err(anyhow!("invalid query: query format should be: UPDATE <collection> SET <update_col> WHERE <filter_col> = '?'"));
-            };
+        let Some(caps) = re.captures(sql) else {
+            return Err(anyhow!("invalid query: query format should be: UPDATE <collection> SET <update_col> WHERE <filter_col> = '?'"));
+        };
 
-            let filter = bson::doc! {&caps["filter_col"]: &params[1]};
-            let replacement: Document = serde_json::from_str(&params[0])?;
+        let filter = bson::doc! {&caps["filter_col"]: &params[1]};
+        let replacement: Document = serde_json::from_str(&params[0])?;
 
-            return Ok(Self {
-                collection: String::from(&caps["collection"]),
-                filter: Some(filter),
-                document: Some(replacement),
-            });
-        }
+        Ok(Self {
+            collection: String::from(&caps["collection"]),
+            filter: Some(filter),
+            document: Some(replacement),
+        })
     }
 }
