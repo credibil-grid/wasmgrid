@@ -1,20 +1,21 @@
 interface types {
 
-    resource document {
-        value: func() -> list<u8>;
+    // resource document {
+    //     value: func() -> list<u8>;
+    // }
+    // type document = list<u8>;
+
+        /// A database connection.
+    resource database {
+        connect: static func(name: string) -> result<database, error>;
     }
 
-    resource filter {
-        value: func() -> list<tuple<string, string>>;
+    resource query {
+        prepare: static func(collection: string, filter: list<tuple<string, string>>) -> result<query, error>;
     }
     
     /// An error resource type.
     resource error {
 		trace: func() -> string;
   	}
-    
-    /// A database connection.
-    resource database {
-        connect: static func(name: string) -> result<database, error>;
-    }
 }

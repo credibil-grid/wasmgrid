@@ -10,7 +10,7 @@ use clap::Parser;
 use dotenv::dotenv;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
-use crate::capabilities::{http, keyvalue, messaging, signature, sql};
+use crate::capabilities::{docdb, http, keyvalue, messaging, signature};
 
 const DEF_HTTP_ADDR: &str = "0.0.0.0:8080";
 const DEF_MGO_CNN: &str = "mongodb://localhost:27017";
@@ -21,17 +21,6 @@ const DEF_NATS_CNN: &str = "demo.nats.io";
 struct Args {
     /// The path to the wasm file to serve.
     wasm: String,
-    // /// The http host.
-    // #[arg(long, default_value = "0.0.0.0:8080")]
-    // http_addr: String,
-
-    // /// The NATS host.
-    // #[arg(long, default_value = "demo.nats.io")]
-    // nats_addr: String,
-
-    // /// The `MongoDB` connection string.
-    // #[arg(long)]
-    // mgo_cnn: String,
 }
 
 #[tokio::main]
@@ -41,7 +30,7 @@ pub async fn main() -> wasmtime::Result<()> {
     // env vars
     if cfg!(debug_assertions) {
         dotenv().ok();
-        env::set_var("RUST_LOG", "wasmgrid=debug,http_kv=debug");
+        env::set_var("RUST_LOG", "debug");
     }
 
     let http_addr = env::var("HTTP_ADDR").unwrap_or_else(|_| DEF_HTTP_ADDR.to_string());
@@ -49,10 +38,8 @@ pub async fn main() -> wasmtime::Result<()> {
     let mgo_cnn = env::var("MGO_CNN").unwrap_or_else(|_| DEF_MGO_CNN.to_string());
 
     // tracing
-    let subscriber = FmtSubscriber::builder()
-        .with_env_filter(EnvFilter::from_default_env())
-        // .with_max_level(tracing::Level::DEBUG)
-        .finish();
+    let subscriber =
+        FmtSubscriber::builder().with_env_filter(EnvFilter::from_default_env()).finish();
     tracing::subscriber::set_global_default(subscriber)?;
 
     runtime::Builder::new()
@@ -60,7 +47,7 @@ pub async fn main() -> wasmtime::Result<()> {
         .capability(messaging::new(nats_cnn.clone()))
         .capability(keyvalue::new(nats_cnn))
         .capability(signature::new())
-        .capability(sql::new(mgo_cnn))
+        .capability(docdb::new(mgo_cnn))
         .run(args.wasm)?;
 
     shutdown().await
