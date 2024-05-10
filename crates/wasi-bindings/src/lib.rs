@@ -6,6 +6,17 @@
 //!
 //! [wasi]: https://github.com/bytecodealliance/wasi
 
+mod docdb_bindings {
+    wit_bindgen::generate!({
+        world: "docdb",
+    });
+}
+
+/// Bindings for the `wasi:signature` world.
+pub mod docdb {
+    pub use crate::docdb_bindings::wasi::docdb::*;
+}
+
 mod keyvalue_bindings {
     wit_bindgen::generate!({
         world: "keyvalue",
@@ -47,7 +58,6 @@ pub mod messaging {
 mod signature_bindings {
     wit_bindgen::generate!({
         world: "signature",
-        // pub_export_macro: true
     });
 }
 
@@ -59,11 +69,10 @@ pub mod signature {
 mod sql_bindings {
     wit_bindgen::generate!({
         world: "sql",
-        // pub_export_macro: true
     });
 }
 
-/// Bindings for the `wasi:signature` world.
+/// Bindings for the `wasi:sql` world.
 pub mod sql {
     pub use crate::sql_bindings::wasi::sql::*;
 }
