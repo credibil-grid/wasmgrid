@@ -2,7 +2,7 @@ interface types {
     /// Error type for signature operations. The implementation must be provided
     /// by the host.
     resource error {
-        trace: static func() -> string;    
+        trace: func() -> string;    
     }
 
     /// Supported signing suites. See <https://www.w3.org/TR/vc-jws-2020/>.
