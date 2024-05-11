@@ -3,6 +3,8 @@
 //! This module implements a runtime capability for `wasi:messaging`
 //! (<https://github.com/WebAssembly/wasi-messaging>).
 
+use std::sync::OnceLock;
+
 use anyhow::anyhow;
 use bindings::wasi::messaging::messaging_types::{
     self, FormatSpec, GuestConfiguration, HostClient, HostError, Message,
@@ -41,6 +43,8 @@ mod bindings {
 pub type Client = async_nats::Client;
 pub type Error = anyhow::Error;
 
+static CLIENT: OnceLock<(String, async_nats::Client)> = OnceLock::new();
+
 pub struct Capability {
     pub addr: String,
 }
@@ -62,11 +66,9 @@ impl runtime::Capability for Capability {
     /// Provide messaging capability for the specified wasm component.
     async fn run(&self, runtime: Runtime) -> anyhow::Result<()> {
         let client = async_nats::connect(&self.addr).await?;
-        tracing::info!("connected to NATS");
+        CLIENT.get_or_init(|| (self.addr.clone(), client.clone()));
 
-        // save client to ResourceTable for lookup
-        let mut store = runtime.new_store();
-        store.data_mut().save_client(self.addr.clone(), client.clone())?;
+        tracing::info!("connected to NATS");
 
         // subscribe to channels
         let mut subscribers = vec![];
@@ -129,15 +131,6 @@ impl Runtime {
     }
 }
 
-impl State {
-    // Add a new client to the host state.
-    fn save_client(&mut self, name: String, client: Client) -> anyhow::Result<Resource<Client>> {
-        let resource = self.table().push(client)?;
-        self.metadata.insert(name, Box::new(resource.rep()));
-        Ok(resource)
-    }
-}
-
 impl messaging_types::Host for State {
     // fn convert_error(&mut self, e: anyhow::Error) -> anyhow::Result<Error> {
     //     todo!()
@@ -152,16 +145,14 @@ impl HostClient for State {
     ) -> wasmtime::Result<anyhow::Result<Resource<Client>, Resource<Error>>> {
         tracing::debug!("MessagingView::connect {name}");
 
-        let resource = if let Some(rep) = self.metadata.get(&name) {
-            // reuse existing connection
-            let rep = rep.downcast_ref::<u32>().unwrap();
-            Resource::new_own(*rep)
+        let primary = CLIENT.get().ok_or_else(|| anyhow!("NATS client not initialized"))?;
+        let client = if primary.0 == name {
+            primary.1.clone()
         } else {
-            // create a new connection
-            let client = async_nats::connect(&name).await?;
-            self.save_client(name, client)?
+            async_nats::connect(&name).await?
         };
 
+        let resource = self.table().push(client)?;
         Ok(Ok(resource))
     }
 

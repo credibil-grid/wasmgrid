@@ -78,6 +78,7 @@ impl Builder {
         // pre-instantiate component
         let component = Component::from_file(&engine, wasm)?;
         let instance_pre = linker.instantiate_pre(&component)?;
+
         let runtime = Runtime {
             engine: engine.clone(),
             instance_pre,
