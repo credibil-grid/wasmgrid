@@ -75,26 +75,24 @@ impl Builder {
         let mut linker = Linker::new(&engine);
         wasmtime_wasi::add_to_linker_async(&mut linker)?;
 
-        // link each runtime
-        for cap in &self.capabilities {
-            cap.add_to_linker(&mut linker)?;
-        }
-
         // pre-instantiate component
-        // include_bytes!(wasm);
         let component = Component::from_file(&engine, wasm)?;
         let instance_pre = linker.instantiate_pre(&component)?;
-        let runtime = Runtime { engine, instance_pre };
+        let runtime = Runtime {
+            engine: engine.clone(),
+            instance_pre,
+        };
 
         // start capabilities
         tracing::debug!("starting capabilites");
         for cap in self.capabilities {
+            cap.add_to_linker(&mut linker)?;
+
             // check whether capability is required by the wasm component
-            let component = runtime.instance_pre().component().component_type();
-            let store = runtime.new_store();
+            let component = component.component_type();
             let namespace = cap.namespace();
-            if !component.imports(store.engine()).any(|e| e.0.starts_with(namespace))
-                && !component.exports(store.engine()).any(|e| e.0.starts_with(namespace))
+            if !component.imports(&engine).any(|e| e.0.starts_with(namespace))
+                && !component.exports(&engine).any(|e| e.0.starts_with(namespace))
             {
                 tracing::debug!("{namespace} not found, capability will not be started");
                 continue;
