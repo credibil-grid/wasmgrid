@@ -22,7 +22,7 @@ pub trait Capability: Send {
     fn add_to_linker(&self, linker: &mut Linker<State>) -> anyhow::Result<()>;
 
     /// Start and run the runtime.
-    async fn run(&self, handler: Runtime) -> anyhow::Result<()>;
+    async fn run(&self, runtime: Runtime) -> anyhow::Result<()>;
 }
 
 /// Runtime for a wasm component.
@@ -74,10 +74,14 @@ impl Builder {
 
         let mut linker = Linker::new(&engine);
         wasmtime_wasi::add_to_linker_async(&mut linker)?;
+        for cap in &self.capabilities {
+            cap.add_to_linker(&mut linker)?;
+        }
 
         // pre-instantiate component
         let component = Component::from_file(&engine, wasm)?;
         let instance_pre = linker.instantiate_pre(&component)?;
+        let component_type = component.component_type();
 
         let runtime = Runtime {
             engine: engine.clone(),
@@ -87,13 +91,10 @@ impl Builder {
         // start capabilities
         tracing::debug!("starting capabilites");
         for cap in self.capabilities {
-            cap.add_to_linker(&mut linker)?;
-
             // check whether capability is required by the wasm component
-            let component = component.component_type();
             let namespace = cap.namespace();
-            if !component.imports(&engine).any(|e| e.0.starts_with(namespace))
-                && !component.exports(&engine).any(|e| e.0.starts_with(namespace))
+            if !component_type.imports(&engine).any(|e| e.0.starts_with(namespace))
+                && !component_type.exports(&engine).any(|e| e.0.starts_with(namespace))
             {
                 tracing::debug!("{namespace} not found, capability will not be started");
                 continue;
@@ -102,6 +103,7 @@ impl Builder {
             // start capability
             let runtime = runtime.clone();
             let namespace = namespace.to_string();
+
             tokio::spawn(async move {
                 tracing::debug!("{namespace} starting");
                 if let Err(e) = cap.run(runtime).await {

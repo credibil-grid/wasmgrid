@@ -6,6 +6,7 @@
 use std::sync::OnceLock;
 
 use anyhow::anyhow;
+use async_nats::Subscriber;
 use bindings::wasi::messaging::messaging_types::{
     self, FormatSpec, GuestConfiguration, HostClient, HostError, Message,
 };
@@ -43,7 +44,7 @@ mod bindings {
 pub type Client = async_nats::Client;
 pub type Error = anyhow::Error;
 
-static CLIENT: OnceLock<(String, async_nats::Client)> = OnceLock::new();
+static RUNNER: OnceLock<Runner> = OnceLock::new();
 
 pub struct Capability {
     pub addr: String,
@@ -66,58 +67,73 @@ impl runtime::Capability for Capability {
     /// Provide messaging capability for the specified wasm component.
     async fn run(&self, runtime: Runtime) -> anyhow::Result<()> {
         let client = async_nats::connect(&self.addr).await?;
-        CLIENT.get_or_init(|| (self.addr.clone(), client.clone()));
 
-        tracing::info!("connected to NATS");
+        let runner = RUNNER.get_or_init(|| Runner {
+            runtime: runtime.clone(),
+            client: client.clone(),
+            client_name: self.addr.clone(),
+        });
 
         // subscribe to channels
         let mut subscribers = vec![];
-        for ch in runtime.channels().await? {
+        for ch in channels(&runtime).await? {
             let subscriber = client.subscribe(ch.clone()).await?;
             subscribers.push(subscriber);
         }
 
+        runner.start(subscribers).await
+    }
+}
+
+// Return the channels the Guest wants to subscribe to.
+async fn channels(runtime: &Runtime) -> anyhow::Result<Vec<String>> {
+    tracing::debug!("channels");
+
+    let mut store = runtime.new_store();
+    let (messaging, _) = Messaging::instantiate_pre(&mut store, runtime.instance_pre()).await?;
+
+    let gc = match messaging.wasi_messaging_messaging_guest().call_configure(&mut store).await? {
+        Ok(gc) => gc,
+        Err(e) => {
+            let error = store.data_mut().table().get(&e)?;
+            return Err(anyhow!(error.to_string()));
+        }
+    };
+
+    Ok(gc.channels)
+}
+
+#[derive(Clone)]
+struct Runner {
+    runtime: Runtime,
+    client: Client,
+    client_name: String,
+}
+
+impl Runner {
+    async fn start(&self, subscribers: Vec<Subscriber>) -> anyhow::Result<()> {
         // process messages until terminated
         let mut messages = stream::select_all(subscribers);
         while let Some(m) = messages.next().await {
-            let runtime = runtime.clone();
+            // let runtime = runtime.clone();
+            let runner = self.clone();
             let msg = to_message(m);
 
-            if let Err(e) = tokio::spawn(async move { runtime.handle_message(msg).await }).await {
+            if let Err(e) = tokio::spawn(async move { runner.handle_message(msg).await }).await {
                 tracing::error!("error processing message {e:?}");
             }
         }
 
         Ok(())
     }
-}
-
-impl Runtime {
-    // Return the channels the Guest wants to subscribe to.
-    async fn channels(&self) -> anyhow::Result<Vec<String>> {
-        tracing::debug!("channels");
-
-        let mut store = self.new_store();
-        let (messaging, _) = Messaging::instantiate_pre(&mut store, self.instance_pre()).await?;
-
-        let gc = match messaging.wasi_messaging_messaging_guest().call_configure(&mut store).await?
-        {
-            Ok(gc) => gc,
-            Err(e) => {
-                let error = store.data_mut().table().get(&e)?;
-                return Err(anyhow!(error.to_string()));
-            }
-        };
-
-        Ok(gc.channels)
-    }
 
     // Forward NATS message to the wasm Guest.
     async fn handle_message(&self, message: Message) -> anyhow::Result<()> {
         tracing::debug!("handle_message: {message:?}");
 
-        let mut store = self.new_store();
-        let (messaging, _) = Messaging::instantiate_pre(&mut store, self.instance_pre()).await?;
+        let mut store = self.runtime.new_store();
+        let (messaging, _) =
+            Messaging::instantiate_pre(&mut store, self.runtime.instance_pre()).await?;
 
         // call guest with message
         if let Err(e) =
@@ -131,13 +147,48 @@ impl Runtime {
     }
 }
 
+// // Return the channels the Guest wants to subscribe to.
+// async fn channels(runtime: &Runtime) -> anyhow::Result<Vec<String>> {
+//     tracing::debug!("channels");
+
+//     let mut store = runtime.new_store();
+//     let (messaging, _) = Messaging::instantiate_pre(&mut store, runtime.instance_pre()).await?;
+
+//     let gc = match messaging.wasi_messaging_messaging_guest().call_configure(&mut store).await? {
+//         Ok(gc) => gc,
+//         Err(e) => {
+//             let error = store.data_mut().table().get(&e)?;
+//             return Err(anyhow!(error.to_string()));
+//         }
+//     };
+
+//     Ok(gc.channels)
+// }
+
+// // Forward NATS message to the wasm Guest.
+// async fn handle_message(runtime: &Runtime, message: Message) -> anyhow::Result<()> {
+//     tracing::debug!("handle_message: {message:?}");
+
+//     let mut store = runtime.new_store();
+//     let (messaging, _) = Messaging::instantiate_pre(&mut store, runtime.instance_pre()).await?;
+
+//     // call guest with message
+//     if let Err(e) =
+//         messaging.wasi_messaging_messaging_guest().call_handler(&mut store, &[message]).await?
+//     {
+//         let error = store.data_mut().table().get(&e)?;
+//         return Err(anyhow!(error.to_string()));
+//     }
+
+//     Ok(())
+// }
+
 impl messaging_types::Host for State {
     // fn convert_error(&mut self, e: anyhow::Error) -> anyhow::Result<Error> {
     //     todo!()
     // }
 }
 
-// Implement the [`wasi_messaging::MessagingView`]` trait for State.
 #[async_trait::async_trait]
 impl HostClient for State {
     async fn connect(
@@ -145,9 +196,9 @@ impl HostClient for State {
     ) -> wasmtime::Result<anyhow::Result<Resource<Client>, Resource<Error>>> {
         tracing::debug!("MessagingView::connect {name}");
 
-        let primary = CLIENT.get().ok_or_else(|| anyhow!("NATS client not initialized"))?;
-        let client = if primary.0 == name {
-            primary.1.clone()
+        let runner = RUNNER.get().ok_or_else(|| anyhow!("RUNNER not initialized"))?;
+        let client = if runner.client_name == name {
+            runner.client.clone()
         } else {
             async_nats::connect(&name).await?
         };
@@ -168,7 +219,7 @@ impl consumer::Host for State {
     async fn subscribe_try_receive(
         &mut self, client: Resource<Client>, ch: String, t_milliseconds: u32,
     ) -> wasmtime::Result<Result<Option<Vec<Message>>, Resource<Error>>> {
-        tracing::debug!("ConsumerView::subscribe_try_receive {ch}, {t_milliseconds}");
+        tracing::debug!("consumer::Host::subscribe_try_receive {ch}, {t_milliseconds}");
 
         // subscribe to channel
         let client = self.table().get(&client)?;
@@ -187,7 +238,7 @@ impl consumer::Host for State {
     async fn subscribe_receive(
         &mut self, client: Resource<Client>, ch: String,
     ) -> wasmtime::Result<Result<Vec<Message>, Resource<Error>>> {
-        tracing::debug!("ConsumerView::subscribe_receive {ch}");
+        tracing::debug!("consumer::Host::subscribe_receive {ch}");
 
         let client = self.table().get(&client)?;
         let mut subscriber = client.subscribe(ch).await?;
@@ -198,9 +249,18 @@ impl consumer::Host for State {
     }
 
     async fn update_guest_configuration(
-        &mut self, _gc: GuestConfiguration,
+        &mut self, gc: GuestConfiguration,
     ) -> wasmtime::Result<Result<(), Resource<Error>>> {
-        tracing::warn!("TODO: ConsumerView::update_guest_configuration");
+        tracing::warn!("TODO: consumer::Host::update_guest_configuration");
+
+        let runner = RUNNER.get().ok_or_else(|| anyhow!("Runner not initialized"))?;
+
+        let mut subscribers = vec![];
+        for ch in gc.channels {
+            let subscriber = runner.client.subscribe(ch.clone()).await?;
+            subscribers.push(subscriber);
+        }
+
         Ok(Ok(()))
     }
 
@@ -208,7 +268,7 @@ impl consumer::Host for State {
     async fn complete_message(
         &mut self, msg: Message,
     ) -> wasmtime::Result<Result<(), Resource<Error>>> {
-        tracing::warn!("TODO: ConsumerView::complete_message: {:?}", msg.metadata);
+        tracing::warn!("TODO: consumer::Host::complete_message: {:?}", msg.metadata);
         Ok(Ok(()))
     }
 
@@ -216,7 +276,7 @@ impl consumer::Host for State {
     async fn abandon_message(
         &mut self, msg: Message,
     ) -> wasmtime::Result<Result<(), Resource<Error>>> {
-        tracing::warn!("TODO: ConsumerView::abandon_message: {:?}", msg.metadata);
+        tracing::warn!("TODO: consumer::Host::abandon_message: {:?}", msg.metadata);
         Ok(Ok(()))
     }
 }
