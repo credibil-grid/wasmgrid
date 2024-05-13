@@ -63,7 +63,6 @@ impl runtime::Capability for Capability {
         Messaging::add_to_linker(linker, |t| t)
     }
 
-    /// Provide messaging capability for the specified wasm component.
     async fn run(&self, runtime: Runtime) -> anyhow::Result<()> {
         let client = async_nats::connect(&self.addr).await?;
 
@@ -73,7 +72,7 @@ impl runtime::Capability for Capability {
             client: client.clone(),
         });
 
-        // get pre-configured guest channels (subscriptions)
+        // get guest configuration (channels to subscribe to)
         let mut store = runtime.new_store();
         let (messaging, _) = Messaging::instantiate_pre(&mut store, runtime.instance_pre()).await?;
         let gc = match messaging.wasi_messaging_messaging_guest().call_configure(&mut store).await?
@@ -110,11 +109,8 @@ impl Processor {
         // process messages until terminated
         let mut messages = stream::select_all(subscribers);
         while let Some(m) = messages.next().await {
-            // let runtime = runtime.clone();
-            let processor = self.clone();
-            let msg = to_message(m);
-
-            if let Err(e) = tokio::spawn(async move { processor.forward(msg).await }).await {
+            let self_ = self.clone();
+            if let Err(e) = tokio::spawn(async move { self_.forward(m).await }).await {
                 tracing::error!("error processing message {e:?}");
             }
         }
@@ -123,14 +119,14 @@ impl Processor {
     }
 
     // Forward NATS message to the wasm Guest.
-    async fn forward(&self, message: Message) -> anyhow::Result<()> {
-        tracing::debug!("handle_message: {message:?}");
+    async fn forward(&self, msg: async_nats::Message) -> anyhow::Result<()> {
+        tracing::debug!("handle_message: {msg:?}");
 
         let mut store = self.runtime.new_store();
         let (messaging, _) =
             Messaging::instantiate_pre(&mut store, self.runtime.instance_pre()).await?;
+        let message = to_message(msg);
 
-        // call guest with message
         if let Err(e) =
             messaging.wasi_messaging_messaging_guest().call_handler(&mut store, &[message]).await?
         {
@@ -153,7 +149,7 @@ impl HostClient for State {
     async fn connect(
         &mut self, name: String,
     ) -> wasmtime::Result<anyhow::Result<Resource<Client>, Resource<Error>>> {
-        tracing::debug!("MessagingView::connect {name}");
+        tracing::debug!("HostClient::connect {name}");
 
         let processor = PROCESSOR.get().ok_or_else(|| anyhow!("PROCESSOR not initialized"))?;
         let client = processor.client.clone();
@@ -212,7 +208,7 @@ impl consumer::Host for State {
         Ok(Ok(processor.subscribe(gc.channels).await?))
     }
 
-    // TODO: implement complete_message
+    // TODO: implement `complete_message` using JetStream
     async fn complete_message(
         &mut self, msg: Message,
     ) -> wasmtime::Result<Result<(), Resource<Error>>> {
@@ -220,7 +216,7 @@ impl consumer::Host for State {
         Ok(Ok(()))
     }
 
-    // TODO: implement abandon_message
+    // TODO: implement `abandon_message` using JetStream
     async fn abandon_message(
         &mut self, msg: Message,
     ) -> wasmtime::Result<Result<(), Resource<Error>>> {
