@@ -6,7 +6,7 @@ interface messaging-types {
     
     /// TODO(danbugs): This should be eventually extracted as an underlying type for other wasi-cloud-core interfaces.
     resource error {
-        trace: func() -> string;    
+        trace: static func() -> string;    
     }
   
     /// There are two types of channels:
