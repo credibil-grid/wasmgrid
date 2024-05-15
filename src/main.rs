@@ -10,7 +10,7 @@ use clap::Parser;
 use dotenv::dotenv;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
-use crate::capabilities::{docdb, http, keyvalue, messaging, signature};
+use crate::capabilities::{docdb, http, keyvalue, messaging, p2p, signature};
 
 const DEF_HTTP_ADDR: &str = "0.0.0.0:8080";
 const DEF_MGO_CNN: &str = "mongodb://localhost:27017";
@@ -48,6 +48,7 @@ pub async fn main() -> wasmtime::Result<()> {
         .capability(keyvalue::new(nats_cnn))
         .capability(signature::new())
         .capability(docdb::new(mgo_cnn))
+        .capability(p2p::new())
         .run(args.wasm)?;
 
     shutdown().await

@@ -8,4 +8,5 @@ pub(crate) mod docdb;
 pub(crate) mod http;
 pub(crate) mod keyvalue;
 pub(crate) mod messaging;
+pub(crate) mod p2p;
 pub(crate) mod signature;

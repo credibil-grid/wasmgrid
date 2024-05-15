@@ -1,0 +1,30 @@
+// Types used by a peer-to-peer node.
+interface types {
+    // Public key of a container owner. Containers can have more than one owner, where individual
+    // owners may have read/write/both access.
+    type owner = string;
+
+    // Token that gives access to a container.
+    type container-token = string;
+
+    // Permissions that holder of a container token can have.
+    variant permission {
+        // Holder can read the container.
+        read,
+
+        // Holder can write to the container.
+        write,
+
+        // Holder can read and write to the container.
+        read-write,
+    }
+
+    // Changes to a container state
+    variant container-event {
+        // Container was updated.
+        updated,
+
+        // Container was deleted.
+        deleted,        
+    }
+}
