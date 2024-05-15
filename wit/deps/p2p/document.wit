@@ -3,6 +3,10 @@ interface document {
     use wasi:blobstore/types@0.2.0-draft.{container-name, error};
     use types.{owner, container-token, container-event};
 
+    // Create a new owner on the underlying node and receive an owner token to use for document
+    // management.
+    create-owner: func() -> result<owner, error>;
+
     // Create a new container
     create-container: func(owner: owner) -> result<tuple<container, container-token>, error>;
 

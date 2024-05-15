@@ -31,7 +31,15 @@ pub struct Document {
 
 #[async_trait::async_trait]
 impl Host for State {
-    /// Create a new container.
+    /// Create a new author.
+    async fn create_owner(&mut self) -> wasmtime::Result<Result<Owner, Error>> {
+        tracing::debug!("Host::create_owner");
+        let iroh = iroh_node()?;
+        let author = iroh.authors.create().await?;
+        Ok(Ok(author.fmt_short()))
+    }
+
+    /// Create a new document.
     async fn create_container(
         &mut self, owner: Owner,
     ) -> wasmtime::Result<Result<(Resource<Document>, ContainerToken), Error>> {

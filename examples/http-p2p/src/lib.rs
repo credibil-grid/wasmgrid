@@ -1,6 +1,6 @@
 #![feature(let_chains)]
 
-use anyhow::{anyhow, Result};
+use anyhow::anyhow;
 use http::header::CONTENT_TYPE;
 use http::Uri;
 use serde::{Deserialize, Serialize};
@@ -10,7 +10,7 @@ use wasi::exports::http::incoming_handler::Guest;
 use wasi::http::types::{
     Fields, IncomingRequest, OutgoingBody, OutgoingResponse, ResponseOutparam,
 };
-//use wasi_bindings::p2p::document;
+use wasi_bindings::p2p::document;
 
 struct HttpP2pGuest;
 
@@ -67,14 +67,32 @@ struct Doc {
 
 type Log = Vec<(String, String)>;
 
-fn create_document(req: &Request) -> Result<Vec<u8>> {
+fn create_document(req: &Request) -> anyhow::Result<Vec<u8>> {
     let log: Log = Vec::new();
     let body = req.body()?;
-    tracing::debug!("request body: {:?}", body);
     let doc: Doc = serde_json::from_slice(&body)?;
     tracing::debug!("processing document: {:?}", doc);
 
+    // Establish an author - either by using an environment variable or creating a new one.
+    let mut author = std::env::var("IROH_AUTHOR").unwrap_or_else(|_| "create".to_string());
+    if author == "create" {
+        author = create_author()?;
+    }
+    tracing::debug!("using author: {author}");
+
     serde_json::to_vec(&log).map_err(Into::into)
+}
+
+fn create_author() -> anyhow::Result<String> {
+    tracing::debug!("creating author");
+    let author = match document::create_owner() {
+        Ok(author) => author,
+        Err(err) => {
+            tracing::debug!("error creating author: {:?}", err);
+            return Err(anyhow!(err));
+        }
+    };
+    Ok(author)
 }
 
 wasi::http::proxy::export!(HttpP2pGuest);
@@ -104,7 +122,7 @@ impl<'a> Request<'a> {
         p_and_q.parse::<Uri>().unwrap_or_else(|_| Uri::default())
     }
 
-    fn body(&self) -> Result<Vec<u8>> {
+    fn body(&self) -> anyhow::Result<Vec<u8>> {
         let body = self.inner.consume().map_err(|()| anyhow!("error consuming request body"))?;
         let stream = body.stream().map_err(|()| anyhow!("error getting body stream"))?;
 
