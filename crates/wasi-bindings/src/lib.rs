@@ -66,3 +66,13 @@ pub mod signature {
     pub use crate::signature_bindings::wasi::signature::*;
 }
 
+/// Bindings for the `wasi:p2p` world.
+pub mod p2p {
+    pub use crate::p2p_bindings::wasi::p2p::*;
+}
+
+mod p2p_bindings {
+    wit_bindgen::generate!({
+        world: "p2p",
+    });
+}
