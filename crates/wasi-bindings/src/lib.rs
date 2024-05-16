@@ -69,6 +69,9 @@ pub mod signature {
 /// Bindings for the `wasi:p2p` world.
 pub mod p2p {
     pub use crate::p2p_bindings::wasi::p2p::*;
+    pub mod exports {
+        pub use crate::p2p_bindings::wasi::blobstore::container::*;
+    }
 }
 
 mod p2p_bindings {

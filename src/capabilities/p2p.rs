@@ -4,9 +4,10 @@ pub mod types;
 
 use anyhow::{anyhow, Context};
 use bindings::P2p;
+use futures::TryStreamExt;
 use wasmtime::component::Linker;
 use std::sync::OnceLock;
-use iroh::node::FsNode;
+use iroh::{docs::AuthorId, node::FsNode};
 
 use crate::runtime::{self, Runtime, State};
 
@@ -81,4 +82,15 @@ pub(crate) fn iroh_node() -> anyhow::Result<&'static FsNode> {
         return Err(anyhow!("Iroh node not started"));
     };
     Ok(node)
+}
+
+pub(crate) async fn find_author(author_short_id: &str) -> anyhow::Result<Option<AuthorId>> {
+    let iroh = iroh_node().expect("failed to get Iroh node from once-lock");
+    let mut authors = iroh.authors.list().await?;
+    while let Some(author) = authors.try_next().await? {
+        if author.fmt_short() == author_short_id {
+            return Ok(Some(author));
+        }
+    }
+    Ok(None)
 }

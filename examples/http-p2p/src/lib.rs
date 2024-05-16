@@ -11,7 +11,7 @@ use wasi::http::types::{
     Fields, IncomingRequest, OutgoingBody, OutgoingResponse, ResponseOutparam,
 };
 use wasi_bindings::p2p::document;
-
+use wasi_bindings::p2p::exports::OutgoingValue;
 struct HttpP2pGuest;
 
 impl Guest for HttpP2pGuest {
@@ -68,7 +68,7 @@ struct Doc {
 type Log = Vec<(String, String)>;
 
 fn create_document(req: &Request) -> anyhow::Result<Vec<u8>> {
-    let log: Log = Vec::new();
+    let mut log: Log = Vec::new();
     let body = req.body()?;
     let doc: Doc = serde_json::from_slice(&body)?;
     tracing::debug!("processing document: {:?}", doc);
@@ -79,7 +79,38 @@ fn create_document(req: &Request) -> anyhow::Result<Vec<u8>> {
         author = create_author()?;
     }
     tracing::debug!("using author: {author}");
+    log.push(("author".to_string(), author.clone()));
 
+    // Create the document.
+    let (container, ticket) = document::create_container(&author).map_err(|e| anyhow!(e))?;
+    tracing::debug!("created container");
+    log.push(("ticket".to_string(), ticket.clone()));
+    tracing::debug!("ticket: {ticket}");
+    let container_id = container.name().map_err(|e| anyhow!(e))?;
+    log.push(("container ID".to_string(), container_id.clone()));
+    tracing::debug!("container ID: {container_id}");
+
+    // Add entries.
+    for entry in doc.entries {
+        let data = OutgoingValue::new_outgoing_value();
+        let content = data
+            .outgoing_value_write_body()
+            .map_err(|_| anyhow!("unable to get outgoing value body"))?;
+        let allowed_length = content.check_write()?;
+        if allowed_length < entry.data.len() as u64 {
+            return Err(anyhow!("data too large"));
+        }
+        content.write(entry.data.as_bytes())?;
+        container.write_data(&entry.key, &data).map_err(|e| anyhow!(e))?;
+    }
+
+    // Read the document back again.
+
+    // Delete the entries.
+
+    // Delete the document.
+
+    tracing::debug!("log: {:?}", log);
     serde_json::to_vec(&log).map_err(Into::into)
 }
 
@@ -98,11 +129,9 @@ fn create_author() -> anyhow::Result<String> {
 wasi::http::proxy::export!(HttpP2pGuest);
 
 fn init_tracing() {
-    let subscriber = FmtSubscriber::builder()
-        .with_env_filter(EnvFilter::from_default_env())
-        .finish();
-    tracing::subscriber::set_global_default(subscriber)
-        .expect("setting default subscriber failed");
+    let subscriber =
+        FmtSubscriber::builder().with_env_filter(EnvFilter::from_default_env()).finish();
+    tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
 }
 
 #[derive(Debug)]
@@ -136,4 +165,3 @@ impl<'a> Request<'a> {
         Ok(buffer)
     }
 }
-
