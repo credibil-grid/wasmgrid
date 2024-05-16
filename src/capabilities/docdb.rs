@@ -55,7 +55,7 @@ pub const fn new(addr: String) -> Capability {
 #[async_trait::async_trait]
 impl runtime::Capability for Capability {
     fn namespace(&self) -> &str {
-        "wasi:doc"
+        "wasi:docdb"
     }
 
     fn add_to_linker(&self, linker: &mut Linker<State>) -> anyhow::Result<()> {
