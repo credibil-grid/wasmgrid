@@ -19,6 +19,7 @@ use super::bindings::wasi::p2p::document::Host;
 use super::bindings::wasi::p2p::types::{ContainerToken, Owner};
 use super::iroh_node;
 use super::types::Blob;
+use crate::capabilities::p2p::find_author;
 use crate::runtime::State;
 
 impl container::Host for State {}
@@ -46,10 +47,20 @@ impl Host for State {
         // Do not log owner - it is sensitive.
         tracing::debug!("Host::create_container");
 
-        let author = AuthorId::from_str(&owner).context("invalid owner")?;
+        let Some(author) = find_author(&owner).await? else {
+            return Ok(Err("Author not found".to_string()));
+        };
         let iroh = iroh_node()?;
         let doc = iroh.docs.create().await?;
+        tracing::debug!(
+            "Host::create_container: created document with id: {}",
+            doc.id().to_string()
+        );
         let ticket = doc.share(ShareMode::Write, Default::default()).await?;
+        tracing::debug!(
+            "Host::create_container: shared document with ticket: {}",
+            ticket.to_string()
+        );
 
         let container = Document { author, doc };
         let stashed = self.table().push(container)?;
@@ -63,7 +74,9 @@ impl Host for State {
         // Do not log ticket - it is sensitive.
         tracing::debug!("Host::get_container");
 
-        let author = AuthorId::from_str(&owner).context("invalid owner")?;
+        let Some(author) = find_author(&owner).await? else {
+            return Ok(Err("Author not found".to_string()));
+        };
         let ticket = DocTicket::from_str(&token).context("invalid token")?;
         let iroh = iroh_node()?;
         let doc = iroh.docs.import(ticket.clone()).await?;

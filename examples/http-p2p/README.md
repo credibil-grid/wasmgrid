@@ -6,12 +6,12 @@ example:
 ```bash
 RUST_LOG=debug
 IROH_DATA_DIR="/Users/goldie/Library/Application Support/io.credibil.wallet"
-IROH_PORT=4433
+IROH_PORT=11204
 IROH_AUTHOR=zsv3g2zcqsyicbte
 ```
 
 * The data directory can be anywhere locally available to the runtime.
-* The port is the port that the Iroh node will listen on. If omitted, it will default to 4433.
+* The port is the port that the Iroh node will listen on. If omitted, it will default to 11204.
 * If the author ID is omitted or can't be found, a new author will be created and trace-written to
 the console for you to use on subsequent runs.
 
