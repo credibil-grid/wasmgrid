@@ -17,7 +17,7 @@ workspace = true
 
 [dependencies]
 anyhow.workspace = true
-async-nats = "0.35.0"
+async-nats = "0.35.1"
 async-trait.workspace = true
 base64ct = { version = "1.6.0", features = ["std"] }
 bson = { version = "2.10.0", features = ["chrono-0_4"] }

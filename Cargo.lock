@@ -230,9 +230,9 @@ dependencies = [
 
 [[package]]
 name = "async-nats"
-version = "0.35.0"
+version = "0.35.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d5e47d2f7305524258908449aff6c86db36697a9b4219bfb1777e0ca1945358d"
+checksum = "ab8df97cb8fc4a884af29ab383e9292ea0939cfcdd7d2a17179086dc6c427e7f"
 dependencies = [
  "base64 0.22.1",
  "bytes",
@@ -2150,7 +2150,7 @@ dependencies = [
  "iana-time-zone-haiku",
  "js-sys",
  "wasm-bindgen",
- "windows-core 0.52.0",
+ "windows-core 0.51.1",
 ]
 
 [[package]]
@@ -5392,9 +5392,9 @@ dependencies = [
 
 [[package]]
 name = "toml_datetime"
-version = "0.6.5"
+version = "0.6.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3550f4e9685620ac18a50ed434eb3aec30db8ba93b0287467bca5826ea25baf1"
+checksum = "4badfd56924ae69bcc9039335b2e017639ce3f9b001c393c1b2d1ef846ce2cbf"
 
 [[package]]
 name = "toml_edit"
@@ -5680,7 +5680,7 @@ checksum = "830b7e5d4d90034032940e4ace0d9a9a057e7a45cd94e6c007832e39edb82f6d"
 [[package]]
 name = "vercre-core"
 version = "0.1.0-alpha.4"
-source = "git+https://github.com/vercre/vercre#e94424100b2f3435345bfcb511bf466481b7ef15"
+source = "git+https://github.com/vercre/vercre#4ffef0e265b1cbc06619b6f4767122a3179909f1"
 dependencies = [
  "anyhow",
  "base64ct",
