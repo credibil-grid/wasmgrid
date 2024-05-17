@@ -13,7 +13,7 @@ use crate::runtime::{self, Runtime, State};
 
 pub mod bindings {
     pub use super::document::{Document, StreamObjectNames};
-    pub use super::types::Blob;
+    pub use super::types::BlobValue;
 
     wasmtime::component::bindgen!({
         world: "p2p",
@@ -24,8 +24,8 @@ pub mod bindings {
             "wasi:io": wasmtime_wasi::bindings::io,
             "wasi:blobstore/container/container": Document,
             "wasi:blobstore/container/stream-object-names": StreamObjectNames,
-            "wasi:blobstore/types/incoming-value": Blob,
-            "wasi:blobstore/types/outgoing-value": Blob,
+            "wasi:blobstore/types/incoming-value": BlobValue,
+            "wasi:blobstore/types/outgoing-value": BlobValue,
         }
     });
 }

@@ -18,7 +18,7 @@ use super::bindings::wasi::blobstore::container::{
 use super::bindings::wasi::p2p::document::Host;
 use super::bindings::wasi::p2p::types::{ContainerToken, Owner};
 use super::iroh_node;
-use super::types::Blob;
+use super::types::{Blob, BlobValue};
 use crate::capabilities::p2p::find_author;
 use crate::runtime::State;
 
@@ -122,7 +122,7 @@ impl HostContainer for State {
     /// the entry.
     async fn get_data(
         &mut self, container: Resource<Document>, name: ObjectName, start: u64, end: u64,
-    ) -> wasmtime::Result<Result<Resource<Blob>, Error>> {
+    ) -> wasmtime::Result<Result<Resource<BlobValue>, Error>> {
         tracing::debug!("HostContainer::get_data {name} {start} {end}");
         let document = self.table().get_mut(&container)?;
         let Some(entry) = document.doc.get_exact(document.author, name, false).await? else {
@@ -136,19 +136,22 @@ impl HostContainer for State {
         let hash = entry.content_hash();
         let iroh = iroh_node()?;
         let data = iroh.blobs.read_at_to_bytes(hash, start, Some(len as usize)).await?;
-        let value = Blob::from(data);
-        Ok(Ok(self.table().push(value)?))
+        let blob = Blob::from(data);
+        Ok(Ok(self.table().push(BlobValue::new(blob))?))
     }
 
     /// Create or replace an entry with the given data.
     async fn write_data(
-        &mut self, container: Resource<Document>, name: ObjectName, data: Resource<Blob>,
+        &mut self, container: Resource<Document>, name: ObjectName, data: Resource<BlobValue>,
     ) -> wasmtime::Result<Result<(), Error>> {
         tracing::debug!("HostContainer::write_data {name}");
         let table = self.table();
         let document = table.get(&container)?;
-        let content = table.get(&data)?;
-        document.doc.set_bytes(document.author, name, content.clone()).await?;
+        tracing::debug!("HostContainer::write_data: writing to document {}", document.doc.id());
+        let value = table.get(&data)?;
+        let blob = value.blob.clone();
+        document.doc.set_bytes(document.author, name, blob).await?;
+        tracing::debug!("HostContainer::write_data: complete");
         Ok(Ok(()))
     }
 

@@ -11,7 +11,7 @@ use wasi::http::types::{
     Fields, IncomingRequest, OutgoingBody, OutgoingResponse, ResponseOutparam,
 };
 use wasi_bindings::p2p::document;
-use wasi_bindings::p2p::exports::OutgoingValue;
+use wasi_bindings::p2p::exports::{OutgoingValue, StreamObjectNames};
 struct HttpP2pGuest;
 
 impl Guest for HttpP2pGuest {
@@ -65,10 +65,13 @@ struct Doc {
     entries: Vec<DocEntry>,
 }
 
-type Log = Vec<(String, String)>;
+#[derive(Debug, Serialize)]
+struct Log {
+    entries: Vec<(String, String)>,
+}
 
 fn create_document(req: &Request) -> anyhow::Result<Vec<u8>> {
-    let mut log: Log = Vec::new();
+    let mut log = Log { entries: Vec::new() };
     let body = req.body()?;
     let doc: Doc = serde_json::from_slice(&body)?;
     tracing::debug!("processing document: {:?}", doc);
@@ -79,32 +82,46 @@ fn create_document(req: &Request) -> anyhow::Result<Vec<u8>> {
         author = create_author()?;
     }
     tracing::debug!("using author: {author}");
-    log.push(("author".to_string(), author.clone()));
+    log.entries.push(("author".to_string(), author.clone()));
 
     // Create the document.
     let (container, ticket) = document::create_container(&author).map_err(|e| anyhow!(e))?;
     tracing::debug!("created container");
-    log.push(("ticket".to_string(), ticket.clone()));
+    log.entries.push(("ticket".to_string(), ticket.clone()));
     tracing::debug!("ticket: {ticket}");
     let container_id = container.name().map_err(|e| anyhow!(e))?;
-    log.push(("container ID".to_string(), container_id.clone()));
+    log.entries.push(("container ID".to_string(), container_id.clone()));
     tracing::debug!("container ID: {container_id}");
 
     // Add entries.
-    for entry in doc.entries {
+    for entry in doc.entries.iter() {
+        tracing::debug!("adding entry: {:?}", entry);
         let data = OutgoingValue::new_outgoing_value();
         let content = data
             .outgoing_value_write_body()
             .map_err(|_| anyhow!("unable to get outgoing value body"))?;
-        let allowed_length = content.check_write()?;
+        let allowed_length = content.check_write().map_err(|e| anyhow!(e))?;
         if allowed_length < entry.data.len() as u64 {
             return Err(anyhow!("data too large"));
         }
-        content.write(entry.data.as_bytes())?;
+        content.write(entry.data.as_bytes()).map_err(|e| anyhow!(e))?;
         container.write_data(&entry.key, &data).map_err(|e| anyhow!(e))?;
+        tracing::debug!("entry written");
     }
 
     // Read the document back again.
+    let container = document::get_container(&author, &ticket).map_err(|e| anyhow!(e))?;
+    tracing::debug!("retrieved container");
+
+    // List entry keys.
+    let keys = container.list_objects().map_err(|e| anyhow!(e))?;
+    let (names, _end) =
+        StreamObjectNames::read_stream_object_names(&keys, 1024).map_err(|e| anyhow!(e))?;
+    tracing::debug!("keys: {:?}", names);
+
+    // Get entry metadata.
+
+    // Get entry content.
 
     // Delete the entries.
 
