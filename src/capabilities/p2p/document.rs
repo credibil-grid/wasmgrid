@@ -150,6 +150,7 @@ impl HostContainer for State {
         tracing::debug!("HostContainer::write_data: writing to document {}", document.doc.id());
         let value = table.get(&data)?;
         let blob = value.blob.clone();
+        // TODO: This await never resolves.
         document.doc.set_bytes(document.author, name, blob).await?;
         tracing::debug!("HostContainer::write_data: complete");
         Ok(Ok(()))
