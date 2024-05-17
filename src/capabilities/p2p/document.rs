@@ -94,6 +94,7 @@ impl Host for State {
 
         let iroh = iroh_node()?;
         let container = self.table().get_mut(&container)?;
+        container.doc.close().await?;
         iroh.docs.drop_doc(container.doc.id()).await?;
         Ok(Ok(()))
     }
