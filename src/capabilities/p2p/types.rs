@@ -35,7 +35,9 @@ pub struct Blob {
 
 impl Blob {
     pub fn new() -> Self {
-        Self { data: BytesMut::new() }
+        Self {
+            data: BytesMut::new(),
+        }
     }
 }
 
@@ -49,7 +51,7 @@ impl From<Bytes> for Blob {
     fn from(bytes: Bytes) -> Self {
         let mut data = BytesMut::new();
         data.put(bytes);
-        Self { data  }
+        Self { data }
     }
 }
 

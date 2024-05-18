@@ -2,12 +2,14 @@
 pub mod document;
 pub mod types;
 
+use std::sync::OnceLock;
+
 use anyhow::{anyhow, Context};
 use bindings::P2p;
 use futures::TryStreamExt;
+use iroh::docs::AuthorId;
+use iroh::node::FsNode;
 use wasmtime::component::Linker;
-use std::sync::OnceLock;
-use iroh::{docs::AuthorId, node::FsNode};
 
 use crate::runtime::{self, Runtime, State};
 
@@ -32,7 +34,7 @@ pub mod bindings {
 
 static IROH_NODE: OnceLock<FsNode> = OnceLock::new();
 pub const DEFAULT_IROH_PORT: u16 = 11204;
-        
+
 pub struct Capability;
 
 pub const fn new() -> Capability {
@@ -75,7 +77,6 @@ async fn start_node() -> anyhow::Result<()> {
 
     Ok(())
 }
-
 
 pub(crate) fn iroh_node() -> anyhow::Result<&'static FsNode> {
     let Some(node) = IROH_NODE.get() else {
