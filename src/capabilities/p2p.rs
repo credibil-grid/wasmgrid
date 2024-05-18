@@ -14,6 +14,8 @@ use wasmtime::component::Linker;
 use crate::runtime::{self, Runtime, State};
 
 pub mod bindings {
+    #![allow(clippy::future_not_send)]
+
     pub use super::document::{Document, StreamObjectNames};
     pub use super::types::BlobValue;
 
@@ -51,6 +53,7 @@ impl runtime::Capability for Capability {
         P2p::add_to_linker(linker, |t| t)
     }
 
+    #[allow(clippy::large_futures)]
     async fn run(&self, _runtime: Runtime) -> anyhow::Result<()> {
         start_node().await.context("failed to start Iroh")?;
         Ok(())

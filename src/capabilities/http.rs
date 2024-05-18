@@ -92,8 +92,8 @@ async fn handle_request(
         Err(_) => {
             // retrieve the inner task error
             let e = match task.await {
-                Ok(Err(e)) => e.into(),
-                Ok(Ok(_)) => anyhow!("task failed without error"),
+                Ok(Err(e)) => e,
+                Ok(Ok(())) => anyhow!("task failed without error"),
                 Err(e) => e.into(),
             };
             Err(anyhow!("guest did not invoke `response-outparam::set`: {e:?}"))

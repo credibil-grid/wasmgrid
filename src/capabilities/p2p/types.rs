@@ -13,7 +13,7 @@ use crate::runtime::State;
 
 impl types::Host for State {}
 
-/// A BlobValue is a wrapper for a Blob that implements the traits necessary for incoming and
+/// A `BlobValue` is a wrapper for a Blob that implements the traits necessary for incoming and
 /// outgoing values.
 #[derive(Clone)]
 pub struct BlobValue {
@@ -21,7 +21,7 @@ pub struct BlobValue {
 }
 
 impl BlobValue {
-    pub fn new(blob: Blob) -> Self {
+    pub const fn new(blob: Blob) -> Self {
         Self { blob }
     }
 }
@@ -41,6 +41,12 @@ impl Blob {
     }
 }
 
+impl Default for Blob {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl From<BytesMut> for Blob {
     fn from(data: BytesMut) -> Self {
         Self { data }
@@ -55,9 +61,9 @@ impl From<Bytes> for Blob {
     }
 }
 
-impl Into<Bytes> for Blob {
-    fn into(self) -> Bytes {
-        Bytes::from(self.data)
+impl From<Blob> for Bytes {
+    fn from(val: Blob) -> Self {
+        Self::from(val.data)
     }
 }
 

@@ -67,6 +67,12 @@ pub mod signature {
 }
 
 /// Bindings for the `wasi:p2p` world.
+mod p2p_bindings {
+    wit_bindgen::generate!({
+        world: "p2p",
+    });
+}
+
 pub mod p2p {
     pub use crate::p2p_bindings::wasi::p2p::*;
     pub mod exports {
@@ -74,8 +80,16 @@ pub mod p2p {
     }
 }
 
-mod p2p_bindings {
+/// Bindings for the `wasi:wrpc` world.
+mod wrpc_bindings {
     wit_bindgen::generate!({
-        world: "p2p",
+        world: "wrpc",
     });
+}
+
+pub mod wrpc {
+    pub use crate::wrpc_bindings::wasi::wrpc::*;
+    pub mod exports {
+        pub use crate::wrpc_bindings::wasi::wrpc::server::*;
+    }
 }

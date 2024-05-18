@@ -4,6 +4,7 @@ use std::str::FromStr;
 use anyhow::{anyhow, Context};
 use futures::stream::Stream;
 use futures::TryStreamExt;
+use iroh::base::node_addr::AddrInfoOptions;
 use iroh::client::docs::{Entry, ShareMode};
 use iroh::client::MemDoc;
 use iroh::docs::store::Query;
@@ -56,7 +57,7 @@ impl Host for State {
             "Host::create_container: created document with id: {}",
             doc.id().to_string()
         );
-        let ticket = doc.share(ShareMode::Write, Default::default()).await?;
+        let ticket = doc.share(ShareMode::Write, AddrInfoOptions::default()).await?;
         tracing::debug!(
             "Host::create_container: shared document with ticket: {}",
             ticket.to_string()
@@ -135,7 +136,7 @@ impl HostContainer for State {
         let len = test_end - start + 1;
         let hash = entry.content_hash();
         let iroh = iroh_node()?;
-        let data = iroh.blobs.read_at_to_bytes(hash, start, Some(len as usize)).await?;
+        let data = iroh.blobs.read_at_to_bytes(hash, start, Some(usize::try_from(len)?)).await?;
         let blob = Blob::from(data);
         Ok(Ok(self.table().push(BlobValue::new(blob))?))
     }
@@ -264,7 +265,7 @@ impl HostStreamObjectNames for State {
             let key_bytes = entry.key();
             let key = std::str::from_utf8(key_bytes).context("invalid utf8 key")?;
             keys.push(key.to_string());
-            if keys.len() == len as usize {
+            if keys.len() == usize::try_from(len)? {
                 end = false;
                 break;
             }

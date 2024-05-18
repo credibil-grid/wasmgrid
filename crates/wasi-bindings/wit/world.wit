@@ -21,3 +21,8 @@ world signature {
 world p2p {
 	include wasi:p2p/imports@0.1.0-draft;
 }
+
+world wrpc {
+	include wasi:wrpc/imports@0.1.0-draft;
+	export wasi:wrpc/server@0.1.0-draft;
+}

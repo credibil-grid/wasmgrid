@@ -138,11 +138,7 @@ impl Processor {
     }
 }
 
-impl messaging_types::Host for State {
-    // fn convert_error(&mut self, e: anyhow::Error) -> anyhow::Result<Error> {
-    //     todo!()
-    // }
-}
+impl messaging_types::Host for State {}
 
 #[async_trait::async_trait]
 impl HostClient for State {

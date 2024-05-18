@@ -1,0 +1,29 @@
+package wasi:wrpc@0.1.0-draft;
+
+interface types {
+    resource error {
+        trace: func() -> string;    
+    }
+}
+
+
+interface client {
+    use types.{error};
+    
+    call: func(server: string, request: list<u8>) -> result<list<u8>, error>;
+}
+
+interface server {
+    use types.{error};
+
+    handle: func(request: list<u8>) -> result<list<u8>, error>;
+}
+
+world imports {
+	import client;
+}
+
+world wrpc {
+	include imports;
+	export server;
+}

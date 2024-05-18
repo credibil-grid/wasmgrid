@@ -10,3 +10,4 @@ pub(crate) mod keyvalue;
 pub(crate) mod messaging;
 pub(crate) mod p2p;
 pub(crate) mod signature;
+pub(crate) mod wrpc;
