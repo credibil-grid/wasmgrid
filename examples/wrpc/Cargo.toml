@@ -1,0 +1,22 @@
+[package]
+name = "wrpc"
+version = "0.1.0"
+edition.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+
+[lib]
+crate-type = ["cdylib"]
+
+[lints]
+workspace = true
+
+[dependencies]
+anyhow.workspace = true
+http = "1.1.0"
+serde_json = "1.0.117"
+tracing.workspace = true
+tracing-subscriber.workspace = true
+wasi = "0.13.0"
+wasi-bindings.workspace = true
+http-shared.workspace = true

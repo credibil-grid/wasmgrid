@@ -84,12 +84,15 @@ pub mod p2p {
 mod wrpc_bindings {
     wit_bindgen::generate!({
         world: "wrpc",
+        pub_export_macro: true
     });
 }
 
 pub mod wrpc {
+    pub use crate::wrpc_bindings::export;
     pub use crate::wrpc_bindings::wasi::wrpc::*;
     pub mod exports {
-        pub use crate::wrpc_bindings::wasi::wrpc::server::*;
+        pub use crate::wrpc_bindings::exports::wasi;
+        pub use crate::wrpc_bindings::exports::wasi::wrpc::server::*;
     }
 }

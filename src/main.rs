@@ -45,11 +45,11 @@ pub async fn main() -> wasmtime::Result<()> {
     runtime::Builder::new()
         .capability(http::new(http_addr))
         .capability(messaging::new(nats_cnn.clone()))
-        .capability(keyvalue::new(nats_cnn))
+        .capability(keyvalue::new(nats_cnn.clone()))
         .capability(signature::new())
-        .capability(docdb::new(mgo_cnn.clone()))
+        .capability(docdb::new(mgo_cnn))
         .capability(p2p::new())
-        .capability(wrpc::new(mgo_cnn, "holder"))
+        .capability(wrpc::new(nats_cnn, "holder"))
         .run(args.wasm)?;
 
     shutdown().await

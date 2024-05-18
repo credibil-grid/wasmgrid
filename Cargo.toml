@@ -39,7 +39,7 @@ tracing.workspace = true
 tracing-subscriber.workspace = true
 wasmtime.workspace = true
 wasmtime-wasi.workspace = true
-wasmtime-wasi-http = "20.0.2"
+wasmtime-wasi-http.workspace = true
 
 [profile.release]
 lto = true
@@ -69,7 +69,11 @@ nursery = "warn"
 [workspace.dependencies]
 anyhow = "1.0.84"
 async-trait = "0.1.80"
+http-shared = { path = "crates/http-shared" }
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter", "fmt"] }
 wasmtime = { version = "20.0.2", default-features = false, features = ["component-model", "cranelift", "runtime"] }
 wasmtime-wasi = "20.0.2"
+wasmtime-wasi-http = "20.0.2"
+wasi-bindings = { path = "crates/wasi-bindings" }
+wasi = "0.13.0"

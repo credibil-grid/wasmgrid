@@ -64,19 +64,20 @@ impl runtime::Capability for Capability {
         let client = async_nats::connect(&self.addr).await?;
         CLIENT.set(client.clone()).map_err(|_| anyhow!("CLIENT already initialized"))?;
 
-        // subscribe to wrpc requests for 'server'
+        // subscribe to wrpc requests to 'server'
         let mut requests = client.subscribe(format!("wrpc:{}", self.server)).await?;
 
         // process requests
         while let Some(request) = requests.next().await {
             let runtime = runtime.clone();
+            let client = client.clone();
 
             if let Err(e) = tokio::spawn(async move {
                 let Some(reply) = request.clone().reply else {
                     return Err(anyhow!("reply subject not found"));
                 };
 
-                // call 'server' component
+                // forward request to 'server' component
                 let mut store = runtime.new_store();
                 let (wrpc, _) = Wrpc::instantiate_pre(&mut store, runtime.instance_pre()).await?;
 
@@ -92,10 +93,8 @@ impl runtime::Capability for Capability {
                     }
                 };
 
-                // publish response as reply to 'client' request
-                let client = CLIENT.get().ok_or_else(|| anyhow!("CLIENT not initialized"))?;
-                let data = Bytes::from(resp);
-                client.publish(reply, data).await?;
+                // send reply to 'client' component
+                client.publish(reply, Bytes::from(resp)).await?;
 
                 Ok(())
             })

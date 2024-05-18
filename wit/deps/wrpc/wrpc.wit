@@ -6,7 +6,6 @@ interface types {
     }
 }
 
-
 interface client {
     use types.{error};
     
