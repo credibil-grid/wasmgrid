@@ -81,11 +81,11 @@ nursery = "warn"
 [workspace.dependencies]
 anyhow = "1.0.84"
 async-trait = "0.1.80"
-http-shared = { path = "crates/http-shared" }
 serde = "1.0.117"
 serde_json = "1.0.117"
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter", "fmt"] }
+wasex = { git = "https://github.com/credibil-grid/wasex" }
 wasi = "0.13.0"
 wasi-bindings = { path = "crates/wasi-bindings" }
 wasmtime = { version = "20.0.2", default-features = false, features = ["component-model", "cranelift", "runtime"] }

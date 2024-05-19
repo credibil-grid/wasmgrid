@@ -1,7 +1,7 @@
 #![feature(let_chains)]
 
 use anyhow::anyhow;
-use http_shared::{self, Request, Router};
+use wasex::{self, Request, Router};
 use serde_json::json;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 use vercre_core::metadata::Issuer as IssuerMetadata;
@@ -20,7 +20,7 @@ impl Guest for HttpGuest {
 
         let router = Router::new().route("/", handler);
 
-        let out = http_shared::serve(&router, &request);
+        let out = wasex::serve(&router, &request);
         ResponseOutparam::set(response, out);
     }
 }

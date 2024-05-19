@@ -1,8 +1,8 @@
 use anyhow::anyhow;
-use http_shared::{self, Request, Router};
 use serde::Serialize;
 use serde_json::json;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
+use wasex::{self, Request, Router};
 use wasi::exports::http::incoming_handler::Guest as HttpGuest;
 use wasi::http::types::{IncomingRequest, ResponseOutparam};
 use wasi_bindings::wrpc;
@@ -17,7 +17,7 @@ impl HttpGuest for Http {
 
         let router = Router::new().route("/", hello);
 
-        let out = http_shared::serve(&router, &request);
+        let out = wasex::serve(&router, &request);
         ResponseOutparam::set(response, out);
     }
 }

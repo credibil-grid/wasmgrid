@@ -1,9 +1,9 @@
 #![feature(let_chains)]
 
 use anyhow::anyhow;
-use http_shared::{self, Request, Router};
 use serde::{Deserialize, Serialize};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
+use wasex::{self, Request, Router};
 use wasi::exports::http::incoming_handler::Guest;
 use wasi::http::types::{IncomingRequest, ResponseOutparam};
 use wasi_bindings::p2p::document;
@@ -16,7 +16,7 @@ impl Guest for HttpGuest {
 
         let router = Router::new().route("/", handler);
 
-        let out = http_shared::serve(&router, &request);
+        let out = wasex::serve(&router, &request);
         ResponseOutparam::set(response, out);
     }
 }
