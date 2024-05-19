@@ -1,5 +1,6 @@
 use anyhow::anyhow;
 use http_shared::{self, Request, Router};
+use serde::Serialize;
 use serde_json::json;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 use wasi::exports::http::incoming_handler::Guest as HttpGuest;
@@ -21,19 +22,28 @@ impl HttpGuest for Http {
     }
 }
 
-pub fn hello(request: &Request) -> anyhow::Result<Vec<u8>> {
-    tracing::debug!("request.uri: {}", request.uri());
+#[derive(Serialize)]
+pub struct Hello {
+    message: String,
+}
 
-    let resp = wrpc::client::call("holder", &b"hello".to_vec()).map_err(|e| anyhow!(e.trace()))?;
-    println!("response: {:?}", resp);
+pub fn hello(request: &Request) -> anyhow::Result<Vec<u8>> {
+    let msg = serde_json::to_vec(&Hello {
+        message: "Hello, World!".to_string(),
+    })?;
+
+    let resp = wrpc::client::call("server", &msg).map_err(|e| anyhow!(e.trace()))?;
+    println!("Received response: {:?}", resp);
+    // let msg: String = serde_json::from_slice(&resp).unwrap();
+    // println!("Received response: {:?}", msg);
 
     let req: serde_json::Value = serde_json::from_slice(&request.body()?)?;
-    tracing::debug!("json: {:?}", req);
+    println!("json: {:?}", req);
 
-    let resp = json!({
+    serde_json::to_vec(&json!({
         "message": "Hello, World!"
-    });
-    serde_json::to_vec(&resp).map_err(Into::into)
+    }))
+    .map_err(Into::into)
 }
 
 wasi::http::proxy::export!(Http);

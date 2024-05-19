@@ -1,13 +1,29 @@
+use serde::Deserialize;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 use wasi_bindings::wrpc::exports::wasi::wrpc::server::Guest as WrpcGuest;
 use wasi_bindings::wrpc::types::{Error, ServerConfiguration};
+
+// #[derive(Deserialize)]
+pub struct Hello {
+    message: String,
+}
+
+impl<'de> Deserialize<'de> for Hello {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let message = String::deserialize(deserializer)?;
+        Ok(Hello { message })
+    }
+}
 
 pub struct Server;
 
 impl WrpcGuest for Server {
     fn configure() -> Result<ServerConfiguration, Error> {
         Ok(ServerConfiguration {
-            name: "holder".to_string(),
+            name: "server".to_string(),
         })
     }
 
@@ -19,9 +35,11 @@ impl WrpcGuest for Server {
             FmtSubscriber::builder().with_env_filter(EnvFilter::from_default_env()).finish();
         tracing::subscriber::set_global_default(subscriber).expect("should set subscriber");
 
+        // let msg: Hello = serde_json::from_slice(&request).unwrap();
+        // println!("Received request: {:?}", msg.message);
         println!("Received request: {:?}", request);
-        let resp = b"Hello, World!";
-        Ok(resp.to_vec())
+
+        Ok(b"Message received!".to_vec())
     }
 }
 

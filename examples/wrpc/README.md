@@ -1,10 +1,13 @@
-# Http-Msg Example
+# wRPC Example
+
+This example demonstrates how to use the `wrpc` crate to create a simple
+client-server application.
 
 Build the client and server:
 
 ```bash
 cargo component build --package wrpc-client --release
-cargo component build --package wrpc-client --release
+cargo component build --package wrpc-server --release
 ```
 
 Run both client and server in separate consoles:

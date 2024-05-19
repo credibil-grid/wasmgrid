@@ -5778,6 +5778,7 @@ dependencies = [
 name = "wasi-bindings"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "wit-bindgen",
 ]
 
@@ -6783,6 +6784,7 @@ dependencies = [
  "anyhow",
  "http 1.1.0",
  "http-shared",
+ "serde",
  "serde_json",
  "tracing",
  "tracing-subscriber",
@@ -6794,6 +6796,9 @@ dependencies = [
 name = "wrpc-server"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
+ "serde",
+ "serde_json",
  "tracing",
  "tracing-subscriber",
  "wasi-bindings",
