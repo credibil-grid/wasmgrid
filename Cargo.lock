@@ -6776,7 +6776,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "wrpc"
+name = "wrpc-client"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -6786,6 +6786,15 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "wasi 0.13.0+wasi-0.2.0",
+ "wasi-bindings",
+]
+
+[[package]]
+name = "wrpc-server"
+version = "0.1.0"
+dependencies = [
+ "tracing",
+ "tracing-subscriber",
  "wasi-bindings",
 ]
 

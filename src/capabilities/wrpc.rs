@@ -40,14 +40,10 @@ static CLIENT: OnceLock<async_nats::Client> = OnceLock::new();
 
 pub struct Capability {
     addr: String,
-    server: String,
 }
 
-pub fn new(addr: String, server: impl Into<String>) -> Capability {
-    Capability {
-        addr,
-        server: server.into(),
-    }
+pub const fn new(addr: String) -> Capability {
+    Capability { addr }
 }
 
 #[async_trait::async_trait]
@@ -64,8 +60,32 @@ impl runtime::Capability for Capability {
         let client = async_nats::connect(&self.addr).await?;
         CLIENT.set(client.clone()).map_err(|_| anyhow!("CLIENT already initialized"))?;
 
-        // subscribe to wrpc requests to 'server'
-        let mut requests = client.subscribe(format!("wrpc:{}", self.server)).await?;
+        let mut store = runtime.new_store();
+
+        // check to see if server is required
+        let is_server = runtime
+            .instance_pre()
+            .component()
+            .component_type()
+            .exports(store.engine())
+            .any(|e| e.0.starts_with(self.namespace()));
+
+        if !is_server {
+            return Ok(());
+        }
+
+        // get 'server' component's name
+        let (wrpc, _) = Wrpc::instantiate_pre(&mut store, runtime.instance_pre()).await?;
+        let cfg = match wrpc.wasi_wrpc_server().call_configure(&mut store).await? {
+            Ok(cfg) => cfg,
+            Err(e) => {
+                let error = store.data_mut().table().get(&e)?;
+                return Err(anyhow!(error.to_string()));
+            }
+        };
+
+        // subscribe to wrpc requests for 'server' component
+        let mut requests = client.subscribe(format!("wrpc:{}", cfg.name)).await?;
 
         // process requests
         while let Some(request) = requests.next().await {
@@ -83,7 +103,7 @@ impl runtime::Capability for Capability {
 
                 let resp = match wrpc
                     .wasi_wrpc_server()
-                    .call_handle(&mut store, &request.payload)
+                    .call_handle(&mut store, &request.payload.to_vec())
                     .await?
                 {
                     Ok(resp) => resp,

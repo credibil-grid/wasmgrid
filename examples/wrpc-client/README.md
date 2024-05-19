@@ -3,23 +3,17 @@
 Build the example guest:
 
 ```bash
-cargo component build --package wrpc --release
+cargo component build --package wrpc-client --release
 ```
 
 Run a guest using the runtime:
 
 ```bash
-cargo run -- ./target/wasm32-wasi/release/wrpc.wasm
+cargo run -- ./target/wasm32-wasi/release/wrpc_client.wasm
 ```
 
 In a separate console, call the guest:
 
 ```bash
 curl -d '{"text":"hello"}' http://localhost:8080
-```
-
-Or, send some messages:
-
-```bash
-cargo test --test publish
 ```

@@ -1,5 +1,5 @@
 [package]
-name = "wrpc"
+name = "wrpc-client"
 version = "0.1.0"
 edition.workspace = true
 authors.workspace = true

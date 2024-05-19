@@ -49,7 +49,7 @@ pub async fn main() -> wasmtime::Result<()> {
         .capability(signature::new())
         .capability(docdb::new(mgo_cnn))
         .capability(p2p::new())
-        .capability(wrpc::new(nats_cnn, "holder"))
+        .capability(wrpc::new(nats_cnn))
         .run(args.wasm)?;
 
     shutdown().await

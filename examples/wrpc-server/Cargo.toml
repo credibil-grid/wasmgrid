@@ -1,0 +1,18 @@
+[package]
+name = "wrpc-server"
+version = "0.1.0"
+edition.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+
+[lib]
+crate-type = ["cdylib"]
+
+[lints]
+workspace = true
+
+[dependencies]
+tracing-subscriber.workspace = true
+tracing.workspace = true
+wasi-bindings.workspace = true
+

@@ -4,22 +4,37 @@ interface types {
     resource error {
         trace: func() -> string;    
     }
+
+    type request = list<u8>;
+    type response = list<u8>;
+
+    /// Configuration includes a required list of channels the guest is subscribing to, and an optional list of extensions key-value pairs 
+    /// (e.g., partitions/offsets to read from in Kafka/EventHubs, QoS etc.).
+    record server-configuration {
+        name: string,
+        // extensions: option<list<tuple<string, string>>>
+    }
 }
 
+
+
 interface client {
-    use types.{error};
-    
-    call: func(server: string, request: list<u8>) -> result<list<u8>, error>;
+    use types.{error, request, response};
+
+    call: func(server: string, request: request) -> result<response, error>;
 }
 
 interface server {
-    use types.{error};
+    use types.{error, request, response, server-configuration};
 
-    handle: func(request: list<u8>) -> result<list<u8>, error>;
+    configure: func() -> result<server-configuration, error>;
+
+    handle: func(request: request) -> result<response, error>;
 }
 
 world imports {
 	import client;
+    // import types;
 }
 
 world wrpc {
