@@ -15,7 +15,7 @@ workspace = true
 anyhow.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
-wasi-bindings = { path = "../../crates/wasi-bindings" }
+wasi-bindings.workspace = true
 
 # [package.metadata.component]
 # package = "component:messaging"

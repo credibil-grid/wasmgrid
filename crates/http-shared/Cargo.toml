@@ -18,6 +18,5 @@ serde = "1.0.202"
 serde_json = "1.0.117"
 serde_urlencoded = "0.7.1"
 tracing.workspace = true
-vercre-vci = { git = "https://github.com/vercre/vercre" }
+vercre-core = { git = "https://github.com/vercre/vercre" }
 wasi.workspace = true
-wasi-bindings.workspace = true

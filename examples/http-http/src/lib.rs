@@ -1,16 +1,15 @@
 #![feature(let_chains)]
 
-use anyhow::{anyhow, Result};
-use http::header::{CONTENT_TYPE, USER_AGENT}; // AUTHORIZATION
-use http::Uri;
+use anyhow::anyhow;
+use http::header::{CONTENT_TYPE, USER_AGENT};
+use http_shared::{self, Request, Router};
 // use serde::de::DeserializeOwned;
 use serde_json::json;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 use wasi::exports::http::incoming_handler::Guest;
 use wasi::http::outgoing_handler;
 use wasi::http::types::{
-    Headers, IncomingRequest, Method, OutgoingBody, OutgoingRequest, OutgoingResponse,
-    ResponseOutparam, Scheme,
+    Headers, IncomingRequest, Method, OutgoingBody, OutgoingRequest, ResponseOutparam, Scheme,
 };
 use wasi::io::streams;
 
@@ -22,44 +21,14 @@ impl Guest for HttpGuest {
             FmtSubscriber::builder().with_env_filter(EnvFilter::from_default_env()).finish();
         tracing::subscriber::set_global_default(subscriber).expect("should set subscriber");
 
-        // set up response in case of early failure
-        let headers = Headers::new();
-        let _ = headers.set(&CONTENT_TYPE.to_string(), &[b"application/json".to_vec()]);
-        let out_resp = OutgoingResponse::new(headers);
+        let router = Router::new().route("/", call_downstream);
 
-        let Ok(out_body) = out_resp.body() else {
-            return;
-        };
-        ResponseOutparam::set(response, Ok(out_resp));
-
-        let req = Request::from(&request);
-
-        // invoke handler based on path
-        let result = match req.uri().path() {
-            "/" => call_downstream(&req),
-            path => Err(anyhow!("path {path} not found")),
-        };
-
-        // serialize response
-        let content = match result {
-            Ok(resp) => resp,
-            Err(err) => {
-                let json = json!({"error": "server_error", "error_description": err.to_string()});
-                serde_json::to_vec(&json).unwrap()
-            }
-        };
-
-        // write out_req body
-        let out_stream = out_body.write().unwrap();
-        out_stream.blocking_write_and_flush(content.as_slice()).unwrap();
-        drop(out_stream);
-        OutgoingBody::finish(out_body, None).unwrap();
+        let out = http_shared::serve(&router, &request);
+        ResponseOutparam::set(response, out);
     }
 }
 
-fn call_downstream(request: &Request) -> Result<Vec<u8>> {
-    tracing::debug!("request.uri: {}", request.uri());
-
+fn call_downstream(_: &Request) -> anyhow::Result<Vec<u8>> {
     // build outgoing request
     let headers = Headers::new();
     headers.append(&USER_AGENT.to_string(), &b"WASI-HTTP/0.0.1".to_vec())?;
@@ -142,36 +111,3 @@ fn call_downstream(request: &Request) -> Result<Vec<u8>> {
 }
 
 wasi::http::proxy::export!(HttpGuest);
-
-#[derive(Debug)]
-pub struct Request<'a> {
-    inner: &'a IncomingRequest,
-}
-
-impl<'a> From<&'a IncomingRequest> for Request<'a> {
-    fn from(inner: &'a IncomingRequest) -> Self {
-        Self { inner }
-    }
-}
-
-impl<'a> Request<'a> {
-    pub fn uri(&self) -> Uri {
-        let p_and_q = self.inner.path_with_query().unwrap_or_default();
-        p_and_q.parse::<Uri>().unwrap_or_else(|_| Uri::default())
-    }
-
-    // fn body(&self) -> Result<Vec<u8>> {
-    //     let body = self.inner.consume().map_err(|()| anyhow!("error consuming request body"))?;
-    //     let stream = body.stream().map_err(|()| anyhow!("error getting body stream"))?;
-
-    //     // Read the entire body into a buffer.
-    //     let mut buffer = Vec::new();
-    //     while let Ok(bytes) = stream.read(1000)
-    //         && !bytes.is_empty()
-    //     {
-    //         buffer.extend_from_slice(&bytes);
-    //     }
-
-    //     Ok(buffer)
-    // }
-}

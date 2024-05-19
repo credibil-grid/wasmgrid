@@ -10,7 +10,7 @@ reorder_arrays = false
 reorder_keys = false
 
 [[rule]]
-include = ["**/Cargo.toml", "Cargo.toml"]
+# include = ["**/Cargo.toml", "Cargo.toml"]
 keys = ["*.dependencies", "*-dependencies", "dependencies"]
 
 [rule.formatting]
