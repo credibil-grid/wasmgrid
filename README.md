@@ -11,6 +11,7 @@ Add a `.env` file in the root of the project with the following values:
 
 ```bash
 RUST_LOG="wasmgrid=debug" # tracing log level
+HTTP_ADDR="0.0.0.0:8080"
 MGO_CNN="<MongoDB connection string>"
 NATS_CNN="<NATS/Synadia connection string>"
 ```
