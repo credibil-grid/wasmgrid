@@ -1,6 +1,6 @@
 [package]
-name = "http-p2p"
-description = "WASM guest for demonstrating storage of a message on a Peer-to-Peer network node"
+name = "keyvault"
+description = "WASM guest for secure, isolated and distributed storage of wallet keys and credentials"
 version = "0.1.0"
 authors.workspace = true
 edition.workspace = true
@@ -15,7 +15,6 @@ workspace = true
 anyhow.workspace = true
 http = "1.1.0"
 http-shared.workspace = true
-serde = { version = "1.0.202", features = ["derive"] }
 serde_json = "1.0.117"
 tracing.workspace = true
 tracing-subscriber.workspace = true

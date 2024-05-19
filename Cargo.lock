@@ -1158,6 +1158,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "docdb"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "http 1.1.0",
+ "http-shared",
+ "serde_json",
+ "tracing",
+ "tracing-subscriber",
+ "vercre-core",
+ "wasi 0.13.0+wasi-0.2.0",
+ "wasi-bindings",
+]
+
+[[package]]
 name = "dotenv"
 version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2007,41 +2022,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "http-kv"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "http 1.1.0",
- "http-shared",
- "serde_json",
- "tracing",
- "tracing-subscriber",
- "wasi 0.13.0+wasi-0.2.0",
- "wasi-bindings",
-]
-
-[[package]]
 name = "http-msg"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "http 1.1.0",
  "http-shared",
- "serde_json",
- "tracing",
- "tracing-subscriber",
- "wasi 0.13.0+wasi-0.2.0",
- "wasi-bindings",
-]
-
-[[package]]
-name = "http-p2p"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "http 1.1.0",
- "http-shared",
- "serde",
  "serde_json",
  "tracing",
  "tracing-subscriber",
@@ -2061,21 +2047,6 @@ dependencies = [
  "tracing",
  "vercre-core",
  "wasi 0.13.0+wasi-0.2.0",
-]
-
-[[package]]
-name = "http-sql"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "http 1.1.0",
- "http-shared",
- "serde_json",
- "tracing",
- "tracing-subscriber",
- "vercre-core",
- "wasi 0.13.0+wasi-0.2.0",
- "wasi-bindings",
 ]
 
 [[package]]
@@ -2725,6 +2696,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "keyvault"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "http 1.1.0",
+ "http-shared",
+ "serde_json",
+ "tracing",
+ "tracing-subscriber",
+ "wasi 0.13.0+wasi-0.2.0",
+ "wasi-bindings",
+]
+
+[[package]]
 name = "lazy_static"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2890,6 +2875,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "messaging"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "tracing",
+ "tracing-subscriber",
+ "wasi-bindings",
+]
+
+[[package]]
 name = "mime"
 version = "0.3.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2967,16 +2962,6 @@ dependencies = [
  "typed-builder",
  "uuid",
  "webpki-roots 0.25.4",
-]
-
-[[package]]
-name = "msg"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "tracing",
- "tracing-subscriber",
- "wasi-bindings",
 ]
 
 [[package]]
@@ -3320,6 +3305,21 @@ dependencies = [
  "elliptic-curve",
  "primeorder",
  "sha2",
+]
+
+[[package]]
+name = "p2p"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "http 1.1.0",
+ "http-shared",
+ "serde",
+ "serde_json",
+ "tracing",
+ "tracing-subscriber",
+ "wasi 0.13.0+wasi-0.2.0",
+ "wasi-bindings",
 ]
 
 [[package]]
@@ -5706,7 +5706,7 @@ checksum = "830b7e5d4d90034032940e4ace0d9a9a057e7a45cd94e6c007832e39edb82f6d"
 [[package]]
 name = "vercre-core"
 version = "0.1.0-alpha.4"
-source = "git+https://github.com/vercre/vercre#4ffef0e265b1cbc06619b6f4767122a3179909f1"
+source = "git+https://github.com/vercre/vercre#aa953dd389ca5e88617c72a03b5f6117ef178f42"
 dependencies = [
  "anyhow",
  "base64ct",
@@ -5895,6 +5895,7 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber",
+ "wasi-bindings",
  "wasmtime",
  "wasmtime-wasi",
  "wasmtime-wasi-http",
