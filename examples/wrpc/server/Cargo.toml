@@ -1,7 +1,7 @@
 [package]
-name = "wrpc-client"
+name = "wrpc-server"
 version = "0.1.0"
-workspace = "../.."
+# workspace = "../../.."
 edition.workspace = true
 authors.workspace = true
 rust-version.workspace = true
@@ -13,11 +13,6 @@ crate-type = ["cdylib"]
 workspace = true
 
 [dependencies]
-anyhow.workspace = true
-http = "1.1.0"
-http-shared.workspace = true
-serde_json = "1.0.117"
 tracing.workspace = true
 tracing-subscriber.workspace = true
-wasi.workspace = true
 wasi-bindings.workspace = true

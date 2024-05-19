@@ -47,7 +47,19 @@ opt-level = "s"
 strip = true
 
 [workspace]
-members = [".", "crates/*", "examples/*"]
+members = [
+    ".",
+    "crates/*",
+    "examples/docdb",
+    "examples/http",
+    "examples/http-http",
+    "examples/http-msg",
+    "examples/keyvault",
+    "examples/messaging",
+    "examples/p2p",
+    "examples/wrpc/client",
+    "examples/wrpc/server",
+]
 resolver = "2"
 
 [workspace.package]
