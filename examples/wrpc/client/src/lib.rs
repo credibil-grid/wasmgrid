@@ -1,5 +1,5 @@
 use anyhow::anyhow;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 use wasex::{self, Request, Router};
@@ -22,26 +22,38 @@ impl HttpGuest for Http {
     }
 }
 
+#[derive(Deserialize, Debug)]
+pub struct HttpRequest {
+    text: String,
+}
+
 #[derive(Serialize)]
-pub struct Hello {
+pub struct WrpcRequest {
     message: String,
 }
 
-pub fn hello(request: &Request) -> anyhow::Result<Vec<u8>> {
-    let msg = serde_json::to_vec(&Hello {
-        message: "Hello, World!".to_string(),
+#[derive(Deserialize)]
+pub struct WrpcResponse {
+    message: String,
+}
+
+fn hello(request: &Request) -> anyhow::Result<Vec<u8>> {
+    // extract http request
+    let req: HttpRequest = serde_json::from_slice(&request.body()?)?;
+    println!("http request: {:?}", req);
+
+    // send http request message to wrpc server
+    let msg = serde_json::to_vec(&WrpcRequest {
+        message: format!("client says: {}", req.text),
     })?;
 
-    let resp = wrpc::client::call("server", &msg).map_err(|e| anyhow!(e.trace()))?;
-    println!("Received response: {:?}", resp);
-    // let msg: String = serde_json::from_slice(&resp).unwrap();
-    // println!("Received response: {:?}", msg);
+    // call server and deserialize response
+    let ser_resp = wrpc::client::call("server", &msg).map_err(|e| anyhow!(e.trace()))?;
+    let wrpc_resp: WrpcResponse = serde_json::from_slice(ser_resp.as_slice())?;
 
-    let req: serde_json::Value = serde_json::from_slice(&request.body()?)?;
-    println!("json: {:?}", req);
-
-    serde_json::to_vec(&json!({
-        "message": "Hello, World!"
+    // return http response
+    serde_json::to_vec(&json!( {
+        "message": format!("server says: {}", wrpc_resp.message),
     }))
     .map_err(Into::into)
 }

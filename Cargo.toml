@@ -79,9 +79,9 @@ pedantic = "warn"
 nursery = "warn"
 
 [workspace.dependencies]
-anyhow = "1.0.84"
+anyhow = "1.0.86"
 async-trait = "0.1.80"
-serde = "1.0.117"
+serde = { version = "1.0.202", features = ["derive"] }
 serde_json = "1.0.117"
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter", "fmt"] }
