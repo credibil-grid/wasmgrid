@@ -77,8 +77,9 @@ impl runtime::Capability for Capability {
         let (wrpc, _) = Wrpc::instantiate_pre(&mut store, runtime.instance_pre()).await?;
         let cfg = wrpc.wasi_wrpc_server().call_configure(&mut store).await??;
 
-        // subscribe to wrpc requests for 'server' component
-        let mut requests = client.subscribe(format!("wrpc:{}", cfg.identifier)).await?;
+        // subscribe to wrpc requests for 'server' endpoints
+        tracing::debug!("subscribing to wrpc requests on wrpc:{}.>", cfg.identifier);
+        let mut requests = client.subscribe(format!("wrpc:{}.>", cfg.identifier)).await?;
 
         // process requests
         while let Some(request) = requests.next().await {
@@ -90,13 +91,18 @@ impl runtime::Capability for Capability {
                     return Err(anyhow!("reply subject not found"));
                 };
 
+                // convert subject to endpoint
+                let endpoint = request.subject.trim_start_matches("wrpc:");
+                let endpoint = endpoint.replace('.', "/");
+
                 // forward request to 'server' component
+                tracing::debug!("forwarding request to {}", endpoint);
                 let mut store = runtime.new_store();
                 let (wrpc, _) = Wrpc::instantiate_pre(&mut store, runtime.instance_pre()).await?;
 
                 let resp = wrpc
                     .wasi_wrpc_server()
-                    .call_handle(&mut store, &request.payload.to_vec())
+                    .call_handle(&mut store, &endpoint, &request.payload.to_vec())
                     .await??;
 
                 // send reply to 'client' component
@@ -119,13 +125,15 @@ impl types::Host for State {}
 #[async_trait::async_trait]
 impl client::Host for State {
     async fn call(
-        &mut self, server: String, request: Vec<u8>,
+        &mut self, endpoint: String, request: Vec<u8>,
     ) -> wasmtime::Result<Result<Vec<u8>, Resource<Error>>> {
-        tracing::debug!("client::Host::call");
+        tracing::debug!("client::Host::call for {endpoint}");
+
+        // convert endpoint to safe NATS subject
+        let subject = format!("wrpc:{}", endpoint.replacen('/', ".", 1));
 
         let client = CLIENT.get().ok_or_else(|| anyhow!("CLIENT not initialized"))?;
-        let data = Bytes::from(request);
-        let msg = client.request(format!("wrpc:{server}"), data).await?;
+        let msg = client.request(subject, request.into()).await?;
 
         Ok(Ok(msg.payload.to_vec()))
     }
