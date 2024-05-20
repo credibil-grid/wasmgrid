@@ -6,8 +6,8 @@
 use std::sync::OnceLock;
 
 use anyhow::anyhow;
-use bindings::wasi::wrpc::client;
-use bindings::wasi::wrpc::types::{self, HostError};
+use bindings::wasi::wrpc::client::{self, HostError};
+use bindings::wasi::wrpc::types;
 use bindings::Wrpc;
 use bytes::Bytes;
 use futures::stream::StreamExt;
@@ -28,7 +28,7 @@ mod bindings {
         tracing: true,
         async: true,
         with: {
-            "wasi:wrpc/types/error": Error,
+            "wasi:wrpc/client/error": Error,
         },
     });
 }
@@ -79,8 +79,7 @@ impl runtime::Capability for Capability {
         let cfg = match wrpc.wasi_wrpc_server().call_configure(&mut store).await? {
             Ok(cfg) => cfg,
             Err(e) => {
-                let error = store.data_mut().table().get(&e)?;
-                return Err(anyhow!(error.to_string()));
+                return Err(anyhow!(e.to_string()));
             }
         };
 
@@ -108,8 +107,7 @@ impl runtime::Capability for Capability {
                 {
                     Ok(resp) => resp,
                     Err(e) => {
-                        let error = store.data_mut().table().get(&e)?;
-                        return Err(anyhow!(error.to_string()));
+                        return Err(anyhow!(e.to_string()));
                     }
                 };
 

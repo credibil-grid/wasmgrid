@@ -1,9 +1,7 @@
 package wasi:wrpc@0.1.0-draft;
 
 interface types {
-    resource error {
-        trace: func() -> string;    
-    }
+
 
     type request = list<u8>;
     type response = list<u8>;
@@ -19,13 +17,26 @@ interface types {
 
 
 interface client {
-    use types.{error, request, response};
+    use types.{ request, response};
+
+    resource error {
+        trace: func() -> string;    
+    }
 
     call: func(server: string, request: request) -> result<response, error>;
 }
 
 interface server {
-    use types.{error, request, response, server-configuration};
+    use types.{request, response, server-configuration};
+
+        /// Errors that can be returned by the server.
+    variant error {
+        /// The request was invalid.
+        invalid-request,
+
+        /// Some implementation-specific error occurred.
+        other(string)
+    }
 
     configure: func() -> result<server-configuration, error>;
 
@@ -34,7 +45,6 @@ interface server {
 
 world imports {
 	import client;
-    // import types;
 }
 
 world wrpc {

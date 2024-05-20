@@ -82,14 +82,9 @@ pub mod p2p {
 
 /// Bindings for the `wasi:wrpc` world.
 mod wrpc_bindings {
-    // use anyhow::Error;
-
     wit_bindgen::generate!({
         world: "wrpc",
         pub_export_macro: true,
-        // with: {
-        //     "wasi:wrpc/types/error": Error,
-        // },
     });
 }
 

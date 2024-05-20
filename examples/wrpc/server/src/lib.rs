@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
-use wasi_bindings::wrpc::exports::wasi::wrpc::server::Guest as WrpcGuest;
-use wasi_bindings::wrpc::types::{Error, ServerConfiguration};
+use wasi_bindings::wrpc::exports::wasi::wrpc::server::{self, Error};
+use wasi_bindings::wrpc::types::ServerConfiguration;
 
 #[derive(Deserialize, Debug)]
 pub struct WrpcRequest {
@@ -15,7 +15,7 @@ pub struct WrpcResponse {
 
 struct Server;
 
-impl WrpcGuest for Server {
+impl server::Guest for Server {
     fn configure() -> Result<ServerConfiguration, Error> {
         Ok(ServerConfiguration {
             name: "server".to_string(),
