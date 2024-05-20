@@ -1,3 +1,5 @@
+#![allow(clippy::missing_safety_doc)]
+
 //! # WASI Bindings
 //!
 //! This module generates and exports WASI Guest bindings for local wit worlds.
