@@ -16,6 +16,8 @@ use wasmtime_wasi::WasiView;
 
 use crate::runtime::{self, Runtime, State};
 
+static CLIENT: OnceLock<async_nats::Client> = OnceLock::new();
+
 /// Wrap generation of wit bindings to simplify exports
 mod bindings {
     #![allow(clippy::future_not_send)]
@@ -33,10 +35,7 @@ mod bindings {
     });
 }
 
-// pub type Client = async_nats::Client;
 pub type Error = anyhow::Error;
-
-static CLIENT: OnceLock<async_nats::Client> = OnceLock::new();
 
 pub struct Capability {
     addr: String,
@@ -76,15 +75,10 @@ impl runtime::Capability for Capability {
 
         // get 'server' component's name
         let (wrpc, _) = Wrpc::instantiate_pre(&mut store, runtime.instance_pre()).await?;
-        let cfg = match wrpc.wasi_wrpc_server().call_configure(&mut store).await? {
-            Ok(cfg) => cfg,
-            Err(e) => {
-                return Err(anyhow!(e.to_string()));
-            }
-        };
+        let cfg = wrpc.wasi_wrpc_server().call_configure(&mut store).await??;
 
         // subscribe to wrpc requests for 'server' component
-        let mut requests = client.subscribe(format!("wrpc:{}", cfg.name)).await?;
+        let mut requests = client.subscribe(format!("wrpc:{}", cfg.identifier)).await?;
 
         // process requests
         while let Some(request) = requests.next().await {
@@ -100,16 +94,10 @@ impl runtime::Capability for Capability {
                 let mut store = runtime.new_store();
                 let (wrpc, _) = Wrpc::instantiate_pre(&mut store, runtime.instance_pre()).await?;
 
-                let resp = match wrpc
+                let resp = wrpc
                     .wasi_wrpc_server()
                     .call_handle(&mut store, &request.payload.to_vec())
-                    .await?
-                {
-                    Ok(resp) => resp,
-                    Err(e) => {
-                        return Err(anyhow!(e.to_string()));
-                    }
-                };
+                    .await??;
 
                 // send reply to 'client' component
                 client.publish(reply, Bytes::from(resp)).await?;

@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
-use wasi_bindings::wrpc::exports::wasi::wrpc::server::{self, Error};
-use wasi_bindings::wrpc::types::ServerConfiguration;
+use wasi_bindings::wrpc::exports::wasi::wrpc::server::{self, Error, ServerConfiguration};
 
 #[derive(Deserialize, Debug)]
 pub struct WrpcRequest {
@@ -18,7 +17,7 @@ struct Server;
 impl server::Guest for Server {
     fn configure() -> Result<ServerConfiguration, Error> {
         Ok(ServerConfiguration {
-            name: "server".to_string(),
+            identifier: "server".to_string(),
         })
     }
 
@@ -30,22 +29,15 @@ impl server::Guest for Server {
             FmtSubscriber::builder().with_env_filter(EnvFilter::from_default_env()).finish();
         tracing::subscriber::set_global_default(subscriber).expect("should set subscriber");
 
-        let msg: WrpcRequest = match serde_json::from_slice(request.as_slice()) {
-            Ok(msg) => msg,
-            Err(e) => {
-                tracing::error!("Error deserializing request: {:?}", e);
-                WrpcRequest {
-                    message: "Error deserializing request".to_string(),
-                }
-            }
-        };
+        let msg: WrpcRequest =
+            serde_json::from_slice(request.as_slice()).map_err(|_| Error::InvalidRequest)?;
         println!("request: {:?}", msg);
 
         // return response
         Ok(serde_json::to_vec(&WrpcResponse {
             message: format!("Thank you for your message: {}", msg.message),
         })
-        .unwrap())
+        .map_err(|e| Error::Other(e.to_string()))?)
     }
 }
 

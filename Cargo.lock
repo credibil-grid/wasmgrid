@@ -2133,7 +2133,7 @@ dependencies = [
  "iana-time-zone-haiku",
  "js-sys",
  "wasm-bindgen",
- "windows-core 0.51.1",
+ "windows-core 0.52.0",
 ]
 
 [[package]]
@@ -2864,7 +2864,6 @@ dependencies = [
 name = "messaging"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "tracing",
  "tracing-subscriber",
  "wasi-bindings",
@@ -5779,7 +5778,6 @@ dependencies = [
 name = "wasi-bindings"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "wit-bindgen",
 ]
 
@@ -6797,7 +6795,6 @@ dependencies = [
 name = "wrpc-server"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "serde",
  "serde_json",
  "tracing",

@@ -16,6 +16,8 @@ use wasmtime_wasi::WasiView;
 
 use crate::runtime::{self, Runtime, State};
 
+static MONGODB: OnceLock<mongodb::Client> = OnceLock::new();
+
 mod bindings {
     #![allow(clippy::future_not_send)]
 
@@ -36,8 +38,6 @@ mod bindings {
 
 pub type Database = mongodb::Database;
 pub type Error = anyhow::Error;
-
-static MONGODB: OnceLock<mongodb::Client> = OnceLock::new();
 
 pub struct Statement {
     collection: String,

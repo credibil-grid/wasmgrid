@@ -1,35 +1,38 @@
 package wasi:wrpc@0.1.0-draft;
 
 interface types {
-
-
+    /// A serialized request to a wRPC server.
     type request = list<u8>;
+
+    /// A serialized response from a wRPC server.
     type response = list<u8>;
 
-    /// Configuration includes a required list of channels the guest is subscribing to, and an optional list of extensions key-value pairs 
-    /// (e.g., partitions/offsets to read from in Kafka/EventHubs, QoS etc.).
-    record server-configuration {
-        name: string,
-        // extensions: option<list<tuple<string, string>>>
-    }
+    type identifier = string;
 }
 
-
-
+/// A psuedo-wRPC Client interface that can be used to make requests to a wRPC server.
+/// 
 interface client {
-    use types.{ request, response};
+    use types.{identifier, request, response};
 
+    /// Error type that can be returned by implementing runtime. The runtime should provide a 
+    /// trace of the error.
     resource error {
         trace: func() -> string;    
     }
 
-    call: func(server: string, request: request) -> result<response, error>;
+    /// Call the specified server with a server-secific request.
+    /// 
+    /// `server` identifies the server to call.
+    /// `request` is the server--sepcific serialized request to send.
+    call: func(server: identifier, request: request) -> result<response, error>;
 }
 
+/// A psuedo-wRPC Server interface that can be used to serve wRPC clients (above).
 interface server {
-    use types.{request, response, server-configuration};
+    use types.{identifier, request, response};
 
-        /// Errors that can be returned by the server.
+    /// Errors that can be returned by the server.
     variant error {
         /// The request was invalid.
         invalid-request,
@@ -38,8 +41,19 @@ interface server {
         other(string)
     }
 
+    /// Configuration includes a required list of channels the guest is subscribing to, and an optional list of extensions key-value pairs 
+    /// (e.g., partitions/offsets to read from in Kafka/EventHubs, QoS etc.).
+    record server-configuration {
+        identifier: identifier,
+        // extensions: option<list<tuple<string, string>>>
+    }
+
+    /// Configure is called by the runtime to get the server's runtime configuration.
+    /// At present, this consists of the server's `identifier` as used by the Client 
+    /// when calling a server.
     configure: func() -> result<server-configuration, error>;
 
+    /// Handle a request from a client.
     handle: func(request: request) -> result<response, error>;
 }
 
