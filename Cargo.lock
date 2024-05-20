@@ -2864,7 +2864,6 @@ dependencies = [
 name = "messaging"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "tracing",
  "tracing-subscriber",
  "wasi-bindings",
@@ -5779,8 +5778,6 @@ dependencies = [
 name = "wasi-bindings"
 version = "0.1.0"
 dependencies = [
- "anyhow",
- "wasmtime",
  "wit-bindgen",
 ]
 
@@ -6798,7 +6795,6 @@ dependencies = [
 name = "wrpc-server"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "serde",
  "serde_json",
  "tracing",
