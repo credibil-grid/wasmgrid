@@ -13,4 +13,5 @@ workspace = true
 
 [dependencies]
 anyhow.workspace = true
+wasmtime.workspace = true
 wit-bindgen = "0.24.0"

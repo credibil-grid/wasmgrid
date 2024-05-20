@@ -19,7 +19,7 @@ impl Guest for MessagingGuest {
 
     // Whenever a message is received on a subscribed channel, the host will call this
     // function. Once done, the host should kill the wasm instance.
-    fn handler(msgs: Vec<Message>) -> anyhow::Result<(), Error> {
+    fn handler(msgs: Vec<Message>) -> Result<(), Error> {
         let subscriber =
             FmtSubscriber::builder().with_env_filter(EnvFilter::from_default_env()).finish();
         tracing::subscriber::set_global_default(subscriber).expect("should set subscriber");
@@ -47,9 +47,8 @@ impl Guest for MessagingGuest {
                 }
                 "b" => {
                     // request-reply from channel d
-                    let client = Client::connect("demo.nats.io").unwrap();
-                    let msgs =
-                        consumer::subscribe_try_receive(client, &Channel::from("d"), 100).unwrap();
+                    let client = Client::connect("demo.nats.io")?;
+                    let msgs = consumer::subscribe_try_receive(client, &Channel::from("d"), 100)?;
                     tracing::debug!("channel d: {:?}", msgs);
 
                     return consumer::complete_message(&msg);
@@ -59,13 +58,13 @@ impl Guest for MessagingGuest {
                     let mut resp = b"channel c: ".to_vec();
                     resp.extend(msg.data.clone());
 
-                    let client = Client::connect("demo.nats.io").unwrap();
+                    let client = Client::connect("demo.nats.io")?;
                     let message = Message {
                         data: resp,
                         format: messaging_types::FormatSpec::Raw,
                         metadata: None,
                     };
-                    producer::send(client, &Channel::from("d"), &[message]).unwrap();
+                    producer::send(client, &Channel::from("d"), &[message])?;
 
                     return consumer::complete_message(&msg);
                 }

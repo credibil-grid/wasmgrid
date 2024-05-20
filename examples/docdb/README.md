@@ -3,7 +3,7 @@
 Build the example guest:
 
 ```bash
-cargo component build --package http-sql --release
+cargo component build --package docdb --release
 ```
 
 Run the guest using the `wasmgrid` runtime:

@@ -6,8 +6,8 @@
 use std::sync::OnceLock;
 
 use anyhow::anyhow;
-use bindings::wasi::wrpc::client;
-use bindings::wasi::wrpc::types::{self, HostError};
+use bindings::wasi::wrpc::client::{self, HostError};
+use bindings::wasi::wrpc::types;
 use bindings::Wrpc;
 use bytes::Bytes;
 use futures::stream::StreamExt;
@@ -15,6 +15,8 @@ use wasmtime::component::{Linker, Resource};
 use wasmtime_wasi::WasiView;
 
 use crate::runtime::{self, Runtime, State};
+
+static CLIENT: OnceLock<async_nats::Client> = OnceLock::new();
 
 /// Wrap generation of wit bindings to simplify exports
 mod bindings {
@@ -28,15 +30,12 @@ mod bindings {
         tracing: true,
         async: true,
         with: {
-            "wasi:wrpc/types/error": Error,
+            "wasi:wrpc/client/error": Error,
         },
     });
 }
 
-// pub type Client = async_nats::Client;
 pub type Error = anyhow::Error;
-
-static CLIENT: OnceLock<async_nats::Client> = OnceLock::new();
 
 pub struct Capability {
     addr: String,
@@ -76,16 +75,10 @@ impl runtime::Capability for Capability {
 
         // get 'server' component's name
         let (wrpc, _) = Wrpc::instantiate_pre(&mut store, runtime.instance_pre()).await?;
-        let cfg = match wrpc.wasi_wrpc_server().call_configure(&mut store).await? {
-            Ok(cfg) => cfg,
-            Err(e) => {
-                let error = store.data_mut().table().get(&e)?;
-                return Err(anyhow!(error.to_string()));
-            }
-        };
+        let cfg = wrpc.wasi_wrpc_server().call_configure(&mut store).await??;
 
         // subscribe to wrpc requests for 'server' component
-        let mut requests = client.subscribe(format!("wrpc:{}", cfg.name)).await?;
+        let mut requests = client.subscribe(format!("wrpc:{}", cfg.identifier)).await?;
 
         // process requests
         while let Some(request) = requests.next().await {
@@ -101,17 +94,10 @@ impl runtime::Capability for Capability {
                 let mut store = runtime.new_store();
                 let (wrpc, _) = Wrpc::instantiate_pre(&mut store, runtime.instance_pre()).await?;
 
-                let resp = match wrpc
+                let resp = wrpc
                     .wasi_wrpc_server()
                     .call_handle(&mut store, &request.payload.to_vec())
-                    .await?
-                {
-                    Ok(resp) => resp,
-                    Err(e) => {
-                        let error = store.data_mut().table().get(&e)?;
-                        return Err(anyhow!(error.to_string()));
-                    }
-                };
+                    .await??;
 
                 // send reply to 'client' component
                 client.publish(reply, Bytes::from(resp)).await?;
