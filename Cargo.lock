@@ -5895,7 +5895,6 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber",
- "wasi-bindings",
  "wasmtime",
  "wasmtime-wasi",
  "wasmtime-wasi-http",
