@@ -84,7 +84,7 @@ async fn handle_request(
 
         if let Some(forwarded) = request.headers().get(FORWARDED) {
             // running behind a proxy (that we have configured)
-            for tuple in forwarded.to_str().unwrap().split(';') {
+            for tuple in forwarded.to_str()?.split(';') {
                 let tuple = tuple.trim();
                 if let Some(host) = tuple.strip_prefix("host=") {
                     builder = builder.authority(host);
@@ -95,21 +95,15 @@ async fn handle_request(
         } else {
             // must be running locally
             let Some(host) = request.headers().get(HOST) else {
-                return Err(anyhow!("host is missing"));
+                return Err(anyhow!("missing host header"));
             };
-            let Ok(host) = host.to_str() else {
-                return Err(anyhow!("host is not valid utf-8"));
-            };
-            builder = builder.authority(host);
+            builder = builder.authority(host.to_str()?);
             builder = builder.scheme("http");
         }
 
         // update the uri with the new scheme and authority
-        let Ok(uri) = builder.build() else {
-            return Err(anyhow!("failed to build uri"));
-        };
         let (mut parts, body) = request.into_parts();
-        parts.uri = uri;
+        parts.uri = builder.build()?;
 
         tracing::debug!("calling guest with request: {parts:?}");
         let req = hyper::Request::from_parts(parts, body.map_err(hyper_response_error).boxed());
