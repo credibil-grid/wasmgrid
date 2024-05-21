@@ -89,17 +89,10 @@ impl readwrite::Host for State {
     ) -> wasmtime::Result<Result<(), Resource<Error>>> {
         tracing::debug!("readwrite::Host::insert_v2");
 
-        tracing::debug!("readwrite::Host::insert_v2::collection:{}", collection);
-        tracing::debug!("readwrite::Host::insert_v2::data:{:?}", d);
-
         let table = self.table();
         let database = table.get(&db)?;
 
-        tracing::debug!("readwrite::Host::insert_v2::here?");
-
         let doc: bson::Document = bson::from_slice(&d)?;
-
-        tracing::debug!("readwrite::Host::insert_v2::doc: {}", doc);
 
         database.collection(collection.as_str()).insert_one(doc, None).await?;
 
