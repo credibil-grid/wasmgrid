@@ -3,7 +3,12 @@
 //! This module implements a runtime capability for `wasi:http`
 //! (<https://github.com/WebAssembly/wasi-http>).
 
+use std::clone::Clone;
+
 use anyhow::anyhow;
+use http::header::{FORWARDED, HOST};
+use http::uri::PathAndQuery;
+use http::uri::Uri; // Authority,
 use http_body_util::BodyExt;
 use hyper::body::Incoming;
 use hyper::server::conn::http1;
@@ -71,52 +76,51 @@ async fn handle_request(
     let runtime = runtime.clone();
 
     let task = tokio::spawn(async move {
-        let mut builder = http::Uri::builder();
+        // rebuild Uri with scheme and authority explicitly set so they are passed to the Guest
+        let uri = request.uri_mut();
+        let p_and_q =
+            uri.path_and_query().map_or_else(|| PathAndQuery::from_static("/"), Clone::clone);
+        let mut builder = Uri::builder().path_and_query(p_and_q);
 
-        // extract scheme and authority from headers
-        if let Some(forwarded) = request.headers().get("forwarded") {
+        if let Some(forwarded) = request.headers().get(FORWARDED) {
             // running behind a proxy (that we have configured)
             for tuple in forwarded.to_str().unwrap().split(';') {
                 let tuple = tuple.trim();
-
-                if tuple.starts_with("host=") {
-                    let host = tuple.split('=').nth(1).unwrap();
+                if let Some(host) = tuple.strip_prefix("host=") {
                     builder = builder.authority(host);
-                    continue;
-                }
-
-                if tuple.starts_with("proto=") {
-                    let proto = tuple.split('=').nth(1).unwrap();
+                } else if let Some(proto) = tuple.strip_prefix("proto=") {
                     builder = builder.scheme(proto);
-                    continue;
                 }
             }
         } else {
             // must be running locally
-            let Some(host) = request.headers().get("host") else {
+            let Some(host) = request.headers().get(HOST) else {
                 return Err(anyhow!("host is missing"));
             };
-            builder = builder.authority(host.to_str().unwrap());
+            let Ok(host) = host.to_str() else {
+                return Err(anyhow!("host is not valid utf-8"));
+            };
+            builder = builder.authority(host);
             builder = builder.scheme("http");
         }
 
         // update the uri with the new scheme and authority
-        let uri = request.uri_mut();
-        let Ok(uri) = builder.path_and_query(uri.path_and_query().unwrap().clone()).build() else {
+        let Ok(uri) = builder.build() else {
             return Err(anyhow!("failed to build uri"));
         };
         let (mut parts, body) = request.into_parts();
         parts.uri = uri;
 
+        tracing::debug!("calling guest with request: {parts:?}");
         let req = hyper::Request::from_parts(parts, body.map_err(hyper_response_error).boxed());
 
+        // prepare wasmtime http request and response
         let mut store = runtime.new_store();
         store.data_mut().metadata.insert("wasi_http_ctx".to_string(), Box::new(WasiHttpCtx {}));
         let incoming = store.data_mut().new_incoming_request(req)?;
         let outgoing = store.data_mut().new_response_outparam(sender)?;
 
         // call guest with request
-        tracing::debug!("calling guest with request");
         let (proxy, _) = Proxy::instantiate_pre(&mut store, runtime.instance_pre()).await?;
         proxy.wasi_http_incoming_handler().call_handle(&mut store, incoming, outgoing).await
     });
