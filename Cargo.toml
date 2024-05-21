@@ -34,11 +34,11 @@ mongodb = "2.8.2"
 # quic-rpc = "0.9.0"
 serde_json = "1.0.117"
 tokio = { version = "1.37.0", features = ["signal"] }
-tracing.workspace = true
 tracing-subscriber.workspace = true
-wasmtime.workspace = true
-wasmtime-wasi.workspace = true
+tracing.workspace = true
 wasmtime-wasi-http.workspace = true
+wasmtime-wasi.workspace = true
+wasmtime.workspace = true
 
 [profile.release]
 lto = true
@@ -90,3 +90,9 @@ wasi-bindings = { path = "crates/wasi-bindings" }
 wasmtime = { version = "20.0.2", default-features = false, features = ["component-model", "cranelift", "runtime"] }
 wasmtime-wasi = "20.0.2"
 wasmtime-wasi-http = "20.0.2"
+
+[commands]
+"build" = ["cargo build"]
+"build:bindings" = ["cd ./crates/wasi-bindings && wit-deps && cd ../.."]
+"build:example:docdb" = ["cargo component build --package docdb --release"]
+"start:example:docdb" = ["cargo cmd build:example:docdb && cargo run -- ./target/wasm32-wasi/release/docdb.wasm"]

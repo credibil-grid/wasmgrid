@@ -12,4 +12,8 @@ interface readwrite {
 
     /// delete.
     delete: func(db: borrow<database>, s: borrow<statement>) -> result<_, error>;
+
+    insert-v2: func(db: borrow<database>, collection: string, d: list<u8>) -> result<_, error>;
+
+    find-one-v2: func(db: borrow<database>, collection: string, query: list<u8>) -> result<list<u8>, error>;
 }

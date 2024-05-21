@@ -13,6 +13,7 @@ workspace = true
 
 [dependencies]
 anyhow.workspace = true
+bson = "2.10.0"
 http = "1.1.0"
 serde_json = "1.0.117"
 tracing.workspace = true

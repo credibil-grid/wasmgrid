@@ -3,13 +3,14 @@
 //! This module implements a runtime capability for `wasi:sql`
 //! (<https://github.com/WebAssembly/wasi-sql>).
 
+mod operations_exports;
+
 use std::sync::OnceLock;
 
 use anyhow::anyhow;
-use bindings::wasi::docdb::readwrite;
 use bindings::wasi::docdb::types::{self, HostDatabase, HostError, HostStatement};
 use bindings::Docdb;
-use mongodb::options::{ClientOptions, ReplaceOptions};
+use mongodb::options::ClientOptions;
 use mongodb::Client;
 use wasmtime::component::{Linker, Resource};
 use wasmtime_wasi::WasiView;
@@ -73,83 +74,6 @@ impl runtime::Capability for Capability {
         tracing::info!("connected to MongoDB");
 
         Ok(())
-    }
-}
-
-// Implement the [`wasi_sql::ReadWriteView`]` trait for State.
-#[async_trait::async_trait]
-impl readwrite::Host for State {
-    async fn insert(
-        &mut self, db: Resource<Database>, s: Resource<Statement>, d: Vec<u8>,
-    ) -> wasmtime::Result<Result<(), Resource<Error>>> {
-        tracing::debug!("readwrite::Host::insert");
-
-        let table = self.table();
-        let database = table.get(&db)?;
-        let stmt = table.get(&s)?;
-
-        let doc: bson::Document = serde_json::from_slice(&d)?;
-        let _ = database.collection(&stmt.collection).insert_one(doc, None).await?;
-
-        Ok(Ok(()))
-    }
-
-    async fn find(
-        &mut self, db: Resource<Database>, s: Resource<Statement>,
-    ) -> wasmtime::Result<Result<Vec<Vec<u8>>, Resource<Error>>> {
-        tracing::debug!("readwrite::Host::find");
-
-        let table = self.table();
-        let database = table.get(&db)?;
-        let stmt = table.get(&s)?;
-
-        let Some(doc) = database
-            .collection::<bson::Document>(&stmt.collection)
-            .find_one(stmt.conditions.clone(), None)
-            .await?
-        else {
-            return Err(anyhow!("document not found"));
-        };
-
-        let ser = serde_json::to_vec(&doc)?;
-        Ok(Ok(vec![ser]))
-    }
-
-    async fn update(
-        &mut self, db: Resource<Database>, s: Resource<Statement>, d: Vec<u8>,
-    ) -> wasmtime::Result<Result<(), Resource<Error>>> {
-        tracing::debug!("readwrite::Host::update");
-
-        let table = self.table();
-        let database = table.get(&db)?;
-        let stmt = table.get(&s)?;
-
-        let doc: bson::Document = serde_json::from_slice(&d)?;
-        let Some(query) = stmt.conditions.clone() else {
-            return Err(anyhow!("filter not found"));
-        };
-        let options = ReplaceOptions::builder().upsert(true).build();
-        let _ = database.collection(&stmt.collection).replace_one(query, doc, options).await?;
-
-        Ok(Ok(()))
-    }
-
-    async fn delete(
-        &mut self, db: Resource<Database>, s: Resource<Statement>,
-    ) -> wasmtime::Result<Result<(), Resource<Error>>> {
-        tracing::debug!("readwrite::Host::delete");
-
-        let table = self.table();
-        let database = table.get(&db)?;
-        let stmt = table.get(&s)?;
-
-        let Some(query) = stmt.conditions.clone() else {
-            return Err(anyhow!("filter not found"));
-        };
-        let _ =
-            database.collection::<bson::Document>(&stmt.collection).delete_one(query, None).await?;
-
-        Ok(Ok(()))
     }
 }
 

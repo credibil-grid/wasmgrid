@@ -1162,6 +1162,7 @@ name = "docdb"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "bson",
  "http 1.1.0",
  "serde_json",
  "tracing",
