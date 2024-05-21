@@ -5,7 +5,7 @@ use http::header::{CONTENT_TYPE, USER_AGENT};
 // use serde::de::DeserializeOwned;
 use serde_json::json;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
-use wasex::{self, Request, Router};
+use wasi_http::{self, Request, Router};
 use wasi::exports::http::incoming_handler::Guest;
 use wasi::http::outgoing_handler;
 use wasi::http::types::{
@@ -23,7 +23,7 @@ impl Guest for HttpGuest {
 
         let router = Router::new().route("/", call_downstream);
 
-        let out = wasex::serve(&router, &request);
+        let out = wasi_http::serve(&router, &request);
         ResponseOutparam::set(response, out);
     }
 }

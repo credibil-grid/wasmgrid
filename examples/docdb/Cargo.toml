@@ -15,9 +15,9 @@ workspace = true
 anyhow.workspace = true
 http = "1.1.0"
 serde_json = "1.0.117"
-tracing.workspace = true
 tracing-subscriber.workspace = true
+tracing.workspace = true
 vercre-core = { git = "https://github.com/vercre/vercre" }
-wasex.workspace = true
-wasi.workspace = true
 wasi-bindings.workspace = true
+wasi-http.workspace = true
+wasi.workspace = true

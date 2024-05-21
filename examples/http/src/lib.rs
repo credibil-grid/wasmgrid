@@ -1,6 +1,6 @@
 use serde_json::json;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
-use wasex::{self, Request, Router};
+use wasi_http::{self, Request, Router};
 use wasi::exports::http::incoming_handler::Guest;
 use wasi::http::types::{IncomingRequest, ResponseOutparam};
 
@@ -21,7 +21,7 @@ impl Guest for HttpGuest {
 
         let router = Router::new().route("/", handler);
 
-        let out = wasex::serve(&router, &request);
+        let out = wasi_http::serve(&router, &request);
         ResponseOutparam::set(response, out);
     }
 }

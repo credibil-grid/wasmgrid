@@ -1167,9 +1167,9 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "vercre-core",
- "wasex",
  "wasi 0.13.1+wasi-0.2.0",
  "wasi-bindings",
+ "wasi-http",
 ]
 
 [[package]]
@@ -1948,8 +1948,8 @@ dependencies = [
  "serde_json",
  "tracing",
  "tracing-subscriber",
- "wasex",
  "wasi 0.13.1+wasi-0.2.0",
+ "wasi-http",
 ]
 
 [[package]]
@@ -2017,8 +2017,8 @@ dependencies = [
  "serde_json",
  "tracing",
  "tracing-subscriber",
- "wasex",
  "wasi 0.13.1+wasi-0.2.0",
+ "wasi-http",
 ]
 
 [[package]]
@@ -2030,9 +2030,9 @@ dependencies = [
  "serde_json",
  "tracing",
  "tracing-subscriber",
- "wasex",
  "wasi 0.13.1+wasi-0.2.0",
  "wasi-bindings",
+ "wasi-http",
 ]
 
 [[package]]
@@ -2690,9 +2690,9 @@ dependencies = [
  "serde_json",
  "tracing",
  "tracing-subscriber",
- "wasex",
  "wasi 0.13.1+wasi-0.2.0",
  "wasi-bindings",
+ "wasi-http",
 ]
 
 [[package]]
@@ -3302,9 +3302,9 @@ dependencies = [
  "serde_json",
  "tracing",
  "tracing-subscriber",
- "wasex",
  "wasi 0.13.1+wasi-0.2.0",
  "wasi-bindings",
+ "wasi-http",
 ]
 
 [[package]]
@@ -5744,21 +5744,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "wasex"
-version = "0.1.0-alpha.1"
-source = "git+https://github.com/credibil-grid/wasex#200f8e2c345b8572f129bb7aaf333015d2954b21"
-dependencies = [
- "anyhow",
- "http 1.1.0",
- "serde",
- "serde_json",
- "serde_urlencoded",
- "tracing",
- "vercre-core",
- "wasi 0.13.1+wasi-0.2.0",
-]
-
-[[package]]
 name = "wasi"
 version = "0.11.0+wasi-snapshot-preview1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6793,9 +6778,9 @@ dependencies = [
  "serde_json",
  "tracing",
  "tracing-subscriber",
- "wasex",
  "wasi 0.13.1+wasi-0.2.0",
  "wasi-bindings",
+ "wasi-http",
 ]
 
 [[package]]
