@@ -63,7 +63,7 @@ impl runtime::Capability for Capability {
 
 // Forward NATS message to the wasm Guest.
 async fn handle_request(
-    runtime: &Runtime, request: Request<Incoming>,
+    runtime: &Runtime, mut request: Request<Incoming>,
 ) -> anyhow::Result<hyper::Response<HyperOutgoingBody>> {
     let (sender, receiver) = tokio::sync::oneshot::channel();
     // let req_id = self.next_id.fetch_add(1, Ordering::Relaxed);
@@ -71,19 +71,54 @@ async fn handle_request(
     let runtime = runtime.clone();
 
     let task = tokio::spawn(async move {
-        let (parts, body) = request.into_parts();
+        let mut builder = http::Uri::builder();
+
+        // extract scheme and authority from headers
+        if let Some(forwarded) = request.headers().get("forwarded") {
+            // running behind a proxy (that we have configured)
+            for tuple in forwarded.to_str().unwrap().split(';') {
+                let tuple = tuple.trim();
+
+                if tuple.starts_with("host=") {
+                    let host = tuple.split('=').nth(1).unwrap();
+                    builder = builder.authority(host);
+                    continue;
+                }
+
+                if tuple.starts_with("proto=") {
+                    let proto = tuple.split('=').nth(1).unwrap();
+                    builder = builder.scheme(proto);
+                    continue;
+                }
+            }
+        } else {
+            // must be running locally
+            let Some(host) = request.headers().get("host") else {
+                return Err(anyhow!("host is missing"));
+            };
+            builder = builder.authority(host.to_str().unwrap());
+            builder = builder.scheme("http");
+        }
+
+        // update the uri with the new scheme and authority
+        let uri = request.uri_mut();
+        let Ok(uri) = builder.path_and_query(uri.path_and_query().unwrap().clone()).build() else {
+            return Err(anyhow!("failed to build uri"));
+        };
+        let (mut parts, body) = request.into_parts();
+        parts.uri = uri;
+
         let req = hyper::Request::from_parts(parts, body.map_err(hyper_response_error).boxed());
 
         let mut store = runtime.new_store();
-        let state = store.data_mut();
-        let req = state.new_incoming_request(req)?;
-        let out = state.new_response_outparam(sender)?;
-        state.metadata.insert("wasi_http_ctx".to_string(), Box::new(WasiHttpCtx {}));
+        store.data_mut().metadata.insert("wasi_http_ctx".to_string(), Box::new(WasiHttpCtx {}));
+        let incoming = store.data_mut().new_incoming_request(req)?;
+        let outgoing = store.data_mut().new_response_outparam(sender)?;
 
         // call guest with request
         tracing::debug!("calling guest with request");
         let (proxy, _) = Proxy::instantiate_pre(&mut store, runtime.instance_pre()).await?;
-        proxy.wasi_http_incoming_handler().call_handle(&mut store, req, out).await
+        proxy.wasi_http_incoming_handler().call_handle(&mut store, incoming, outgoing).await
     });
 
     match receiver.await {
