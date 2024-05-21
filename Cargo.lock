@@ -5781,6 +5781,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "wasi-http"
+version = "0.1.0-alpha.1"
+dependencies = [
+ "anyhow",
+ "http 1.1.0",
+ "serde",
+ "serde_json",
+ "serde_urlencoded",
+ "tracing",
+ "vercre-core",
+ "wasi 0.13.1+wasi-0.2.0",
+]
+
+[[package]]
 name = "wasm-bindgen"
 version = "0.2.92"
 source = "registry+https://github.com/rust-lang/crates.io-index"
