@@ -11,7 +11,6 @@ use bindings::wasi::messaging::messaging_types::{
 };
 use bindings::wasi::messaging::{consumer, producer};
 use bindings::Messaging;
-use bytes::Bytes;
 use futures::stream::{self, StreamExt};
 use tokio::time::{sleep, Duration};
 use wasmtime::component::{Linker, Resource};
@@ -230,7 +229,7 @@ impl producer::Host for State {
 
         let client = self.table().get(&client)?;
         for m in messages {
-            let data = Bytes::from(m.data.clone());
+            let data = m.data.clone().into();
             client.publish(ch.clone(), data).await?;
         }
 

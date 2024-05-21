@@ -9,7 +9,6 @@ use anyhow::anyhow;
 use bindings::wasi::wrpc::client::{self, HostError};
 use bindings::wasi::wrpc::types;
 use bindings::Wrpc;
-use bytes::Bytes;
 use futures::stream::StreamExt;
 use wasmtime::component::{Linker, Resource};
 use wasmtime_wasi::WasiView;
@@ -96,7 +95,7 @@ impl runtime::Capability for Capability {
                 let endpoint = endpoint.replace('.', "/");
 
                 // forward request to 'server' component
-                tracing::debug!("forwarding request to {}", endpoint);
+                tracing::debug!("forwarding request to {endpoint}");
                 let mut store = runtime.new_store();
                 let (wrpc, _) = Wrpc::instantiate_pre(&mut store, runtime.instance_pre()).await?;
 
@@ -106,7 +105,7 @@ impl runtime::Capability for Capability {
                     .await??;
 
                 // send reply to 'client' component
-                client.publish(reply, Bytes::from(resp)).await?;
+                client.publish(reply, resp.into()).await?;
 
                 Ok(())
             })

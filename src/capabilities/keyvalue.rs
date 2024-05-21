@@ -10,7 +10,6 @@ use async_nats::jetstream;
 use bindings::wasi::keyvalue::store::{self, Error, KeyResponse};
 use bindings::wasi::keyvalue::{atomics, batch};
 use bindings::Keyvalue;
-use bytes::Bytes;
 use futures::TryStreamExt;
 use wasmtime::component::{Linker, Resource};
 use wasmtime_wasi::WasiView;
@@ -108,7 +107,7 @@ impl store::HostBucket for State {
     ) -> wasmtime::Result<Result<(), store::Error>, wasmtime::Error> {
         tracing::debug!("store::HostBucket::set {key}");
         let bucket = self.table().get_mut(&rep)?;
-        Ok(Ok(bucket.put(key, Bytes::from(value)).await.map(|_| ())?))
+        Ok(Ok(bucket.put(key, value.into()).await.map(|_| ())?))
     }
 
     async fn delete(
@@ -160,7 +159,7 @@ impl atomics::Host for State {
         buf[..len].copy_from_slice(&slice[..len]);
         let inc = u64::from_be_bytes(buf) + delta;
 
-        bucket.put(key, Bytes::from((inc).to_be_bytes().to_vec())).await?;
+        bucket.put(key, inc.to_be_bytes().to_vec().into()).await?;
 
         Ok(Ok(inc))
     }
@@ -193,7 +192,7 @@ impl batch::Host for State {
 
         let bucket = self.table().get_mut(&rep)?;
         for (key, value) in key_values {
-            bucket.put(key, Bytes::from(value)).await?;
+            bucket.put(key, value.into()).await?;
         }
 
         Ok(Ok(()))
