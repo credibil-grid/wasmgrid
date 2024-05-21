@@ -2,11 +2,11 @@
 name = "wasi-http"
 authors = ["Credibil"]
 categories = [
-    "decentralized identity",
-    "openid for verifiable data",
-    "privacy",
-    "security",
-    "verifiable credentials",
+  "decentralized identity",
+  "openid for verifiable data",
+  "privacy",
+  "security",
+  "verifiable credentials",
 ]
 edition = "2021"
 homepage = "https://credibil.io"

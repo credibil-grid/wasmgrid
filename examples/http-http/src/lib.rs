@@ -5,13 +5,13 @@ use http::header::{CONTENT_TYPE, USER_AGENT};
 // use serde::de::DeserializeOwned;
 use serde_json::json;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
-use wasi_http::{self, Request, Router};
 use wasi::exports::http::incoming_handler::Guest;
 use wasi::http::outgoing_handler;
 use wasi::http::types::{
     Headers, IncomingRequest, Method, OutgoingBody, OutgoingRequest, ResponseOutparam, Scheme,
 };
 use wasi::io::streams;
+use wasi_http::{self, Request, Router};
 
 struct HttpGuest;
 

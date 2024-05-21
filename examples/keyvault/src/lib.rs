@@ -2,10 +2,10 @@
 
 use serde_json::json;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
-use wasi_http::{self, Request, Router};
 use wasi::exports::http::incoming_handler::Guest;
 use wasi::http::types::{IncomingRequest, ResponseOutparam};
 use wasi_bindings::keyvalue::store;
+use wasi_http::{self, Request, Router};
 
 struct HttpGuest;
 

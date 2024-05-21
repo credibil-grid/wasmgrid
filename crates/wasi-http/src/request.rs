@@ -65,13 +65,8 @@ impl<'a> Request<'a> {
     ///
     /// # Errors
     pub fn body(&self) -> Result<Vec<u8>> {
-        let body = self
-            .inner
-            .consume()
-            .map_err(|()| anyhow!("error consuming request body"))?;
-        let stream = body
-            .stream()
-            .map_err(|()| anyhow!("error getting body stream"))?;
+        let body = self.inner.consume().map_err(|()| anyhow!("error consuming request body"))?;
+        let stream = body.stream().map_err(|()| anyhow!("error getting body stream"))?;
 
         // Read the entire body into a buffer.
         let mut buffer = Vec::new();
