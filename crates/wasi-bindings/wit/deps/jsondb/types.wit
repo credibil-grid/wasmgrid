@@ -9,11 +9,11 @@ interface types {
     /// - `collection`: The name of the collection of JSON documents to be 
     ///   used in the operation.
     /// 
-    /// - `json-path`: The JSONPath filter expresession to be applied by the 
-    ///   operation. For example, $[?(@['firstName']=='John')] will return 
+    /// - `jmes-path`: The JMESPath filter expresession to be applied by the 
+    ///   operation. For example, [?firstName=='John'] will return 
     ///   all documents where the `firstName` field is equal to `John`.
     resource statement {
-        prepare: static func(collection: string, json-path: option<string>) -> result<statement, error>;
+        prepare: static func(collection: string, jmes-path: option<string>) -> result<statement, error>;
     }
 
     /// An error resource type.

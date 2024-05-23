@@ -10,7 +10,7 @@ interface types {
     ///   used in the operation.
     /// 
     /// - `jmes-path`: The JMESPath filter expresession to be applied by the 
-    ///   operation. For example, $[?firstName=='John'] will return 
+    ///   operation. For example, [?firstName=='John'] will return 
     ///   all documents where the `firstName` field is equal to `John`.
     resource statement {
         prepare: static func(collection: string, jmes-path: option<string>) -> result<statement, error>;

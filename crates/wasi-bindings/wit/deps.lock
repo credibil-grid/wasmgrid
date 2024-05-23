@@ -10,8 +10,8 @@ sha512 = "49184a1b0945a889abd52d25271172ed3dc2db6968fcdddb1bab7ee0081f4a3eeee097
 
 [jsondb]
 path = "../../../wit/deps/jsondb"
-sha256 = "ca68d36fa6c9af7f6e3b1cbb04d46143cba4b52a75122f92da75da7272f174f4"
-sha512 = "2ad4c14a8ef8a42349e4e4dc4906c376d17ebbd869efa9b11ceb45f16806ee52a89a194ee849144ed549206d6389b3e8176db4feab523f2d8dc12d6758dd03cb"
+sha256 = "e5d5d2965b52ec2e7386eb08c421b7472934cde10795b2eaee89358d6cf4b861"
+sha512 = "24dabaac91baf55bd25bfdfbfc78b7db8c801583693f2f6b4fb21dc8dfa16dbd32c7e457e76c8cf79c6bcc424ea717764e34328c09eacebf12f5262e90b6872a"
 
 [keyvalue]
 path = "../../../wit/deps/keyvalue"
