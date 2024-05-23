@@ -4,10 +4,10 @@
 //! that provides a concrete implementation in support of a specific set of WASI
 //! interfaces.
 
-pub(crate) mod http;
-pub(crate) mod jsondb;
-pub(crate) mod keyvalue;
-pub(crate) mod messaging;
-pub(crate) mod p2p;
-pub(crate) mod signature;
-pub(crate) mod wrpc;
+pub mod http;
+pub mod jsondb;
+pub mod keyvalue;
+pub mod messaging;
+pub mod p2p;
+pub mod signature;
+pub mod wrpc;

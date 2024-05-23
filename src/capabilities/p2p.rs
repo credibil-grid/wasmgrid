@@ -82,14 +82,14 @@ async fn start_node() -> anyhow::Result<()> {
     Ok(())
 }
 
-pub(crate) fn iroh_node() -> anyhow::Result<&'static FsNode> {
+fn iroh_node() -> anyhow::Result<&'static FsNode> {
     let Some(node) = IROH_NODE.get() else {
         return Err(anyhow!("Iroh node not started"));
     };
     Ok(node)
 }
 
-pub(crate) async fn find_author(author_short_id: &str) -> anyhow::Result<Option<AuthorId>> {
+async fn find_author(author_short_id: &str) -> anyhow::Result<Option<AuthorId>> {
     let iroh = iroh_node().expect("failed to get Iroh node from once-lock");
     let mut authors = iroh.authors.list().await?;
     while let Some(author) = authors.try_next().await? {
