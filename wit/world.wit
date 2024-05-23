@@ -1,4 +1,4 @@
-package component:bindings;
+package wasmgrid:capabilities;
 
 world jsondb {
 	include wasi:jsondb/imports@0.1.0-draft;

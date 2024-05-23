@@ -7,10 +7,12 @@ on:
     branches: [main]
     paths:
       - 'src/**'
+      - 'wit/**'
   pull_request:
     branches: [main]
     paths:
       - 'src/**'
+      - 'wit/**'
 
 concurrency:
   group:
