@@ -3,11 +3,14 @@
 name: Deploy
 
 on:
-  workflow_call:
   push:
     branches: [main]
+    paths:
+      - 'src/**'
   pull_request:
     branches: [main]
+    paths:
+      - 'src/**'
 
 concurrency:
   group:
@@ -15,45 +18,11 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # -----------------------------------------------------------------------
-  # Determine if anything interesting has changed
-  # -----------------------------------------------------------------------
-  changes:
-    name: Detect changes
-    if: |
-      ${{ github.event_name != 'pull_request' ||
-      github.event.pull_request.head.repo.full_name !=
-      github.event.pull_request.base.repo.full_name }}
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    outputs:
-      wasmgrid: ${{ steps.changes.outputs.wasmgrid }}
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Detect changes
-        uses: dorny/paths-filter@v3
-        id: changes
-        with:
-          filters: |
-            wasmgrid:
-              - 'src/**'
-
-  # -----------------------------------------------------------------------
-  # Deploy Container App
-  # -----------------------------------------------------------------------
   publish:
     name: Publish
-    needs: changes
-    if: ${{ needs.changes.outputs.wasmgrid == 'true' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      # id-token: write
-      # packages: write
 
     steps:
       - name: Checkout
