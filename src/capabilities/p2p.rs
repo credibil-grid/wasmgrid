@@ -24,6 +24,7 @@ pub mod bindings {
         path: "wit",
         async: true,
         tracing: true,
+        trappable_imports: true,
         with: {
             "wasi:io": wasmtime_wasi::bindings::io,
             "wasi:blobstore/container/container": Document,

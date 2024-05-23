@@ -24,6 +24,7 @@ mod bindings {
         path: "wit",
         tracing: true,
         async: true,
+        trappable_imports: true,
         with: {
             "wasi:signature/types/error": Error,
         },

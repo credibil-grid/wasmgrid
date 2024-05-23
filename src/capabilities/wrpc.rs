@@ -28,6 +28,7 @@ mod bindings {
         path: "wit",
         tracing: true,
         async: true,
+        trappable_imports: true,
         with: {
             "wasi:wrpc/client/error": Error,
         },

@@ -89,6 +89,6 @@ tracing-subscriber = { version = "0.3.18", features = ["env-filter", "fmt"] }
 wasi = "0.13.1"
 wasi-bindings = { path = "crates/wasi-bindings" }
 wasi-http = { path = "crates/wasi-http" }
-wasmtime = { version = "20.0.2", default-features = false, features = ["component-model", "cranelift", "runtime"] }
-wasmtime-wasi = "20.0.2"
-wasmtime-wasi-http = "20.0.2"
+wasmtime = { version = "21.0.1", default-features = false, features = ["component-model", "cranelift", "runtime"] }
+wasmtime-wasi = "21.0.1"
+wasmtime-wasi-http = "21.0.1"

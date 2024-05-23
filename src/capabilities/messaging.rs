@@ -29,6 +29,7 @@ mod bindings {
         path: "wit",
         tracing: true,
         async: true,
+        trappable_imports: true,
         with: {
             "wasi:messaging/messaging-types/client": Client,
             "wasi:messaging/messaging-types/error": Error,
