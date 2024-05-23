@@ -17,7 +17,7 @@ rust-version = "1.76"
 version = "0.1.0-alpha.1"
 
 [lib]
-# crate-type = ["cdylib", "rlib"]
+crate-type = ["cdylib", "lib"]
 
 [lints.rust]
 unused_extern_crates = "warn"
