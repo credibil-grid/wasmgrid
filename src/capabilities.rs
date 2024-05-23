@@ -4,8 +4,8 @@
 //! that provides a concrete implementation in support of a specific set of WASI
 //! interfaces.
 
-pub(crate) mod docdb;
 pub(crate) mod http;
+pub(crate) mod jsondb;
 pub(crate) mod keyvalue;
 pub(crate) mod messaging;
 pub(crate) mod p2p;

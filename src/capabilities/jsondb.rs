@@ -6,9 +6,10 @@
 use std::sync::OnceLock;
 
 use anyhow::anyhow;
-use bindings::wasi::docdb::readwrite;
-use bindings::wasi::docdb::types::{self, HostDatabase, HostError, HostStatement};
-use bindings::Docdb;
+use bindings::wasi::jsondb::readwrite;
+use bindings::wasi::jsondb::types::{self, HostDatabase, HostError, HostStatement};
+use bindings::Jsondb;
+use jmespath::ast::Ast;
 use mongodb::options::{ClientOptions, ReplaceOptions};
 use mongodb::Client;
 use wasmtime::component::{Linker, Resource};
@@ -24,14 +25,14 @@ mod bindings {
     pub use super::{Database, Error, Statement};
 
     wasmtime::component::bindgen!({
-        world: "docdb",
+        world: "jsondb",
         path: "wit",
         tracing: true,
         async: true,
         with: {
-            "wasi:docdb/types/database": Database,
-            "wasi:docdb/types/statement": Statement,
-            "wasi:docdb/types/error": Error,
+            "wasi:jsondb/types/database": Database,
+            "wasi:jsondb/types/statement": Statement,
+            "wasi:jsondb/types/error": Error,
         }
     });
 }
@@ -55,11 +56,11 @@ pub const fn new(addr: String) -> Capability {
 #[async_trait::async_trait]
 impl runtime::Capability for Capability {
     fn namespace(&self) -> &str {
-        "wasi:docdb"
+        "wasi:jsondb"
     }
 
     fn add_to_linker(&self, linker: &mut Linker<State>) -> anyhow::Result<()> {
-        Docdb::add_to_linker(linker, |t| t)
+        Jsondb::add_to_linker(linker, |t| t)
     }
 
     /// Provide sql capability for the specified wasm component.
@@ -103,15 +104,20 @@ impl readwrite::Host for State {
         let database = table.get(&db)?;
         let stmt = table.get(&s)?;
 
-        let Some(doc) = database
+        tracing::debug!("readwrite::Host::find: collection {:?}", stmt.conditions);
+
+        let ser = if let Some(doc) = database
             .collection::<bson::Document>(&stmt.collection)
             .find_one(stmt.conditions.clone(), None)
             .await?
-        else {
-            return Err(anyhow!("document not found"));
+        {
+            tracing::debug!("readwrite::Host::find: found document");
+            serde_json::to_vec(&doc)?
+        } else {
+            tracing::debug!("readwrite::Host::find: no document found");
+            vec![]
         };
 
-        let ser = serde_json::to_vec(&doc)?;
         Ok(Ok(vec![ser]))
     }
 
@@ -178,18 +184,49 @@ impl HostDatabase for State {
 // Implement the [`HostStatement`]` trait for State.
 #[async_trait::async_trait]
 impl HostStatement for State {
-    async fn prepare(
-        &mut self, collection: String, conditions: Vec<(String, String)>,
-    ) -> wasmtime::Result<Result<Resource<Statement>, Resource<Error>>> {
-        tracing::debug!("HostFilter::prepare");
+    // Prepare a bson query for the specified collection, translating the JMESPath
+    // to a bson query. For example,
+    // [?credential_issuer=='https://issuance.demo.credibil.io'] will translate
+    // to { "credential_issuer": "https://issuance.demo.credibil.io" }.
 
-        let mut doc = bson::Document::new();
-        for (k, v) in conditions {
-            doc.insert(k, v);
-        }
+    async fn prepare(
+        &mut self, collection: String, jmes_path: Option<String>,
+    ) -> wasmtime::Result<Result<Resource<Statement>, Resource<Error>>> {
+        tracing::debug!("HostFilter::prepare {collection} {jmes_path:?}");
+
+        let doc = if let Some(jmes_path) = jmes_path {
+            // create Mongo filter from JMESPath expression
+            let expr = jmespath::compile(&jmes_path)?;
+            let Ast::Projection { rhs, .. } = expr.as_ast() else {
+                return Err(anyhow!("invalid JMESPath projecttion"));
+            };
+            let Ast::Condition { predicate, .. } = rhs.as_ref() else {
+                return Err(anyhow!("invalid JMESPath condition"));
+            };
+            let Ast::Comparison { lhs, rhs, .. } = predicate.as_ref() else {
+                return Err(anyhow!("invalid JMESPath comparison"));
+            };
+            let Ast::Field { name, .. } = lhs.as_ref() else {
+                return Err(anyhow!("invalid JMESPath LHS"));
+            };
+            let Ast::Literal { value, .. } = rhs.as_ref() else {
+                return Err(anyhow!("invalid JMESPath RHS"));
+            };
+
+            let value = value.as_string().ok_or_else(|| anyhow!("invalid JMESPath value"))?;
+
+            tracing::debug!("HostFilter::prepare: key {name}: value {value}");
+
+            Some(bson::doc! {
+                name: value,
+            })
+        } else {
+            None
+        };
+
         let query = Statement {
             collection,
-            conditions: Some(doc),
+            conditions: doc,
         };
 
         Ok(Ok(self.table().push(query)?))
@@ -215,5 +252,23 @@ impl HostError for State {
         tracing::debug!("HostError::drop");
         self.table().delete(rep)?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn prepare() {
+        let mut state = State::default();
+        let _ = state
+            .prepare(
+                "test".to_string(),
+                //Some("$[?(@.credential_issuer=='https://issuance.demo.credibil.io')]".to_string()),
+                Some("[?credential_issuer=='https://issuance.demo.credibil.io']".to_string()),
+            )
+            .await
+            .unwrap();
     }
 }

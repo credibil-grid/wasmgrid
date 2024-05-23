@@ -1,0 +1,23 @@
+interface types {
+    /// A database connection.
+    resource database {
+        connect: static func(name: string) -> result<database, error>;
+    }
+
+    /// A JSON database statement to be used in database operations.
+    /// 
+    /// - `collection`: The name of the collection of JSON documents to be 
+    ///   used in the operation.
+    /// 
+    /// - `json-path`: The JSONPath filter expresession to be applied by the 
+    ///   operation. For example, $[?(@['firstName']=='John')] will return 
+    ///   all documents where the `firstName` field is equal to `John`.
+    resource statement {
+        prepare: static func(collection: string, json-path: option<string>) -> result<statement, error>;
+    }
+
+    /// An error resource type.
+    resource error {
+		trace: func() -> string;
+  	}
+}

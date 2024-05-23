@@ -6,8 +6,8 @@ use tracing_subscriber::{EnvFilter, FmtSubscriber};
 use vercre_core::metadata::Issuer as IssuerMetadata;
 use wasi::exports::http::incoming_handler::Guest;
 use wasi::http::types::{IncomingRequest, ResponseOutparam};
-use wasi_bindings::docdb::readwrite;
-use wasi_bindings::docdb::types::{Database, Statement};
+use wasi_bindings::jsondb::readwrite;
+use wasi_bindings::jsondb::types::{Database, Statement};
 use wasi_http::{self, Request, Router};
 
 struct HttpGuest;
@@ -35,7 +35,7 @@ fn handler(request: &Request) -> anyhow::Result<Vec<u8>> {
     let db = Database::connect("issuance").unwrap();
     let query = Statement::prepare(
         "issuer",
-        &[(String::from("credential_issuer"), "https://issuance.demo.credibil.io".to_string())],
+        Some("[?credential_issuer=='https://issuance.demo.credibil.io']"),
     )
     .map_err(|e| anyhow!(e.trace()))?;
 

@@ -6,7 +6,7 @@
 # cd crates/wasi-bindings && wit-deps && cd ../..
 # ```
 
-docdb = "../../../wit/deps/docdb"
+jsondb = "../../../wit/deps/jsondb"
 messaging = "../../../wit/deps/messaging"
 keyvalue = "../../../wit/deps/keyvalue"
 signature = "../../../wit/deps/signature"

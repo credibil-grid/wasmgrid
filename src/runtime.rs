@@ -128,9 +128,8 @@ pub struct State {
     pub metadata: HashMap<String, Metadata>,
 }
 
-impl State {
-    /// Create a new State instance.
-    fn new() -> Self {
+impl Default for State {
+    fn default() -> Self {
         let mut ctx = WasiCtxBuilder::new();
         ctx.inherit_args();
         ctx.inherit_env();
@@ -146,6 +145,13 @@ impl State {
             // TODO: wrap Hashmap in custom type to create accessors
             metadata: HashMap::default(),
         }
+    }
+}
+
+impl State {
+    /// Create a new State instance.
+    fn new() -> Self {
+        Self::default()
     }
 }
 

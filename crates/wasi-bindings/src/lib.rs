@@ -8,15 +8,15 @@
 //!
 //! [wasi]: https://github.com/bytecodealliance/wasi
 
-mod docdb_bindings {
+mod jsondb_bindings {
     wit_bindgen::generate!({
-        world: "docdb",
+        world: "jsondb",
     });
 }
 
 /// Bindings for the `wasi:signature` world.
-pub mod docdb {
-    pub use crate::docdb_bindings::wasi::docdb::*;
+pub mod jsondb {
+    pub use crate::jsondb_bindings::wasi::jsondb::*;
 }
 
 mod keyvalue_bindings {
