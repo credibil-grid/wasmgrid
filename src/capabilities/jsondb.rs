@@ -266,7 +266,6 @@ mod tests {
         let _ = state
             .prepare(
                 "test".to_string(),
-                //Some("$[?(@.credential_issuer=='https://issuance.demo.credibil.io')]".to_string()),
                 Some("[?credential_issuer=='https://issuance.demo.credibil.io']".to_string()),
             )
             .await
