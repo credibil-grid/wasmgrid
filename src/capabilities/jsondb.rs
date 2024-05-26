@@ -1,4 +1,4 @@
-//! # WASI Document Capability
+//! # WASI JSON Database Capability
 //!
 //! This module implements a runtime capability for `wasi:sql`
 //! (<https://github.com/WebAssembly/wasi-sql>).
