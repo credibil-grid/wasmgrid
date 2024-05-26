@@ -10,6 +10,7 @@
 
 mod jsondb_bindings {
     wit_bindgen::generate!({
+        path: "../../wit",
         world: "jsondb",
     });
 }
@@ -21,6 +22,7 @@ pub mod jsondb {
 
 mod keyvalue_bindings {
     wit_bindgen::generate!({
+        path: "../../wit",
         world: "keyvalue",
         pub_export_macro: true
     });
@@ -40,6 +42,7 @@ pub mod keyvalue {
 
 mod messaging_bindings {
     wit_bindgen::generate!({
+        path: "../../wit",
         world: "messaging",
         pub_export_macro: true
     });
@@ -59,6 +62,7 @@ pub mod messaging {
 
 mod signature_bindings {
     wit_bindgen::generate!({
+        path: "../../wit",
         world: "signature",
     });
 }
@@ -71,6 +75,7 @@ pub mod signature {
 /// Bindings for the `wasi:p2p` world.
 mod p2p_bindings {
     wit_bindgen::generate!({
+        path: "../../wit",
         world: "p2p",
     });
 }
@@ -85,6 +90,7 @@ pub mod p2p {
 /// Bindings for the `wasi:wrpc` world.
 mod wrpc_bindings {
     wit_bindgen::generate!({
+        path: "../../wit",
         world: "wrpc",
         pub_export_macro: true,
     });
