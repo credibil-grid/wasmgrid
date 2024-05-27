@@ -5,8 +5,8 @@ version = "0.1.0"
 authors.workspace = true
 edition.workspace = true
 
-[lib]
-crate-type = ["cdylib", "rlib"]
+# [lib]
+# crate-type = ["lib"]
 
 [lints]
 workspace = true
