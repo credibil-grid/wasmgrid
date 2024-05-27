@@ -11,7 +11,7 @@ impl Guest for Messaging {
     // As soon as configuration is set, the host will kill the Wasm instance.
     fn configure() -> Result<GuestConfiguration, Error> {
         Ok(GuestConfiguration {
-            channels: vec!["a".to_string(), "b".to_string(), "c".to_string()],
+            channels: vec!["a".into(), "b".into(), "c".into()],
             extensions: None,
         })
     }
@@ -35,7 +35,7 @@ impl Guest for Messaging {
 
                     // unsubscribe from channel
                     consumer::update_guest_configuration(&GuestConfiguration {
-                        channels: vec!["b".to_string(), "c".to_string()],
+                        channels: vec!["b".into(), "c".into()],
                         extensions: None,
                     })?;
                     return consumer::abandon_message(&msg);

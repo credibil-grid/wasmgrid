@@ -49,7 +49,7 @@ impl Host for State {
         tracing::debug!("Host::create_container");
 
         let Some(author) = find_author(&owner).await? else {
-            return Ok(Err("Author not found".to_string()));
+            return Ok(Err("Author not found".into()));
         };
         let iroh = iroh_node()?;
         let doc = iroh.docs.create().await?;
@@ -58,10 +58,7 @@ impl Host for State {
             doc.id().to_string()
         );
         let ticket = doc.share(ShareMode::Write, AddrInfoOptions::default()).await?;
-        tracing::debug!(
-            "Host::create_container: shared document with ticket: {}",
-            ticket.to_string()
-        );
+        tracing::debug!("Host::create_container: shared document with ticket: {ticket}");
 
         let container = Document { author, doc };
         let stashed = self.table().push(container)?;
@@ -76,7 +73,7 @@ impl Host for State {
         tracing::debug!("Host::get_container");
 
         let Some(author) = find_author(&owner).await? else {
-            return Ok(Err("Author not found".to_string()));
+            return Ok(Err("Author not found".into()));
         };
         let ticket = DocTicket::from_str(&token).context("invalid token")?;
         let iroh = iroh_node()?;
@@ -127,7 +124,7 @@ impl HostContainer for State {
         tracing::debug!("HostContainer::get_data {name} {start} {end}");
         let document = self.table().get_mut(&container)?;
         let Some(entry) = document.doc.get_exact(document.author, name, false).await? else {
-            return Ok(Err("Entry not found".to_string()));
+            return Ok(Err("Entry not found".into()));
         };
         let mut test_end = end;
         if test_end >= entry.content_len() {
@@ -212,7 +209,7 @@ impl HostContainer for State {
         tracing::debug!("HostContainer::object_info {name}");
         let document = self.table().get_mut(&container)?;
         let Some(entry) = document.doc.get_exact(document.author, name, false).await? else {
-            return Ok(Err("Entry not found".to_string()));
+            return Ok(Err("Entry not found".into()));
         };
         let md = ObjectMetadata {
             name: String::from_utf8(entry.key().to_vec())?,
@@ -264,7 +261,7 @@ impl HostStreamObjectNames for State {
         while let Some(entry) = entries.try_next().await? {
             let key_bytes = entry.key();
             let key = std::str::from_utf8(key_bytes).context("invalid utf8 key")?;
-            keys.push(key.to_string());
+            keys.push(key.into());
             if keys.len() == usize::try_from(len)? {
                 end = false;
                 break;

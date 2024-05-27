@@ -44,25 +44,25 @@ fn handler(req: &Request) -> anyhow::Result<Vec<u8>> {
     tracing::debug!("processing document: {:?}", doc);
 
     // Establish an author - either by using an environment variable or creating a new one.
-    let mut author = std::env::var("IROH_AUTHOR").unwrap_or_else(|_| "create".to_string());
+    let mut author = std::env::var("IROH_AUTHOR").unwrap_or_else(|_| "create".into());
     if author == "create" {
         author = create_author()?;
     }
     tracing::debug!("using author: {author}");
-    log.entries.push(("author".to_string(), author.clone()));
+    log.entries.push(("author".into(), author.clone()));
 
     // Create the document.
     let (container, ticket) = document::create_container(&author).map_err(|e| anyhow!(e))?;
     tracing::debug!("created container");
-    log.entries.push(("ticket".to_string(), ticket.clone()));
+    log.entries.push(("ticket".into(), ticket.clone()));
     tracing::debug!("ticket: {ticket}");
     let container_id = container.name().map_err(|e| anyhow!(e))?;
-    log.entries.push(("container ID".to_string(), container_id.clone()));
+    log.entries.push(("container ID".into(), container_id.clone()));
     tracing::debug!("container ID: {container_id}");
 
     // Add entries.
     for entry in doc.entries.iter() {
-        tracing::debug!("adding entry: {:?}", entry);
+        tracing::debug!("adding entry: {entry:?}");
         let data = OutgoingValue::new_outgoing_value();
         let content = data
             .outgoing_value_write_body()

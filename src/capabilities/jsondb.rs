@@ -68,7 +68,7 @@ impl runtime::Capability for Capability {
     async fn run(&self, _: Runtime) -> anyhow::Result<()> {
         // Connect to MongoDB
         let mut client_options = ClientOptions::parse(&self.addr).await?;
-        client_options.app_name = Some("Credibil Grid".to_string());
+        client_options.app_name = Some("Credibil Grid".into());
         let client = Client::with_options(client_options)?;
 
         MONGODB.get_or_init(|| client);
@@ -265,8 +265,8 @@ mod tests {
         let mut state = State::default();
         let _ = state
             .prepare(
-                "test".to_string(),
-                Some("[?credential_issuer=='https://issuance.demo.credibil.io']".to_string()),
+                "test".into(),
+                Some("[?credential_issuer=='https://issuance.demo.credibil.io']".into()),
             )
             .await
             .unwrap();

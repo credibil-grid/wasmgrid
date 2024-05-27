@@ -30,7 +30,7 @@ fn handler(request: &Request) -> anyhow::Result<Vec<u8>> {
         format: FormatSpec::Raw,
         metadata: None,
     };
-    producer::send(client, &"b".to_string(), &[message]).expect("should send");
+    producer::send(client, &"b".into(), &[message]).expect("should send");
 
     let req: serde_json::Value = serde_json::from_slice(&request.body()?)?;
     tracing::debug!("json: {:?}", req);

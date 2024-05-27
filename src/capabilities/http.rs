@@ -110,7 +110,7 @@ async fn handle_request(
 
         // prepare wasmtime http request and response
         let mut store = runtime.new_store();
-        store.data_mut().metadata.insert("wasi_http_ctx".to_string(), Box::new(WasiHttpCtx::new()));
+        store.data_mut().metadata.insert("wasi_http_ctx".into(), Box::new(WasiHttpCtx::new()));
         let incoming = store.data_mut().new_incoming_request(req)?;
         let outgoing = store.data_mut().new_response_outparam(sender)?;
 

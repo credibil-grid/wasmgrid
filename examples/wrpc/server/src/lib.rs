@@ -17,7 +17,7 @@ struct Server;
 impl server::Guest for Server {
     fn configure() -> Result<ServerConfiguration, Error> {
         Ok(ServerConfiguration {
-            identifier: "server".to_string(),
+            identifier: "server".into(),
         })
     }
 

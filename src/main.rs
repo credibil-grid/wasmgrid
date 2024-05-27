@@ -32,9 +32,9 @@ pub async fn main() -> wasmtime::Result<()> {
         dotenv().ok();
     }
 
-    let http_addr = env::var("HTTP_ADDR").unwrap_or_else(|_| DEF_HTTP_ADDR.to_string());
-    let nats_cnn = env::var("NATS_CNN").unwrap_or_else(|_| DEF_NATS_CNN.to_string());
-    let mgo_cnn = env::var("MGO_CNN").unwrap_or_else(|_| DEF_MGO_CNN.to_string());
+    let http_addr = env::var("HTTP_ADDR").unwrap_or_else(|_| DEF_HTTP_ADDR.into());
+    let nats_cnn = env::var("NATS_CNN").unwrap_or_else(|_| DEF_NATS_CNN.into());
+    let mgo_cnn = env::var("MGO_CNN").unwrap_or_else(|_| DEF_MGO_CNN.into());
 
     // tracing
     let subscriber =

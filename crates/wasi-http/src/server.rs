@@ -87,10 +87,10 @@ pub fn serve(router: &Router, request: &IncomingRequest) -> Result<OutgoingRespo
     // write outgoing body
     let body = resp
         .body()
-        .map_err(|()| ErrorCode::InternalError(Some("outgoing Body unavailable".to_string())))?;
+        .map_err(|()| ErrorCode::InternalError(Some("outgoing Body unavailable".into())))?;
     let stream = body
         .write()
-        .map_err(|()| ErrorCode::InternalError(Some("output-stream unavailable".to_string())))?;
+        .map_err(|()| ErrorCode::InternalError(Some("output-stream unavailable".into())))?;
     stream
         .blocking_write_and_flush(&content)
         .map_err(|e| ErrorCode::InternalError(Some(e.to_string())))?;

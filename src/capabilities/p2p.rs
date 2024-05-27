@@ -71,6 +71,7 @@ async fn start_node() -> anyhow::Result<()> {
     tracing::info!("starting Iroh node on port {} with data dir {}", port, data_dir);
 
     // Start an Iroh node.
+    #[allow(clippy::large_futures)]
     let node = FsNode::persistent(data_dir)
         .await?
         .bind_port(port)
