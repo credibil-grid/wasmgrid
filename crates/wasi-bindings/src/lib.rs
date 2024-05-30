@@ -60,18 +60,6 @@ pub mod messaging {
     }
 }
 
-mod signature_bindings {
-    wit_bindgen::generate!({
-        path: "../../wit",
-        world: "signature",
-    });
-}
-
-/// Bindings for the `wasi:signature` world.
-pub mod signature {
-    pub use crate::signature_bindings::wasi::signature::*;
-}
-
 /// Bindings for the `wasi:p2p` world.
 mod p2p_bindings {
     wit_bindgen::generate!({
@@ -88,19 +76,31 @@ pub mod p2p {
 }
 
 /// Bindings for the `wasi:wrpc` world.
-mod wrpc_bindings {
+mod rpc_bindings {
     wit_bindgen::generate!({
         path: "../../wit",
-        world: "wrpc",
+        world: "rpc",
         pub_export_macro: true,
     });
 }
 
-pub mod wrpc {
-    pub use crate::wrpc_bindings::export;
-    pub use crate::wrpc_bindings::wasi::wrpc::*;
+pub mod rpc {
+    pub use crate::rpc_bindings::export;
+    pub use crate::rpc_bindings::wasi::rpc::*;
     pub mod exports {
-        pub use crate::wrpc_bindings::exports::wasi;
-        pub use crate::wrpc_bindings::exports::wasi::wrpc::server::*;
+        pub use crate::rpc_bindings::exports::wasi;
+        pub use crate::rpc_bindings::exports::wasi::rpc::server::*;
     }
+}
+
+mod signature_bindings {
+    wit_bindgen::generate!({
+        path: "../../wit",
+        world: "signature",
+    });
+}
+
+/// Bindings for the `wasi:signature` world.
+pub mod signature {
+    pub use crate::signature_bindings::wasi::signature::*;
 }

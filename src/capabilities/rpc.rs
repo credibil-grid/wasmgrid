@@ -1,4 +1,4 @@
-//! # WASI Messaging Capability
+//! # RPC Capability
 //!
 //! This module implements a runtime capability for `wasi:messaging`
 //! (<https://github.com/WebAssembly/wasi-messaging>).
@@ -6,9 +6,9 @@
 use std::sync::OnceLock;
 
 use anyhow::anyhow;
-use bindings::wasi::wrpc::client::{self, HostError};
-use bindings::wasi::wrpc::types;
-use bindings::Wrpc;
+use bindings::wasi::rpc::client::{self, HostError};
+use bindings::wasi::rpc::types;
+use bindings::Rpc;
 use futures::stream::StreamExt;
 use wasmtime::component::{Linker, Resource};
 use wasmtime_wasi::WasiView;
@@ -24,13 +24,13 @@ mod bindings {
     pub use super::Error;
 
     wasmtime::component::bindgen!({
-        world: "wrpc",
+        world: "rpc",
         path: "wit",
         tracing: true,
         async: true,
         trappable_imports: true,
         with: {
-            "wasi:wrpc/client/error": Error,
+            "wasi:rpc/client/error": Error,
         },
     });
 }
@@ -48,11 +48,11 @@ pub const fn new(addr: String) -> Capability {
 #[async_trait::async_trait]
 impl runtime::Capability for Capability {
     fn namespace(&self) -> &str {
-        "wasi:wrpc"
+        "wasi:rpc"
     }
 
     fn add_to_linker(&self, linker: &mut Linker<State>) -> anyhow::Result<()> {
-        Wrpc::add_to_linker(linker, |t| t)
+        Rpc::add_to_linker(linker, |t| t)
     }
 
     async fn run(&self, runtime: Runtime) -> anyhow::Result<()> {
@@ -74,12 +74,12 @@ impl runtime::Capability for Capability {
         }
 
         // get 'server' component's name
-        let (wrpc, _) = Wrpc::instantiate_pre(&mut store, runtime.instance_pre()).await?;
-        let cfg = wrpc.wasi_wrpc_server().call_configure(&mut store).await??;
+        let (rpc, _) = Rpc::instantiate_pre(&mut store, runtime.instance_pre()).await?;
+        let cfg = rpc.wasi_rpc_server().call_configure(&mut store).await??;
 
-        // subscribe to wrpc requests for 'server' endpoints
-        tracing::debug!("subscribing to wrpc requests on wrpc:{}.>", cfg.identifier);
-        let mut requests = client.subscribe(format!("wrpc:{}.>", cfg.identifier)).await?;
+        // subscribe to rpc requests for 'server' endpoints
+        tracing::debug!("subscribing to rpc requests on rpc:{}.>", cfg.identifier);
+        let mut requests = client.subscribe(format!("rpc:{}.>", cfg.identifier)).await?;
 
         // process requests
         while let Some(request) = requests.next().await {
@@ -92,16 +92,16 @@ impl runtime::Capability for Capability {
                 };
 
                 // convert subject to endpoint
-                let endpoint = request.subject.trim_start_matches("wrpc:");
+                let endpoint = request.subject.trim_start_matches("rpc:");
                 let endpoint = endpoint.replace('.', "/");
 
                 // forward request to 'server' component
                 tracing::debug!("forwarding request to {endpoint}");
                 let mut store = runtime.new_store();
-                let (wrpc, _) = Wrpc::instantiate_pre(&mut store, runtime.instance_pre()).await?;
+                let (rpc, _) = Rpc::instantiate_pre(&mut store, runtime.instance_pre()).await?;
 
-                let resp = wrpc
-                    .wasi_wrpc_server()
+                let resp = rpc
+                    .wasi_rpc_server()
                     .call_handle(&mut store, &endpoint, &request.payload.to_vec())
                     .await??;
 
@@ -130,7 +130,7 @@ impl client::Host for State {
         tracing::debug!("client::Host::call for {endpoint}");
 
         // convert endpoint to safe NATS subject
-        let subject = format!("wrpc:{}", endpoint.replacen('/', ".", 1));
+        let subject = format!("rpc:{}", endpoint.replacen('/', ".", 1));
 
         let client = CLIENT.get().ok_or_else(|| anyhow!("CLIENT not initialized"))?;
         let msg = client.request(subject, request.into()).await?;

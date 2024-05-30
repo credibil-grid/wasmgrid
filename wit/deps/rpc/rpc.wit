@@ -1,14 +1,14 @@
-package wasi:wrpc@0.1.0-draft;
+package wasi:rpc@0.1.0-draft;
 
 interface types {
-    /// A serialized request to a wRPC server.
+    /// A serialized request to a RPC server.
     type request = list<u8>;
 
-    /// A serialized response from a wRPC server.
+    /// A serialized response from a RPC server.
     type response = list<u8>;
 }
 
-/// A psuedo-wRPC Client interface that can be used to make requests to a wRPC server.
+/// A psuedo-RPC Client interface that can be used to make requests to a wRPC server.
 /// 
 interface client {
     use types.{request, response};
@@ -38,7 +38,7 @@ interface client {
     call: func(endpoint: string, request: request) -> result<response, error>;
 }
 
-/// A psuedo-wRPC Server interface that can be used to serve wRPC clients (above).
+/// A psuedo-RPC Server interface that can be used to serve wRPC clients (above).
 interface server {
     use types.{request, response};
 
@@ -73,7 +73,7 @@ world imports {
 	import client;
 }
 
-world wrpc {
+world rpc {
 	include imports;
 	export server;
 }

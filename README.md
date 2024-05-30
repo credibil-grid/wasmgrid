@@ -56,7 +56,7 @@ brew install x86_64-unknown-linux-musl
 ```
 
 ```bash
-cargo build --package wasmgrid --target x86_64-unknown-linux-musl --release
+cargo build --package wasmgrid --target aarch64-unknown-linux-musl --release
 ```
 
 See <https://docs.wasmtime.dev/examples-minimal.html/> for more information on 

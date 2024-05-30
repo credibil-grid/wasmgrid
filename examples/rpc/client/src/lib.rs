@@ -4,7 +4,7 @@ use serde_json::json;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 use wasi::exports::http::incoming_handler::Guest as HttpGuest;
 use wasi::http::types::{IncomingRequest, ResponseOutparam};
-use wasi_bindings::wrpc;
+use wasi_bindings::rpc;
 use wasi_http::{self, Request, Router};
 
 pub struct Http;
@@ -49,7 +49,7 @@ fn hello(request: &Request) -> anyhow::Result<Vec<u8>> {
 
     // call server and deserialize response
     let ser_resp =
-        wrpc::client::call("server/Request", &msg).map_err(|e| anyhow!(e.trace()))?;
+        rpc::client::call("server/Request", &msg).map_err(|e| anyhow!(e.trace()))?;
     let wrpc_resp: WrpcResponse = serde_json::from_slice(ser_resp.as_slice())?;
 
     // return http response

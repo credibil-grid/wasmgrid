@@ -1,7 +1,6 @@
 [package]
-name = "wrpc-client"
+name = "rpc-client"
 version = "0.1.0"
-# workspace = "../../.."
 edition.workspace = true
 authors.workspace = true
 rust-version.workspace = true
@@ -17,8 +16,8 @@ anyhow.workspace = true
 http = "1.1.0"
 serde.workspace = true
 serde_json.workspace = true
-tracing.workspace = true
 tracing-subscriber.workspace = true
-wasi.workspace = true
+tracing.workspace = true
 wasi-bindings.workspace = true
 wasi-http.workspace = true
+wasi.workspace = true

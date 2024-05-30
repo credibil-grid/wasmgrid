@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
-use wasi_bindings::wrpc::exports::wasi::wrpc::server::{self, Error, ServerConfiguration};
+use wasi_bindings::rpc::exports::wasi::rpc::server::{self, Error, ServerConfiguration};
 
 #[derive(Deserialize, Debug)]
 pub struct WrpcRequest {
@@ -49,4 +49,4 @@ fn handle_request(request: &[u8]) -> Result<Vec<u8>, Error> {
     .map_err(|e| Error::Other(e.to_string()))?)
 }
 
-wasi_bindings::wrpc::export!(Server with_types_in wasi_bindings::wrpc);
+wasi_bindings::rpc::export!(Server with_types_in wasi_bindings::rpc);
