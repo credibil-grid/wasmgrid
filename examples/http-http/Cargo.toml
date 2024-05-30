@@ -1,7 +1,6 @@
 [package]
 name = "http-http"
-version = "0.1.0"
-edition = "2021"
+edition.workspace = true
 authors.workspace = true
 
 [lib]

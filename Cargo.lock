@@ -1985,7 +1985,7 @@ checksum = "f558a64ac9af88b5ba400d99b579451af0d39c6d360980045b91aac966d705e2"
 
 [[package]]
 name = "http"
-version = "0.1.0"
+version = "0.0.0"
 dependencies = [
  "anyhow",
  "http 1.1.0",
@@ -2054,7 +2054,7 @@ dependencies = [
 
 [[package]]
 name = "http-http"
-version = "0.1.0"
+version = "0.0.0"
 dependencies = [
  "anyhow",
  "http 1.1.0",
@@ -2067,7 +2067,7 @@ dependencies = [
 
 [[package]]
 name = "http-msg"
-version = "0.1.0"
+version = "0.0.0"
 dependencies = [
  "anyhow",
  "http 1.1.0",
@@ -2749,7 +2749,7 @@ dependencies = [
 
 [[package]]
 name = "jsondb"
-version = "0.1.0"
+version = "0.0.0"
 dependencies = [
  "anyhow",
  "http 1.1.0",
@@ -2778,7 +2778,7 @@ dependencies = [
 
 [[package]]
 name = "keyvault"
-version = "0.1.0"
+version = "0.0.0"
 dependencies = [
  "anyhow",
  "http 1.1.0",
@@ -2963,7 +2963,7 @@ dependencies = [
 
 [[package]]
 name = "messaging"
-version = "0.1.0"
+version = "0.0.0"
 dependencies = [
  "tracing",
  "tracing-subscriber",
@@ -3395,7 +3395,7 @@ dependencies = [
 
 [[package]]
 name = "p2p"
-version = "0.1.0"
+version = "0.0.0"
 dependencies = [
  "anyhow",
  "http 1.1.0",
@@ -4259,7 +4259,7 @@ dependencies = [
 
 [[package]]
 name = "rpc-client"
-version = "0.1.0"
+version = "0.0.0"
 dependencies = [
  "anyhow",
  "http 1.1.0",
@@ -4274,7 +4274,7 @@ dependencies = [
 
 [[package]]
 name = "rpc-server"
-version = "0.1.0"
+version = "0.0.0"
 dependencies = [
  "serde",
  "serde_json",

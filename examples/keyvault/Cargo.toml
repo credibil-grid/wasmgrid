@@ -1,9 +1,7 @@
 [package]
 name = "keyvault"
-description = "WASM guest for secure, isolated and distributed storage of wallet keys and credentials"
-version = "0.1.0"
-authors.workspace = true
 edition.workspace = true
+authors.workspace = true
 
 [lib]
 crate-type = ["cdylib"]
