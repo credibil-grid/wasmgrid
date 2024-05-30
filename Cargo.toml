@@ -36,11 +36,11 @@ mongodb = { version = "2.8.2", optional = true }
 regex = "1.10.4"
 serde_json = "1.0.117"
 tokio = { version = "1.37.0", features = ["signal"] }
-tracing-subscriber.workspace = true
 tracing.workspace = true
-wasmtime-wasi-http = { workspace = true, optional = true }
-wasmtime-wasi.workspace = true
+tracing-subscriber.workspace = true
 wasmtime.workspace = true
+wasmtime-wasi.workspace = true
+wasmtime-wasi-http = { workspace = true, optional = true }
 
 [profile.release]
 lto = true

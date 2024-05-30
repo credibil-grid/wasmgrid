@@ -48,8 +48,7 @@ fn hello(request: &Request) -> anyhow::Result<Vec<u8>> {
     })?;
 
     // call server and deserialize response
-    let ser_resp =
-        rpc::client::call("server/Request", &msg).map_err(|e| anyhow!(e.trace()))?;
+    let ser_resp = rpc::client::call("server/Request", &msg).map_err(|e| anyhow!(e.trace()))?;
     let wrpc_resp: WrpcResponse = serde_json::from_slice(ser_resp.as_slice())?;
 
     // return http response
