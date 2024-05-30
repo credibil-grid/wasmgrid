@@ -61,3 +61,14 @@ cargo build --package wasmgrid --target aarch64-unknown-linux-musl --release
 
 See <https://docs.wasmtime.dev/examples-minimal.html/> for more information on 
 optimising embedded `wasmtime`builds.
+
+## Nex
+
+```bash
+cp target/aarch64-unknown-linux-musl/release/wasmgrid ~/Downloads/wasmgrid
+cp target/wasm32-wasi/release/http.wasm ~/Downloads/http.wasm
+
+sudo cp /mnt/macos/wasmgrid /home/ubuntu/nex/wasmgrid
+sudo cp /mnt/macos/http.wasm /home/ubuntu/nex/http.wasm
+
+```

@@ -33,6 +33,7 @@ const DEF_NATS_CNN: &str = "demo.nats.io";
 #[command(version, about, long_about = None)]
 struct Args {
     /// The path to the wasm file to serve.
+    // #[clap(short, long)]
     wasm: String,
 }
 
