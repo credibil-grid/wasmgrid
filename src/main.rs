@@ -10,7 +10,20 @@ use clap::Parser;
 use dotenv::dotenv;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
-use crate::capabilities::{http, jsondb, keyvalue, messaging, p2p, signature, wrpc};
+#[cfg(feature = "http")]
+use crate::capabilities::http;
+#[cfg(feature = "jsondb")]
+use crate::capabilities::jsondb;
+#[cfg(feature = "keyvalue")]
+use crate::capabilities::keyvalue;
+#[cfg(feature = "messaging")]
+use crate::capabilities::messaging;
+#[cfg(feature = "p2p")]
+use crate::capabilities::p2p;
+#[cfg(feature = "rpc")]
+use crate::capabilities::rpc;
+#[cfg(feature = "signature")]
+use crate::capabilities::signature;
 
 const DEF_HTTP_ADDR: &str = "0.0.0.0:8080";
 const DEF_MGO_CNN: &str = "mongodb://localhost:27017";
@@ -41,15 +54,24 @@ pub async fn main() -> wasmtime::Result<()> {
         FmtSubscriber::builder().with_env_filter(EnvFilter::from_default_env()).finish();
     tracing::subscriber::set_global_default(subscriber)?;
 
-    runtime::Builder::new()
-        .capability(http::new(http_addr))
-        .capability(messaging::new(nats_cnn.clone()))
-        .capability(keyvalue::new(nats_cnn.clone()))
-        .capability(signature::new())
-        .capability(jsondb::new(mgo_cnn))
-        .capability(p2p::new())
-        .capability(wrpc::new(nats_cnn))
-        .run(args.wasm)?;
+    // init capabilities
+    let builder = runtime::Builder::new();
+    #[cfg(feature = "http")]
+    let builder = builder.capability(http::new(http_addr));
+    #[cfg(feature = "jsondb")]
+    let builder = builder.capability(jsondb::new(mgo_cnn));
+    #[cfg(feature = "keyvalue")]
+    let builder = builder.capability(keyvalue::new(nats_cnn.clone()));
+    #[cfg(feature = "messaging")]
+    let builder = builder.capability(messaging::new(nats_cnn.clone()));
+    #[cfg(feature = "p2p")]
+    let builder = builder.capability(p2p::new());
+    #[cfg(feature = "rpc")]
+    let builder = builder.capability(rpc::new(nats_cnn));
+    #[cfg(feature = "signature")]
+    let builder = builder.capability(signature::new());
+
+    builder.run(args.wasm)?;
 
     shutdown().await
 }
