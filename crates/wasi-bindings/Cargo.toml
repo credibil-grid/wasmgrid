@@ -12,4 +12,4 @@ edition.workspace = true
 workspace = true
 
 [dependencies]
-wit-bindgen = "0.25.0"
+wit-bindgen = "0.26.0"
