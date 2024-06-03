@@ -53,6 +53,7 @@ To test/debug build locally:
 # brew install FiloSottile/musl-cross/musl-cross
 brew tap messense/macos-cross-toolchains
 brew install x86_64-unknown-linux-musl
+brew install aarch64-unknown-linux-musl
 ```
 
 ```bash
