@@ -6,13 +6,20 @@ interface types {
     }
 
     /// Supported signing suites. See <https://www.w3.org/TR/vc-jws-2020/>.
-    record signing-suite {
+    record verification-method {
         /// Algorithm returns the algorithm used by the signer.
         algorithm: algorithm,
 
-        /// The verification method the verifier should use to verify the signer's
-        /// signature. This is typically a DID URL + # + verification key ID.
-        verification-method: string,
+        /// Refers to the DID URL which identifies the public key in the DID Document
+        /// to be used to verify the signature. It MUST NOT be present if `jwk` is 
+        /// set. This is typically a DID URL + # + verification key ID.
+        /// 
+        /// For example, did:example:123#_Qq0UL2Fq651Q0Fjd6TvnYE-faHiOpRlPVQcY_-tA4A.
+        key-id: option<string>,
+
+        /// The JWK used to verify the signature. It MUST NOT be present if `did` is
+        /// set.
+        jwk: option<jwk>,
     }
     
     /// Supported [IANA_JOSE] signature algorithms.
@@ -22,19 +29,26 @@ interface types {
     /// | EC | secp256k1  | ES256K    | ECDH         | ECDH-ES+A256KW
     /// 
     /// N.B. 
-    /// 1. Message Canonicalization: All messages are canonicalized using 
-    ///   the JSON Canonicalization Scheme (JCS) before being signed.
-    ///    See https://www.rfc-editor.org/rfc/rfc8785
+    /// 1. All messages are canonicalized using the JSON Canonicalization Scheme (JCS)
+    ///    before being signed. See https://www.rfc-editor.org/rfc/rfc8785
     /// 
     /// 2. Message Digest: The message digest is computed using SHA-256.
     /// 
     /// [IANA_JOSE]: https://www.iana.org/assignments/jose/jose.xhtml
     variant algorithm {
-        /// `secp256k1` curve for signing suite  EcdsaSecp256k1Signature2019. 
+        /// ECDSA using secp256k1 curve and SHA-256. 
         es256k,
 
-        /// `ed22519` curve for signing suite JsonWebSignature2020.
+        /// EdDSA signature algorithms using `ed22519` curve and SHA-256.
         eddsa,
+    }
+
+    /// JSON Web Key (JWK) format. See <https://www.rfc-editor.org/rfc/rfc7517.html>.
+    record jwk {
+        kty: string,
+        crv: option<string>,
+        x: option<string>,
+        y: option<string>,
     }
 
 }

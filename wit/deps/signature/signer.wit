@@ -1,11 +1,15 @@
+/// # Signing
+/// 
 /// Signer is used by implementers to provide signing functionality for
 /// Verifiable Credential issuance and Verifiable Presentation submissions.
 interface signer {
-    use types.{error, signing-suite};
+    use types.{error, verification-method};
 
-    /// Sign the provided message.
+    /// Sign the provided message using the signature suite referenced by the
+    /// `verification-method`.
     sign: func(msg: list<u8>) -> result<list<u8>, error>;
 
-    /// Get the suite type used for signing.
-    suite: func() -> signing-suite;
+    /// The verification method references the cryptographic material to be used when
+    /// verifying the proof (signature) it accompanies.
+    verification: func() -> verification-method;
 }

@@ -1,5 +1,26 @@
-/// Signer is used by implementers to provide signing functionality for
+/// # Verification
+/// 
+/// Verifier is used by implementers to provide signing functionality for
 /// Verifiable Credential issuance and Verifiable Presentation submissions.
+/// 
+/// The cryptographic material used to verify a linked data proof is called the
+/// verification method.
+/// 
+/// This suite relies on public key material represented using [RFC7517].
+/// 
+/// This suite supports public key use for both digital signature verification,
+/// according to [RFC7515] (JSON Web Signature (JWS)), and key agreement according to 
+/// [RFC8037] (CFRG Elliptic Curve Diffie-Hellman (ECDH) and Signatures in JSON Object 
+/// Signing and Encryption (JOSE))).
+/// 
+/// This suite MAY be used to verify linked data proofs produced by key material in any
+/// representation that can be converted to JWK, however it is RECOMMENDED that this 
+/// suite be used with verification method's of type JsonWebKey2020.
+
+/// [RFC7515]: https://www.rfc-editor.org/rfc/rfc7515
+/// [RFC7517]: https://www.rfc-editor.org/rfc/rfc7517
+/// [RFC8037]: https://www.rfc-editor.org/rfc/rfc8037
+/// 
 interface verifier {
     use types.{error};
 

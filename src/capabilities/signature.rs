@@ -4,7 +4,7 @@
 //! (<https://github.com/WebAssembly/wasi-signature>).
 
 use base64ct::{Base64UrlUnpadded, Encoding};
-use bindings::wasi::signature::types::{self, Algorithm, SigningSuite};
+use bindings::wasi::signature::types::{self, Algorithm, VerificationMethod};
 use bindings::wasi::signature::{signer, verifier};
 use bindings::Signature;
 use ecdsa::signature::Signer as _;
@@ -28,9 +28,6 @@ mod bindings {
         with: {
             "wasi:signature/types/error": Error,
         },
-        // trappable_error_type: {
-        //     "wasi:keyvalue/keyvalue-types/error" => Error,
-        // },
     });
 }
 
@@ -66,7 +63,8 @@ impl runtime::Capability for Capability {
 // Implement the [`wasi_signature::SignatureView`]` trait for State.
 #[async_trait::async_trait]
 impl signer::Host for State {
-    // Open bucket specified by identifier, save to state and return as a resource.
+    // Sign the provided message using the signature suite referenced by the
+    // verification-method.
     async fn sign(&mut self, msg: Vec<u8>) -> wasmtime::Result<Result<Vec<u8>, Resource<Error>>> {
         let decoded = Base64UrlUnpadded::decode_vec(JWK_D)?;
         let signing_key: ecdsa::SigningKey<Secp256k1> = ecdsa::SigningKey::from_slice(&decoded)?;
@@ -74,10 +72,11 @@ impl signer::Host for State {
         Ok(Ok(sig.to_vec()))
     }
 
-    async fn suite(&mut self) -> wasmtime::Result<SigningSuite> {
-        Ok(SigningSuite {
+    async fn verification(&mut self) -> wasmtime::Result<VerificationMethod> {
+        Ok(VerificationMethod {
             algorithm: Algorithm::Es256k,
-            verification_method: format!("{ISSUER_DID}#{VERIFY_KEY_ID}"),
+            key_id: Some(format!("{ISSUER_DID}#{VERIFY_KEY_ID}")),
+            jwk: None,
         })
     }
 }
