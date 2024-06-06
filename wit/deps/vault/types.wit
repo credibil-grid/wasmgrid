@@ -55,36 +55,45 @@ interface types {
     }
 }
 
+    // ***********************
+    // The key specification underpinning design of this wit is Securing Verifiable 
+    // Credentials using JOSE and COSE (<https://w3c.github.io/vc-jose-cose>).
+    // ***********************
 
-
-    // variant key-type {
+    //  /// Supported verification method types as registered in the 
+    //  /// [DID Specification Registries](https://www.w3.org/TR/did-spec-registries/).
+    // variant method-type {
     //     /// `EcdsaSecp256k1VerificationKey2019`
     //     ecdsa-secp256k1-verification-key2019,
 
     //     /// `Ed25519VerificationKey2020`
+    //     /// See https://www.w3.org/community/reports/credentials/CG-FINAL-di-eddsa-2020-20220724
     //     ed25519-verification-key2020,
     // }
 
-    // /// Supported signing suites. See <https://www.w3.org/TR/vc-jws-2020/>.
+    // /// See https://w3c.github.io/vc-jose-cose/#controller-documents
     // record verification-method {
-    //     /// The verification key ID.
+    //     /// A [DID URL](https://www.w3.org/TR/did-core/#did-url-syntax).
     //     /// 
-    //     /// For example, _Qq0UL2Fq651Q0Fjd6TvnYE-faHiOpRlPVQcY_-tA4A.
+    //     /// For example, #key-0.
     //     id: string,
 
-    //     /// The key type.
-    //     type: key-type,
+    //     /// References exactly one verification method type. In order to maximize global
+    //     /// interoperability, the method type SHOULD be registered in the 
+    //     /// [DID Specification Registries](https://www.w3.org/TR/did-spec-registries/).
+    //     type: method-type,
+
+    //     /// The DID of the DID Document containing the verification method.
+    //     /// MUST conform to [DID Syntax](https://www.w3.org/TR/did-core/#did-syntax).
+    //     ///
+    //     /// For example, did:example:123.
+    //     controller: string,
 
     //     /// The JWK used to for verification. MUST NOT be set if `public-key-multibase`
     //     /// is set.
     //     public-key-jwk: option<jwk>,
 
-    //     /// The DID of the DID Document containing the verification method.
-    //     ///
-    //     /// For example, did:example:123.
-    //     controller: string,
-
-    //     /// A Multibase-encoded Multikey. MUST NOT be set if `public-key-jwk` is set.
+    //     /// A Multibase-encoded public key. MUST NOT be set if `public-key-jwk` is set.
     //     /// 
     //     /// See <https://www.w3.org/TR/vc-data-integrity/#multibase-0>.
     //     public-key-multibase: option<string>,
