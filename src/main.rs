@@ -22,8 +22,8 @@ use crate::capabilities::messaging;
 use crate::capabilities::p2p;
 #[cfg(feature = "rpc")]
 use crate::capabilities::rpc;
-#[cfg(feature = "signature")]
-use crate::capabilities::signature;
+#[cfg(feature = "vault")]
+use crate::capabilities::vault;
 
 const DEF_HTTP_ADDR: &str = "0.0.0.0:8080";
 const DEF_MGO_CNN: &str = "mongodb://localhost:27017";
@@ -69,8 +69,8 @@ pub async fn main() -> wasmtime::Result<()> {
     let builder = builder.capability(p2p::new());
     #[cfg(feature = "rpc")]
     let builder = builder.capability(rpc::new(nats_cnn));
-    #[cfg(feature = "signature")]
-    let builder = builder.capability(signature::new());
+    #[cfg(feature = "vault")]
+    let builder = builder.capability(vault::new());
 
     builder.run(args.wasm)?;
 

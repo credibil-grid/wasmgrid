@@ -5,11 +5,11 @@
 interface signer {
     use types.{error, verification-method};
 
-    /// Sign the provided message using the signature suite referenced by the
+    /// Sign the provided message using the vault suite referenced by the
     /// `verification-method`.
     sign: func(msg: list<u8>) -> result<list<u8>, error>;
 
     /// The verification method references the cryptographic material to be used when
-    /// verifying the proof (signature) it accompanies.
+    /// verifying the proof (vault) it accompanies.
     verification: func() -> verification-method;
 }

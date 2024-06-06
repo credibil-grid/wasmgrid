@@ -1,12 +1,13 @@
-//! # WASI Signature Capability
+//! # WASI Vault Capability
 //!
-//! This module implements a runtime capability for `wasi:signature`
-//! (<https://github.com/WebAssembly/wasi-signature>).
+//! This module implements a runtime capability for `wasi:vault`
+//! (<https://github.com/WebAssembly/wasi-vault>).
 
 use base64ct::{Base64UrlUnpadded, Encoding};
-use bindings::wasi::signature::types::{self, Algorithm, VerificationMethod};
-use bindings::wasi::signature::{signer, verifier};
-use bindings::Signature;
+use bindings::wasi::vault::enclave::{self, KeyOp};
+use bindings::wasi::vault::types::{self, Algorithm, Jwk, VerificationMethod};
+use bindings::wasi::vault::{signer, verifier};
+use bindings::Vault;
 use ecdsa::signature::Signer as _;
 use k256::Secp256k1;
 use wasmtime::component::{Linker, Resource};
@@ -20,13 +21,13 @@ mod bindings {
     pub use super::Error;
 
     wasmtime::component::bindgen!({
-        world: "signature",
+        world: "vault",
         path: "wit",
         tracing: true,
         async: true,
         trappable_imports: true,
         with: {
-            "wasi:signature/types/error": Error,
+            "wasi:vault/types/error": Error,
         },
     });
 }
@@ -47,35 +48,51 @@ pub const fn new() -> Capability {
 #[async_trait::async_trait]
 impl runtime::Capability for Capability {
     fn namespace(&self) -> &str {
-        "wasi:signature"
+        "wasi:vault"
     }
 
     fn add_to_linker(&self, linker: &mut Linker<State>) -> anyhow::Result<()> {
-        Signature::add_to_linker(linker, |t| t)
+        Vault::add_to_linker(linker, |t| t)
     }
 
-    /// Provide signature capability for the wasm component.
+    /// Provide vault capability for the wasm component.
     async fn run(&self, _runtime: Runtime) -> anyhow::Result<()> {
         Ok(())
     }
 }
 
-// Implement the [`wasi_signature::SignatureView`]` trait for State.
 #[async_trait::async_trait]
-impl signer::Host for State {
-    // Sign the provided message using the signature suite referenced by the
-    // verification-method.
-    async fn sign(&mut self, msg: Vec<u8>) -> wasmtime::Result<Result<Vec<u8>, Resource<Error>>> {
+impl enclave::Host for State {
+    // Sign the provided message using the signing key.
+    async fn sign(&mut self, data: Vec<u8>) -> wasmtime::Result<Result<Vec<u8>, Resource<Error>>> {
+        // FIXME: replace hard-coded signer with key vault-based signing
         let decoded = Base64UrlUnpadded::decode_vec(JWK_D)?;
         let signing_key: ecdsa::SigningKey<Secp256k1> = ecdsa::SigningKey::from_slice(&decoded)?;
-        let sig: ecdsa::Signature<Secp256k1> = signing_key.sign(&msg);
+        let sig: ecdsa::Signature<Secp256k1> = signing_key.sign(&data);
         Ok(Ok(sig.to_vec()))
+    }
+
+    async fn active_key(&mut self, op: KeyOp) -> wasmtime::Result<Result<Jwk, Resource<Error>>> {
+        todo!("return active key for KeyOp {op:?}")
+    }
+
+    async fn next_key(&mut self, op: KeyOp) -> wasmtime::Result<Result<Jwk, Resource<Error>>> {
+        todo!("return next key for KeyOp {op:?}")
+    }
+}
+
+#[async_trait::async_trait]
+impl signer::Host for State {
+    // Sign the provided message using the vault suite referenced by the
+    // verification-method.
+    async fn sign(&mut self, msg: Vec<u8>) -> wasmtime::Result<Result<Vec<u8>, Resource<Error>>> {
+        enclave::Host::sign(self, msg).await
     }
 
     async fn verification(&mut self) -> wasmtime::Result<VerificationMethod> {
         Ok(VerificationMethod {
             algorithm: Algorithm::Es256k,
-            key_id: Some(format!("{ISSUER_DID}#{VERIFY_KEY_ID}")),
+            key_id: format!("{ISSUER_DID}#{VERIFY_KEY_ID}"),
             jwk: None,
         })
     }

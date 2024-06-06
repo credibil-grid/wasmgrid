@@ -1,11 +1,12 @@
-package wasi:signature@0.1.0-draft;
+package wasi:vault@0.1.0-draft;
 
 world imports {
 	import types;
+	import enclave;
 	import signer;
 	import verifier;
 }
 
-world signature {
+world vault {
 	include imports;
 }

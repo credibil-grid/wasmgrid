@@ -1,0 +1,91 @@
+interface types {
+    /// Error type for vault operations. The implementation must be provided
+    /// by the host.
+    resource error {
+        trace: func() -> string;    
+    }
+
+    /// Supported signing suites. See <https://www.w3.org/TR/vc-jws-2020/>.
+    record verification-method {
+        /// Refers to the DID URL which identifies the public key in the DID Document
+        /// to be used to verify the vault. It MUST NOT be present if `jwk` is 
+        /// set. This is typically a DID URL + # + verification key ID.
+        /// 
+        /// For example, did:example:123#_Qq0UL2Fq651Q0Fjd6TvnYE-faHiOpRlPVQcY_-tA4A.
+        key-id: string,
+
+        /// Algorithm returns the algorithm used by the signer.
+        algorithm: algorithm,
+
+        /// The JWK used to for verification. MUST NOT be set if `public-key-multibase`
+        /// is set.
+        jwk: option<jwk>,
+    }
+    
+    /// Supported [IANA_JOSE] vault algorithms.
+    /// 
+    /// | kty | crvOrSize | vault | keyAgreement | encryption
+    /// | OKP | Ed25519   | EdDSA     |              | ECDH-ES+A256KW
+    /// | EC | secp256k1  | ES256K    | ECDH         | ECDH-ES+A256KW
+    /// 
+    /// N.B. 
+    /// 1. All messages are canonicalized using the JSON Canonicalization Scheme (JCS)
+    ///    before being signed. See https://www.rfc-editor.org/rfc/rfc8785
+    /// 
+    /// 2. Message Digest: The message digest is computed using SHA-256.
+    /// 
+    /// [IANA_JOSE]: https://www.iana.org/assignments/jose/jose.xhtml
+    // variant algorithm {
+    variant algorithm {
+        /// ECDSA using secp256k1 curve and SHA-256. 
+        es256k,
+
+        /// EdDSA vault algorithms using `ed22519` curve and SHA-256.
+        eddsa,
+    }
+
+    /// JSON Web Key format public key.
+    /// See <https://www.rfc-editor.org/rfc/rfc7517.html>.
+    record jwk {
+        kty: string,
+        crv: string,
+        x: string,
+        y: option<string>,
+        // use: option<string>,
+    }
+}
+
+
+
+    // variant key-type {
+    //     /// `EcdsaSecp256k1VerificationKey2019`
+    //     ecdsa-secp256k1-verification-key2019,
+
+    //     /// `Ed25519VerificationKey2020`
+    //     ed25519-verification-key2020,
+    // }
+
+    // /// Supported signing suites. See <https://www.w3.org/TR/vc-jws-2020/>.
+    // record verification-method {
+    //     /// The verification key ID.
+    //     /// 
+    //     /// For example, _Qq0UL2Fq651Q0Fjd6TvnYE-faHiOpRlPVQcY_-tA4A.
+    //     id: string,
+
+    //     /// The key type.
+    //     type: key-type,
+
+    //     /// The JWK used to for verification. MUST NOT be set if `public-key-multibase`
+    //     /// is set.
+    //     public-key-jwk: option<jwk>,
+
+    //     /// The DID of the DID Document containing the verification method.
+    //     ///
+    //     /// For example, did:example:123.
+    //     controller: string,
+
+    //     /// A Multibase-encoded Multikey. MUST NOT be set if `public-key-jwk` is set.
+    //     /// 
+    //     /// See <https://www.w3.org/TR/vc-data-integrity/#multibase-0>.
+    //     public-key-multibase: option<string>,
+    // }

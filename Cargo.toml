@@ -94,7 +94,7 @@ wasmtime-wasi = "21.0.1"
 wasmtime-wasi-http = "21.0.1"
 
 [features]
-default = ["http", "jsondb", "keyvalue", "rpc", "signature"]
+default = ["http", "jsondb", "keyvalue", "rpc", "vault"]
 
 http = ["dep:wasmtime-wasi-http"]
 jsondb = ["dep:jmespath", "dep:bson", "dep:mongodb"]
@@ -102,4 +102,4 @@ keyvalue = ["dep:async-nats"]
 messaging = ["dep:async-nats"]
 p2p = ["dep:iroh"]
 rpc = ["dep:async-nats"]
-signature = ["dep:ecdsa", "dep:k256"]
+vault = ["dep:ecdsa", "dep:k256"]

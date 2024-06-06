@@ -8,8 +8,8 @@
 /// 
 /// This suite relies on public key material represented using [RFC7517].
 /// 
-/// This suite supports public key use for both digital signature verification,
-/// according to [RFC7515] (JSON Web Signature (JWS)), and key agreement according to 
+/// This suite supports public key use for both digital vault verification,
+/// according to [RFC7515] (JSON Web Vault (JWS)), and key agreement according to 
 /// [RFC8037] (CFRG Elliptic Curve Diffie-Hellman (ECDH) and Signatures in JSON Object 
 /// Signing and Encryption (JOSE))).
 /// 
@@ -25,5 +25,5 @@ interface verifier {
     use types.{error};
 
     /// Sign the provided message.
-    verify: func(msg: list<u8>, signature: list<u8>) -> result<_, error>;
+    verify: func(msg: list<u8>, vault: list<u8>) -> result<_, error>;
 }

@@ -16,5 +16,5 @@ pub mod messaging;
 pub mod p2p;
 #[cfg(feature = "rpc")]
 pub mod rpc;
-#[cfg(feature = "signature")]
-pub mod signature;
+#[cfg(feature = "vault")]
+pub mod vault;

@@ -14,8 +14,8 @@ world messaging {
 	export wasi:messaging/messaging-guest@0.2.0-draft;
 }
 
-world signature {
-	include wasi:signature/imports@0.1.0-draft;
+world vault {
+	include wasi:vault/imports@0.1.0-draft;
 }
 
 world p2p {

@@ -15,7 +15,7 @@ mod jsondb_bindings {
     });
 }
 
-/// Bindings for the `wasi:signature` world.
+/// Bindings for the `wasi:vault` world.
 pub mod jsondb {
     pub use crate::jsondb_bindings::wasi::jsondb::*;
 }
@@ -96,11 +96,11 @@ pub mod rpc {
 mod signature_bindings {
     wit_bindgen::generate!({
         path: "../../wit",
-        world: "signature",
+        world: "vault",
     });
 }
 
-/// Bindings for the `wasi:signature` world.
-pub mod signature {
-    pub use crate::signature_bindings::wasi::signature::*;
+/// Bindings for the `wasi:vault` world.
+pub mod vault {
+    pub use crate::signature_bindings::wasi::vault::*;
 }
