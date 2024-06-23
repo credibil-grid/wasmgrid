@@ -1309,7 +1309,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b5e6043086bf7973472e0c7dff2142ea0b680d30e18d9cc40f267efbf222bd47"
 dependencies = [
  "base16ct",
- "base64ct",
  "crypto-bigint",
  "digest",
  "ff",
@@ -1318,8 +1317,6 @@ dependencies = [
  "pkcs8",
  "rand_core",
  "sec1",
- "serde_json",
- "serdect",
  "subtle",
  "zeroize",
 ]
@@ -2198,7 +2195,7 @@ dependencies = [
  "iana-time-zone-haiku",
  "js-sys",
  "wasm-bindgen",
- "windows-core 0.51.1",
+ "windows-core 0.52.0",
 ]
 
 [[package]]
@@ -2753,10 +2750,10 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "http 1.1.0",
+ "openid4vc",
  "serde_json",
  "tracing",
  "tracing-subscriber",
- "vercre-core",
  "wasi 0.13.1+wasi-0.2.0",
  "wasi-bindings",
  "wasi-http",
@@ -3358,6 +3355,24 @@ name = "opaque-debug"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c08d65885ee38876c4f86fa503fb49d7b507c2b62552df7c70b2fce627e06381"
+
+[[package]]
+name = "openid4vc"
+version = "0.1.0-alpha.4"
+source = "git+https://github.com/vercre/vercre#91b08fceba743e56ead25aaaa93db3b9b110f5cb"
+dependencies = [
+ "anyhow",
+ "base64ct",
+ "ecdsa",
+ "image",
+ "qrcode",
+ "serde",
+ "serde_json",
+ "serde_json_path",
+ "serde_qs",
+ "thiserror",
+ "vercre-exch",
+]
 
 [[package]]
 name = "openssl-probe"
@@ -4092,9 +4107,9 @@ dependencies = [
 
 [[package]]
 name = "regex"
-version = "1.10.4"
+version = "1.10.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c117dbdfde9c8308975b6a18d71f3f385c89461f7b3fb054288ecf2a2058ba4c"
+checksum = "b91213439dad192326a0d7c6ee3955910425f441d7038e0d6933b0aec5c4517f"
 dependencies = [
  "aho-corasick",
  "memchr",
@@ -4562,7 +4577,6 @@ dependencies = [
  "der",
  "generic-array",
  "pkcs8",
- "serdect",
  "subtle",
  "zeroize",
 ]
@@ -5874,27 +5888,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "830b7e5d4d90034032940e4ace0d9a9a057e7a45cd94e6c007832e39edb82f6d"
 
 [[package]]
-name = "vercre-core"
+name = "vercre-exch"
 version = "0.1.0-alpha.4"
-source = "git+https://github.com/vercre/vercre#2418a7b39bc230c2cd67facdabd3abe5bb803463"
+source = "git+https://github.com/vercre/vercre#91b08fceba743e56ead25aaaa93db3b9b110f5cb"
 dependencies = [
  "anyhow",
- "base64ct",
  "chrono",
- "ecdsa",
- "ed25519-dalek",
- "fastrand 2.1.0",
- "image",
- "k256",
- "qrcode",
  "regex",
  "serde",
  "serde_json",
  "serde_json_path",
- "serde_qs",
- "signature",
- "thiserror",
- "tracing",
 ]
 
 [[package]]
@@ -5956,11 +5959,11 @@ version = "0.1.0-alpha.1"
 dependencies = [
  "anyhow",
  "http 1.1.0",
+ "openid4vc",
  "serde",
  "serde_json",
  "serde_urlencoded",
  "tracing",
- "vercre-core",
  "wasi 0.13.1+wasi-0.2.0",
 ]
 

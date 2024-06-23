@@ -59,10 +59,10 @@ pub fn serve(router: &Router, request: &IncomingRequest) -> Result<OutgoingRespo
     let content = match result {
         Ok(resp) => resp,
         Err(err) => {
-            // TODO: remove dependence on vercre_core::error::Error
-            let mapped = err.downcast_ref::<vercre_core::error::Error>().map_or_else(
+            // TODO: remove dependence on openid4vc::error::Error
+            let mapped = err.downcast_ref::<openid4vc::error::Error>().map_or_else(
                 || serde_json::json!({"error": "server_error", "error_description": err.to_string()}),
-                vercre_core::error::Error::to_json,
+                openid4vc::error::Error::to_json,
             );
 
             tracing::error!("{}", mapped);

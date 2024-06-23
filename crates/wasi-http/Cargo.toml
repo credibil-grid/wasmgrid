@@ -37,5 +37,5 @@ serde = "1.0.203"
 serde_json = "1.0.117"
 serde_urlencoded = "0.7.1"
 tracing = "0.1.40"
-vercre-core = { git = "https://github.com/vercre/vercre" }
+openid4vc = { git = "https://github.com/vercre/vercre" }
 wasi = "0.13.1"

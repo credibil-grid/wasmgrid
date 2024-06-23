@@ -3,7 +3,7 @@
 use anyhow::anyhow;
 use serde_json::json;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
-use vercre_core::metadata::Issuer as IssuerMetadata;
+use openid4vc::issuance::Issuer as IssuerMetadata;
 use wasi::exports::http::incoming_handler::Guest;
 use wasi::http::types::{IncomingRequest, ResponseOutparam};
 use wasi_bindings::jsondb::readwrite;
