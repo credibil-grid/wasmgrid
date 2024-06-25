@@ -66,14 +66,16 @@ impl enclave::Host for State {
         let decoded = Base64UrlUnpadded::decode_vec(JWK_D)?;
         let signing_key: ecdsa::SigningKey<Secp256k1> = ecdsa::SigningKey::from_slice(&decoded)?;
         let sig: ecdsa::Signature<Secp256k1> = signing_key.sign(&data);
+
         Ok(Ok(sig.to_vec()))
     }
 
     async fn active_key(&mut self, _op: KeyOp) -> wasmtime::Result<Result<Jwk, Resource<Error>>> {
         // FIXME: replace hard-coded public key with enclave-based key
         Ok(Ok(Jwk {
-            crv: "secp256k1".into(),
+            kid: None,
             kty: "EC".into(),
+            crv: "secp256k1".into(),
             x: "tXSKB_rubXS7sCjXqupVJEzTcW3MsjmEvq1YpXn96Zg".into(),
             y: Some("dOicXqbjFxoGJ-K0-GJ1kHYJqic_D_OMuUwkQ7Ol6nk".into()),
         }))
@@ -82,8 +84,9 @@ impl enclave::Host for State {
     async fn next_key(&mut self, _op: KeyOp) -> wasmtime::Result<Result<Jwk, Resource<Error>>> {
         // FIXME: replace hard-coded public key with enclave-based key
         Ok(Ok(Jwk {
-            crv: "secp256k1".into(),
+            kid: None,
             kty: "EC".into(),
+            crv: "secp256k1".into(),
             x: "tXSKB_rubXS7sCjXqupVJEzTcW3MsjmEvq1YpXn96Zg".into(),
             y: Some("dOicXqbjFxoGJ-K0-GJ1kHYJqic_D_OMuUwkQ7Ol6nk".into()),
         }))

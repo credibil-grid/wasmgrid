@@ -1,9 +1,9 @@
 #![feature(let_chains)]
 
 use anyhow::anyhow;
+use openid4vc::issuance::Issuer as IssuerMetadata;
 use serde_json::json;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
-use openid4vc::issuance::Issuer as IssuerMetadata;
 use wasi::exports::http::incoming_handler::Guest;
 use wasi::http::types::{IncomingRequest, ResponseOutparam};
 use wasi_bindings::jsondb::readwrite;

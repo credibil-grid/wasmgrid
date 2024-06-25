@@ -47,6 +47,7 @@ interface types {
     /// JSON Web Key format public key.
     /// See <https://www.rfc-editor.org/rfc/rfc7517.html>.
     record jwk {
+        kid: option<string>,
         kty: string,
         crv: string,
         x: string,
@@ -59,17 +60,6 @@ interface types {
     // The key specification underpinning design of this wit is Securing Verifiable 
     // Credentials using JOSE and COSE (<https://w3c.github.io/vc-jose-cose>).
     // ***********************
-
-    //  /// Supported verification method types as registered in the 
-    //  /// [DID Specification Registries](https://www.w3.org/TR/did-spec-registries/).
-    // variant method-type {
-    //     /// `EcdsaSecp256k1VerificationKey2019`
-    //     ecdsa-secp256k1-verification-key2019,
-
-    //     /// `Ed25519VerificationKey2020`
-    //     /// See https://www.w3.org/community/reports/credentials/CG-FINAL-di-eddsa-2020-20220724
-    //     ed25519-verification-key2020,
-    // }
 
     // /// See https://w3c.github.io/vc-jose-cose/#controller-documents
     // record verification-method {
@@ -89,6 +79,10 @@ interface types {
     //     /// For example, did:example:123.
     //     controller: string,
 
+    //     /// An [XMLSCHEMA11-2] dateTimeStamp specifying when the verification method 
+    //     /// should stop being used.
+    //     revoked: option<string>
+
     //     /// The JWK used to for verification. MUST NOT be set if `public-key-multibase`
     //     /// is set.
     //     public-key-jwk: option<jwk>,
@@ -97,4 +91,15 @@ interface types {
     //     /// 
     //     /// See <https://www.w3.org/TR/vc-data-integrity/#multibase-0>.
     //     public-key-multibase: option<string>,
+    // }
+
+    //  /// Supported verification method types as registered in the 
+    //  /// [DID Specification Registries](https://www.w3.org/TR/did-spec-registries/).
+    // variant method-type {
+    //     /// `EcdsaSecp256k1VerificationKey2019`
+    //     ecdsa-secp256k1-verification-key2019,
+
+    //     /// `Ed25519VerificationKey2020`
+    //     /// See https://www.w3.org/community/reports/credentials/CG-FINAL-di-eddsa-2020-20220724
+    //     ed25519-verification-key2020,
     // }

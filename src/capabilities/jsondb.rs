@@ -10,7 +10,7 @@ use bindings::wasi::jsondb::readwrite;
 use bindings::wasi::jsondb::types::{self, HostDatabase, HostError, HostStatement};
 use bindings::Jsondb;
 use jmespath::ast::Ast;
-use mongodb::options::{ClientOptions, ReplaceOptions};
+use mongodb::options::ClientOptions;
 use mongodb::Client;
 use wasmtime::component::{Linker, Resource};
 use wasmtime_wasi::WasiView;
@@ -43,7 +43,7 @@ pub type Error = anyhow::Error;
 
 pub struct Statement {
     collection: String,
-    conditions: Option<bson::Document>,
+    conditions: bson::Document,
 }
 
 pub struct Capability {
@@ -91,7 +91,7 @@ impl readwrite::Host for State {
         let stmt = table.get(&s)?;
 
         let doc: bson::Document = serde_json::from_slice(&d)?;
-        let _ = database.collection(&stmt.collection).insert_one(doc, None).await?;
+        let _ = database.collection(&stmt.collection).insert_one(doc).await?;
 
         Ok(Ok(()))
     }
@@ -109,7 +109,7 @@ impl readwrite::Host for State {
 
         let ser = if let Some(doc) = database
             .collection::<bson::Document>(&stmt.collection)
-            .find_one(stmt.conditions.clone(), None)
+            .find_one(stmt.conditions.clone())
             .await?
         {
             tracing::debug!("readwrite::Host::find: found document");
@@ -132,11 +132,8 @@ impl readwrite::Host for State {
         let stmt = table.get(&s)?;
 
         let doc: bson::Document = serde_json::from_slice(&d)?;
-        let Some(query) = stmt.conditions.clone() else {
-            return Err(anyhow!("filter not found"));
-        };
-        let options = ReplaceOptions::builder().upsert(true).build();
-        let _ = database.collection(&stmt.collection).replace_one(query, doc, options).await?;
+        let _ =
+            database.collection(&stmt.collection).replace_one(stmt.conditions.clone(), doc).await?;
 
         Ok(Ok(()))
     }
@@ -150,11 +147,10 @@ impl readwrite::Host for State {
         let database = table.get(&db)?;
         let stmt = table.get(&s)?;
 
-        let Some(query) = stmt.conditions.clone() else {
-            return Err(anyhow!("filter not found"));
-        };
-        let _ =
-            database.collection::<bson::Document>(&stmt.collection).delete_one(query, None).await?;
+        let _ = database
+            .collection::<bson::Document>(&stmt.collection)
+            .delete_one(stmt.conditions.clone())
+            .await?;
 
         Ok(Ok(()))
     }
@@ -218,11 +214,11 @@ impl HostStatement for State {
 
             tracing::debug!("HostFilter::prepare: key {name}: value {value}");
 
-            Some(bson::doc! {
+            bson::doc! {
                 name: value,
-            })
+            }
         } else {
-            None
+            bson::doc! {}
         };
 
         let query = Statement {

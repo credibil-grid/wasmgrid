@@ -59,15 +59,11 @@ pub fn serve(router: &Router, request: &IncomingRequest) -> Result<OutgoingRespo
     let content = match result {
         Ok(resp) => resp,
         Err(err) => {
-            // TODO: remove dependence on openid4vc::error::Error
-            let mapped = err.downcast_ref::<openid4vc::error::Error>().map_or_else(
-                || serde_json::json!({"error": "server_error", "error_description": err.to_string()}),
-                openid4vc::error::Error::to_json,
-            );
+            tracing::error!("{}", err);
 
-            tracing::error!("{}", mapped);
-
-            let Ok(ser) = serde_json::to_vec(&mapped) else {
+            let err_json =
+                serde_json::json!({"error": "server_error", "error_description": err.to_string()});
+            let Ok(ser) = serde_json::to_vec(&err_json) else {
                 return Err(ErrorCode::InternalError(Some(
                     "failed to serialize error".to_string(),
                 )));

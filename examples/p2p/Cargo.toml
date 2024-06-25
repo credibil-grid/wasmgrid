@@ -13,7 +13,7 @@ workspace = true
 anyhow.workspace = true
 http = "1.1.0"
 serde = { version = "1.0.203", features = ["derive"] }
-serde_json = "1.0.117"
+serde_json = "1.0.118"
 tracing.workspace = true
 tracing-subscriber.workspace = true
 wasi.workspace = true
