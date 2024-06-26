@@ -1,6 +1,6 @@
 # 1. Install `wit-deps` from source (https://github.com/bytecodealliance/wit-deps)
 # 2. Update deps.toml with dependencies to import
-# 3. Run `wit-deps` to import dependenciess specified in deps.toml:
+# 3. Run `wit-deps` to import dependencies specified in deps.toml:
 
 # ```sh
 # wit-deps
