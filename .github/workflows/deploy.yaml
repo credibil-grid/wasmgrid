@@ -6,11 +6,15 @@ on:
   push:
     branches: [main]
     paths:
+      - 'Cargo.lock'
       - 'src/**'
+      - crates/**
   pull_request:
     branches: [main]
     paths:
+      - 'Cargo.lock'
       - 'src/**'
+      - crates/**
 
 concurrency:
   group:
