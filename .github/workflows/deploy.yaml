@@ -49,6 +49,4 @@ jobs:
         with:
           push: true
           tags: |
-            acrcredibil.azurecr.io/demo/wasmgrid:latest
-
-      # acrcredibil.azurecr.io/demo/${{ github.repository }}:latest
+            acrcredibil.azurecr.io/demo/${{ github.event.repository.name }}:latest
