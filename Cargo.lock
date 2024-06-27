@@ -3368,7 +3368,7 @@ checksum = "c08d65885ee38876c4f86fa503fb49d7b507c2b62552df7c70b2fce627e06381"
 [[package]]
 name = "openid4vc"
 version = "0.1.0-alpha.4"
-source = "git+https://github.com/vercre/vercre#91b08fceba743e56ead25aaaa93db3b9b110f5cb"
+source = "git+https://github.com/vercre/vercre#51b812219f120ebed1f8fea64ac64a1f64703425"
 dependencies = [
  "anyhow",
  "base64ct",
@@ -5926,7 +5926,7 @@ checksum = "830b7e5d4d90034032940e4ace0d9a9a057e7a45cd94e6c007832e39edb82f6d"
 [[package]]
 name = "vercre-exch"
 version = "0.1.0-alpha.4"
-source = "git+https://github.com/vercre/vercre#91b08fceba743e56ead25aaaa93db3b9b110f5cb"
+source = "git+https://github.com/vercre/vercre#51b812219f120ebed1f8fea64ac64a1f64703425"
 dependencies = [
  "anyhow",
  "chrono",
