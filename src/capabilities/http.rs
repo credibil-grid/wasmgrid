@@ -13,7 +13,7 @@ use http_body_util::BodyExt;
 use hyper::body::Incoming;
 use hyper::server::conn::http1;
 use hyper::service::service_fn;
-use hyper::Request;
+use hyper::{Method, Request, StatusCode};
 use tokio::net::TcpListener;
 use wasmtime::component::Linker;
 use wasmtime_wasi::{ResourceTable, WasiView};
@@ -71,9 +71,20 @@ async fn handle_request(
     runtime: &Runtime, mut request: Request<Incoming>,
 ) -> anyhow::Result<hyper::Response<HyperOutgoingBody>> {
     let (sender, receiver) = tokio::sync::oneshot::channel();
-    // let req_id = self.next_id.fetch_add(1, Ordering::Relaxed);
+
+    // HACK: CORS preflight request - this should be configurable
+    if request.method() == &Method::OPTIONS && request.uri().path() == "/" {
+        let resp = hyper::Response::builder()
+            .status(StatusCode::OK)
+            .header("Access-Control-Allow-Origin", "*")
+            .header("Access-Control-Allow-Headers", "*")
+            .header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+            .body(HyperOutgoingBody::default())?;
+        return Ok(resp);
+    }
 
     let runtime = runtime.clone();
+    // let req_id = self.next_id.fetch_add(1, Ordering::Relaxed);
 
     let task = tokio::spawn(async move {
         // rebuild Uri with scheme and authority explicitly set so they are passed to the Guest

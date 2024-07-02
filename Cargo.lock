@@ -486,7 +486,6 @@ dependencies = [
  "ahash",
  "base64 0.13.1",
  "bitvec",
- "chrono",
  "hex",
  "indexmap",
  "js-sys",
@@ -1983,7 +1982,7 @@ checksum = "f558a64ac9af88b5ba400d99b579451af0d39c6d360980045b91aac966d705e2"
 
 [[package]]
 name = "http"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "anyhow",
  "http 1.1.0",
@@ -6101,7 +6100,6 @@ dependencies = [
  "async-nats",
  "async-trait",
  "base64ct",
- "bson",
  "bytes",
  "clap",
  "dotenv",

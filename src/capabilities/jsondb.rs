@@ -11,7 +11,7 @@ use bindings::wasi::jsondb::types::{self, HostDatabase, HostError, HostStatement
 use bindings::Jsondb;
 use jmespath::ast::Ast;
 use mongodb::options::ClientOptions;
-use mongodb::Client;
+use mongodb::{bson, Client};
 use wasmtime::component::{Linker, Resource};
 use wasmtime_wasi::WasiView;
 
@@ -90,7 +90,7 @@ impl readwrite::Host for State {
         let database = table.get(&db)?;
         let stmt = table.get(&s)?;
 
-        let doc: bson::Document = serde_json::from_slice(&d)?;
+        let doc = serde_json::from_slice::<bson::Document>(&d)?;
         let _ = database.collection(&stmt.collection).insert_one(doc).await?;
 
         Ok(Ok(()))
