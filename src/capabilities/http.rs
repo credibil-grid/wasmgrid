@@ -73,14 +73,16 @@ async fn handle_request(
     let (sender, receiver) = tokio::sync::oneshot::channel();
 
     // HACK: CORS preflight request - this should be configurable
-    if request.method() == &Method::OPTIONS && request.uri().path() == "/" {
-        let resp = hyper::Response::builder()
-            .status(StatusCode::OK)
-            .header("Access-Control-Allow-Origin", "*")
-            .header("Access-Control-Allow-Headers", "*")
-            .header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
-            .body(HyperOutgoingBody::default())?;
-        return Ok(resp);
+    if cfg!(debug_assertions) {
+        if request.method() == &Method::OPTIONS && request.uri().path() == "/" {
+            let resp = hyper::Response::builder()
+                .status(StatusCode::OK)
+                .header("Access-Control-Allow-Origin", "*")
+                .header("Access-Control-Allow-Headers", "*")
+                .header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+                .body(HyperOutgoingBody::default())?;
+            return Ok(resp);
+        }
     }
 
     let runtime = runtime.clone();
