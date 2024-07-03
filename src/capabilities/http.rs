@@ -74,16 +74,7 @@ async fn handle_request(
 
     // HACK: CORS preflight request - this should be configurable
     if cfg!(debug_assertions) {
-        // if request.method() == &Method::OPTIONS && request.uri().path() == "/" {
-        //     let resp = hyper::Response::builder()
-        //         .status(StatusCode::OK)
-        //         .header("Access-Control-Allow-Origin", "*")
-        //         .header("Access-Control-Allow-Headers", "*")
-        //         .header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
-        //         .body(HyperOutgoingBody::default())?;
-        //     return Ok(resp);
-        // }
-        if request.method() == &Method::OPTIONS {
+        if request.method() == Method::OPTIONS {
             let resp = hyper::Response::builder()
                 .status(StatusCode::OK)
                 .header("Access-Control-Allow-Origin", "*")
