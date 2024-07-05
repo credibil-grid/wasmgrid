@@ -4,6 +4,7 @@
 //! (<https://github.com/WebAssembly/wasi-messaging>).
 
 use std::sync::OnceLock;
+use std::time::Duration;
 
 use anyhow::anyhow;
 use bindings::wasi::rpc::client::{self, HostError};
@@ -133,7 +134,11 @@ impl client::Host for State {
         let subject = format!("rpc:{}", endpoint.replacen('/', ".", 1));
 
         let client = CLIENT.get().ok_or_else(|| anyhow!("CLIENT not initialized"))?;
-        let msg = client.request(subject, request.into()).await?;
+        let nats_request = async_nats::client::Request::new()
+            .payload(request.into())
+            .timeout(Some(Duration::from_secs(10)));
+        let msg = client.send_request(subject, nats_request).await?;
+        //let msg = client.request(subject, request.into()).await?;
 
         Ok(Ok(msg.payload.to_vec()))
     }
