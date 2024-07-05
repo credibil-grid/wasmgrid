@@ -137,7 +137,7 @@ impl client::Host for State {
         // HACK: Timeout duration should be configurable
         let nats_request = async_nats::client::Request::new()
             .payload(request.into())
-            .timeout(Some(Duration::from_secs(60)));
+            .timeout(Some(Duration::from_secs(240)));
         let msg = client.send_request(subject, nats_request).await?;
         //let msg = client.request(subject, request.into()).await?;
 
