@@ -16,7 +16,9 @@ use wasmtime_wasi::WasiView;
 
 use crate::runtime::{self, Runtime, State};
 
+// TODO: tidy up by creating a client struct with both NATS client and request timeout
 static CLIENT: OnceLock<async_nats::Client> = OnceLock::new();
+static TIMEOUT: OnceLock<Duration> = OnceLock::new();
 
 /// Wrap generation of wit bindings to simplify exports
 mod bindings {
@@ -40,10 +42,12 @@ pub type Error = anyhow::Error;
 
 pub struct Capability {
     addr: String,
+    timeout: Duration,
 }
 
-pub const fn new(addr: String) -> Capability {
-    Capability { addr }
+pub const fn new(addr: String, timeout_s: u64) -> Capability {
+    let timeout = Duration::from_secs(timeout_s);
+    Capability { addr, timeout }
 }
 
 #[async_trait::async_trait]
@@ -59,6 +63,7 @@ impl runtime::Capability for Capability {
     async fn run(&self, runtime: Runtime) -> anyhow::Result<()> {
         let client = async_nats::connect(&self.addr).await?;
         CLIENT.set(client.clone()).map_err(|_| anyhow!("CLIENT already initialized"))?;
+        TIMEOUT.set(self.timeout).map_err(|_| anyhow!("TIMEOUT already initialized"))?;
 
         let mut store = runtime.new_store();
 
@@ -134,10 +139,10 @@ impl client::Host for State {
         let subject = format!("rpc:{}", endpoint.replacen('/', ".", 1));
 
         let client = CLIENT.get().ok_or_else(|| anyhow!("CLIENT not initialized"))?;
-        // HACK: Timeout duration should be configurable
+        let timeout = TIMEOUT.get().ok_or_else(|| anyhow!("TIMEOUT not initialized"))?;
         let nats_request = async_nats::client::Request::new()
             .payload(request.into())
-            .timeout(Some(Duration::from_secs(240)));
+            .timeout(Some(timeout.clone()));
         let msg = client.send_request(subject, nats_request).await?;
         //let msg = client.request(subject, request.into()).await?;
 
