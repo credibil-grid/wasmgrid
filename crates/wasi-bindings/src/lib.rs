@@ -12,6 +12,10 @@ mod jsondb_bindings {
     wit_bindgen::generate!({
         path: "../../wit",
         world: "jsondb",
+        with: {
+            "wasi:jsondb/readwrite@0.1.0-draft": generate,
+            "wasi:jsondb/types@0.1.0-draft": generate
+        }
     });
 }
 
@@ -24,6 +28,12 @@ mod keyvalue_bindings {
     wit_bindgen::generate!({
         path: "../../wit",
         world: "keyvalue",
+        with: {
+            "wasi:keyvalue/store@0.2.0-draft": generate,
+            "wasi:keyvalue/atomics@0.2.0-draft": generate,
+            "wasi:keyvalue/batch@0.2.0-draft": generate,
+            "wasi:keyvalue/watcher@0.2.0-draft": generate
+        },
         pub_export_macro: true
     });
 }
@@ -44,6 +54,12 @@ mod messaging_bindings {
     wit_bindgen::generate!({
         path: "../../wit",
         world: "messaging",
+        with: {
+            "wasi:messaging/producer@0.2.0-draft": generate,
+            "wasi:messaging/consumer@0.2.0-draft": generate,
+            "wasi:messaging/messaging-types@0.2.0-draft": generate,
+            "wasi:messaging/messaging-guest@0.2.0-draft": generate,
+        },
         pub_export_macro: true
     });
 }
@@ -65,6 +81,15 @@ mod p2p_bindings {
     wit_bindgen::generate!({
         path: "../../wit",
         world: "p2p",
+        with: {
+            "wasi:io/error@0.2.0": generate,
+            "wasi:io/poll@0.2.0": generate,
+            "wasi:io/streams@0.2.0": generate,
+            "wasi:blobstore/types@0.2.0-draft": generate,
+            "wasi:blobstore/container@0.2.0-draft": generate,
+            "wasi:p2p/types@0.1.0-draft": generate,
+            "wasi:p2p/document@0.1.0-draft": generate,
+        },
     });
 }
 
@@ -80,6 +105,11 @@ mod rpc_bindings {
     wit_bindgen::generate!({
         path: "../../wit",
         world: "rpc",
+        with: {
+            "wasi:rpc/types@0.1.0-draft": generate,
+            "wasi:rpc/client@0.1.0-draft": generate,
+            "wasi:rpc/server@0.1.0-draft": generate,
+        },
         pub_export_macro: true,
     });
 }
@@ -97,6 +127,12 @@ mod signature_bindings {
     wit_bindgen::generate!({
         path: "../../wit",
         world: "vault",
+        with: {
+            "wasi:vault/types@0.1.0-draft": generate,
+            "wasi:vault/enclave@0.1.0-draft": generate,
+            "wasi:vault/signer@0.1.0-draft": generate,
+            "wasi:vault/verifier@0.1.0-draft": generate,
+        },
     });
 }
 

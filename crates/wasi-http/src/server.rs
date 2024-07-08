@@ -1,3 +1,5 @@
+use std::cmp;
+
 use http::header::CONTENT_TYPE;
 use wasi::http::types::{ErrorCode, Headers, IncomingRequest, OutgoingBody, OutgoingResponse};
 
@@ -55,12 +57,10 @@ pub fn serve(router: &Router, request: &IncomingRequest) -> Result<OutgoingRespo
     };
 
     // serialize result
-    let result = (route.handler)(&req);
-    let content = match result {
+    let mut content = match (route.handler)(&req) {
         Ok(resp) => resp,
         Err(err) => {
             tracing::error!("{}", err);
-
             let err_json =
                 serde_json::json!({"error": "server_error", "error_description": err.to_string()});
             let Ok(ser) = serde_json::to_vec(&err_json) else {
@@ -76,23 +76,55 @@ pub fn serve(router: &Router, request: &IncomingRequest) -> Result<OutgoingRespo
     let headers = Headers::new();
     headers
         .set(&CONTENT_TYPE.to_string(), &[b"application/json".to_vec()])
-        .map_err(|e| ErrorCode::InternalError(Some(e.to_string())))?;
+        .map_err(|e| ErrorCode::InternalError(Some(format!("issue setting header: {e}"))))?;
 
     let resp = OutgoingResponse::new(headers);
 
     // write outgoing body
     let body = resp
         .body()
-        .map_err(|()| ErrorCode::InternalError(Some("outgoing Body unavailable".into())))?;
+        .map_err(|()| ErrorCode::InternalError(Some("issue getting outgoing body".into())))?;
     let stream = body
         .write()
-        .map_err(|()| ErrorCode::InternalError(Some("output-stream unavailable".into())))?;
-    stream
-        .blocking_write_and_flush(&content)
-        .map_err(|e| ErrorCode::InternalError(Some(e.to_string())))?;
+        .map_err(|()| ErrorCode::InternalError(Some("issue getting body stream".into())))?;
+
+    // write to stream in chunks as max bytes for `blocking_write_and_flush` is 4096
+    let pollable = stream.subscribe();
+    while !content.is_empty() {
+        // wait for the stream to become writable
+        pollable.block();
+
+        // get number of bytes that can be written
+        let n = stream
+            .check_write()
+            .map_err(|e| ErrorCode::InternalError(Some(format!("issue checking write: {e}"))))?;
+
+        // write a chunk of data
+        let mid = cmp::min(n as usize, content.len());
+        let (chunk, remaining) = content.split_at(mid);
+        if let Err(e) = stream.write(chunk) {
+            return Err(ErrorCode::InternalError(Some(format!("issue writing to stream: {e}"))));
+        };
+
+        content = remaining.to_vec();
+    }
+
+    if let Err(e) = stream.flush() {
+        return Err(ErrorCode::InternalError(Some(format!("issue flushing stream: {e}"))));
+    };
+    pollable.block();
+
+    // check for any errors
+    if let Err(e) = stream.check_write() {
+        return Err(ErrorCode::InternalError(Some(format!("issue writing to stream: {e}"))));
+    };
+
+    drop(pollable);
     drop(stream);
 
-    OutgoingBody::finish(body, None)?;
+    if let Err(e) = OutgoingBody::finish(body, None) {
+        return Err(ErrorCode::InternalError(Some(format!("issue finishing body: {e}"))));
+    };
 
     Ok(resp)
 }

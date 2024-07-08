@@ -28,7 +28,7 @@ impl Guest for HttpGuest {
 
 fn handler(request: &Request) -> anyhow::Result<Vec<u8>> {
     let req_val: serde_json::Value = serde_json::from_slice(&request.body()?)?;
-    tracing::debug!("request: {:?}", req_val);
+    tracing::debug!("request received: {:?}", req_val);
 
     serde_json::to_vec(&json!({
         "message": "Hello, World!"
