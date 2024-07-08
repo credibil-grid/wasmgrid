@@ -77,6 +77,14 @@ pub fn serve(router: &Router, request: &IncomingRequest) -> Result<OutgoingRespo
     headers
         .set(&CONTENT_TYPE.to_string(), &[b"application/json".to_vec()])
         .map_err(|e| ErrorCode::InternalError(Some(format!("issue setting header: {e}"))))?;
+    
+    // add CORS headers for development so that the browser will allow consumption of the response
+    // when the server is on a different origin (including port on same host)
+    if cfg!(debug_assertions) {
+        headers
+            .set(&"Access-Control-Allow-Origin".into(), &[b"*".to_vec()])
+            .map_err(|e| ErrorCode::InternalError(Some(e.to_string())))?;
+    }
 
     let resp = OutgoingResponse::new(headers);
 

@@ -28,6 +28,7 @@ use crate::capabilities::vault;
 const DEF_HTTP_ADDR: &str = "0.0.0.0:8080";
 const DEF_MGO_CNN: &str = "mongodb://localhost:27017";
 const DEF_NATS_CNN: &str = "demo.nats.io";
+const DEF_NATS_TIMEOUT_SECS: u64 = 5;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -49,6 +50,10 @@ pub async fn main() -> wasmtime::Result<()> {
     let http_addr = env::var("HTTP_ADDR").unwrap_or_else(|_| DEF_HTTP_ADDR.into());
     let nats_cnn = env::var("NATS_CNN").unwrap_or_else(|_| DEF_NATS_CNN.into());
     let mgo_cnn = env::var("MGO_CNN").unwrap_or_else(|_| DEF_MGO_CNN.into());
+    let nats_timeout = env::var("NATS_TIMEOUT_SECS")
+        .unwrap_or_else(|_| DEF_NATS_TIMEOUT_SECS.to_string())
+        .parse::<u64>()
+        .expect("NATS_TIMEOUT_SECS must be a number");
 
     // tracing
     let subscriber =
@@ -68,7 +73,7 @@ pub async fn main() -> wasmtime::Result<()> {
     #[cfg(feature = "p2p")]
     let builder = builder.capability(p2p::new());
     #[cfg(feature = "rpc")]
-    let builder = builder.capability(rpc::new(nats_cnn));
+    let builder = builder.capability(rpc::new(nats_cnn, nats_timeout));
     #[cfg(feature = "vault")]
     let builder = builder.capability(vault::new());
 
