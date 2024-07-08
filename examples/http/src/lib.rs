@@ -19,29 +19,35 @@ impl Guest for HttpGuest {
         println!("request.scheme(): {:?}", request.scheme());
         println!("request.authority(): {:?}", request.authority());
 
-        let router = Router::new().route("/", handler);
+        let router = Router::new().route("/hello", hello).route("/out", outgoing);
 
         let out = wasi_http::serve(&router, &request);
         ResponseOutparam::set(response, out);
     }
 }
 
-fn handler(request: &Request) -> anyhow::Result<Vec<u8>> {
+// A simple "Hello, World!" endpoint that returns the client's request.
+fn hello(request: &Request) -> anyhow::Result<Vec<u8>> {
     let req_val: serde_json::Value = serde_json::from_slice(&request.body()?)?;
-    tracing::debug!("request received: {:?}", req_val);
-
-    let resp = client::Client::new().get("https://docs.rs").send()?;
-    println!("response: {:?}", resp.body);
-
-    // .map_err(Into::into)
-    // .and_then(|response| {
-    //     let body = response.body()?;
-    //     tracing::debug!("response received: {:?}", body);
-    //     Ok(body)
-    // })
 
     serde_json::to_vec(&json!({
-        "message": "Hello, World!"
+        "message": "Hello, World!",
+        "request": req_val
+    }))
+    .map_err(Into::into)
+}
+
+// Forward the client's request to external service and return the response
+fn outgoing(request: &Request) -> anyhow::Result<Vec<u8>> {
+    let req_body: serde_json::Value = serde_json::from_slice(&request.body()?)?;
+
+    let resp = client::Client::new()
+        .post("https://issuance.demo.credibil.io/create_offer")
+        .json(req_body)
+        .send()?;
+
+    serde_json::to_vec(&json!({
+        "response": resp.json::<serde_json::Value>()?
     }))
     .map_err(Into::into)
 }

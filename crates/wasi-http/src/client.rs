@@ -2,10 +2,10 @@ use anyhow::anyhow;
 use http::header::CONTENT_TYPE; // AUTHORIZATION, CONTENT_LENGTH,
 use http::StatusCode;
 use serde::de::DeserializeOwned;
-use serde::Serialize; // Deserialize
+use serde::Serialize;
 use url::Url;
-use wasi::http::outgoing_handler::{self}; // ErrorCode
-use wasi::http::types::{Fields, Headers, Method, OutgoingBody, OutgoingRequest, Scheme};
+use wasi::http::outgoing_handler;
+use wasi::http::types::{Headers, Method, OutgoingBody, OutgoingRequest, Scheme};
 
 pub struct Client {}
 
@@ -28,6 +28,7 @@ pub struct RequestBuilder {
     method: Method,
     url: String,
     headers: Headers,
+    query: Option<String>,
     body: Option<Vec<u8>>,
     errors: Vec<String>,
 }
@@ -38,6 +39,7 @@ impl RequestBuilder {
             method,
             url,
             headers: Headers::new(),
+            query: None,
             body: None,
             errors: Vec::new(),
         }
@@ -48,26 +50,31 @@ impl RequestBuilder {
     }
 
     pub fn json(&mut self, json: impl Serialize) -> &mut Self {
-        let bytes = match serde_json::to_vec(&json) {
-            Ok(bytes) => bytes,
+        self.body = match serde_json::to_vec(&json) {
+            Ok(bytes) => Some(bytes),
             Err(e) => {
-                self.errors.push(e.to_string());
+                self.errors.push(format!("issue serializing body: {e}"));
                 return self;
             }
         };
-
         if let Err(e) =
             self.headers.append(&CONTENT_TYPE.to_string(), &b"application/json".to_vec())
         {
-            self.errors.push(e.to_string());
+            self.errors.push(format!("issue setting header: {e}"));
             return self;
         };
 
-        self.body = Some(bytes);
         self
     }
 
-    pub fn query(&mut self, _: impl Serialize) -> &mut Self {
+    pub fn query(&mut self, query: &str) -> &mut Self {
+        self.query = match Url::parse(query) {
+            Ok(url) => url.query().map(|s| s.to_string()),
+            Err(e) => {
+                self.errors.push(format!("issue serializing body: {e}"));
+                return self;
+            }
+        };
         self
     }
 
@@ -137,9 +144,9 @@ impl RequestBuilder {
         let mut resp = Response {
             body: vec![],
             status: StatusCode::from_u16(response.status()).unwrap_or_default(),
-            headers: MyHeaders {
-                inner: response.headers().clone(),
-            },
+            // headers: MyHeaders {
+            //     inner: response.headers().clone(),
+            // },
         };
 
         // body
@@ -157,26 +164,25 @@ impl RequestBuilder {
     }
 }
 
-pub struct MyHeaders {
-    pub(crate) inner: Fields,
-}
-
 pub struct Response {
     pub status: StatusCode,
-    pub body: Vec<u8>,
-    pub headers: MyHeaders,
+    body: Vec<u8>,
+    // pub headers: MyHeaders,
 }
 
 impl Response {
-    // pub fn as_bytes(&self) -> &[u8] {
-    //     &self.body
-    // }
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.body
+    }
 
     /// Parse the request payload as JSON.
     ///
     /// # Errors
     pub fn json<T: DeserializeOwned>(&self) -> serde_json::Result<T> {
         serde_json::from_slice::<T>(&self.body)
-        // todo!()
     }
 }
+
+// pub struct MyHeaders {
+//     pub(crate) inner: Fields,
+// }

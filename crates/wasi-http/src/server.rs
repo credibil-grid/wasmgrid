@@ -80,6 +80,8 @@ pub fn serve<'a>(
         .set(&CONTENT_TYPE.to_string(), &[b"application/json".to_vec()])
         .map_err(|e| ErrorCode::InternalError(Some(format!("issue setting header: {e}"))))?;
 
+    
+
     let resp = OutgoingResponse::new(headers);
 
     // write outgoing body

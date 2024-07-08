@@ -140,9 +140,8 @@ impl client::Host for State {
 
         let client = CLIENT.get().ok_or_else(|| anyhow!("CLIENT not initialized"))?;
         let timeout = TIMEOUT.get().ok_or_else(|| anyhow!("TIMEOUT not initialized"))?;
-        let nats_request = async_nats::client::Request::new()
-            .payload(request.into())
-            .timeout(Some(timeout.clone()));
+        let nats_request =
+            async_nats::client::Request::new().payload(request.into()).timeout(Some(*timeout));
         let msg = client.send_request(subject, nats_request).await?;
         //let msg = client.request(subject, request.into()).await?;
 

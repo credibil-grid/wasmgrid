@@ -6,11 +6,14 @@
 use std::clone::Clone;
 
 use anyhow::anyhow;
-use http::header::{FORWARDED, HOST};
 use http::uri::PathAndQuery;
 use http::uri::Uri; // Authority,
 use http_body_util::BodyExt;
 use hyper::body::Incoming;
+use hyper::header::{
+    HeaderValue, ACCESS_CONTROL_ALLOW_HEADERS, ACCESS_CONTROL_ALLOW_METHODS,
+    ACCESS_CONTROL_ALLOW_ORIGIN, CONTENT_TYPE, FORWARDED, HOST,
+};
 use hyper::server::conn::http1;
 use hyper::service::service_fn;
 use hyper::{Method, Request, StatusCode};
@@ -72,18 +75,16 @@ async fn handle_request(
 ) -> anyhow::Result<hyper::Response<HyperOutgoingBody>> {
     let (sender, receiver) = tokio::sync::oneshot::channel();
 
-    // HACK: CORS preflight request - this should be configurable
-    if cfg!(debug_assertions) {
-        if request.method() == Method::OPTIONS {
-            let resp = hyper::Response::builder()
-                .status(StatusCode::OK)
-                .header("Access-Control-Allow-Origin", "*")
-                .header("Access-Control-Allow-Headers", "*")
-                .header("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
-                .header("Content-Type", "application/json")
-                .body(HyperOutgoingBody::default())?;
-            return Ok(resp);
-        }
+    // HACK: CORS preflight request for use when testing locally
+    if cfg!(debug_assertions) && request.method() == Method::OPTIONS {
+        let resp = hyper::Response::builder()
+            .status(StatusCode::OK)
+            .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+            .header(ACCESS_CONTROL_ALLOW_HEADERS, "*")
+            .header(ACCESS_CONTROL_ALLOW_METHODS, "POST, GET, OPTIONS")
+            .header(CONTENT_TYPE, "application/json")
+            .body(HyperOutgoingBody::default())?;
+        return Ok(resp);
     }
 
     let runtime = runtime.clone();
@@ -134,7 +135,14 @@ async fn handle_request(
     });
 
     match receiver.await {
-        Ok(Ok(resp)) => Ok(resp),
+        Ok(Ok(mut resp)) => {
+            // HACK: CORS for use when testing locally
+            if cfg!(debug_assertions) {
+                resp.headers_mut()
+                    .insert(ACCESS_CONTROL_ALLOW_ORIGIN, HeaderValue::from_static("*"));
+            }
+            Ok(resp)
+        }
         Ok(Err(e)) => Err(e.into()),
         Err(_) => {
             // retrieve the inner task error
