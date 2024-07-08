@@ -2,7 +2,7 @@ use serde_json::json;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 use wasi::exports::http::incoming_handler::Guest;
 use wasi::http::types::{IncomingRequest, ResponseOutparam};
-use wasi_http::{self, Request, Router};
+use wasi_http::{self, client, Request, Router};
 
 struct HttpGuest;
 
@@ -29,6 +29,16 @@ impl Guest for HttpGuest {
 fn handler(request: &Request) -> anyhow::Result<Vec<u8>> {
     let req_val: serde_json::Value = serde_json::from_slice(&request.body()?)?;
     tracing::debug!("request received: {:?}", req_val);
+
+    let _ = client::Client::new().get("https://docs.rs").send()?;
+    //println!("response: {:?}", x.headers);
+
+    // .map_err(Into::into)
+    // .and_then(|response| {
+    //     let body = response.body()?;
+    //     tracing::debug!("response received: {:?}", body);
+    //     Ok(body)
+    // })
 
     serde_json::to_vec(&json!({
         "message": "Hello, World!"

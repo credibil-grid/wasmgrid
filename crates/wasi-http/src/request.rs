@@ -4,7 +4,6 @@ use http::Uri;
 use serde::de::DeserializeOwned;
 use wasi::http::types::{Fields, IncomingRequest, Scheme};
 
-// TODO: centralise into shared module
 pub struct Request<'a> {
     inner: &'a IncomingRequest,
 }
@@ -68,16 +67,15 @@ impl<'a> Request<'a> {
         let body = self.inner.consume().map_err(|()| anyhow!("error consuming request body"))?;
         let stream = body.stream().map_err(|()| anyhow!("error getting body stream"))?;
 
-        // Read the entire body into a buffer.
+        // read body into a buffer.
         let mut buffer = Vec::new();
-
         while let Ok(bytes) = stream.blocking_read(4096)
             && !bytes.is_empty()
         {
             buffer.extend_from_slice(&bytes);
         }
-
         drop(stream);
+
         Ok(buffer)
     }
 

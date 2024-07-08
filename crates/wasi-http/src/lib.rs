@@ -2,6 +2,7 @@
 #![feature(fn_traits)]
 #![feature(trait_alias)]
 
+pub mod client;
 pub mod request;
 pub mod server;
 

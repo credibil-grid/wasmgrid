@@ -1,7 +1,7 @@
 use std::cmp;
 
 use http::header::CONTENT_TYPE;
-use wasi::http::types::{ErrorCode, Headers, IncomingRequest, OutgoingBody, OutgoingResponse};
+use wasi::http::types::{ErrorCode, Headers, OutgoingBody, OutgoingResponse};
 
 use crate::request::Request;
 
@@ -49,8 +49,10 @@ pub struct Route {
 /// # Errors
 ///
 /// Returns a [`wasi::http::types::ErrorCode`] if the request could not be served.
-pub fn serve(router: &Router, request: &IncomingRequest) -> Result<OutgoingResponse, ErrorCode> {
-    let req = Request::from(request);
+pub fn serve<'a>(
+    router: &Router, request: impl Into<Request<'a>>,
+) -> Result<OutgoingResponse, ErrorCode> {
+    let req: Request = request.into();
 
     let Some(route) = router.routes.iter().find(|r| req.uri().path().starts_with(&r.path)) else {
         return Err(ErrorCode::DestinationNotFound);
@@ -77,14 +79,6 @@ pub fn serve(router: &Router, request: &IncomingRequest) -> Result<OutgoingRespo
     headers
         .set(&CONTENT_TYPE.to_string(), &[b"application/json".to_vec()])
         .map_err(|e| ErrorCode::InternalError(Some(format!("issue setting header: {e}"))))?;
-    
-    // add CORS headers for development so that the browser will allow consumption of the response
-    // when the server is on a different origin (including port on same host)
-    if cfg!(debug_assertions) {
-        headers
-            .set(&"Access-Control-Allow-Origin".into(), &[b"*".to_vec()])
-            .map_err(|e| ErrorCode::InternalError(Some(e.to_string())))?;
-    }
 
     let resp = OutgoingResponse::new(headers);
 
