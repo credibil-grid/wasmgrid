@@ -6,7 +6,6 @@ use serde::Serialize; // Deserialize
 use url::Url;
 use wasi::http::outgoing_handler::{self}; // ErrorCode
 use wasi::http::types::{Fields, Headers, Method, OutgoingBody, OutgoingRequest, Scheme};
-use wasi::io::streams;
 
 pub struct Client {}
 
@@ -83,6 +82,9 @@ impl RequestBuilder {
             return Err(anyhow!("issue(s) building request: {}", self.errors.join("\n")));
         }
 
+        // --------------------------------------------------------------------
+        // Create request
+        // --------------------------------------------------------------------
         let url = Url::parse(&self.url).map_err(|e| anyhow!("issue parsing url: {e}"))?;
 
         let request = OutgoingRequest::new(self.headers.clone());
@@ -106,87 +108,52 @@ impl RequestBuilder {
             .set_path_with_query(Some(&path_and_query))
             .map_err(|()| anyhow!("Failed to set path_with_query"))?;
 
-        if let Some(b) = &self.body {
+        // set body
+        if let Some(bytes) = &self.body {
             let body = request.body().map_err(|()| anyhow!("issue getting body"))?;
             let stream = body.write().map_err(|()| anyhow!("issue getting stream"))?;
-            stream.blocking_write_and_flush(b).map_err(|e| anyhow!("issue writing body: {e}"))?;
-            // stream
-            //     .write_all(&some_payload)
-            //     .map_err(|e| new_internal_string(format!("write_all failed {e}")))?;
+            stream
+                .blocking_write_and_flush(bytes)
+                .map_err(|e| anyhow!("issue writing body: {e}"))?;
             drop(stream);
 
-            OutgoingBody::finish(body, None).map_err(|e| anyhow!("output stream error: {e}"))?;
+            OutgoingBody::finish(body, None).map_err(|e| anyhow!("issue finishing body: {e}"))?;
         };
 
         // send request
-        let result = outgoing_handler::handle(request, None)
+        let fut_resp = outgoing_handler::handle(request, None)
             .map_err(|e| anyhow!("issue making request: {e}"))?;
 
-        // process response
-        let resp = match result.get() {
-            Some(result) => result,
-            None => {
-                result.subscribe().block();
-                let Some(result) = result.get() else {
-                    return Err(anyhow!("Response missing"));
-                };
-                result
-            }
-        }
-        .map_err(|()| anyhow!("Response taken"))??;
-        drop(result);
+        // get response
+        fut_resp.subscribe().block();
+        let Some(result) = fut_resp.get() else {
+            return Err(anyhow!("missing response"));
+        };
+        let response = result.map_err(|()| anyhow!("Response taken"))??;
 
-        let status = resp.status();
-
-        let headers_handle = resp.headers();
-        let cloned_headers = headers_handle.clone();
-
-        drop(headers_handle);
-
-        let response_headers = MyHeaders {
-            inner: cloned_headers,
+        // --------------------------------------------------------------------
+        // Process response
+        // --------------------------------------------------------------------
+        let mut resp = Response {
+            body: vec![],
+            status: StatusCode::from_u16(response.status()).unwrap_or_default(),
+            headers: MyHeaders {
+                inner: response.headers().clone(),
+            },
         };
 
-        let resp_body =
-            resp.consume().map_err(|()| anyhow!("incoming response has no body stream"))?;
+        // body
+        let body = response.consume().map_err(|()| anyhow!("issue getting body"))?;
+        let stream = body.stream().map_err(|()| anyhow!("issue getting body's stream"))?;
 
-        drop(resp);
-
-        let body_stream =
-            resp_body.stream().map_err(|()| anyhow!("failed to create response stream"))?;
-        let body_stream_pollable = body_stream.subscribe();
-
-        let mut body = Vec::new();
-        loop {
-            body_stream_pollable.block();
-            let mut body_chunk = match body_stream.read(1024 * 1024) {
-                Ok(c) => c,
-                Err(streams::StreamError::Closed) => break,
-                Err(e) => Err(anyhow!("input_stream read failed: {e:?}"))?,
-            };
-            if !body_chunk.is_empty() {
-                body.append(&mut body_chunk);
-            }
+        while let Ok(chunk) = stream.blocking_read(1024 * 1024) {
+            resp.body.extend_from_slice(&chunk);
         }
 
-        println!("http: response bytes len={}", body.len());
+        drop(stream);
+        drop(response);
 
-        if body.len() < 1000 {
-            let utf8_string = unsafe { String::from_utf8_unchecked(body.clone()) };
-            println!("http: response as string: {}", utf8_string);
-        }
-
-        let response = Response {
-            body: Body { payload: body },
-            status_code: StatusCode::from_u16(status).unwrap_or_default(),
-            headers: response_headers,
-        };
-
-        if status >= 500 {
-            //return Err(HttpResponseError::Response { response });
-        }
-
-        return Ok(response);
+        return Ok(resp);
     }
 }
 
@@ -195,31 +162,21 @@ pub struct MyHeaders {
 }
 
 pub struct Response {
-    pub status_code: StatusCode,
-    pub body: Body,
+    pub status: StatusCode,
+    pub body: Vec<u8>,
     pub headers: MyHeaders,
 }
 
 impl Response {
     // pub fn as_bytes(&self) -> &[u8] {
-    //     &self.payload
+    //     &self.body
     // }
 
     /// Parse the request payload as JSON.
     ///
     /// # Errors
     pub fn json<T: DeserializeOwned>(&self) -> serde_json::Result<T> {
-        // serde_json::from_slice::<T>(&self.payload)
-        todo!()
-    }
-}
-
-pub struct Body {
-    pub(crate) payload: Vec<u8>,
-}
-
-impl Body {
-    pub fn as_bytes(&self) -> &[u8] {
-        &self.payload
+        serde_json::from_slice::<T>(&self.body)
+        // todo!()
     }
 }

@@ -30,8 +30,8 @@ fn handler(request: &Request) -> anyhow::Result<Vec<u8>> {
     let req_val: serde_json::Value = serde_json::from_slice(&request.body()?)?;
     tracing::debug!("request received: {:?}", req_val);
 
-    let _ = client::Client::new().get("https://docs.rs").send()?;
-    //println!("response: {:?}", x.headers);
+    let resp = client::Client::new().get("https://docs.rs").send()?;
+    println!("response: {:?}", resp.body);
 
     // .map_err(Into::into)
     // .and_then(|response| {
