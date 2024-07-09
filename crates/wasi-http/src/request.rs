@@ -22,8 +22,8 @@ impl<'a> Request<'a> {
         p_and_q.parse::<Uri>().unwrap_or_else(|_| Uri::default())
     }
 
-    pub fn method(&self) -> String {
-        method_string(self.inner.method())
+    pub fn method(&self) -> Method {
+        self.inner.method()
     }
 
     /// Get the host the request was made to (using scheme and authority).
@@ -97,20 +97,5 @@ impl<'a> Request<'a> {
     #[allow(dead_code)]
     pub fn form<T: DeserializeOwned>(&self) -> Result<T> {
         Ok(serde_urlencoded::from_bytes::<T>(&self.body()?)?)
-    }
-}
-
-pub(crate) fn method_string(m: Method) -> String {
-    match m {
-        Method::Get => String::from("GET"),
-        Method::Post => String::from("POST"),
-        Method::Put => String::from("PUT"),
-        Method::Delete => String::from("DELETE"),
-        Method::Head => String::from("HEAD"),
-        Method::Connect => String::from("CONNECT"),
-        Method::Options => String::from("OPTIONS"),
-        Method::Trace => String::from("TRACE"),
-        Method::Patch => String::from("PATCH"),
-        Method::Other(s) => s,
     }
 }

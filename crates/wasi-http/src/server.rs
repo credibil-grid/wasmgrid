@@ -3,20 +3,20 @@ use std::cmp;
 use http::header::CONTENT_TYPE;
 use wasi::http::types::{ErrorCode, Headers, Method, OutgoingBody, OutgoingResponse};
 
-use crate::request::{method_string, Request};
+use crate::request::Request;
 
 pub trait Handler = Fn(&Request) -> anyhow::Result<Vec<u8>>;
 
 pub fn get(handler: impl Handler + 'static) -> MethodHandler {
     MethodHandler {
-        method: method_string(Method::Get),
+        method: Method::Get,
         handler: Box::new(handler),
     }
 }
 
 pub fn post(handler: impl Handler + 'static) -> MethodHandler {
     MethodHandler {
-        method: method_string(Method::Post),
+        method: Method::Post,
         handler: Box::new(handler),
     }
 }
@@ -59,7 +59,7 @@ pub struct Route {
 }
 
 pub struct MethodHandler {
-    method: String,
+    method: Method,
     handler: Box<dyn Handler>,
 }
 
@@ -75,11 +75,9 @@ pub fn serve<'a>(
 
     // TODO: optimise this
     // find route for path
-    let Some(route) = router
-        .routes
-        .iter()
-        .find(|r| req.uri().path().starts_with(&r.path) && req.method() == r.handler.method)
-    else {
+    let Some(route) = router.routes.iter().find(|r| {
+        req.uri().path().starts_with(&r.path) && is_match(&req.method(), &r.handler.method)
+    }) else {
         return Err(ErrorCode::DestinationNotFound);
     };
 
@@ -154,4 +152,19 @@ pub fn serve<'a>(
     };
 
     Ok(resp)
+}
+
+pub(crate) fn is_match(m1: &Method, m2: &Method) -> bool {
+    match m1 {
+        &Method::Get => matches!(m2, &Method::Get),
+        &Method::Post => matches!(m2, &Method::Post),
+        &Method::Put => matches!(m2, &Method::Put),
+        &Method::Delete => matches!(m2, &Method::Delete),
+        &Method::Head => matches!(m2, &Method::Head),
+        &Method::Connect => matches!(m2, &Method::Connect),
+        &Method::Options => matches!(m2, &Method::Options),
+        &Method::Trace => matches!(m2, &Method::Trace),
+        &Method::Patch => matches!(m2, &Method::Patch),
+        &Method::Other(_) => matches!(m2, &Method::Other(_)),
+    }
 }
