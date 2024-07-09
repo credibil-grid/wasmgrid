@@ -31,7 +31,7 @@ async-nats = { version = "0.35.1", optional = true }
 async-trait.workspace = true
 base64ct = { version = "1.6.0", features = ["std"] }
 bytes = "1.6.0"
-clap = { version = "4.5.8", features = ["derive"] }
+clap = { version = "4.5.9", features = ["derive"] }
 dotenv = "0.15.0"
 ecdsa = { version = "0.16.9", optional = true }
 futures = "0.3.30"

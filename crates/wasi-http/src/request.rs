@@ -87,7 +87,7 @@ impl<'a> Request<'a> {
     /// Parse the request body from JSON.
     ///
     /// # Errors
-    pub fn parse_json<T: DeserializeOwned>(&self) -> Result<T> {
+    pub fn json<T: DeserializeOwned>(&self) -> Result<T> {
         Ok(serde_json::from_slice::<T>(&self.body()?)?)
     }
 
@@ -95,7 +95,7 @@ impl<'a> Request<'a> {
     ///
     /// # Errors
     #[allow(dead_code)]
-    pub fn parse_form<T: DeserializeOwned>(&self) -> Result<T> {
+    pub fn form<T: DeserializeOwned>(&self) -> Result<T> {
         Ok(serde_urlencoded::from_bytes::<T>(&self.body()?)?)
     }
 }
