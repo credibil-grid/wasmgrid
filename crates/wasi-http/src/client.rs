@@ -1,5 +1,5 @@
 use anyhow::anyhow;
-use http::header::CONTENT_TYPE;
+use http::header::{AUTHORIZATION, CONTENT_TYPE};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use url::Url;
@@ -74,6 +74,11 @@ impl RequestBuilder {
         self
     }
 
+    pub fn bearer_auth(&mut self, token: &str) -> &mut Self {
+        self.header(AUTHORIZATION.as_str(), format!("Bearer {token}").as_str());
+        self
+    }
+
     // pub fn body(&mut self, body: impl Into<Body>) -> &mut Self {
     //     self
     // }
@@ -92,18 +97,20 @@ impl RequestBuilder {
         let url = Url::parse(&self.url).map_err(|e| anyhow!("issue parsing url: {e}"))?;
 
         let request = OutgoingRequest::new(self.headers.clone());
-        request.set_method(&self.method).map_err(|()| anyhow!("issue setting method"))?;
-        request
-            .set_authority(Some(url.authority()))
-            .map_err(|()| anyhow!("issue setting authority"))?;
 
+        // method, scheme, authority
+        request.set_method(&self.method).map_err(|()| anyhow!("issue setting method"))?;
         let scheme = match url.scheme() {
             "http" => Scheme::Http,
             "https" => Scheme::Https,
             _ => return Err(anyhow!("unsupported scheme: {}", url.scheme())),
         };
         request.set_scheme(Some(&scheme)).map_err(|()| anyhow!("issue setting scheme"))?;
+        request
+            .set_authority(Some(url.authority()))
+            .map_err(|()| anyhow!("issue setting authority"))?;
 
+        // path + query
         let mut path_and_query = url.path().to_string();
         if let Some(query) = url.query() {
             path_and_query = format!("{}?{}", path_and_query, query);
@@ -112,7 +119,7 @@ impl RequestBuilder {
             .set_path_with_query(Some(&path_and_query))
             .map_err(|()| anyhow!("Failed to set path_with_query"))?;
 
-        // set body, if provided
+        // body, if provided
         if let Some(bytes) = &self.body {
             let body = request.body().map_err(|()| anyhow!("issue getting body"))?;
             let stream = body.write().map_err(|()| anyhow!("issue getting stream"))?;

@@ -37,7 +37,7 @@ fn post_handler(request: &Request) -> anyhow::Result<Vec<u8>> {
 
     let resp = client::Client::new()
         .post("https://jsonplaceholder.cypress.io/posts")
-        // .authority("bearer token")
+        .bearer_auth("some token") // not required, but shown for example
         .json(&body)
         .send()?;
 
