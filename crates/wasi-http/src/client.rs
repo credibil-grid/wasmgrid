@@ -45,7 +45,10 @@ impl RequestBuilder {
         }
     }
 
-    pub fn header(&mut self, _name: &str, _value: &str) -> &mut Self {
+    pub fn header(&mut self, name: &str, value: &str) -> &mut Self {
+        let _ = self.headers.append(&name.to_string(), &value.as_bytes().to_vec()).map_err(|e| {
+            self.errors.push(format!("issue setting header: {e}"));
+        });
         self
     }
 
@@ -57,13 +60,7 @@ impl RequestBuilder {
                 return self;
             }
         };
-        if let Err(e) =
-            self.headers.append(&CONTENT_TYPE.to_string(), &b"application/json".to_vec())
-        {
-            self.errors.push(format!("issue setting header: {e}"));
-            return self;
-        };
-
+        self.header(CONTENT_TYPE.as_str(), "application/json");
         self
     }
 
@@ -85,6 +82,7 @@ impl RequestBuilder {
 
 impl RequestBuilder {
     pub fn send(&self) -> anyhow::Result<Response> {
+        // builder errors
         if !self.errors.is_empty() {
             return Err(anyhow!("issue(s) building request: {}", self.errors.join("\n")));
         }
@@ -115,44 +113,43 @@ impl RequestBuilder {
             .set_path_with_query(Some(&path_and_query))
             .map_err(|()| anyhow!("Failed to set path_with_query"))?;
 
-        // set body
+        // set body, if provided
         if let Some(bytes) = &self.body {
             let body = request.body().map_err(|()| anyhow!("issue getting body"))?;
             let stream = body.write().map_err(|()| anyhow!("issue getting stream"))?;
             stream
                 .blocking_write_and_flush(bytes)
                 .map_err(|e| anyhow!("issue writing body: {e}"))?;
-            drop(stream);
 
+            drop(stream);
             OutgoingBody::finish(body, None).map_err(|e| anyhow!("issue finishing body: {e}"))?;
         };
 
-        // send request
+        // send
         let fut_resp = outgoing_handler::handle(request, None)
             .map_err(|e| anyhow!("issue making request: {e}"))?;
-
-        // get response
-        fut_resp.subscribe().block();
-        let Some(result) = fut_resp.get() else {
-            return Err(anyhow!("missing response"));
-        };
-        let response = result.map_err(|()| anyhow!("Response taken"))??;
 
         // --------------------------------------------------------------------
         // Process response
         // --------------------------------------------------------------------
-        let mut resp = Response {
-            body: vec![],
-            status: StatusCode::from_u16(response.status()).unwrap_or_default(),
-            // headers: MyHeaders {
-            //     inner: response.headers().clone(),
-            // },
+        fut_resp.subscribe().block();
+        let Some(result) = fut_resp.get() else {
+            return Err(anyhow!("missing response"));
         };
 
-        // body
+        let response = result
+            .map_err(|()| anyhow!("issue getting response"))?
+            .map_err(|e| anyhow!("response error: {e}"))?;
+
+        if response.status() != StatusCode::OK {
+            return Err(anyhow!("unexpected status: {}", response.status()));
+        }
+
+        let mut resp = Response { body: vec![] };
+
+        // process body
         let body = response.consume().map_err(|()| anyhow!("issue getting body"))?;
         let stream = body.stream().map_err(|()| anyhow!("issue getting body's stream"))?;
-
         while let Ok(chunk) = stream.blocking_read(1024 * 1024) {
             resp.body.extend_from_slice(&chunk);
         }
@@ -165,9 +162,7 @@ impl RequestBuilder {
 }
 
 pub struct Response {
-    pub status: StatusCode,
     body: Vec<u8>,
-    // pub headers: MyHeaders,
 }
 
 impl Response {
@@ -182,7 +177,3 @@ impl Response {
         serde_json::from_slice::<T>(&self.body)
     }
 }
-
-// pub struct MyHeaders {
-//     pub(crate) inner: Fields,
-// }
