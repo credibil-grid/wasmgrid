@@ -15,5 +15,9 @@ cargo run -- ./target/wasm32-wasi/release/http.wasm
 In a separate console, call the guest:
 
 ```bash
-curl -d '{"text":"hello"}' http://localhost:8080
+# simple request
+curl -d '{"text":"hello"}' http://localhost:8080/hello
+
+# proxy outbound request (https://jsonplaceholder.cypress.io)
+curl -d '{"title": "foo","body": "bar", "userId": 1}' http://localhost:8080/out_post
 ```

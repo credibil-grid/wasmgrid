@@ -19,7 +19,10 @@ impl Guest for HttpGuest {
         println!("request.scheme(): {:?}", request.scheme());
         println!("request.authority(): {:?}", request.authority());
 
-        let router = Router::new().route("/hello", hello).route("/out", outgoing);
+        let router = Router::new()
+            .route("/hello", hello)
+            .route("/out_get", out_get)
+            .route("/out_post", out_post);
 
         let out = wasi_http::serve(&router, &request);
         ResponseOutparam::set(response, out);
@@ -38,13 +41,8 @@ fn hello(request: &Request) -> anyhow::Result<Vec<u8>> {
 }
 
 // Forward the client's request to external service and return the response
-fn outgoing(request: &Request) -> anyhow::Result<Vec<u8>> {
-    let req_body: serde_json::Value = serde_json::from_slice(&request.body()?)?;
-
-    let resp = client::Client::new()
-        .post("https://issuance.demo.credibil.io/create_offer")
-        .json(req_body)
-        .send()?;
+fn out_get(_: &Request) -> anyhow::Result<Vec<u8>> {
+    let resp = client::Client::new().get("https://jsonplaceholder.cypress.io/posts/1").send()?;
 
     serde_json::to_vec(&json!({
         "response": resp.json::<serde_json::Value>()?
@@ -52,4 +50,18 @@ fn outgoing(request: &Request) -> anyhow::Result<Vec<u8>> {
     .map_err(Into::into)
 }
 
+// Forward the client's request to external service and return the response
+fn out_post(request: &Request) -> anyhow::Result<Vec<u8>> {
+    let body: serde_json::Value = serde_json::from_slice(&request.body()?)?;
+
+    let resp = client::Client::new()
+        .post("https://jsonplaceholder.cypress.io/posts")
+        .json(&body)
+        .send()?;
+
+    serde_json::to_vec(&json!({
+        "response": resp.json::<serde_json::Value>()?
+    }))
+    .map_err(Into::into)
+}
 wasi::http::proxy::export!(HttpGuest);

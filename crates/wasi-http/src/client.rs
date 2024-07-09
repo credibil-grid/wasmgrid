@@ -141,7 +141,8 @@ impl RequestBuilder {
             .map_err(|()| anyhow!("issue getting response"))?
             .map_err(|e| anyhow!("response error: {e}"))?;
 
-        if response.status() != StatusCode::OK {
+        // turn unsuccessful requests into error
+        if response.status() < 200 || response.status() > 300 {
             return Err(anyhow!("unexpected status: {}", response.status()));
         }
 
