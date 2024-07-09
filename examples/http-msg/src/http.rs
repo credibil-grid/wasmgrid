@@ -4,7 +4,7 @@ use wasi::exports::http::incoming_handler::Guest;
 use wasi::http::types::{IncomingRequest, ResponseOutparam};
 use wasi_bindings::messaging::messaging_types::{Client, FormatSpec, Message};
 use wasi_bindings::messaging::producer;
-use wasi_http::{self, Request, Router};
+use wasi_http::{self, post, Request, Router};
 
 pub struct Http;
 
@@ -14,7 +14,7 @@ impl Guest for Http {
             FmtSubscriber::builder().with_env_filter(EnvFilter::from_default_env()).finish();
         tracing::subscriber::set_global_default(subscriber).expect("should set subscriber");
 
-        let router = Router::new().route("/", handler);
+        let router = Router::new().route("/", post(handler));
 
         let out = wasi_http::serve(&router, &request);
         ResponseOutparam::set(response, out);

@@ -5,7 +5,7 @@ use tracing_subscriber::{EnvFilter, FmtSubscriber};
 use wasi::exports::http::incoming_handler::Guest as HttpGuest;
 use wasi::http::types::{IncomingRequest, ResponseOutparam};
 use wasi_bindings::rpc;
-use wasi_http::{self, Request, Router};
+use wasi_http::{self, post, Request, Router};
 
 pub struct Http;
 
@@ -15,7 +15,7 @@ impl HttpGuest for Http {
             FmtSubscriber::builder().with_env_filter(EnvFilter::from_default_env()).finish();
         tracing::subscriber::set_global_default(subscriber).expect("should set subscriber");
 
-        let router = Router::new().route("/", hello);
+        let router = Router::new().route("/", post(hello));
 
         let out = wasi_http::serve(&router, &request);
         ResponseOutparam::set(response, out);

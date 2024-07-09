@@ -8,7 +8,7 @@ use wasi::exports::http::incoming_handler::Guest;
 use wasi::http::types::{IncomingRequest, ResponseOutparam};
 use wasi_bindings::jsondb::readwrite;
 use wasi_bindings::jsondb::types::{Database, Statement};
-use wasi_http::{self, Request, Router};
+use wasi_http::{self, post, Request, Router};
 
 struct HttpGuest;
 
@@ -18,7 +18,7 @@ impl Guest for HttpGuest {
             FmtSubscriber::builder().with_env_filter(EnvFilter::from_default_env()).finish();
         tracing::subscriber::set_global_default(subscriber).expect("should set subscriber");
 
-        let router = Router::new().route("/", handler);
+        let router = Router::new().route("/", post(handler));
 
         let out = wasi_http::serve(&router, &request);
         ResponseOutparam::set(response, out);

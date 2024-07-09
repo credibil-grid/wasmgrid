@@ -2,7 +2,7 @@ use serde_json::json;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 use wasi::exports::http::incoming_handler::Guest;
 use wasi::http::types::{IncomingRequest, ResponseOutparam};
-use wasi_http::{self,  Request, Router};
+use wasi_http::{self, post, Request, Router};
 
 struct HttpGuest;
 
@@ -19,7 +19,7 @@ impl Guest for HttpGuest {
         println!("request.scheme(): {:?}", request.scheme());
         println!("request.authority(): {:?}", request.authority());
 
-        let router = Router::new().route("/", hello);
+        let router = Router::new().route("/", post(hello));
 
         let out = wasi_http::serve(&router, &request);
         ResponseOutparam::set(response, out);

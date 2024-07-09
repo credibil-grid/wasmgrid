@@ -1,11 +1,25 @@
 use std::cmp;
 
 use http::header::CONTENT_TYPE;
-use wasi::http::types::{ErrorCode, Headers, OutgoingBody, OutgoingResponse};
+use wasi::http::types::{ErrorCode, Headers, Method, OutgoingBody, OutgoingResponse};
 
-use crate::request::Request;
+use crate::request::{method_string, Request};
 
 pub trait Handler = Fn(&Request) -> anyhow::Result<Vec<u8>>;
+
+pub fn get(handler: impl Handler + 'static) -> MethodHandler {
+    MethodHandler {
+        method: method_string(Method::Get),
+        handler: Box::new(handler),
+    }
+}
+
+pub fn post(handler: impl Handler + 'static) -> MethodHandler {
+    MethodHandler {
+        method: method_string(Method::Post),
+        handler: Box::new(handler),
+    }
+}
 
 pub struct Router {
     routes: Vec<Route>,
@@ -26,10 +40,10 @@ impl Router {
 
     /// Add a new route to the router.
     #[must_use]
-    pub fn route(self, path: impl Into<String>, handler: impl Handler + 'static) -> Self {
+    pub fn route(self, path: impl Into<String>, handler: MethodHandler) -> Self {
         let route = Route {
             path: path.into(),
-            handler: Box::new(handler),
+            handler,
         };
 
         let mut routes = self.routes;
@@ -41,6 +55,11 @@ impl Router {
 
 pub struct Route {
     path: String,
+    handler: MethodHandler,
+}
+
+pub struct MethodHandler {
+    method: String,
     handler: Box<dyn Handler>,
 }
 
@@ -54,12 +73,18 @@ pub fn serve<'a>(
 ) -> Result<OutgoingResponse, ErrorCode> {
     let req: Request = request.into();
 
-    let Some(route) = router.routes.iter().find(|r| req.uri().path().starts_with(&r.path)) else {
+    // TODO: optimise this
+    // find route for path
+    let Some(route) = router
+        .routes
+        .iter()
+        .find(|r| req.uri().path().starts_with(&r.path) && req.method() == r.handler.method)
+    else {
         return Err(ErrorCode::DestinationNotFound);
     };
 
     // serialize result
-    let mut content = match (route.handler)(&req) {
+    let mut content = match (route.handler.handler)(&req) {
         Ok(resp) => resp,
         Err(err) => {
             tracing::error!("{}", err);
@@ -79,8 +104,6 @@ pub fn serve<'a>(
     headers
         .set(&CONTENT_TYPE.to_string(), &[b"application/json".to_vec()])
         .map_err(|e| ErrorCode::InternalError(Some(format!("issue setting header: {e}"))))?;
-
-    
 
     let resp = OutgoingResponse::new(headers);
 

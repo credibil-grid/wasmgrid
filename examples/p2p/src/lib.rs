@@ -7,14 +7,14 @@ use wasi::exports::http::incoming_handler::Guest;
 use wasi::http::types::{IncomingRequest, ResponseOutparam};
 use wasi_bindings::p2p::document;
 use wasi_bindings::p2p::exports::{OutgoingValue, StreamObjectNames};
-use wasi_http::{self, Request, Router};
+use wasi_http::{self, post, Request, Router};
 struct HttpGuest;
 
 impl Guest for HttpGuest {
     fn handle(request: IncomingRequest, response: ResponseOutparam) {
         init_tracing();
 
-        let router = Router::new().route("/", handler);
+        let router = Router::new().route("/", post(handler));
 
         let out = wasi_http::serve(&router, &request);
         ResponseOutparam::set(response, out);
