@@ -1,6 +1,5 @@
 use anyhow::anyhow;
-use http::header::CONTENT_TYPE; // AUTHORIZATION, CONTENT_LENGTH,
-use http::StatusCode;
+use http::header::CONTENT_TYPE;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use url::Url;
@@ -141,7 +140,7 @@ impl RequestBuilder {
             .map_err(|()| anyhow!("issue getting response"))?
             .map_err(|e| anyhow!("response error: {e}"))?;
 
-        // turn unsuccessful requests into error
+        // turn unsuccessful requests into an error
         if response.status() < 200 || response.status() > 300 {
             return Err(anyhow!("unexpected status: {}", response.status()));
         }
