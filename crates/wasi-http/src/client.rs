@@ -141,7 +141,7 @@ impl RequestBuilder {
             .map_err(|e| anyhow!("response error: {e}"))?;
 
         // turn unsuccessful requests into an error
-        if response.status() < 200 || response.status() > 300 {
+        if response.status() < 200 || response.status() >= 300 {
             return Err(anyhow!("unexpected status: {}", response.status()));
         }
 

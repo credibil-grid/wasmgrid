@@ -20,5 +20,9 @@ In a separate console, call the guest which will in turn call the downstream ser
 at <https://jsonplaceholder.cypress.io>:
 
 ```bash
+# get
+curl http://localhost:8080
+
+# post
 curl -d '{"title": "foo","body": "bar", "userId": 1}' http://localhost:8080
 ```
