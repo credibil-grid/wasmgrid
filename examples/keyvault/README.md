@@ -9,7 +9,7 @@ cargo component build --package http-kv --release
 Run the guest using the `wasmgrid` runtime:
 
 ```bash
-cargo run -- ./target/wasm32-wasi/release/http_kv.wasm
+cargo run -- ./target/wasm32-wasip1/release/http_kv.wasm
 ```
 
 In a separate console, send some messages to the guest:

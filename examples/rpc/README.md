@@ -13,8 +13,8 @@ cargo component build --package rpc-server --release
 Run both client and server in separate consoles:
 
 ```bash
-cargo run -- ./target/wasm32-wasi/release/rpc_client.wasm
-cargo run -- ./target/wasm32-wasi/release/rpc_server.wasm
+cargo run -- ./target/wasm32-wasip1/release/rpc_client.wasm
+cargo run -- ./target/wasm32-wasip1/release/rpc_server.wasm
 ```
 
 In a separate console, call the client:

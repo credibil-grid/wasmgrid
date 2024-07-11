@@ -10,4 +10,4 @@ services:
     ports:
       - 8080:8080
     volumes:
-      - ./target/wasm32-wasi/release/http_kv.wasm:/app.wasm
+      - ./target/wasm32-wasip1/release/http_kv.wasm:/app.wasm

@@ -20,7 +20,7 @@
                 }
             },
             "args": [
-                "./target/wasm32-wasi/release/http_kv.wasm"
+                "./target/wasm32-wasip1/release/http_kv.wasm"
             ],
             "cwd": "${workspaceFolder}",
             "envFile": "${workspaceRoot}/.env"
@@ -41,7 +41,7 @@
                 }
             },
             "args": [
-                "./target/wasm32-wasi/release/http_sql.wasm"
+                "./target/wasm32-wasip1/release/http_sql.wasm"
             ],
             "cwd": "${workspaceFolder}",
             "envFile": "${workspaceRoot}/.env"

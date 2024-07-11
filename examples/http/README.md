@@ -9,7 +9,7 @@ cargo component build --package http@0.1.0 --release
 Run a guest using the runtime:
 
 ```bash
-cargo run -- ./target/wasm32-wasi/release/http.wasm
+cargo run -- ./target/wasm32-wasip1/release/http.wasm
 ```
 
 In a separate console, call the guest:

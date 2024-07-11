@@ -38,17 +38,16 @@ pub struct WrpcResponse {
 }
 
 fn hello(request: &Request) -> anyhow::Result<Vec<u8>> {
-    // extract http request
+    // extract http request and send to wrpc server
     let req: HttpRequest = serde_json::from_slice(&request.body()?)?;
-    println!("http request: {:?}", req);
-
-    // send http request message to wrpc server
     let msg = serde_json::to_vec(&WrpcRequest {
         message: format!("client says: {}", req.text),
     })?;
 
     // call server and deserialize response
     let ser_resp = rpc::client::call("server/Request", &msg).map_err(|e| anyhow!(e.trace()))?;
+    println!("server response: {:?}", ser_resp);
+
     let wrpc_resp: WrpcResponse = serde_json::from_slice(ser_resp.as_slice())?;
 
     // return http response

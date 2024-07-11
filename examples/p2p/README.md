@@ -24,7 +24,7 @@ cargo component build --package http-p2p --release
 Run a guest using the runtime:
 
 ```bash
-cargo run -- ./target/wasm32-wasi/release/http_p2p.wasm
+cargo run -- ./target/wasm32-wasip1/release/http_p2p.wasm
 ```
 
 In a separate console, call the guest:

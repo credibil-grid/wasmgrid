@@ -13,7 +13,7 @@ cargo component build --package http-http --release
 Run a guest using the runtime:
 
 ```bash
-cargo run -- ./target/wasm32-wasi/release/http_http.wasm
+cargo run -- ./target/wasm32-wasip1/release/http_http.wasm
 ```
 
 In a separate console, call the guest which will in turn call the downstream service

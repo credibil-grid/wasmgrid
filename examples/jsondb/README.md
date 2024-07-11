@@ -9,7 +9,7 @@ cargo component build --package jsondb --release
 Run the guest using the `wasmgrid` runtime:
 
 ```bash
-cargo run -- ./target/wasm32-wasi/release/jsondb.wasm
+cargo run -- ./target/wasm32-wasip1/release/jsondb.wasm
 ```
 
 In a separate console, send some messages to the guest:
