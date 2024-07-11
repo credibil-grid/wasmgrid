@@ -4,10 +4,9 @@
 //! (<https://github.com/WebAssembly/wasi-messaging>).
 
 use std::sync::OnceLock;
-use std::time::Duration;
 
 use anyhow::anyhow;
-use async_nats::{ConnectOptions, HeaderMap, Message};
+use async_nats::{HeaderMap, Message};
 use bindings::wasi::rpc::client::{self, HostError};
 use bindings::wasi::rpc::types;
 use bindings::Rpc;
@@ -43,12 +42,10 @@ pub type Error = anyhow::Error;
 
 pub struct Capability {
     addr: String,
-    timeout: Duration,
 }
 
-pub const fn new(addr: String, timeout_s: u64) -> Capability {
-    let timeout = Duration::from_secs(timeout_s);
-    Capability { addr, timeout }
+pub const fn new(addr: String) -> Capability {
+    Capability { addr }
 }
 
 #[async_trait::async_trait]
@@ -62,8 +59,7 @@ impl runtime::Capability for Capability {
     }
 
     async fn run(&self, runtime: Runtime) -> anyhow::Result<()> {
-        let client =
-            ConnectOptions::new().connection_timeout(self.timeout).connect(&self.addr).await?;
+        let client = async_nats::connect(&self.addr).await?;
         CLIENT.set(client.clone()).map_err(|_| anyhow!("CLIENT already initialized"))?;
 
         let mut store = runtime.new_store();

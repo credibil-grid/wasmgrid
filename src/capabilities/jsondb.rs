@@ -66,19 +66,17 @@ impl runtime::Capability for Capability {
 
     /// Provide sql capability for the specified wasm component.
     async fn run(&self, _: Runtime) -> anyhow::Result<()> {
-        // Connect to MongoDB
-        let mut client_options = ClientOptions::parse(&self.addr).await?;
-        client_options.app_name = Some("Credibil Grid".into());
-        let client = Client::with_options(client_options)?;
+        let mut opts = ClientOptions::parse(&self.addr).await?;
+        opts.app_name = Some("Credibil Grid".into());
+        let client = Client::with_options(opts)?;
 
-        MONGODB.get_or_init(|| client);
         tracing::info!("connected to MongoDB");
-
-        Ok(())
+        MONGODB.set(client).map_err(|_| anyhow!("MongoDB already initialized"))
     }
 }
 
 // Implement the [`wasi_sql::ReadWriteView`]` trait for State.
+#[allow(dependency_on_unit_never_type_fallback)]
 #[async_trait::async_trait]
 impl readwrite::Host for State {
     async fn insert(
@@ -90,8 +88,20 @@ impl readwrite::Host for State {
         let database = table.get(&db)?;
         let stmt = table.get(&s)?;
 
-        let doc = serde_json::from_slice::<bson::Document>(&d)?;
-        let _ = database.collection(&stmt.collection).insert_one(doc).await?;
+        let doc = match serde_json::from_slice::<bson::Document>(&d) {
+            Ok(doc) => doc,
+            Err(e) => {
+                tracing::debug!("issue deserializing document for insert: {e}");
+                let err = self.table().push(anyhow!("issue deserializing document: {e}"))?;
+                return Ok(Err(err));
+            }
+        };
+
+        if let Err(e) = database.collection(&stmt.collection).insert_one(doc).await {
+            tracing::debug!("issue inserting document: {e}");
+            let err = self.table().push(anyhow!("issue inserting document: {e}"))?;
+            return Ok(Err(err));
+        }
 
         Ok(Ok(()))
     }
@@ -105,15 +115,20 @@ impl readwrite::Host for State {
         let database = table.get(&db)?;
         let stmt = table.get(&s)?;
 
-        tracing::debug!("readwrite::Host::find: collection {:?}", stmt.conditions);
+        tracing::debug!("readwrite::Host::find: {}, {:?}", stmt.collection, stmt.conditions);
 
-        let ser = if let Some(doc) = database
-            .collection::<bson::Document>(&stmt.collection)
-            .find_one(stmt.conditions.clone())
-            .await?
+        let ser = if let Some::<bson::Document>(doc) =
+            database.collection(&stmt.collection).find_one(stmt.conditions.clone()).await?
         {
-            tracing::debug!("readwrite::Host::find: found document");
-            serde_json::to_vec(&doc)?
+            tracing::debug!("readwrite::Host::find: document found");
+            match serde_json::to_vec(&doc) {
+                Ok(ser) => ser,
+                Err(e) => {
+                    tracing::debug!("issue serializing result: {e}");
+                    let err = self.table().push(anyhow!("issue serializing result: {e}"))?;
+                    return Ok(Err(err));
+                }
+            }
         } else {
             tracing::debug!("readwrite::Host::find: no document found");
             vec![]
@@ -131,9 +146,23 @@ impl readwrite::Host for State {
         let database = table.get(&db)?;
         let stmt = table.get(&s)?;
 
-        let doc: bson::Document = serde_json::from_slice(&d)?;
-        let _ =
-            database.collection(&stmt.collection).replace_one(stmt.conditions.clone(), doc).await?;
+        let doc = match serde_json::from_slice(&d) {
+            Ok(doc) => doc,
+            Err(e) => {
+                tracing::debug!("issue deserializing replacement document: {e}");
+                let err =
+                    self.table().push(anyhow!("issue deserializing replacement document: {e}"))?;
+                return Ok(Err(err));
+            }
+        };
+
+        if let Err(e) =
+            database.collection(&stmt.collection).replace_one(stmt.conditions.clone(), doc).await
+        {
+            tracing::debug!("issue replacing document: {e}");
+            let err = self.table().push(anyhow!("issue replacing document: {e}"))?;
+            return Ok(Err(err));
+        }
 
         Ok(Ok(()))
     }
@@ -147,10 +176,15 @@ impl readwrite::Host for State {
         let database = table.get(&db)?;
         let stmt = table.get(&s)?;
 
-        let _ = database
+        if let Err(e) = database
             .collection::<bson::Document>(&stmt.collection)
             .delete_one(stmt.conditions.clone())
-            .await?;
+            .await
+        {
+            tracing::debug!("issue deleting document: {e}");
+            let err = self.table().push(anyhow!("issue deleting document: {e}"))?;
+            return Ok(Err(err));
+        }
 
         Ok(Ok(()))
     }
@@ -195,28 +229,32 @@ impl HostStatement for State {
             // create Mongo filter from JMESPath expression
             let expr = jmespath::compile(&jmes_path)?;
             let Ast::Projection { rhs, .. } = expr.as_ast() else {
-                return Err(anyhow!("invalid JMESPath projecttion"));
+                let err = self.table().push(anyhow!("invalid JMESPath projection"))?;
+                return Ok(Err(err));
             };
             let Ast::Condition { predicate, .. } = rhs.as_ref() else {
-                return Err(anyhow!("invalid JMESPath condition"));
+                let err = self.table().push(anyhow!("invalid JMESPath condition"))?;
+                return Ok(Err(err));
             };
             let Ast::Comparison { lhs, rhs, .. } = predicate.as_ref() else {
-                return Err(anyhow!("invalid JMESPath comparison"));
+                let err = self.table().push(anyhow!("invalid JMESPath comparison"))?;
+                return Ok(Err(err));
             };
             let Ast::Field { name, .. } = lhs.as_ref() else {
-                return Err(anyhow!("invalid JMESPath LHS"));
+                let err = self.table().push(anyhow!("invalid JMESPath LHS"))?;
+                return Ok(Err(err));
             };
             let Ast::Literal { value, .. } = rhs.as_ref() else {
-                return Err(anyhow!("invalid JMESPath RHS"));
+                let err = self.table().push(anyhow!("invalid JMESPath RHS"))?;
+                return Ok(Err(err));
+            };
+            let Some(value) = value.as_string() else {
+                let err = self.table().push(anyhow!("invalid JMESPath value"))?;
+                return Ok(Err(err));
             };
 
-            let value = value.as_string().ok_or_else(|| anyhow!("invalid JMESPath value"))?;
-
             tracing::debug!("HostFilter::prepare: key {name}: value {value}");
-
-            bson::doc! {
-                name: value,
-            }
+            bson::doc! {name: value}
         } else {
             bson::doc! {}
         };
