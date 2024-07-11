@@ -152,8 +152,7 @@ impl client::Host for State {
             && let Some(error) = headers.get("Error")
         {
             tracing::debug!("client::Host::call Err: {error}");
-            let err = self.table().push(anyhow!("{error}"))?;
-            return Ok(Err(err));
+            return Ok(Err(self.table().push(anyhow!("{error}"))?));
         }
 
         tracing::debug!("client::Host::call Ok: {msg:?}");

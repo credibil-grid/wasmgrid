@@ -64,7 +64,7 @@ impl runtime::Capability for Capability {
         Jsondb::add_to_linker(linker, |t| t)
     }
 
-    /// Provide sql capability for the specified wasm component.
+    /// Provide jsondb capability for the specified wasm component.
     async fn run(&self, _: Runtime) -> anyhow::Result<()> {
         let mut opts = ClientOptions::parse(&self.addr).await?;
         opts.app_name = Some("Credibil Grid".into());
@@ -92,15 +92,13 @@ impl readwrite::Host for State {
             Ok(doc) => doc,
             Err(e) => {
                 tracing::debug!("issue deserializing document for insert: {e}");
-                let err = self.table().push(anyhow!("issue deserializing document: {e}"))?;
-                return Ok(Err(err));
+                return Ok(Err(self.table().push(anyhow!("issue deserializing document: {e}"))?));
             }
         };
 
         if let Err(e) = database.collection(&stmt.collection).insert_one(doc).await {
             tracing::debug!("issue inserting document: {e}");
-            let err = self.table().push(anyhow!("issue inserting document: {e}"))?;
-            return Ok(Err(err));
+            return Ok(Err(self.table().push(anyhow!("issue inserting document: {e}"))?));
         }
 
         Ok(Ok(()))
@@ -125,8 +123,7 @@ impl readwrite::Host for State {
                 Ok(ser) => ser,
                 Err(e) => {
                     tracing::debug!("issue serializing result: {e}");
-                    let err = self.table().push(anyhow!("issue serializing result: {e}"))?;
-                    return Ok(Err(err));
+                    return Ok(Err(self.table().push(anyhow!("issue serializing result: {e}"))?));
                 }
             }
         } else {
@@ -150,9 +147,9 @@ impl readwrite::Host for State {
             Ok(doc) => doc,
             Err(e) => {
                 tracing::debug!("issue deserializing replacement document: {e}");
-                let err =
-                    self.table().push(anyhow!("issue deserializing replacement document: {e}"))?;
-                return Ok(Err(err));
+                return Ok(Err(self
+                    .table()
+                    .push(anyhow!("issue deserializing replacement document: {e}"))?));
             }
         };
 
@@ -160,8 +157,7 @@ impl readwrite::Host for State {
             database.collection(&stmt.collection).replace_one(stmt.conditions.clone(), doc).await
         {
             tracing::debug!("issue replacing document: {e}");
-            let err = self.table().push(anyhow!("issue replacing document: {e}"))?;
-            return Ok(Err(err));
+            return Ok(Err(self.table().push(anyhow!("issue replacing document: {e}"))?));
         }
 
         Ok(Ok(()))
@@ -182,8 +178,7 @@ impl readwrite::Host for State {
             .await
         {
             tracing::debug!("issue deleting document: {e}");
-            let err = self.table().push(anyhow!("issue deleting document: {e}"))?;
-            return Ok(Err(err));
+            return Ok(Err(self.table().push(anyhow!("issue deleting document: {e}"))?));
         }
 
         Ok(Ok(()))
@@ -200,7 +195,9 @@ impl HostDatabase for State {
     ) -> wasmtime::Result<Result<Resource<Database>, Resource<Error>>> {
         tracing::debug!("HostDatabase::open");
 
-        let client = MONGODB.get().ok_or_else(|| anyhow!("MongoDB not connected"))?;
+        let Some(client) = MONGODB.get() else {
+            return Ok(Err(self.table().push(anyhow!("MongoDB not connected"))?));
+        };
         let db = client.database(&name);
         Ok(Ok(self.table().push(db)?))
     }
@@ -229,28 +226,22 @@ impl HostStatement for State {
             // create Mongo filter from JMESPath expression
             let expr = jmespath::compile(&jmes_path)?;
             let Ast::Projection { rhs, .. } = expr.as_ast() else {
-                let err = self.table().push(anyhow!("invalid JMESPath projection"))?;
-                return Ok(Err(err));
+                return Ok(Err(self.table().push(anyhow!("invalid JMESPath projection"))?));
             };
             let Ast::Condition { predicate, .. } = rhs.as_ref() else {
-                let err = self.table().push(anyhow!("invalid JMESPath condition"))?;
-                return Ok(Err(err));
+                return Ok(Err(self.table().push(anyhow!("invalid JMESPath condition"))?));
             };
             let Ast::Comparison { lhs, rhs, .. } = predicate.as_ref() else {
-                let err = self.table().push(anyhow!("invalid JMESPath comparison"))?;
-                return Ok(Err(err));
+                return Ok(Err(self.table().push(anyhow!("invalid JMESPath comparison"))?));
             };
             let Ast::Field { name, .. } = lhs.as_ref() else {
-                let err = self.table().push(anyhow!("invalid JMESPath LHS"))?;
-                return Ok(Err(err));
+                return Ok(Err(self.table().push(anyhow!("invalid JMESPath LHS"))?));
             };
             let Ast::Literal { value, .. } = rhs.as_ref() else {
-                let err = self.table().push(anyhow!("invalid JMESPath RHS"))?;
-                return Ok(Err(err));
+                return Ok(Err(self.table().push(anyhow!("invalid JMESPath RHS"))?));
             };
             let Some(value) = value.as_string() else {
-                let err = self.table().push(anyhow!("invalid JMESPath value"))?;
-                return Ok(Err(err));
+                return Ok(Err(self.table().push(anyhow!("invalid JMESPath value"))?));
             };
 
             tracing::debug!("HostFilter::prepare: key {name}: value {value}");

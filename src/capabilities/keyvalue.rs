@@ -78,16 +78,19 @@ impl store::Host for State {
         tracing::debug!("store::Host::open {identifier}");
 
         let Some(jetstream) = JETSTREAM.get() else {
-            return Err(anyhow!("JetStream not initialized"));
+            return Ok(Err(store::Error::Other("JetStream not initialized".into())));
         };
 
-        let bucket = jetstream
+        let Ok(bucket) = jetstream
             .create_key_value(jetstream::kv::Config {
                 bucket: identifier.clone(),
                 history: 10,
                 ..Default::default()
             })
-            .await?;
+            .await
+        else {
+            return Ok(Err(store::Error::Other("Failed to create bucket".into())));
+        };
 
         Ok(Ok(self.table().push(bucket)?))
     }
@@ -99,7 +102,10 @@ impl store::HostBucket for State {
         &mut self, rep: Resource<Bucket>, key: String,
     ) -> wasmtime::Result<Result<Option<Vec<u8>>, store::Error>> {
         tracing::debug!("store::HostBucket::get {key}");
-        let bucket = self.table().get_mut(&rep)?;
+
+        let Ok(bucket) = self.table().get_mut(&rep) else {
+            return Ok(Err(store::Error::NoSuchStore));
+        };
         Ok(Ok(bucket.get(key).await?.map(|v| v.to_vec())))
     }
 
@@ -107,7 +113,10 @@ impl store::HostBucket for State {
         &mut self, rep: Resource<Bucket>, key: String, value: Vec<u8>,
     ) -> wasmtime::Result<Result<(), store::Error>, wasmtime::Error> {
         tracing::debug!("store::HostBucket::set {key}");
-        let bucket = self.table().get_mut(&rep)?;
+
+        let Ok(bucket) = self.table().get_mut(&rep) else {
+            return Ok(Err(store::Error::NoSuchStore));
+        };
         Ok(Ok(bucket.put(key, value.into()).await.map(|_| ())?))
     }
 
@@ -115,7 +124,10 @@ impl store::HostBucket for State {
         &mut self, rep: Resource<Bucket>, key: String,
     ) -> Result<Result<(), store::Error>, wasmtime::Error> {
         tracing::debug!("store::HostBucket::delete {key}");
-        let bucket = self.table().get_mut(&rep)?;
+
+        let Ok(bucket) = self.table().get_mut(&rep) else {
+            return Ok(Err(store::Error::NoSuchStore));
+        };
         Ok(Ok(bucket.delete(key).await?))
     }
 
@@ -123,7 +135,10 @@ impl store::HostBucket for State {
         &mut self, rep: Resource<Bucket>, key: String,
     ) -> wasmtime::Result<Result<bool, store::Error>> {
         tracing::debug!("store::HostBucket::exists {key}");
-        let bucket = self.table().get_mut(&rep)?;
+
+        let Ok(bucket) = self.table().get_mut(&rep) else {
+            return Ok(Err(store::Error::NoSuchStore));
+        };
         Ok(Ok(bucket.get(key).await?.is_some()))
     }
 
@@ -131,8 +146,17 @@ impl store::HostBucket for State {
         &mut self, rep: Resource<Bucket>, cursor: Option<u64>,
     ) -> Result<Result<KeyResponse, store::Error>, wasmtime::Error> {
         tracing::debug!("store::HostBucket::list_keys {cursor:?}");
-        let bucket = self.table().get_mut(&rep)?;
-        let keys = bucket.keys().await?.try_collect::<Vec<String>>().await?;
+
+        let Ok(bucket) = self.table().get_mut(&rep) else {
+            return Ok(Err(store::Error::NoSuchStore));
+        };
+        let Ok(key_stream) = bucket.keys().await else {
+            return Ok(Err(store::Error::Other("Failed to list keys".into())));
+        };
+        let Ok(keys) = key_stream.try_collect::<Vec<String>>().await else {
+            return Ok(Err(store::Error::Other("Failed to collect keys".into())));
+        };
+
         Ok(Ok(KeyResponse { keys, cursor }))
     }
 
