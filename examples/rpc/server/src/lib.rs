@@ -42,8 +42,6 @@ fn handle_request(request: &[u8]) -> Result<Vec<u8>, Error> {
     let msg: WrpcRequest = serde_json::from_slice(request).map_err(|_| Error::InvalidRequest)?;
     println!("request: {:?}", msg);
 
-    return Err(Error::UnknownEndpoint);
-    
     // return response
     Ok(serde_json::to_vec(&WrpcResponse {
         message: format!("Thank you for your message: {}", msg.message),

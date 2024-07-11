@@ -1,4 +1,5 @@
 #![allow(clippy::redundant_pub_crate)]
+#![feature(let_chains)]
 
 mod capabilities;
 mod runtime;

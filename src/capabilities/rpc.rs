@@ -10,6 +10,7 @@ use anyhow::anyhow;
 use bindings::wasi::rpc::client::{self, HostError};
 use bindings::wasi::rpc::types;
 use bindings::Rpc;
+use bytes::Bytes;
 use futures::stream::StreamExt;
 use wasmtime::component::{Linker, Resource};
 use wasmtime_wasi::WasiView;
@@ -68,14 +69,14 @@ impl runtime::Capability for Capability {
         let mut store = runtime.new_store();
 
         // check to see if server is required
-        let is_server = runtime
+        if !runtime
             .instance_pre()
             .component()
             .component_type()
             .exports(store.engine())
-            .any(|e| e.0.starts_with(self.namespace()));
-
-        if !is_server {
+            .any(|e| e.0.starts_with(self.namespace()))
+        {
+            tracing::debug!("rpc server not required");
             return Ok(());
         }
 
@@ -89,41 +90,51 @@ impl runtime::Capability for Capability {
 
         // process requests
         while let Some(request) = requests.next().await {
-            let runtime = runtime.clone();
-            let client = client.clone();
+            // ensure we have a reply subject
+            let Some(subject) = request.clone().reply else {
+                return Err(anyhow!("reply subject not found"));
+            };
 
-            if let Err(e) = tokio::spawn(async move {
-                let Some(reply) = request.clone().reply else {
-                    return Err(anyhow!("reply subject not found"));
-                };
+            match handle_request(&runtime, request).await {
+                Ok(resp) => client.publish(subject, resp.into()).await?,
+                Err(e) => {
+                    tracing::error!("rpc server error: {e:?}");
 
-                // convert subject to endpoint
-                let endpoint = request.subject.trim_start_matches("rpc:");
-                let endpoint = endpoint.replace('.', "/");
-
-                // forward request to 'server' component
-                tracing::debug!("forwarding request to {endpoint}");
-                let mut store = runtime.new_store();
-                let (rpc, _) = Rpc::instantiate_pre(&mut store, runtime.instance_pre()).await?;
-
-                let resp = rpc
-                    .wasi_rpc_server()
-                    .call_handle(&mut store, &endpoint, &request.payload.to_vec())
-                    .await??;
-
-                // send reply to 'client' component
-                client.publish(reply, resp.into()).await?;
-
-                Ok(())
-            })
-            .await
-            {
-                tracing::error!("error processing request {e:?}");
+                    // forward error from RPC server to Guest where it will be
+                    // processed in the `client::Host::call` method (below)
+                    let mut headers = async_nats::HeaderMap::new();
+                    headers.insert("Error", &*format!("rpc server error: {e:?}"));
+                    client.publish_with_headers(subject, headers, Bytes::new()).await?;
+                }
             }
         }
 
         Ok(())
     }
+}
+
+// Forward request to the wasm Guest.
+async fn handle_request(
+    runtime: &Runtime, request: async_nats::Message,
+) -> anyhow::Result<Vec<u8>> {
+    let runtime = runtime.clone();
+
+    tokio::spawn(async move {
+        // convert subject to endpoint
+        let endpoint = request.subject.trim_start_matches("rpc:").replace('.', "/");
+
+        // forward request to 'server' component
+        tracing::debug!("forwarding request to {endpoint}");
+
+        let mut store = runtime.new_store();
+        let (rpc, _) = Rpc::instantiate_pre(&mut store, runtime.instance_pre()).await?;
+
+        rpc.wasi_rpc_server()
+            .call_handle(&mut store, &endpoint, &request.payload.to_vec())
+            .await?
+            .map_err(|e| anyhow!(e))
+    })
+    .await?
 }
 
 impl types::Host for State {}
@@ -138,13 +149,20 @@ impl client::Host for State {
         // convert endpoint to safe NATS subject
         let subject = format!("rpc:{}", endpoint.replacen('/', ".", 1));
 
+        // forward request to RPC server
         let client = CLIENT.get().ok_or_else(|| anyhow!("CLIENT not initialized"))?;
-        let timeout = TIMEOUT.get().ok_or_else(|| anyhow!("TIMEOUT not initialized"))?;
-        let nats_request =
-            async_nats::client::Request::new().payload(request.into()).timeout(Some(*timeout));
-        let msg = client.send_request(subject, nats_request).await?;
-        //let msg = client.request(subject, request.into()).await?;
+        let msg = client.request(subject, request.into()).await?;
 
+        // check RPC server's reponse for error
+        if let Some(headers) = &msg.headers
+            && let Some(error) = headers.get("Error")
+        {
+            tracing::debug!("client::Host::call Err: {error}");
+            let err = self.table().push(anyhow!("{error}"))?;
+            return Ok(Err(err));
+        }
+
+        tracing::debug!("client::Host::call Ok: {msg:?}");
         Ok(Ok(msg.payload.to_vec()))
     }
 }
