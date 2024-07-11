@@ -17,7 +17,7 @@ use wasmtime_wasi::WasiView;
 
 use crate::runtime::{self, Runtime, State};
 
-// TODO: tidy up by creating a client struct with both NATS client and request timeout
+// TODO: create a client struct with both NATS client and request timeout
 static CLIENT: OnceLock<async_nats::Client> = OnceLock::new();
 static TIMEOUT: OnceLock<Duration> = OnceLock::new();
 
@@ -100,7 +100,7 @@ impl runtime::Capability for Capability {
                 Err(e) => {
                     tracing::error!("rpc server error: {e:?}");
 
-                    // forward error from RPC server to Guest where it will be
+                    // forward RPC server error to Guest where it will be
                     // processed in the `client::Host::call` method (below)
                     let mut headers = async_nats::HeaderMap::new();
                     headers.insert("Error", &*format!("rpc server error: {e:?}"));
