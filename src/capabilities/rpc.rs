@@ -7,6 +7,7 @@ use std::sync::OnceLock;
 use std::time::Duration;
 
 use anyhow::anyhow;
+use async_nats::{ConnectOptions, HeaderMap, Message};
 use bindings::wasi::rpc::client::{self, HostError};
 use bindings::wasi::rpc::types;
 use bindings::Rpc;
@@ -19,7 +20,6 @@ use crate::runtime::{self, Runtime, State};
 
 // TODO: create a client struct with both NATS client and request timeout
 static CLIENT: OnceLock<async_nats::Client> = OnceLock::new();
-static TIMEOUT: OnceLock<Duration> = OnceLock::new();
 
 /// Wrap generation of wit bindings to simplify exports
 mod bindings {
@@ -62,9 +62,9 @@ impl runtime::Capability for Capability {
     }
 
     async fn run(&self, runtime: Runtime) -> anyhow::Result<()> {
-        let client = async_nats::connect(&self.addr).await?;
+        let client =
+            ConnectOptions::new().connection_timeout(self.timeout).connect(&self.addr).await?;
         CLIENT.set(client.clone()).map_err(|_| anyhow!("CLIENT already initialized"))?;
-        TIMEOUT.set(self.timeout).map_err(|_| anyhow!("TIMEOUT already initialized"))?;
 
         let mut store = runtime.new_store();
 
@@ -102,7 +102,7 @@ impl runtime::Capability for Capability {
 
                     // forward RPC server error to Guest where it will be
                     // processed in the `client::Host::call` method (below)
-                    let mut headers = async_nats::HeaderMap::new();
+                    let mut headers = HeaderMap::new();
                     headers.insert("Error", &*format!("rpc server error: {e:?}"));
                     client.publish_with_headers(subject, headers, Bytes::new()).await?;
                 }
@@ -114,9 +114,7 @@ impl runtime::Capability for Capability {
 }
 
 // Forward request to the wasm Guest.
-async fn handle_request(
-    runtime: &Runtime, request: async_nats::Message,
-) -> anyhow::Result<Vec<u8>> {
+async fn handle_request(runtime: &Runtime, request: Message) -> anyhow::Result<Vec<u8>> {
     let runtime = runtime.clone();
 
     tokio::spawn(async move {
