@@ -23,6 +23,7 @@ COPY /src /src
 COPY /wit /wit
 COPY /crates /crates
 COPY /examples /examples
+COPY /rust-toolchain.toml /rust-toolchain.toml
 
 RUN cargo build --target x86_64-unknown-linux-musl --release
 
