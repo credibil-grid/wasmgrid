@@ -3,6 +3,7 @@
 //! This module implements a runtime capability for `wasi:vault`
 //! (<https://github.com/WebAssembly/wasi-vault>).
 
+use anyhow::anyhow;
 use base64ct::{Base64UrlUnpadded, Encoding};
 use bindings::wasi::vault::enclave::{self, KeyOp};
 use bindings::wasi::vault::types::{self, Algorithm, Jwk, VerificationMethod};
@@ -63,8 +64,23 @@ impl enclave::Host for State {
         // FIXME: replace hard-coded signer with key enclave-based signing
         const JWK_D: &str = "0Md3MhPaKEpnKAyKE498EdDFerD5NLeKJ5Rb-vC16Gs";
 
-        let decoded = Base64UrlUnpadded::decode_vec(JWK_D)?;
-        let signing_key: ecdsa::SigningKey<Secp256k1> = ecdsa::SigningKey::from_slice(&decoded)?;
+        let decoded = match Base64UrlUnpadded::decode_vec(JWK_D) {
+            Ok(decoded) => decoded,
+            Err(e) => {
+                tracing::debug!("issue decoding JWK_D: {e}");
+                return Ok(Err(self.table().push(anyhow!("issue decoding JWK_D: {e}"))?));
+            }
+        };
+        let signing_key: ecdsa::SigningKey<Secp256k1> =
+            match ecdsa::SigningKey::from_slice(&decoded) {
+                Ok(signing_key) => signing_key,
+                Err(e) => {
+                    tracing::debug!("issue deserializing signing key: {e}");
+                    return Ok(Err(self
+                        .table()
+                        .push(anyhow!("issue deserializing signing key: {e}"))?));
+                }
+            };
         let sig: ecdsa::Signature<Secp256k1> = signing_key.sign(&data);
 
         Ok(Ok(sig.to_vec()))

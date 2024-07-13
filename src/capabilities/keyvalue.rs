@@ -174,8 +174,13 @@ impl atomics::Host for State {
     ) -> wasmtime::Result<Result<u64, Error>> {
         tracing::debug!("atomics::Host::increment {key}, {delta}");
 
-        let bucket = self.table().get_mut(&rep)?;
-        let value = bucket.get(key.clone()).await?.unwrap_or_default();
+        let Ok(bucket) = self.table().get_mut(&rep) else {
+            return Ok(Err(Error::NoSuchStore));
+        };
+        let Ok(Some(value)) = bucket.get(key.clone()).await else {
+            tracing::debug!("no value for {key}");
+            return Ok(Err(Error::Other(format!("no value for {key}"))));
+        };
 
         // increment value by delta
         let slice: &[u8] = &value;
@@ -184,7 +189,11 @@ impl atomics::Host for State {
         buf[..len].copy_from_slice(&slice[..len]);
         let inc = u64::from_be_bytes(buf) + delta;
 
-        bucket.put(key, inc.to_be_bytes().to_vec().into()).await?;
+        // update value in bucket
+        if let Err(e) = bucket.put(key, inc.to_be_bytes().to_vec().into()).await {
+            tracing::debug!("issue saving increment: {e}");
+            return Ok(Err(Error::Other(format!("issue saving increment: {e}"))));
+        }
 
         Ok(Ok(inc))
     }
@@ -197,11 +206,19 @@ impl batch::Host for State {
     ) -> wasmtime::Result<Result<Vec<Option<(String, Vec<u8>)>>, store::Error>> {
         tracing::debug!("batch::Host::get_many {keys:?}");
 
-        let bucket = self.table().get_mut(&rep)?;
+        let Ok(bucket) = self.table().get_mut(&rep) else {
+            return Ok(Err(Error::NoSuchStore));
+        };
 
         let mut many = Vec::new();
         for key in keys {
-            let value = bucket.get(&key).await?;
+            let value = match bucket.get(key.clone()).await {
+                Ok(value) => value,
+                Err(e) => {
+                    tracing::debug!("issue getting value: {e}");
+                    return Ok(Err(Error::Other(format!("issue getting value: {key}"))));
+                }
+            };
             if let Some(value) = value {
                 many.push(Some((key, value.to_vec())));
             }
@@ -215,9 +232,14 @@ impl batch::Host for State {
     ) -> wasmtime::Result<Result<(), store::Error>> {
         tracing::debug!("batch::Host::set_many {key_values:?}");
 
-        let bucket = self.table().get_mut(&rep)?;
+        let Ok(bucket) = self.table().get_mut(&rep) else {
+            return Ok(Err(Error::NoSuchStore));
+        };
         for (key, value) in key_values {
-            bucket.put(key, value.into()).await?;
+            if let Err(e) = bucket.put(key, value.into()).await {
+                tracing::debug!("issue saving value: {e}");
+                return Ok(Err(Error::Other(format!("issue saving value: {e}"))));
+            }
         }
 
         Ok(Ok(()))
@@ -228,9 +250,14 @@ impl batch::Host for State {
     ) -> wasmtime::Result<Result<(), store::Error>> {
         tracing::debug!("batch::Host::delete_many {keys:?}");
 
-        let bucket = self.table().get_mut(&rep)?;
+        let Ok(bucket) = self.table().get_mut(&rep) else {
+            return Ok(Err(Error::NoSuchStore));
+        };
         for key in keys {
-            bucket.delete(key).await?;
+            if let Err(e) = bucket.delete(key).await {
+                tracing::debug!("issue deleting value: {e}");
+                return Ok(Err(Error::Other(format!("issue deleting value: {e}"))));
+            }
         }
 
         Ok(Ok(()))

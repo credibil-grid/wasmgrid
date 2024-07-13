@@ -89,18 +89,17 @@ impl Builder {
         };
 
         // start capabilities
-        tracing::debug!("starting capabilites");
         for cap in self.capabilities {
             // check whether capability is required by the wasm component
             let namespace = cap.namespace();
             if !component_type.imports(&engine).any(|e| e.0.starts_with(namespace))
                 && !component_type.exports(&engine).any(|e| e.0.starts_with(namespace))
             {
-                tracing::debug!("{namespace} not found, capability will not be started");
                 continue;
             }
 
             // start capability
+            tracing::debug!("starting {namespace} capability");
             let runtime = runtime.clone();
             let namespace = namespace.to_string();
 

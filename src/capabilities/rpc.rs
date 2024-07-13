@@ -62,6 +62,11 @@ impl runtime::Capability for Capability {
         let client = async_nats::connect(&self.addr).await?;
         CLIENT.set(client.clone()).map_err(|_| anyhow!("CLIENT already initialized"))?;
 
+        // redact password from connection string
+        // let mut redacted = url::Url::parse(&self.addr).unwrap();
+        // redacted.set_password(Some("*****")).map_err(|()| anyhow!("issue redacting password"))?;
+        tracing::info!("connected to: {}", &self.addr);
+
         let mut store = runtime.new_store();
 
         // check to see if server is required
