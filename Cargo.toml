@@ -46,6 +46,7 @@ serde_json = "1.0.120"
 tokio = { version = "1.38.0", features = ["signal"] }
 tracing.workspace = true
 tracing-subscriber.workspace = true
+url = "2.5.2"
 wasmtime.workspace = true
 wasmtime-wasi.workspace = true
 wasmtime-wasi-http = { workspace = true, optional = true }

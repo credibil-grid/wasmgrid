@@ -70,7 +70,11 @@ impl runtime::Capability for Capability {
         opts.app_name = Some("Credibil Grid".into());
         let client = Client::with_options(opts)?;
 
-        tracing::info!("connected to MongoDB");
+        // redact password from connection string
+        let mut redacted = url::Url::parse(&self.addr).unwrap();
+        redacted.set_password(Some("*****")).map_err(|()| anyhow!("issue redacting password"))?;
+        tracing::info!("connected to: {redacted}");
+
         MONGODB.set(client).map_err(|_| anyhow!("MongoDB already initialized"))
     }
 }
@@ -296,4 +300,18 @@ mod tests {
             .await
             .unwrap();
     }
+
+    // #[test]
+    // fn redact() {
+    //     let addr = "mongodb+srv://wasmgrid:A.Passw0rd!@cluster0.uqnlxl8.mongodb.net/";
+    //     // let re = Regex::new(r#"^mongodb(?:\+srv)?:\/\/(?:.+):(?<password>.+)@(?:.+)$"#).unwrap();
+    //     // let Some(caps) = re.captures(addr) else {
+    //     //     println!("no match!");
+    //     //     return;
+    //     // };
+    //     // let redacted = addr.replace(&caps["password"], "*****");
+    //     let mut u = url::Url::parse(addr).unwrap();
+    //     u.set_password(Some("*****"));
+    //     println!("The name is: {}", u.to_string());
+    // }
 }
