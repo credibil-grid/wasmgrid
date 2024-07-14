@@ -40,6 +40,7 @@ mod bindings {
 
 pub type Error = anyhow::Error;
 
+#[derive(Debug)]
 pub struct Capability {
     addr: String,
     creds: Option<crate::NatsCreds>,
