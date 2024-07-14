@@ -60,6 +60,8 @@ impl runtime::Capability for Capability {
     }
 
     async fn run(&self, runtime: Runtime) -> anyhow::Result<()> {
+        tracing::debug!("NATS values: {:?}", self);
+
         // build connection options
         let opts = if let Some(creds) = &self.creds {
             let mut root_store = rustls::RootCertStore::empty();
