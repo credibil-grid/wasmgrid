@@ -6424,6 +6424,7 @@ dependencies = [
  "jmespath",
  "k256",
  "mongodb",
+ "nkeys",
  "serde_json",
  "tokio",
  "tracing",

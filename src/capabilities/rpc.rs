@@ -3,7 +3,7 @@
 //! This module implements a runtime capability for `wasi:messaging`
 //! (<https://github.com/WebAssembly/wasi-messaging>).
 
-use std::sync::OnceLock;
+use std::sync::{Arc, OnceLock};
 
 use anyhow::anyhow;
 use async_nats::{HeaderMap, Message};
@@ -42,10 +42,11 @@ pub type Error = anyhow::Error;
 
 pub struct Capability {
     addr: String,
+    creds: Option<crate::NatsCreds>,
 }
 
-pub const fn new(addr: String) -> Capability {
-    Capability { addr }
+pub const fn new(addr: String, creds: Option<crate::NatsCreds>) -> Capability {
+    Capability { addr, creds }
 }
 
 #[async_trait::async_trait]
@@ -59,13 +60,20 @@ impl runtime::Capability for Capability {
     }
 
     async fn run(&self, runtime: Runtime) -> anyhow::Result<()> {
-        let client = async_nats::connect(&self.addr).await?;
-        CLIENT.set(client.clone()).map_err(|_| anyhow!("CLIENT already initialized"))?;
+        let opts = if let Some(creds) = &self.creds {
+            let key_pair = Arc::new(nkeys::KeyPair::from_seed(&creds.seed)?);
+            async_nats::ConnectOptions::with_jwt(creds.jwt.clone(), move |nonce| {
+                let key_pair = key_pair.clone();
+                async move { key_pair.sign(&nonce).map_err(async_nats::AuthError::new) }
+            })
+            .name("wasmgrid")
+        } else {
+            async_nats::ConnectOptions::new()
+        };
 
-        // redact password from connection string
-        // let mut redacted = url::Url::parse(&self.addr).unwrap();
-        // redacted.set_password(Some("*****")).map_err(|()| anyhow!("issue redacting password"))?;
+        let client = opts.connect(&self.addr).await?;
         tracing::info!("connected to: {}", &self.addr);
+        CLIENT.set(client.clone()).map_err(|_| anyhow!("CLIENT already initialized"))?;
 
         let mut store = runtime.new_store();
 

@@ -28,7 +28,7 @@ use crate::capabilities::vault;
 
 const DEF_HTTP_ADDR: &str = "0.0.0.0:8080";
 const DEF_MGO_CNN: &str = "mongodb://localhost:27017";
-const DEF_NATS_CNN: &str = "demo.nats.io";
+const DEF_NATS_ADDR: &str = "demo.nats.io";
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -36,6 +36,12 @@ struct Args {
     /// The path to the wasm file to serve.
     // #[clap(short, long)]
     wasm: String,
+}
+
+#[derive(Debug, Clone)]
+struct NatsCreds {
+    jwt: String,
+    seed: String,
 }
 
 #[tokio::main]
@@ -48,8 +54,15 @@ pub async fn main() -> wasmtime::Result<()> {
     }
 
     let http_addr = env::var("HTTP_ADDR").unwrap_or_else(|_| DEF_HTTP_ADDR.into());
-    let nats_cnn = env::var("NATS_CNN").unwrap_or_else(|_| DEF_NATS_CNN.into());
     let mgo_cnn = env::var("MGO_CNN").unwrap_or_else(|_| DEF_MGO_CNN.into());
+    let nats_cnn = env::var("NATS_ADDR").unwrap_or_else(|_| DEF_NATS_ADDR.into());
+    let nats_creds = if let Ok(jwt) = env::var("NATS_JWT")
+        && let Ok(seed) = env::var("NATS_SEED")
+    {
+        Some(NatsCreds { jwt, seed })
+    } else {
+        None
+    };
 
     // tracing
     let subscriber =
@@ -69,7 +82,7 @@ pub async fn main() -> wasmtime::Result<()> {
     #[cfg(feature = "p2p")]
     let builder = builder.capability(p2p::new());
     #[cfg(feature = "rpc")]
-    let builder = builder.capability(rpc::new(nats_cnn));
+    let builder = builder.capability(rpc::new(nats_cnn, nats_creds));
     #[cfg(feature = "vault")]
     let builder = builder.capability(vault::new());
 
