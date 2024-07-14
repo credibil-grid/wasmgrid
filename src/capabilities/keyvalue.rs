@@ -3,10 +3,10 @@
 //! This module implements a runtime capability for `wasi:keyvalue`
 //! (<https://github.com/WebAssembly/wasi-keyvalue>).
 
-use std::sync::OnceLock;
+use std::sync::{Arc, OnceLock};
 
 use anyhow::anyhow;
-use async_nats::jetstream;
+use async_nats::{jetstream, rustls, AuthError, ConnectOptions};
 use bindings::wasi::keyvalue::store::{self, Error, KeyResponse};
 use bindings::wasi::keyvalue::{atomics, batch};
 use bindings::Keyvalue;
@@ -40,11 +40,12 @@ pub type Bucket = async_nats::jetstream::kv::Store;
 static JETSTREAM: OnceLock<jetstream::Context> = OnceLock::new();
 
 pub struct Capability {
-    pub addr: String,
+    addr: String,
+    creds: Option<crate::NatsCreds>,
 }
 
-pub const fn new(addr: String) -> Capability {
-    Capability { addr }
+pub const fn new(addr: String, creds: Option<crate::NatsCreds>) -> Capability {
+    Capability { addr, creds }
 }
 
 #[async_trait::async_trait]
@@ -59,11 +60,30 @@ impl runtime::Capability for Capability {
 
     /// Provide key/value storage capability for the specified wasm component.
     async fn run(&self, _runtime: Runtime) -> anyhow::Result<()> {
-        // create JetStream context and store in global state
-        let client = async_nats::connect(&self.addr).await?;
-        tracing::info!("connected to JetStream");
+        // build connection options
+        let opts = if let Some(creds) = &self.creds {
+            let mut root_store = rustls::RootCertStore::empty();
+            root_store.add_parsable_certificates(rustls_native_certs::load_native_certs()?);
+            let tls_client = rustls::ClientConfig::builder()
+                .with_root_certificates(root_store)
+                .with_no_client_auth();
 
+            let key_pair = Arc::new(nkeys::KeyPair::from_seed(&creds.seed)?);
+            ConnectOptions::with_jwt(creds.jwt.clone(), move |nonce| {
+                let key_pair = key_pair.clone();
+                async move { key_pair.sign(&nonce).map_err(AuthError::new) }
+            })
+            .name("wasmgrid")
+            .tls_client_config(tls_client)
+        } else {
+            ConnectOptions::new()
+        };
+
+        // create JetStream context and store in global state
+        let client = opts.connect(&self.addr).await?;
+        tracing::info!("connected to JetStream on {}", self.addr);
         JETSTREAM.get_or_init(|| jetstream::new(client));
+
         Ok(())
     }
 }

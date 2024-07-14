@@ -76,7 +76,7 @@ pub async fn main() -> wasmtime::Result<()> {
     #[cfg(feature = "jsondb")]
     let builder = builder.capability(jsondb::new(mgo_cnn));
     #[cfg(feature = "keyvalue")]
-    let builder = builder.capability(keyvalue::new(nats_cnn.clone()));
+    let builder = builder.capability(keyvalue::new(nats_cnn.clone(), nats_creds.clone()));
     #[cfg(feature = "messaging")]
     let builder = builder.capability(messaging::new(nats_cnn.clone()));
     #[cfg(feature = "p2p")]
