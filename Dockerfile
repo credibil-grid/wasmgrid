@@ -5,7 +5,6 @@ FROM rust:alpine3.19 as builder
 RUN rustup update && \
     rustup target add x86_64-unknown-linux-musl
 
-# RUN apk update add ca-certificates && rm -rf /var/cache/apk/*
 RUN apk --update add --no-cache musl-dev ca-certificates
 
 RUN adduser --disabled-password --gecos "" --home "/nonexistent" \

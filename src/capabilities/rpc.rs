@@ -61,8 +61,6 @@ impl runtime::Capability for Capability {
     }
 
     async fn run(&self, runtime: Runtime) -> anyhow::Result<()> {
-        tracing::debug!("NATS cnn: {:?}", self);
-
         // build connection options
         let opts = if let Some(creds) = &self.creds {
             let key_pair = Arc::new(nkeys::KeyPair::from_seed(&creds.seed)?);
