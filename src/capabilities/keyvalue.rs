@@ -6,7 +6,7 @@
 use std::sync::{Arc, OnceLock};
 
 use anyhow::anyhow;
-use async_nats::{jetstream, rustls, AuthError, ConnectOptions};
+use async_nats::{jetstream, AuthError, ConnectOptions};
 use bindings::wasi::keyvalue::store::{self, Error, KeyResponse};
 use bindings::wasi::keyvalue::{atomics, batch};
 use bindings::Keyvalue;
@@ -62,19 +62,12 @@ impl runtime::Capability for Capability {
     async fn run(&self, _runtime: Runtime) -> anyhow::Result<()> {
         // build connection options
         let opts = if let Some(creds) = &self.creds {
-            let mut root_store = rustls::RootCertStore::empty();
-            root_store.add_parsable_certificates(rustls_native_certs::load_native_certs()?);
-            let tls_client = rustls::ClientConfig::builder()
-                .with_root_certificates(root_store)
-                .with_no_client_auth();
-
             let key_pair = Arc::new(nkeys::KeyPair::from_seed(&creds.seed)?);
             ConnectOptions::with_jwt(creds.jwt.clone(), move |nonce| {
                 let key_pair = key_pair.clone();
                 async move { key_pair.sign(&nonce).map_err(AuthError::new) }
             })
             .name("wasmgrid")
-            .tls_client_config(tls_client)
         } else {
             ConnectOptions::new()
         };
