@@ -6425,6 +6425,7 @@ dependencies = [
  "k256",
  "mongodb",
  "nkeys",
+ "rustls-native-certs 0.7.1",
  "serde_json",
  "tokio",
  "tracing",
