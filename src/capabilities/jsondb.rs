@@ -147,7 +147,7 @@ impl readwrite::Host for State {
         let database = table.get(&db)?;
         let stmt = table.get(&s)?;
 
-        let doc = match serde_json::from_slice::<bson::Document>(&d) {
+        let doc = match serde_json::from_slice(&d) {
             Ok(doc) => doc,
             Err(e) => {
                 tracing::debug!("issue deserializing replacement document: {e}");
