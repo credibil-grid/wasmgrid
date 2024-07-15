@@ -80,7 +80,6 @@ impl runtime::Capability for Capability {
 }
 
 // Implement the [`wasi_sql::ReadWriteView`]` trait for State.
-#[allow(dependency_on_unit_never_type_fallback)]
 #[async_trait::async_trait]
 impl readwrite::Host for State {
     async fn insert(
