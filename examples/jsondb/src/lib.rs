@@ -1,7 +1,7 @@
 #![feature(let_chains)]
 
 use anyhow::anyhow;
-use openid4vc::issuance::Issuer as IssuerMetadata;
+use openid::issuance::Issuer as IssuerMetadata;
 use serde_json::json;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 use wasi::exports::http::incoming_handler::Guest;

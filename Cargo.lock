@@ -818,7 +818,7 @@ checksum = "06ea2b9bc92be3c2baa9334a323ebca2d6f074ff852cd1d7b11064035cd3868f"
 [[package]]
 name = "core-utils"
 version = "0.1.0-alpha.4"
-source = "git+https://github.com/vercre/vercre#ad03384bc2716ece162eebd12dc3d21051429d98"
+source = "git+https://github.com/vercre/vercre#2caa2d77550b04904674dd854f02eedc442129b5"
 dependencies = [
  "base64ct",
  "fastrand 2.1.0",
@@ -1240,7 +1240,7 @@ checksum = "339544cc9e2c4dc3fc7149fd630c5f22263a4fdf18a98afd0075784968b5cf00"
 [[package]]
 name = "dif-exch"
 version = "0.1.0-alpha.4"
-source = "git+https://github.com/vercre/vercre#ad03384bc2716ece162eebd12dc3d21051429d98"
+source = "git+https://github.com/vercre/vercre#2caa2d77550b04904674dd854f02eedc442129b5"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2324,7 +2324,7 @@ dependencies = [
  "iana-time-zone-haiku",
  "js-sys",
  "wasm-bindgen",
- "windows-core 0.52.0",
+ "windows-core 0.51.1",
 ]
 
 [[package]]
@@ -2891,7 +2891,7 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "http 1.1.0",
- "openid4vc",
+ "openid",
  "serde_json",
  "tracing",
  "tracing-subscriber",
@@ -3519,9 +3519,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c08d65885ee38876c4f86fa503fb49d7b507c2b62552df7c70b2fce627e06381"
 
 [[package]]
-name = "openid4vc"
+name = "openid"
 version = "0.1.0-alpha.4"
-source = "git+https://github.com/vercre/vercre#ad03384bc2716ece162eebd12dc3d21051429d98"
+source = "git+https://github.com/vercre/vercre#2caa2d77550b04904674dd854f02eedc442129b5"
 dependencies = [
  "anyhow",
  "base64ct",
@@ -4064,7 +4064,7 @@ dependencies = [
 [[package]]
 name = "proof"
 version = "0.1.0-alpha.4"
-source = "git+https://github.com/vercre/vercre#ad03384bc2716ece162eebd12dc3d21051429d98"
+source = "git+https://github.com/vercre/vercre#2caa2d77550b04904674dd854f02eedc442129b5"
 dependencies = [
  "aes-gcm",
  "anyhow",
@@ -6228,7 +6228,7 @@ checksum = "49874b5167b65d7193b8aba1567f5c7d93d001cafc34600cee003eda787e483f"
 [[package]]
 name = "w3c-vc"
 version = "0.1.0-alpha.4"
-source = "git+https://github.com/vercre/vercre#ad03384bc2716ece162eebd12dc3d21051429d98"
+source = "git+https://github.com/vercre/vercre#2caa2d77550b04904674dd854f02eedc442129b5"
 dependencies = [
  "anyhow",
  "base64ct",
