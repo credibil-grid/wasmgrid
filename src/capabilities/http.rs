@@ -81,7 +81,7 @@ async fn handle_request(
             .status(StatusCode::OK)
             .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
             .header(ACCESS_CONTROL_ALLOW_HEADERS, "*")
-            .header(ACCESS_CONTROL_ALLOW_METHODS, "POST, GET, OPTIONS")
+            .header(ACCESS_CONTROL_ALLOW_METHODS, "DELETE, GET, OPTIONS, POST, PUT")
             .header(CONTENT_TYPE, "application/json")
             .body(HyperOutgoingBody::default())?;
         return Ok(resp);
