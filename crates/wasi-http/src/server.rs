@@ -21,6 +21,20 @@ pub fn post(handler: impl Handler + 'static) -> MethodHandler {
     }
 }
 
+pub fn put(handler: impl Handler + 'static) -> MethodHandler {
+    MethodHandler {
+        method: Method::Put,
+        handler: Box::new(handler),
+    }
+}
+
+pub fn delete(handler: impl Handler + 'static) -> MethodHandler {
+    MethodHandler {
+        method: Method::Delete,
+        handler: Box::new(handler),
+    }
+}
+
 pub struct Router {
     routes: Vec<Route>,
 }
@@ -158,9 +172,9 @@ pub(crate) fn is_match(m1: &Method, m2: &Method) -> bool {
     match m1 {
         &Method::Get => matches!(m2, &Method::Get),
         &Method::Post => matches!(m2, &Method::Post),
+        &Method::Put => matches!(m2, &Method::Put),
+        &Method::Delete => matches!(m2, &Method::Delete),
         _ => false,
-        // &Method::Put => matches!(m2, &Method::Put),
-        // &Method::Delete => matches!(m2, &Method::Delete),
         // &Method::Head => matches!(m2, &Method::Head),
         // &Method::Connect => matches!(m2, &Method::Connect),
         // &Method::Options => matches!(m2, &Method::Options),
