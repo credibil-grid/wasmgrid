@@ -9,9 +9,10 @@ use anyhow::anyhow;
 use bindings::wasi::jsondb::readwrite;
 use bindings::wasi::jsondb::types::{self, HostDatabase, HostError, HostStatement};
 use bindings::Jsondb;
+use futures::TryStreamExt;
 use jmespath::ast::Ast;
 use mongodb::options::ClientOptions;
-use mongodb::{bson, Client};
+use mongodb::{bson, Client, Cursor};
 use wasmtime::component::{Linker, Resource};
 use wasmtime_wasi::WasiView;
 
@@ -118,23 +119,43 @@ impl readwrite::Host for State {
 
         tracing::debug!("readwrite::Host::find: {}, {:?}", stmt.collection, stmt.conditions);
 
-        let ser = if let Some::<bson::Document>(doc) =
-            database.collection(&stmt.collection).find_one(stmt.conditions.clone()).await?
-        {
-            tracing::debug!("readwrite::Host::find: document found");
-            match serde_json::to_vec(&doc) {
+        let mut results: Vec<Vec<u8>> = Vec::new();
+        let mut cursor: Cursor<bson::Document> =
+            match database.collection(&stmt.collection).find(stmt.conditions.clone()).await {
+                Ok(cursor) => cursor,
+                Err(e) => {
+                    tracing::debug!("issue finding documents: {e}");
+                    return Ok(Err(self.table().push(anyhow!("issue finding documents: {e}"))?));
+                }
+            };
+        while let Some(doc) = cursor.try_next().await? {
+            let ser = match serde_json::to_vec(&doc) {
                 Ok(ser) => ser,
                 Err(e) => {
                     tracing::debug!("issue serializing result: {e}");
                     return Ok(Err(self.table().push(anyhow!("issue serializing result: {e}"))?));
                 }
-            }
-        } else {
-            tracing::debug!("readwrite::Host::find: no document found");
-            vec![]
-        };
+            };
+            results.push(ser);
+        }
 
-        Ok(Ok(vec![ser]))
+        // let ser = if let Some::<bson::Document>(doc) =
+        //     database.collection(&stmt.collection).find_one(stmt.conditions.clone()).await?
+        // {
+        //     tracing::debug!("readwrite::Host::find: document found");
+        //     match serde_json::to_vec(&doc) {
+        //         Ok(ser) => ser,
+        //         Err(e) => {
+        //             tracing::debug!("issue serializing result: {e}");
+        //             return Ok(Err(self.table().push(anyhow!("issue serializing result: {e}"))?));
+        //         }
+        //     }
+        // } else {
+        //     tracing::debug!("readwrite::Host::find: no document found");
+        //     vec![]
+        // };
+
+        Ok(Ok(results))
     }
 
     async fn update(
