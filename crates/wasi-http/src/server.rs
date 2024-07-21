@@ -175,11 +175,5 @@ pub(crate) fn is_match(m1: &Method, m2: &Method) -> bool {
         &Method::Put => matches!(m2, &Method::Put),
         &Method::Delete => matches!(m2, &Method::Delete),
         _ => false,
-        // &Method::Head => matches!(m2, &Method::Head),
-        // &Method::Connect => matches!(m2, &Method::Connect),
-        // &Method::Options => matches!(m2, &Method::Options),
-        // &Method::Trace => matches!(m2, &Method::Trace),
-        // &Method::Patch => matches!(m2, &Method::Patch),
-        // &Method::Other(_) => matches!(m2, &Method::Other(_)),
     }
 }

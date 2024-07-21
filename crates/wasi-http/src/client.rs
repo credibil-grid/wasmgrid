@@ -1,8 +1,8 @@
 use anyhow::anyhow;
 use http::header::{AUTHORIZATION, CONTENT_TYPE};
+use http::Uri;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-use url::Url;
 use wasi::http::outgoing_handler;
 use wasi::http::types::{Headers, Method, OutgoingBody, OutgoingRequest, Scheme};
 
@@ -64,7 +64,7 @@ impl RequestBuilder {
     }
 
     pub fn query(&mut self, query: &str) -> &mut Self {
-        self.query = match Url::parse(query) {
+        self.query = match query.parse::<Uri>() {
             Ok(url) => url.query().map(|s| s.to_string()),
             Err(e) => {
                 self.errors.push(format!("issue serializing body: {e}"));
@@ -94,21 +94,22 @@ impl RequestBuilder {
         // --------------------------------------------------------------------
         // Create request
         // --------------------------------------------------------------------
-        let url = Url::parse(&self.url).map_err(|e| anyhow!("issue parsing url: {e}"))?;
-
+        let url = &self.url.parse::<Uri>().map_err(|e| anyhow!("issue parsing url: {e}"))?;
         let request = OutgoingRequest::new(self.headers.clone());
 
         // method, scheme, authority
         request.set_method(&self.method).map_err(|()| anyhow!("issue setting method"))?;
-        let scheme = match url.scheme() {
+
+        let Some(scheme) = url.scheme() else {
+            return Err(anyhow!("missing scheme"));
+        };
+        let scheme = match scheme.as_str() {
             "http" => Scheme::Http,
             "https" => Scheme::Https,
-            _ => return Err(anyhow!("unsupported scheme: {}", url.scheme())),
+            _ => return Err(anyhow!("unsupported scheme: {}", scheme.as_str())),
         };
         request.set_scheme(Some(&scheme)).map_err(|()| anyhow!("issue setting scheme"))?;
-        request
-            .set_authority(Some(url.authority()))
-            .map_err(|()| anyhow!("issue setting authority"))?;
+        request.set_authority(url.host()).map_err(|()| anyhow!("issue setting authority"))?;
 
         // path + query
         let mut path_and_query = url.path().to_string();
