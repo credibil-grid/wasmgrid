@@ -20,6 +20,8 @@ use crate::runtime::{self, Runtime, State};
 
 static MONGODB: OnceLock<mongodb::Client> = OnceLock::new();
 
+/// Wrap generation of wit bindings to simplify exports.
+/// See <https://docs.rs/wasmtime/latest/wasmtime/component/macro.bindgen.html>
 mod bindings {
     #![allow(clippy::future_not_send)]
 

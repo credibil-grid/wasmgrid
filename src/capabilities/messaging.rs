@@ -18,7 +18,8 @@ use wasmtime_wasi::WasiView;
 
 use crate::runtime::{self, Runtime, State};
 
-/// Wrap generation of wit bindings to simplify exports
+/// Wrap generation of wit bindings to simplify exports.
+/// See <https://docs.rs/wasmtime/latest/wasmtime/component/macro.bindgen.html>
 mod bindings {
     #![allow(clippy::future_not_send)]
 

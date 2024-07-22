@@ -40,6 +40,12 @@ impl Runtime {
         store
     }
 
+    pub fn new_store_pre(&self) -> Store<State> {
+        let mut store = Store::new(&self.engine, State::new());
+        store.limiter(|t| &mut t.limits);
+        store
+    }
+
     /// Returns a "pre-instantiated" Instance — an efficient form of instantiation
     /// where import type-checking and lookup has been resolved.
     pub const fn instance_pre(&self) -> &InstancePre<State> {
@@ -149,7 +155,7 @@ impl Default for State {
 
 impl State {
     /// Create a new State instance.
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self::default()
     }
 }

@@ -13,7 +13,9 @@ use wasmtime::component::Linker;
 
 use crate::runtime::{self, Runtime, State};
 
-pub mod bindings {
+/// Wrap generation of wit bindings to simplify exports.
+/// See <https://docs.rs/wasmtime/latest/wasmtime/component/macro.bindgen.html>
+ mod bindings {
     #![allow(clippy::future_not_send)]
 
     pub use super::document::{Document, StreamObjectNames};

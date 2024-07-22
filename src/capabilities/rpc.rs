@@ -9,10 +9,11 @@ use anyhow::anyhow;
 use async_nats::{AuthError, ConnectOptions, HeaderMap, Message};
 use bindings::wasi::rpc::client::{self, HostError};
 use bindings::wasi::rpc::types;
-use bindings::Rpc;
+use bindings::{Rpc, RpcPre};
 use bytes::Bytes;
 use futures::stream::StreamExt;
 use wasmtime::component::{Linker, Resource};
+use wasmtime::Store;
 use wasmtime_wasi::WasiView;
 
 use crate::runtime::{self, Runtime, State};
@@ -20,7 +21,8 @@ use crate::runtime::{self, Runtime, State};
 // TODO: create a client struct with both NATS client and request timeout
 static CLIENT: OnceLock<async_nats::Client> = OnceLock::new();
 
-/// Wrap generation of wit bindings to simplify exports
+/// Wrap generation of wit bindings to simplify exports.
+/// See <https://docs.rs/wasmtime/latest/wasmtime/component/macro.bindgen.html>
 mod bindings {
     #![allow(clippy::future_not_send)]
 
@@ -35,6 +37,11 @@ mod bindings {
         with: {
             "wasi:rpc/client/error": Error,
         },
+        // additional_derives: [
+        //     Hash,
+        //     serde::Deserialize,
+        //     serde::Serialize,
+        // ],
     });
 }
 
@@ -93,7 +100,8 @@ impl runtime::Capability for Capability {
         }
 
         // get 'server' component's name
-        let (rpc, _) = Rpc::instantiate_pre(&mut store, runtime.instance_pre()).await?;
+        let pre = RpcPre::new(runtime.instance_pre().clone())?;
+        let rpc = pre.instantiate_async(&mut store).await?;
         let cfg = rpc.wasi_rpc_server().call_configure(&mut store).await??;
 
         // subscribe to rpc requests for 'server' endpoints
@@ -107,7 +115,7 @@ impl runtime::Capability for Capability {
                 return Err(anyhow!("reply subject not found"));
             };
 
-            match handle_request(&runtime, request).await {
+            match handle_request(pre.clone(), request).await {
                 Ok(resp) => client.publish(subject, resp.into()).await?,
                 Err(e) => {
                     tracing::error!("rpc server error: {e:?}");
@@ -126,9 +134,7 @@ impl runtime::Capability for Capability {
 }
 
 // Forward request to the wasm Guest.
-async fn handle_request(runtime: &Runtime, request: Message) -> anyhow::Result<Vec<u8>> {
-    let runtime = runtime.clone();
-
+async fn handle_request(pre: RpcPre<State>, request: Message) -> anyhow::Result<Vec<u8>> {
     tokio::spawn(async move {
         // convert subject to endpoint
         let endpoint = request.subject.trim_start_matches("rpc:").replace('.', "/");
@@ -136,8 +142,11 @@ async fn handle_request(runtime: &Runtime, request: Message) -> anyhow::Result<V
         // forward request to 'server' component
         tracing::debug!("forwarding request to {endpoint}");
 
-        let mut store = runtime.new_store();
-        let (rpc, _) = Rpc::instantiate_pre(&mut store, runtime.instance_pre()).await?;
+        // let mut store = runtime.new_store();
+        let mut store = Store::new(pre.engine(), State::new());
+
+        let rpc = pre.instantiate_async(&mut store).await?;
+        // let (rpc, _) = Rpc::instantiate_pre(&mut store, runtime.instance_pre()).await?;
 
         rpc.wasi_rpc_server()
             .call_handle(&mut store, &endpoint, &request.payload.to_vec())
