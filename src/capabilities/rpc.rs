@@ -85,14 +85,14 @@ impl runtime::Capability for Capability {
         tracing::info!("connected to: {}", &self.addr);
         CLIENT.set(client.clone()).map_err(|_| anyhow!("CLIENT already initialized"))?;
 
-        let mut store = runtime.new_store();
+        let pre = RpcPre::new(runtime.instance_pre().clone())?;
 
         // check to see if server is required
         if !runtime
             .instance_pre()
             .component()
             .component_type()
-            .exports(store.engine())
+            .exports(pre.engine())
             .any(|e| e.0.starts_with(self.namespace()))
         {
             tracing::debug!("rpc server not required");
@@ -100,7 +100,7 @@ impl runtime::Capability for Capability {
         }
 
         // get 'server' component's name
-        let pre = RpcPre::new(runtime.instance_pre().clone())?;
+        let mut store = Store::new(pre.engine(), State::new());
         let rpc = pre.instantiate_async(&mut store).await?;
         let cfg = rpc.wasi_rpc_server().call_configure(&mut store).await??;
 
@@ -120,8 +120,8 @@ impl runtime::Capability for Capability {
                 Err(e) => {
                     tracing::error!("rpc server error: {e:?}");
 
-                    // forward RPC server error to Guest where it will be
-                    // processed in the `client::Host::call` method (below)
+                    // forward RPC server error to Guest where it will be processed
+                    // in the `client::Host::call` method (below)
                     let mut headers = HeaderMap::new();
                     headers.insert("Error", &*format!("rpc server error: {e:?}"));
                     client.publish_with_headers(subject, headers, Bytes::new()).await?;
@@ -142,12 +142,10 @@ async fn handle_request(pre: RpcPre<State>, request: Message) -> anyhow::Result<
         // forward request to 'server' component
         tracing::debug!("forwarding request to {endpoint}");
 
-        // let mut store = runtime.new_store();
         let mut store = Store::new(pre.engine(), State::new());
+        store.limiter(|t| &mut t.limits);
 
         let rpc = pre.instantiate_async(&mut store).await?;
-        // let (rpc, _) = Rpc::instantiate_pre(&mut store, runtime.instance_pre()).await?;
-
         rpc.wasi_rpc_server()
             .call_handle(&mut store, &endpoint, &request.payload.to_vec())
             .await?

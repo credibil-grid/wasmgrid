@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use anyhow::anyhow;
 use bytes::Bytes;
 use wasmtime::component::{Component, InstancePre, Linker};
-use wasmtime::{Config, Engine, Store, StoreLimits};
+use wasmtime::{Config, Engine, StoreLimits};
 use wasmtime_wasi::{
     HostOutputStream, ResourceTable, StreamError, StreamResult, WasiCtx, WasiCtxBuilder, WasiView,
 };
@@ -28,24 +28,10 @@ pub trait Capability: Send {
 /// Runtime for a wasm component.
 #[derive(Clone)]
 pub struct Runtime {
-    engine: Engine,
     instance_pre: InstancePre<State>,
 }
 
 impl Runtime {
-    /// Returns a [`Store`] for use when calling guests.
-    pub fn new_store(&self) -> Store<State> {
-        let mut store = Store::new(&self.engine, State::new());
-        store.limiter(|t| &mut t.limits);
-        store
-    }
-
-    pub fn new_store_pre(&self) -> Store<State> {
-        let mut store = Store::new(&self.engine, State::new());
-        store.limiter(|t| &mut t.limits);
-        store
-    }
-
     /// Returns a "pre-instantiated" Instance — an efficient form of instantiation
     /// where import type-checking and lookup has been resolved.
     pub const fn instance_pre(&self) -> &InstancePre<State> {
@@ -89,10 +75,7 @@ impl Builder {
         let instance_pre = linker.instantiate_pre(&component)?;
         let component_type = component.component_type();
 
-        let runtime = Runtime {
-            engine: engine.clone(),
-            instance_pre,
-        };
+        let runtime = Runtime { instance_pre };
 
         // start capabilities
         for cap in self.capabilities {
@@ -128,7 +111,7 @@ pub type Metadata = Box<dyn Any + Send>;
 pub struct State {
     table: ResourceTable,
     ctx: WasiCtx,
-    limits: StoreLimits,
+    pub limits: StoreLimits,
 
     pub metadata: HashMap<String, Metadata>,
 }

@@ -136,6 +136,7 @@ async fn handle_request(
         // prepare wasmtime http request and response
         // let mut store = runtime.new_store();
         let mut store = Store::new(pre.engine(), State::new());
+        store.limiter(|t| &mut t.limits);
 
         store.data_mut().metadata.insert("wasi_http_ctx".into(), Box::new(WasiHttpCtx::new()));
         let incoming = store.data_mut().new_incoming_request(scheme, req)?;
@@ -143,7 +144,6 @@ async fn handle_request(
 
         // call guest with request
         let proxy = pre.instantiate_async(&mut store).await?;
-
         proxy.wasi_http_incoming_handler().call_handle(&mut store, incoming, outgoing).await
     });
 
