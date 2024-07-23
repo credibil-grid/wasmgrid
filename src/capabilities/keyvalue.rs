@@ -104,16 +104,14 @@ impl store::Host for State {
             return Ok(Err(store::Error::Other("Capacity not initialized".into())));
         };
 
-        let Ok(bucket) = jetstream
-            .create_key_value(jetstream::kv::Config {
+        let bucket = match jetstream.create_key_value(jetstream::kv::Config {
                 bucket: identifier.clone(),
                 history: 10,
                 max_bytes: *capacity,
                 ..Default::default()
-            })
-            .await
-        else {
-            return Ok(Err(store::Error::Other("Failed to create bucket".into())));
+            }).await {
+            Ok(bucket) => bucket,
+            Err(e) => return Ok(Err(store::Error::Other(format!("Failed to create bucket: {e}")))),
         };
 
         Ok(Ok(self.table().push(bucket)?))
