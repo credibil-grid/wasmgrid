@@ -85,14 +85,12 @@ impl runtime::Capability for Capability {
         tracing::info!("connected to: {}", &self.addr);
         CLIENT.set(client.clone()).map_err(|_| anyhow!("CLIENT already initialized"))?;
 
-        let pre = RpcPre::new(runtime.instance_pre().clone())?;
-
         // check to see if server is required
         if !runtime
             .instance_pre()
             .component()
             .component_type()
-            .exports(pre.engine())
+            .exports(runtime.instance_pre().engine())
             .any(|e| e.0.starts_with(self.namespace()))
         {
             tracing::debug!("rpc server not required");
@@ -100,6 +98,7 @@ impl runtime::Capability for Capability {
         }
 
         // get 'server' component's name
+        let pre = RpcPre::new(runtime.instance_pre().clone())?;
         let mut store = Store::new(pre.engine(), State::new());
         let rpc = pre.instantiate_async(&mut store).await?;
         let cfg = rpc.wasi_rpc_server().call_configure(&mut store).await??;
