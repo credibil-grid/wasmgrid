@@ -50,11 +50,11 @@ struct NatsCreds {
 pub async fn main() -> wasmtime::Result<()> {
     let args = Args::parse();
 
+    // env vars
     if cfg!(debug_assertions) {
         dotenv().ok();
     }
 
-    // env vars
     let wasm = env::var("WASM_FILE").unwrap_or_else(|_| args.wasm);
     let http_addr = env::var("HTTP_ADDR").unwrap_or_else(|_| DEF_HTTP_ADDR.into());
     let mgo_cnn = env::var("MGO_CNN").unwrap_or_else(|_| DEF_MGO_CNN.into());
