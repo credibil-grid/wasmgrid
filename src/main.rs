@@ -55,6 +55,7 @@ pub async fn main() -> wasmtime::Result<()> {
         dotenv().ok();
     }
 
+    let wasm = env::var("WASM_FILE").unwrap_or_else(|_| args.wasm);
     let http_addr = env::var("HTTP_ADDR").unwrap_or_else(|_| DEF_HTTP_ADDR.into());
     let mgo_cnn = env::var("MGO_CNN").unwrap_or_else(|_| DEF_MGO_CNN.into());
     let nats_cnn = env::var("NATS_ADDR").unwrap_or_else(|_| DEF_NATS_ADDR.into());
@@ -82,7 +83,8 @@ pub async fn main() -> wasmtime::Result<()> {
     #[cfg(feature = "jsondb")]
     let builder = builder.capability(jsondb::new(mgo_cnn));
     #[cfg(feature = "keyvalue")]
-    let builder = builder.capability(keyvalue::new(nats_cnn.clone(), nats_creds.clone(), nats_kv_capacity));
+    let builder =
+        builder.capability(keyvalue::new(nats_cnn.clone(), nats_creds.clone(), nats_kv_capacity));
     #[cfg(feature = "messaging")]
     let builder = builder.capability(messaging::new(nats_cnn.clone()));
     #[cfg(feature = "p2p")]
@@ -92,7 +94,7 @@ pub async fn main() -> wasmtime::Result<()> {
     #[cfg(feature = "vault")]
     let builder = builder.capability(vault::new());
 
-    builder.run(args.wasm)?;
+    builder.run(wasm)?;
 
     shutdown().await
 }

@@ -8,29 +8,36 @@ on:
     paths:
       - 'Cargo.lock'
       - 'src/**'
-      - crates/**
+      - 'crates/**'
   pull_request:
     branches: [main]
     paths:
       - 'Cargo.lock'
       - 'src/**'
-      - crates/**
+      - 'crates/**'
 
 concurrency:
-  group:
-    ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
   publish:
     name: Publish
     runs-on: ubuntu-latest
+    if: ${{ !contains(github.event.head_commit.message, '[skip]') }}
     permissions:
       contents: write
-
+    
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Increment version
+        uses: reecetech/version-increment@2024.4.3
+        id: version
+        with:
+          scheme: semver
+          increment: patch
 
       - uses: docker/setup-qemu-action@v3
 
@@ -49,4 +56,5 @@ jobs:
         with:
           push: true
           tags: |
+            acrcredibil.azurecr.io/demo/${{ github.event.repository.name }}:${{ steps.version.outputs.version }}
             acrcredibil.azurecr.io/demo/${{ github.event.repository.name }}:latest
