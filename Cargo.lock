@@ -824,7 +824,7 @@ checksum = "06ea2b9bc92be3c2baa9334a323ebca2d6f074ff852cd1d7b11064035cd3868f"
 [[package]]
 name = "core-utils"
 version = "0.1.0-alpha.4"
-source = "git+https://github.com/vercre/vercre#a51ec40ae8a7cc0c7ec3b450c61e14165f0700cd"
+source = "git+https://github.com/vercre/vercre#e773ae3cd984dabed5da64e38b3da006b5f31145"
 dependencies = [
  "base64ct",
  "fastrand 2.1.0",
@@ -1293,7 +1293,7 @@ checksum = "339544cc9e2c4dc3fc7149fd630c5f22263a4fdf18a98afd0075784968b5cf00"
 [[package]]
 name = "dif-exch"
 version = "0.1.0-alpha.4"
-source = "git+https://github.com/vercre/vercre#a51ec40ae8a7cc0c7ec3b450c61e14165f0700cd"
+source = "git+https://github.com/vercre/vercre#e773ae3cd984dabed5da64e38b3da006b5f31145"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2383,7 +2383,7 @@ dependencies = [
  "iana-time-zone-haiku",
  "js-sys",
  "wasm-bindgen",
- "windows-core 0.52.0",
+ "windows-core 0.51.1",
 ]
 
 [[package]]
@@ -3547,9 +3547,9 @@ dependencies = [
 
 [[package]]
 name = "object"
-version = "0.36.1"
+version = "0.36.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "081b846d1d56ddfc18fdf1a922e4f6e07a11768ea1b92dec44e42b72712ccfce"
+checksum = "3f203fa8daa7bb185f760ae12bd8e097f63d17041dcdcaf675ac54cdf863170e"
 dependencies = [
  "crc32fast",
  "hashbrown 0.14.5",
@@ -3590,7 +3590,7 @@ checksum = "c08d65885ee38876c4f86fa503fb49d7b507c2b62552df7c70b2fce627e06381"
 [[package]]
 name = "openid"
 version = "0.1.0-alpha.4"
-source = "git+https://github.com/vercre/vercre#a51ec40ae8a7cc0c7ec3b450c61e14165f0700cd"
+source = "git+https://github.com/vercre/vercre#e773ae3cd984dabed5da64e38b3da006b5f31145"
 dependencies = [
  "anyhow",
  "base64ct",
@@ -3830,9 +3830,9 @@ checksum = "8b870d8c151b6f2fb93e84a13146138f05d02ed11c7e7c54f8826aaaf7c9f184"
 
 [[package]]
 name = "pkarr"
-version = "2.1.0"
+version = "2.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4548c673cbf8c91b69f7a17d3a042710aa73cffe5e82351db5378f26c3be64d8"
+checksum = "a8ffdac8b4b7ea5240c46b28f88de799e0efaa2b93ccb08eaae6e50835dfe137"
 dependencies = [
  "bytes",
  "document-features",
@@ -4132,7 +4132,7 @@ dependencies = [
 [[package]]
 name = "proof"
 version = "0.1.0-alpha.4"
-source = "git+https://github.com/vercre/vercre#a51ec40ae8a7cc0c7ec3b450c61e14165f0700cd"
+source = "git+https://github.com/vercre/vercre#e773ae3cd984dabed5da64e38b3da006b5f31145"
 dependencies = [
  "aes-gcm",
  "anyhow",
@@ -6383,7 +6383,7 @@ checksum = "49874b5167b65d7193b8aba1567f5c7d93d001cafc34600cee003eda787e483f"
 [[package]]
 name = "w3c-vc"
 version = "0.1.0-alpha.4"
-source = "git+https://github.com/vercre/vercre#a51ec40ae8a7cc0c7ec3b450c61e14165f0700cd"
+source = "git+https://github.com/vercre/vercre#e773ae3cd984dabed5da64e38b3da006b5f31145"
 dependencies = [
  "anyhow",
  "base64ct",
