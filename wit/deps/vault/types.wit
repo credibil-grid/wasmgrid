@@ -37,7 +37,7 @@ interface types {
     /// [IANA_JOSE]: https://www.iana.org/assignments/jose/jose.xhtml
     // variant algorithm {
     variant algorithm {
-        /// ECDSA using secp256k1 curve and SHA-256. 
+        /// ECDSA using `secp256k1` curve and SHA-256. 
         es256k,
 
         /// EdDSA vault algorithms using `ed22519` curve and SHA-256.
