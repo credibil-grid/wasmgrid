@@ -33,8 +33,13 @@ mod bindings {
             "wasi:vault/keystore/error": Error,
             "wasi:vault/keystore/key-set": KeySet,
         },
+        additional_derives: [
+            Clone,
+        ],
     });
 }
+
+
 
 pub type Error = anyhow::Error;
 

@@ -1,3 +1,4 @@
+/// https://component-model.bytecodealliance.org/design/wit.html
 
 interface keystore {
     // variant error {
