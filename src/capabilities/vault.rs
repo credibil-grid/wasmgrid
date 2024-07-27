@@ -7,8 +7,10 @@ use anyhow::anyhow;
 use base64ct::{Base64UrlUnpadded, Encoding};
 use bindings::wasi::vault::keystore::{self, Algorithm, Jwk, KeyType};
 use bindings::Vault;
-use ecdsa::signature::Signer as _;
-use k256::Secp256k1;
+// use ecdsa::{Signature, Signer as _, SigningKey};
+use ed25519_dalek::Signer;
+use ed25519_dalek::{SecretKey, SigningKey};
+// use k256::Secp256k1;
 use wasmtime::component::{Linker, Resource};
 use wasmtime_wasi::WasiView;
 
@@ -35,7 +37,13 @@ mod bindings {
 }
 
 pub type Error = anyhow::Error;
-// pub type KeySet = async_nats::jetstream::kv::Store;
+
+// const SECP1_X: &str = "tXSKB_rubXS7sCjXqupVJEzTcW3MsjmEvq1YpXn96Zg";
+// const SECP1_Y: &str = "dOicXqbjFxoGJ-K0-GJ1kHYJqic_D_OMuUwkQ7Ol6nk";
+// const SECP1_SECRET: &str = "0Md3MhPaKEpnKAyKE498EdDFerD5NLeKJ5Rb-vC16Gs";
+
+const ED25519_X: &str = "q6rjRnEH_XK72jvB8FNBJtOl9_gDs6NW49cAz6p2sW4";
+const ED25519_SECRET: &str = "cCxmHfFfIJvP74oNKjAuRC3zYoDMo0pFsAs19yKMowY";
 
 pub struct KeySet {}
 
@@ -85,42 +93,68 @@ impl keystore::HostKeySet for State {
     async fn sign(
         &mut self, _rep: Resource<KeySet>, _: KeyType, data: Vec<u8>,
     ) -> wasmtime::Result<Result<Vec<u8>, Resource<Error>>> {
-        // FIXME: replace hard-coded signer with key enclave-based signing
-        const JWK_D: &str = "0Md3MhPaKEpnKAyKE498EdDFerD5NLeKJ5Rb-vC16Gs";
-
-        let decoded = match Base64UrlUnpadded::decode_vec(JWK_D) {
+        let decoded = match Base64UrlUnpadded::decode_vec(ED25519_SECRET) {
             Ok(decoded) => decoded,
             Err(e) => {
-                tracing::debug!("issue decoding JWK_D: {e}");
-                return Ok(Err(self.table().push(anyhow!("issue decoding JWK_D: {e}"))?));
+                tracing::debug!("issue decoding ED25519_SECRET: {e}");
+                return Ok(Err(self
+                    .table()
+                    .push(anyhow!("issue decoding ED25519_SECRET: {e}"))?));
             }
         };
-        let signing_key: ecdsa::SigningKey<Secp256k1> =
-            match ecdsa::SigningKey::from_slice(&decoded) {
-                Ok(signing_key) => signing_key,
-                Err(e) => {
-                    tracing::debug!("issue deserializing signing key: {e}");
-                    return Ok(Err(self
-                        .table()
-                        .push(anyhow!("issue deserializing signing key: {e}"))?));
-                }
-            };
-        let sig: ecdsa::Signature<Secp256k1> = signing_key.sign(&data);
+        let secret_key: SecretKey = match decoded.try_into() {
+            Ok(signing_key) => signing_key,
+            Err(_) => {
+                tracing::debug!("issue deserializing signing key");
+                return Ok(Err(self.table().push(anyhow!("issue deserializing signing key"))?));
+            }
+        };
 
-        Ok(Ok(sig.to_vec()))
+        let signing_key: SigningKey = SigningKey::from_bytes(&secret_key);
+        Ok(Ok(signing_key.sign(&data).to_bytes().to_vec()))
+
+        // let decoded = match Base64UrlUnpadded::decode_vec(SECP1_SECRET) {
+        //     Ok(decoded) => decoded,
+        //     Err(e) => {
+        //         tracing::debug!("issue decoding SECP1_SECRET: {e}");
+        //         return Ok(Err(self.table().push(anyhow!("issue decoding SECP1_SECRET: {e}"))?));
+        //     }
+        // };
+
+        // let signing_key: ecdsa::SigningKey<Secp256k1> =
+        //     match ecdsa::SigningKey::from_slice(&decoded) {
+        //         Ok(signing_key) => signing_key,
+        //         Err(e) => {
+        //             tracing::debug!("issue deserializing signing key: {e}");
+        //             return Ok(Err(self
+        //                 .table()
+        //                 .push(anyhow!("issue deserializing signing key: {e}"))?));
+        //         }
+        //     };
+
+        // let sig: ecdsa::Signature<Secp256k1> = signing_key.sign(&data);
+
+        // Ok(Ok(sig.to_vec()))
     }
 
     async fn verifying_key(
         &mut self, _rep: Resource<KeySet>, _: KeyType,
     ) -> wasmtime::Result<Result<Jwk, Resource<Error>>> {
-        // FIXME: replace hard-coded public key with enclave-based key
         Ok(Ok(Jwk {
             kid: None,
-            kty: "EC".into(),
-            crv: "secp256k1".into(),
-            x: "tXSKB_rubXS7sCjXqupVJEzTcW3MsjmEvq1YpXn96Zg".into(),
-            y: Some("dOicXqbjFxoGJ-K0-GJ1kHYJqic_D_OMuUwkQ7Ol6nk".into()),
+            kty: "OKP".into(),
+            crv: "Ed25519".into(),
+            x: ED25519_X.into(),
+            y: None,
         }))
+
+        // Ok(Ok(Jwk {
+        //     kid: None,
+        //     kty: "EC".into(),
+        //     crv: "secp256k1".into(),
+        //     x: SECP1_X.into(),
+        //     y: Some(SECP1_Y.into(),),
+        // }))
     }
 
     async fn delete(
@@ -134,11 +168,19 @@ impl keystore::HostKeySet for State {
     ) -> wasmtime::Result<Result<Vec<Jwk>, Resource<Error>>> {
         Ok(Ok(vec![Jwk {
             kid: None,
-            kty: "EC".into(),
-            crv: "secp256k1".into(),
-            x: "tXSKB_rubXS7sCjXqupVJEzTcW3MsjmEvq1YpXn96Zg".into(),
-            y: Some("dOicXqbjFxoGJ-K0-GJ1kHYJqic_D_OMuUwkQ7Ol6nk".into()),
+            kty: "OKP".into(),
+            crv: "Ed25519".into(),
+            x: ED25519_X.into(),
+            y: None,
         }]))
+
+        // Ok(Ok(vec![Jwk {
+        //     kid: None,
+        //     kty: "EC".into(),
+        //     crv: "secp256k1".into(),
+        //     x: "tXSKB_rubXS7sCjXqupVJEzTcW3MsjmEvq1YpXn96Zg".into(),
+        //     y: Some("dOicXqbjFxoGJ-K0-GJ1kHYJqic_D_OMuUwkQ7Ol6nk".into()),
+        // }]))
     }
 
     fn drop(&mut self, rep: Resource<KeySet>) -> Result<(), wasmtime::Error> {

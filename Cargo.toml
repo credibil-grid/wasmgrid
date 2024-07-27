@@ -34,6 +34,7 @@ bytes = "1.6.1"
 clap = { version = "4.5.11", features = ["derive"] }
 dotenv = "0.15.0"
 ecdsa = { version = "0.16.9", optional = true }
+ed25519-dalek = { version = "2.1.1", features = ["rand_core"] }
 futures = "0.3.30"
 http = "1.1.0"
 hyper = "1.4.1"

@@ -45,7 +45,8 @@ Push to Azure:
 az acr login --name acrcredibil
 docker push acrcredibil.azurecr.io/demo/wasmgrid
 ```
-## Trobleshooting
+
+## Troubleshooting
 
 To test/debug build locally:
 
