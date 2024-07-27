@@ -1,0 +1,59 @@
+
+interface keystore {
+    // variant error {
+    //     no-such-store,
+    //     access-denied,
+    //     other(string)
+    // }
+
+    /// Error type for vault operations. The implementation must be provided
+    /// by the host.
+    resource error {
+        trace: func() -> string;    
+    }
+
+    variant key-type {
+        signing,
+        key-agreement,
+        authorization,
+        authentication,
+    }
+
+        /// Supported [IANA_JOSE] vault algorithms.
+    /// [IANA_JOSE]: https://www.iana.org/assignments/jose/jose.xhtml
+    variant algorithm {
+        /// ECDSA using `secp256k1` curve and SHA-256. 
+        es256k,
+
+        /// EdDSA vault algorithms using `ed22519` curve and SHA-256.
+        eddsa,
+    }
+
+    /// JSON Web Key format public key.
+    /// See <https://www.rfc-editor.org/rfc/rfc7517.html>.
+    record jwk {
+        kid: option<string>,
+        kty: string,
+        crv: string,
+        x: string,
+        y: option<string>,
+    }
+
+    supported-algorithms: func() -> list<algorithm>;
+
+    open: func(identifier: string) -> result<key-set, error>;
+
+    resource key-set {
+        generate: func(key: key-type, alg: algorithm) -> result<jwk, error>;
+
+        sign: func(key: key-type, data: list<u8>) -> result<list<u8>, error>;
+
+        verifying-key: func(key: key-type,) -> result<jwk, error>;
+
+        delete: func(key: key-type) -> result<_, error>;
+
+        // exists: func(key: key-type) -> result<bool, error>;
+
+        list-versions: func(key: key-type) -> result<list<jwk>, error>;
+    }
+}
