@@ -1,4 +1,3 @@
-package wasi:rpc@0.1.0-draft;
 
 interface types {
     /// A serialized request to a RPC server.
@@ -42,7 +41,7 @@ interface client {
 interface server {
     use types.{request, response};
 
-    /// Errors that can be returned by the server.
+    /// Errors returned by the server.
     variant error {
         /// The endpoint specified is invalid.
         unknown-endpoint,
@@ -57,7 +56,6 @@ interface server {
     /// Configuration includes the server's unique identifier.
     record server-configuration {
         identifier: string,
-        // endpoints: list<string>,
     }
 
     /// Configure is called by the runtime to get the server's runtime configuration.
@@ -67,14 +65,4 @@ interface server {
 
     /// Handle a request from a client.
     handle: func(endpoint: string, request: request) -> result<response, error>;
-}
-
-world imports {
-    import types;
-	import client;
-}
-
-world rpc {
-	include imports;
-	export server;
 }

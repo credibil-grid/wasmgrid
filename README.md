@@ -63,6 +63,12 @@ cargo build --package wasmgrid --target aarch64-unknown-linux-musl --release
 See <https://docs.wasmtime.dev/examples-minimal.html/> for more information on 
 optimising embedded `wasmtime`builds.
 
+### Debugging bindgen! macro
+
+```bash
+cargo expand --package wasmgrid capabilities::vault::bindings > expanded.rs
+```
+
 ## Nex
 
 ```bash

@@ -123,20 +123,17 @@ pub mod rpc {
     }
 }
 
-mod signature_bindings {
+mod vault_bindings {
     wit_bindgen::generate!({
         path: "../../wit",
         world: "vault",
         with: {
-            "wasi:vault/types@0.1.0-draft": generate,
-            "wasi:vault/enclave@0.1.0-draft": generate,
-            "wasi:vault/signer@0.1.0-draft": generate,
-            "wasi:vault/verifier@0.1.0-draft": generate,
+            "wasi:vault/keystore@0.1.0-draft": generate,
         },
     });
 }
 
 /// Bindings for the `wasi:vault` world.
 pub mod vault {
-    pub use crate::signature_bindings::wasi::vault::*;
+    pub use crate::vault_bindings::wasi::vault::*;
 }
