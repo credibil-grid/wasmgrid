@@ -1,17 +1,17 @@
 /// https://component-model.bytecodealliance.org/design/wit.html
 
 interface keystore {
-    // variant error {
-    //     no-such-store,
-    //     access-denied,
-    //     other(string)
-    // }
-
-    /// Error type for vault operations. The implementation must be provided
-    /// by the host.
-    resource error {
-        trace: func() -> string;    
+    variant error {
+        no-such-key-set,
+        access-denied,
+        other(string)
     }
+
+    // /// Error type for vault operations. The implementation must be provided
+    // /// by the host.
+    // resource error {
+    //     trace: func() -> string;    
+    // }
 
     variant key-type {
         signing,

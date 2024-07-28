@@ -3,6 +3,8 @@
 //! This module implements a runtime capability for `wasi:vault`
 //! (<https://github.com/WebAssembly/wasi-vault>).
 
+use std::vec;
+
 use anyhow::anyhow;
 use base64ct::{Base64UrlUnpadded, Encoding};
 use bindings::wasi::vault::keystore::{self, Algorithm, Jwk, KeyType};
@@ -21,7 +23,7 @@ use crate::runtime::{self, Runtime, State};
 mod bindings {
     #![allow(clippy::future_not_send)]
 
-    pub use super::{Error, KeySet};
+    pub use super::KeySet;
 
     wasmtime::component::bindgen!({
         world: "vault",
@@ -30,7 +32,7 @@ mod bindings {
         async: true,
         trappable_imports: true,
         with: {
-            "wasi:vault/keystore/error": Error,
+            // "wasi:vault/keystore/error": Error,
             "wasi:vault/keystore/key-set": KeySet,
         },
         additional_derives: [
@@ -40,7 +42,7 @@ mod bindings {
     });
 }
 
-pub type Error = anyhow::Error;
+// pub type Error = anyhow::Error;
 
 // const SECP1_X: &str = "tXSKB_rubXS7sCjXqupVJEzTcW3MsjmEvq1YpXn96Zg";
 // const SECP1_Y: &str = "dOicXqbjFxoGJ-K0-GJ1kHYJqic_D_OMuUwkQ7Ol6nk";
@@ -50,7 +52,9 @@ const ED25519_X: &str = "q6rjRnEH_XK72jvB8FNBJtOl9_gDs6NW49cAz6p2sW4";
 const ED25519_SECRET: &str = "cCxmHfFfIJvP74oNKjAuRC3zYoDMo0pFsAs19yKMowY";
 
 #[derive(Clone)]
-pub struct KeySet {}
+pub struct KeySet {
+    identifier: String,
+}
 
 pub struct Capability {}
 
@@ -77,13 +81,16 @@ impl runtime::Capability for Capability {
 #[async_trait::async_trait]
 impl keystore::Host for State {
     async fn open(
-        &mut self, _identifier: String,
-    ) -> wasmtime::Result<Result<Resource<KeySet>, Resource<Error>>> {
-        todo!()
+        &mut self, identifier: String,
+    ) -> wasmtime::Result<Result<Resource<KeySet>, keystore::Error>> {
+        tracing::debug!("keystore::Host::open {identifier}");
+
+        let key_set = KeySet { identifier };
+        Ok(Ok(self.table().push(key_set)?))
     }
 
     async fn supported_algorithms(&mut self) -> wasmtime::Result<Vec<Algorithm>> {
-        todo!()
+        Ok(vec![Algorithm::Eddsa])
     }
 }
 
@@ -91,26 +98,28 @@ impl keystore::Host for State {
 impl keystore::HostKeySet for State {
     async fn generate(
         &mut self, _rep: Resource<KeySet>, _: KeyType, _: Algorithm,
-    ) -> wasmtime::Result<Result<Jwk, Resource<Error>>> {
+    ) -> wasmtime::Result<Result<Jwk, keystore::Error>> {
+        tracing::debug!("keystore::HostKeySet::generate");
+
         todo!("generate new key for KeyType")
     }
 
     async fn sign(
-        &mut self, _rep: Resource<KeySet>, _: KeyType, data: Vec<u8>,
-    ) -> wasmtime::Result<Result<Vec<u8>, Resource<Error>>> {
-        let decoded = match Base64UrlUnpadded::decode_vec(ED25519_SECRET) {
-            Ok(decoded) => decoded,
-            Err(e) => {
-                tracing::debug!("issue decoding ED25519_SECRET: {e}");
-                return Ok(Err(self
-                    .table()
-                    .push(anyhow!("issue decoding ED25519_SECRET: {e}"))?));
-            }
+        &mut self, rep: Resource<KeySet>, _: KeyType, data: Vec<u8>,
+    ) -> wasmtime::Result<Result<Vec<u8>, keystore::Error>> {
+        tracing::debug!("keystore::HostKeySet::sign");
+
+        let Ok(key_set) = self.table().get_mut(&rep) else {
+            return Ok(Err(keystore::Error::NoSuchKeySet));
         };
-        let Ok(secret_key) = decoded.try_into() else {
-            tracing::debug!("issue deserializing signing key");
-            return Ok(Err(self.table().push(anyhow!("issue deserializing signing key"))?));
-        };
+        tracing::debug!("identifier: {}", key_set.identifier);
+
+        let decoded = Base64UrlUnpadded::decode_vec(ED25519_SECRET)
+            .map_err(|e| (keystore::Error::Other(format!("issue decoding ED25519_SECRET: {e}"))))?;
+
+        let secret_key = decoded
+            .try_into()
+            .map_err(|_| (keystore::Error::Other(format!("issue deserializing signing key"))))?;
 
         let signing_key: SigningKey = SigningKey::from_bytes(&secret_key);
         Ok(Ok(signing_key.sign(&data).to_bytes().to_vec()))
@@ -140,8 +149,14 @@ impl keystore::HostKeySet for State {
     }
 
     async fn verifying_key(
-        &mut self, _rep: Resource<KeySet>, _: KeyType,
-    ) -> wasmtime::Result<Result<Jwk, Resource<Error>>> {
+        &mut self, rep: Resource<KeySet>, _: KeyType,
+    ) -> wasmtime::Result<Result<Jwk, keystore::Error>> {
+        tracing::debug!("keystore::HostKeySet::verifying_key");
+
+        let Ok(_key_set) = self.table().get_mut(&rep) else {
+            return Ok(Err(keystore::Error::NoSuchKeySet));
+        };
+
         Ok(Ok(Jwk {
             kid: None,
             kty: "OKP".into(),
@@ -161,13 +176,20 @@ impl keystore::HostKeySet for State {
 
     async fn delete(
         &mut self, _rep: Resource<KeySet>, _: KeyType,
-    ) -> wasmtime::Result<Result<(), Resource<Error>>> {
+    ) -> wasmtime::Result<Result<(), keystore::Error>> {
+        tracing::debug!("keystore::HostKeySet::delete");
         todo!()
     }
 
     async fn list_versions(
-        &mut self, _rep: Resource<KeySet>, _: KeyType,
-    ) -> wasmtime::Result<Result<Vec<Jwk>, Resource<Error>>> {
+        &mut self, rep: Resource<KeySet>, _: KeyType,
+    ) -> wasmtime::Result<Result<Vec<Jwk>, keystore::Error>> {
+        tracing::debug!("keystore::HostKeySet::list_versions");
+
+        let Ok(_key_set) = self.table().get_mut(&rep) else {
+            return Ok(Err(keystore::Error::NoSuchKeySet));
+        };
+
         Ok(Ok(vec![Jwk {
             kid: None,
             kty: "OKP".into(),
@@ -188,20 +210,5 @@ impl keystore::HostKeySet for State {
     fn drop(&mut self, rep: Resource<KeySet>) -> Result<(), wasmtime::Error> {
         tracing::debug!("keystore::HostKeySet::drop");
         self.table().delete(rep).map_or_else(|e| Err(anyhow!(e)), |_| Ok(()))
-    }
-}
-
-#[async_trait::async_trait]
-impl keystore::HostError for State {
-    async fn trace(&mut self, rep: Resource<Error>) -> wasmtime::Result<String> {
-        tracing::warn!("FIXME: trace HostError");
-        let error = self.table().get(&rep)?;
-        Ok(error.to_string())
-    }
-
-    fn drop(&mut self, rep: Resource<Error>) -> wasmtime::Result<()> {
-        tracing::debug!("drop for Resource<Error>");
-        self.table().delete(rep)?;
-        Ok(())
     }
 }
