@@ -130,6 +130,9 @@ mod vault_bindings {
         with: {
             "wasi:vault/keystore@0.1.0-draft": generate,
         },
+        additional_derives: [
+            Clone,
+        ],
     });
 }
 

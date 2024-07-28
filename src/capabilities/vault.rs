@@ -36,6 +36,7 @@ mod bindings {
         additional_derives: [
             Clone,
         ],
+        // include_generated_code_from_file: true,
     });
 }
 
