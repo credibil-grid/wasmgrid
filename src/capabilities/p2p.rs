@@ -15,7 +15,7 @@ use crate::runtime::{self, Runtime, State};
 
 /// Wrap generation of wit bindings to simplify exports.
 /// See <https://docs.rs/wasmtime/latest/wasmtime/component/macro.bindgen.html>
- mod bindings {
+mod bindings {
     #![allow(clippy::future_not_send)]
 
     pub use super::document::{Document, StreamObjectNames};

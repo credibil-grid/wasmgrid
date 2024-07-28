@@ -9,7 +9,7 @@ use bindings::wasi::vault::keystore::{self, Algorithm, Jwk, KeyType};
 use bindings::Vault;
 // use ecdsa::{Signature, Signer as _, SigningKey};
 use ed25519_dalek::Signer;
-use ed25519_dalek::{SecretKey, SigningKey};
+use ed25519_dalek::SigningKey;
 // use k256::Secp256k1;
 use wasmtime::component::{Linker, Resource};
 use wasmtime_wasi::WasiView;
@@ -107,12 +107,9 @@ impl keystore::HostKeySet for State {
                     .push(anyhow!("issue decoding ED25519_SECRET: {e}"))?));
             }
         };
-        let secret_key: SecretKey = match decoded.try_into() {
-            Ok(signing_key) => signing_key,
-            Err(_) => {
-                tracing::debug!("issue deserializing signing key");
-                return Ok(Err(self.table().push(anyhow!("issue deserializing signing key"))?));
-            }
+        let Ok(secret_key) = decoded.try_into() else {
+            tracing::debug!("issue deserializing signing key");
+            return Ok(Err(self.table().push(anyhow!("issue deserializing signing key"))?));
         };
 
         let signing_key: SigningKey = SigningKey::from_bytes(&secret_key);

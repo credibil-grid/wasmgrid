@@ -49,7 +49,11 @@ pub struct Capability {
 }
 
 pub const fn new(addr: String, creds: Option<crate::NatsCreds>, capacity: i64) -> Capability {
-    Capability { addr, creds, capacity }
+    Capability {
+        addr,
+        creds,
+        capacity,
+    }
 }
 
 #[async_trait::async_trait]
@@ -104,12 +108,15 @@ impl store::Host for State {
             return Ok(Err(store::Error::Other("Capacity not initialized".into())));
         };
 
-        let bucket = match jetstream.create_key_value(jetstream::kv::Config {
+        let bucket = match jetstream
+            .create_key_value(jetstream::kv::Config {
                 bucket: identifier.clone(),
                 history: 10,
                 max_bytes: *capacity,
                 ..Default::default()
-            }).await {
+            })
+            .await
+        {
             Ok(bucket) => bucket,
             Err(e) => return Ok(Err(store::Error::Other(format!("Failed to create bucket: {e}")))),
         };
