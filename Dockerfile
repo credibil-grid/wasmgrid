@@ -1,6 +1,6 @@
 # See https://shaneutt.com/blog/rust-fast-small-docker-image-builds
 
-FROM rust:alpine3.19 as builder
+FROM rust:alpine3.19 AS builder
 
 RUN rustup update && \
     rustup target add x86_64-unknown-linux-musl
