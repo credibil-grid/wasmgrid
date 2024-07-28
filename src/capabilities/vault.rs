@@ -39,8 +39,6 @@ mod bindings {
     });
 }
 
-
-
 pub type Error = anyhow::Error;
 
 // const SECP1_X: &str = "tXSKB_rubXS7sCjXqupVJEzTcW3MsjmEvq1YpXn96Zg";
@@ -50,6 +48,7 @@ pub type Error = anyhow::Error;
 const ED25519_X: &str = "q6rjRnEH_XK72jvB8FNBJtOl9_gDs6NW49cAz6p2sW4";
 const ED25519_SECRET: &str = "cCxmHfFfIJvP74oNKjAuRC3zYoDMo0pFsAs19yKMowY";
 
+#[derive(Clone)]
 pub struct KeySet {}
 
 pub struct Capability {}
