@@ -139,10 +139,4 @@ mod vault_bindings {
 /// Bindings for the `wasi:vault` world.
 pub mod vault {
     pub use crate::vault_bindings::wasi::vault::*;
-
-    impl Clone for keystore::KeySet{
-        fn clone(&self) -> Self {
-            self.to_owned()
-        }
-    }
 }
