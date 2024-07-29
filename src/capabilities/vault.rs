@@ -85,12 +85,11 @@ impl keystore::Host for State {
     ) -> wasmtime::Result<Result<Resource<KeySet>, keystore::Error>> {
         tracing::debug!("keystore::Host::open {identifier}");
 
-        // sanitise the identifier to be used as a key name
-        let sanitised = identifier
+        // sanitise the identifier so it can be used as a key name
+        let identifier = identifier
             .strip_prefix("https://")
             .map_or(identifier.as_str(), |sanitised| sanitised)
             .replace(['.', '/'], "-");
-        tracing::debug!("sanitised identifier: {sanitised}");
 
         let key_set = KeySet { identifier };
         Ok(Ok(self.table().push(key_set)?))
