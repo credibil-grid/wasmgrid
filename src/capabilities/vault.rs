@@ -86,11 +86,10 @@ impl keystore::Host for State {
         tracing::debug!("keystore::Host::open {identifier}");
 
         // sanitise the identifier to be used as a key name
-        let sanitised = match identifier.strip_prefix("https://") {
-            Some(sanitised) => sanitised,
-            None => identifier.as_str(),
-        };
-        let sanitised = sanitised.replace('.', "-").replace('/', "-");
+        let sanitised = identifier
+            .strip_prefix("https://")
+            .map_or(identifier.as_str(), |sanitised| sanitised)
+            .replace(['.', '/'], "-");
         tracing::debug!("sanitised identifier: {sanitised}");
 
         let key_set = KeySet { identifier };
@@ -127,7 +126,7 @@ impl keystore::HostKeySet for State {
 
         let secret_key = decoded
             .try_into()
-            .map_err(|_| (keystore::Error::Other(format!("issue deserializing signing key"))))?;
+            .map_err(|_| (keystore::Error::Other("issue deserializing signing key".to_string())))?;
 
         let signing_key: SigningKey = SigningKey::from_bytes(&secret_key);
         Ok(Ok(signing_key.sign(&data).to_bytes().to_vec()))
