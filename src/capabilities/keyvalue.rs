@@ -103,10 +103,10 @@ impl store::Host for State {
             Err(_) => {
                 match jetstream
                     .create_key_value(kv::Config {
-                        bucket: identifier,
+                        bucket: identifier.clone(),
                         history: 1,
                         max_age: Duration::from_mins(10),
-                        max_bytes: 100 * 1000 * 1000,
+                        max_bytes: 100 * 1024 * 1024, // 100 MiB
                         ..kv::Config::default()
                     })
                     .await
@@ -114,7 +114,7 @@ impl store::Host for State {
                     Ok(bucket) => bucket,
                     Err(e) => {
                         return Ok(Err(store::Error::Other(format!(
-                            "Failed to create bucket: {e}"
+                            "Failed to create {identifier} bucket: {e}"
                         ))))
                     }
                 }

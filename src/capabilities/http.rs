@@ -44,8 +44,6 @@ impl runtime::Capability for Capability {
 
     fn add_to_linker(&self, linker: &mut Linker<State>) -> anyhow::Result<()> {
         wasmtime_wasi_http::add_only_http_to_linker_async(linker)
-        // wasmtime_wasi_http::add_to_linker_async(&mut linker)?;
-        // let pre = ProxyPre::new(linker.instantiate_pre(&component)?)?;
     }
 
     /// Provide http proxy capability the specified wasm component.
