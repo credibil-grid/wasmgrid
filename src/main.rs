@@ -1,5 +1,6 @@
 #![allow(clippy::redundant_pub_crate)]
 #![feature(let_chains)]
+#![feature(duration_constructors)]
 
 mod capabilities;
 mod runtime;
@@ -29,8 +30,7 @@ use crate::capabilities::vault;
 const DEF_HTTP_ADDR: &str = "0.0.0.0:8080";
 const DEF_MGO_CNN: &str = "mongodb://localhost:27017";
 const DEF_NATS_ADDR: &str = "demo.nats.io";
-// Setting this to 0 will provide a key-value store with no limit.
-const DEF_NATS_KV_CAPACITY: i64 = 0;
+
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -65,10 +65,6 @@ pub async fn main() -> wasmtime::Result<()> {
     } else {
         None
     };
-    let nats_kv_capacity = env::var("NATS_KV_CAPACITY")
-        .unwrap_or_else(|_| DEF_NATS_KV_CAPACITY.to_string())
-        .parse::<i64>()
-        .expect("NATS_KV_CAPACITY must be an integer");
 
     // tracing
     let subscriber =
@@ -83,7 +79,7 @@ pub async fn main() -> wasmtime::Result<()> {
     let builder = builder.capability(jsondb::new(mgo_cnn));
     #[cfg(feature = "keyvalue")]
     let builder =
-        builder.capability(keyvalue::new(nats_cnn.clone(), nats_creds.clone(), nats_kv_capacity));
+        builder.capability(keyvalue::new(nats_cnn.clone(), nats_creds.clone()));
     #[cfg(feature = "messaging")]
     let builder = builder.capability(messaging::new(nats_cnn.clone()));
     #[cfg(feature = "p2p")]

@@ -4,6 +4,7 @@
 //! (<https://github.com/WebAssembly/wasi-keyvalue>).
 
 use std::sync::{Arc, OnceLock};
+use std::time::Duration;
 
 use anyhow::anyhow;
 use async_nats::{jetstream, AuthError, ConnectOptions};
@@ -11,6 +12,7 @@ use bindings::wasi::keyvalue::store::{self, Error, KeyResponse};
 use bindings::wasi::keyvalue::{atomics, batch};
 use bindings::Keyvalue;
 use futures::TryStreamExt;
+use jetstream::kv;
 use wasmtime::component::{Linker, Resource};
 use wasmtime_wasi::WasiView;
 
@@ -40,20 +42,14 @@ mod bindings {
 pub type Bucket = async_nats::jetstream::kv::Store;
 
 static JETSTREAM: OnceLock<jetstream::Context> = OnceLock::new();
-static CAPACITY: OnceLock<i64> = OnceLock::new();
 
 pub struct Capability {
     addr: String,
     creds: Option<crate::NatsCreds>,
-    capacity: i64,
 }
 
-pub const fn new(addr: String, creds: Option<crate::NatsCreds>, capacity: i64) -> Capability {
-    Capability {
-        addr,
-        creds,
-        capacity,
-    }
+pub const fn new(addr: String, creds: Option<crate::NatsCreds>) -> Capability {
+    Capability { addr, creds }
 }
 
 #[async_trait::async_trait]
@@ -85,9 +81,6 @@ impl runtime::Capability for Capability {
         tracing::info!("connected to JetStream on {}", self.addr);
         JETSTREAM.get_or_init(|| jetstream::new(client));
 
-        // set capacity for key/value store in global state
-        CAPACITY.get_or_init(|| self.capacity);
-
         Ok(())
     }
 }
@@ -104,21 +97,28 @@ impl store::Host for State {
         let Some(jetstream) = JETSTREAM.get() else {
             return Ok(Err(store::Error::Other("JetStream not initialized".into())));
         };
-        let Some(capacity) = CAPACITY.get() else {
-            return Ok(Err(store::Error::Other("Capacity not initialized".into())));
-        };
 
-        let bucket = match jetstream
-            .create_key_value(jetstream::kv::Config {
-                bucket: identifier.clone(),
-                history: 10,
-                max_bytes: *capacity,
-                ..Default::default()
-            })
-            .await
-        {
+        let bucket = match jetstream.get_key_value(&identifier).await {
             Ok(bucket) => bucket,
-            Err(e) => return Ok(Err(store::Error::Other(format!("Failed to create bucket: {e}")))),
+            Err(_) => {
+                match jetstream
+                    .create_key_value(kv::Config {
+                        bucket: identifier,
+                        history: 1,
+                        max_age: Duration::from_mins(10),
+                        max_bytes: 100 * 1000 * 1000,
+                        ..kv::Config::default()
+                    })
+                    .await
+                {
+                    Ok(bucket) => bucket,
+                    Err(e) => {
+                        return Ok(Err(store::Error::Other(format!(
+                            "Failed to create bucket: {e}"
+                        ))))
+                    }
+                }
+            }
         };
 
         Ok(Ok(self.table().push(bucket)?))

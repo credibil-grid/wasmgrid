@@ -824,7 +824,7 @@ checksum = "06ea2b9bc92be3c2baa9334a323ebca2d6f074ff852cd1d7b11064035cd3868f"
 [[package]]
 name = "core-utils"
 version = "0.1.0-alpha.4"
-source = "git+https://github.com/vercre/vercre#f4e0e1de365cc30c48dddbecbd0d7ab7b5137f0a"
+source = "git+https://github.com/vercre/vercre#ca401b72c724de4297e4d18fafd8909130464711"
 dependencies = [
  "base64ct",
  "fastrand 2.1.0",
@@ -1181,7 +1181,7 @@ checksum = "e8566979429cf69b49a5c740c60791108e86440e8be149bbea4fe54d2c32d6e2"
 [[package]]
 name = "datasec"
 version = "0.1.0-alpha.4"
-source = "git+https://github.com/vercre/vercre#f4e0e1de365cc30c48dddbecbd0d7ab7b5137f0a"
+source = "git+https://github.com/vercre/vercre#ca401b72c724de4297e4d18fafd8909130464711"
 dependencies = [
  "aes-gcm",
  "anyhow",
@@ -1311,7 +1311,7 @@ checksum = "339544cc9e2c4dc3fc7149fd630c5f22263a4fdf18a98afd0075784968b5cf00"
 [[package]]
 name = "dif-exch"
 version = "0.1.0-alpha.4"
-source = "git+https://github.com/vercre/vercre#f4e0e1de365cc30c48dddbecbd0d7ab7b5137f0a"
+source = "git+https://github.com/vercre/vercre#ca401b72c724de4297e4d18fafd8909130464711"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2401,7 +2401,7 @@ dependencies = [
  "iana-time-zone-haiku",
  "js-sys",
  "wasm-bindgen",
- "windows-core 0.51.1",
+ "windows-core 0.52.0",
 ]
 
 [[package]]
@@ -3608,7 +3608,7 @@ checksum = "c08d65885ee38876c4f86fa503fb49d7b507c2b62552df7c70b2fce627e06381"
 [[package]]
 name = "openid"
 version = "0.1.0-alpha.4"
-source = "git+https://github.com/vercre/vercre#f4e0e1de365cc30c48dddbecbd0d7ab7b5137f0a"
+source = "git+https://github.com/vercre/vercre#ca401b72c724de4297e4d18fafd8909130464711"
 dependencies = [
  "anyhow",
  "base64ct",
@@ -6384,7 +6384,7 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 [[package]]
 name = "w3c-vc"
 version = "0.1.0-alpha.4"
-source = "git+https://github.com/vercre/vercre#f4e0e1de365cc30c48dddbecbd0d7ab7b5137f0a"
+source = "git+https://github.com/vercre/vercre#ca401b72c724de4297e4d18fafd8909130464711"
 dependencies = [
  "anyhow",
  "base64ct",
