@@ -13,7 +13,11 @@ Add a `.env` file in the root of the project with the following values:
 RUST_LOG="wasmgrid=debug" # tracing log level
 HTTP_ADDR="0.0.0.0:8080"
 MGO_CNN="<MongoDB connection string>"
-NATS_CNN="<NATS/Synadia connection string>"
+NATS_CNN="demo.nats.io"
+# when using Synadia Cloud:
+NATS_CNN="tls://connect.ngs.global"
+NATS_JWT="<user JWT>"
+NATS_SEED="<user signing seed>"
 ```
 
 ### Messaging Example
