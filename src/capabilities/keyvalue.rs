@@ -108,11 +108,11 @@ impl store::Host for State {
                         history: 1,
                         max_age: Duration::from_mins(10),
                         max_bytes: 100 * 1024 * 1024, // 100 MiB
-                        placement: Some(stream::Placement {
-                            cluster: None,
-                            // <https://docs.synadia.com/cloud/resources/placement-tags>
-                            tags: vec!["cloud:az".to_string()],
-                        }),
+                        // placement: Some(stream::Placement {
+                        //     cluster: None,
+                        //     // <https://docs.synadia.com/cloud/resources/placement-tags>
+                        //     tags: vec!["cloud:az".to_string()],
+                        // }),
                         ..kv::Config::default()
                     })
                     .await
