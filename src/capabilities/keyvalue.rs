@@ -111,7 +111,7 @@ impl store::Host for State {
                         placement: Some(stream::Placement {
                             cluster: None,
                             // <https://docs.synadia.com/cloud/resources/placement-tags>
-                            tags: vec!["cloud:az".to_string(), "geo:asia".to_string()],
+                            tags: vec!["cloud:az".to_string()],
                         }),
                         ..kv::Config::default()
                     })
