@@ -7,7 +7,6 @@ use std::sync::{Arc, OnceLock};
 use std::time::Duration;
 
 use anyhow::anyhow;
-use async_nats::jetstream::stream;
 use async_nats::{jetstream, AuthError, ConnectOptions};
 use bindings::wasi::keyvalue::store::{self, Error, KeyResponse};
 use bindings::wasi::keyvalue::{atomics, batch};
