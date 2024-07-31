@@ -7,6 +7,7 @@ use std::sync::{Arc, OnceLock};
 use std::time::Duration;
 
 use anyhow::anyhow;
+use async_nats::jetstream::stream;
 use async_nats::{jetstream, AuthError, ConnectOptions};
 use bindings::wasi::keyvalue::store::{self, Error, KeyResponse};
 use bindings::wasi::keyvalue::{atomics, batch};
@@ -107,6 +108,11 @@ impl store::Host for State {
                         history: 1,
                         max_age: Duration::from_mins(10),
                         max_bytes: 100 * 1024 * 1024, // 100 MiB
+                        placement: Some(stream::Placement {
+                            cluster: None,
+                            // <https://docs.synadia.com/cloud/resources/placement-tags>
+                            tags: vec!["cloud:az".to_string(), "geo:asia".to_string()],
+                        }),
                         ..kv::Config::default()
                     })
                     .await
