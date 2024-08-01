@@ -1,20 +1,9 @@
 [package]
-authors = ["Credibil"]
-categories = [
-  "decentralized identity",
-  "openid for verifiable data",
-  "privacy",
-  "security",
-  "verifiable credentials",
-]
-edition = "2021"
-homepage = "https://credibil.io"
-keywords = ["credentials", "decentralized", "identity", "openid", "verifiable"]
 name = "wasi-http"
-readme = "README.md"
-repository = "https://github.com/credibil-grid/wasi-http"
-rust-version = "1.76"
-version = "0.1.0-alpha.1"
+description = "Wrapper for wasi-http bindings"
+authors.workspace = true
+edition.workspace = true
+version = "0.1.0"
 
 # [lib]
 # crate-type = ["cdylib"]

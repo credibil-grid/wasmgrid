@@ -12,7 +12,7 @@ use http::uri::Uri; // Authority,
 use hyper::body::Incoming;
 use hyper::header::{
     HeaderValue, ACCESS_CONTROL_ALLOW_HEADERS, ACCESS_CONTROL_ALLOW_METHODS,
-    ACCESS_CONTROL_ALLOW_ORIGIN, CONTENT_TYPE, FORWARDED, HOST,
+    ACCESS_CONTROL_ALLOW_ORIGIN, FORWARDED, HOST,
 };
 use hyper::server::conn::http1;
 use hyper::service::service_fn;

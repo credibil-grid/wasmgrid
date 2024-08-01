@@ -1,8 +1,8 @@
 [package]
-authors.workspace = true
-description = "WASM guest for secure, isolated and distributed storage of wallet keys and credentials"
-edition.workspace = true
 name = "wasi-bindings"
+description = "WASM guest bindings for wasmgrid capabilities"
+authors.workspace = true
+edition.workspace = true
 version = "0.1.0"
 
 # [lib]
