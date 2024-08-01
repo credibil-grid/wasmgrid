@@ -18,6 +18,8 @@ NATS_CNN="demo.nats.io"
 NATS_CNN="tls://connect.ngs.global"
 NATS_JWT="<user JWT>"
 NATS_SEED="<user signing seed>"
+# when running locally:
+SET_CORS="true"
 ```
 
 ### Messaging Example

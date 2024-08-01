@@ -152,7 +152,7 @@ impl keystore::HostKeyPair for State {
         let Ok(key_pair) = self.table().get(&rep) else {
             return Ok(Err(keystore::Error::NoSuchKeySet));
         };
-        tracing::debug!("name: {}", key_pair.name);
+        tracing::debug!("key_pair.name: {}", key_pair.name);
 
         let decoded = Base64UrlUnpadded::decode_vec(ED25519_SECRET)
             .map_err(|e| (keystore::Error::Other(format!("issue decoding ED25519_SECRET: {e}"))))?;
@@ -193,7 +193,7 @@ impl keystore::HostKeyPair for State {
     ) -> wasmtime::Result<Result<Jwk, keystore::Error>> {
         tracing::debug!("keystore::HostKeySet::verifying_key");
 
-        let Ok(_key_set) = self.table().get_mut(&rep) else {
+        let Ok(_key_pair) = self.table().get_mut(&rep) else {
             return Ok(Err(keystore::Error::NoSuchKeySet));
         };
 

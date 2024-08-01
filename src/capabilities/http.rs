@@ -4,6 +4,7 @@
 //! (<https://github.com/WebAssembly/wasi-http>).
 
 use std::clone::Clone;
+use std::env;
 
 use anyhow::anyhow;
 use http::uri::PathAndQuery;
@@ -79,13 +80,18 @@ async fn handle_request(
     let (sender, receiver) = tokio::sync::oneshot::channel();
 
     // HACK: CORS preflight request for use when testing locally
-    if cfg!(debug_assertions) && request.method() == Method::OPTIONS {
+    let cors = match env::var("SET_CORS") {
+        Ok(val) => val.parse().unwrap_or(false),
+        Err(_) => false,
+    };
+
+    if cors && request.method() == Method::OPTIONS {
         let resp = hyper::Response::builder()
             .status(StatusCode::OK)
             .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
             .header(ACCESS_CONTROL_ALLOW_HEADERS, "*")
             .header(ACCESS_CONTROL_ALLOW_METHODS, "DELETE, GET, OPTIONS, POST, PUT")
-            .header(CONTENT_TYPE, "application/json")
+            // .header(CONTENT_TYPE, "application/json")
             .body(HyperOutgoingBody::default())?;
         return Ok(resp);
     }
@@ -147,8 +153,7 @@ async fn handle_request(
 
     match receiver.await {
         Ok(Ok(mut resp)) => {
-            // HACK: CORS for use when testing locally
-            if cfg!(debug_assertions) {
+            if cors {
                 resp.headers_mut()
                     .insert(ACCESS_CONTROL_ALLOW_ORIGIN, HeaderValue::from_static("*"));
             }
