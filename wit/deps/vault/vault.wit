@@ -1,26 +1,16 @@
 /// https://component-model.bytecodealliance.org/design/wit.html
 
+/// Keystore provides an interface for secure storage and use of cryptographic 
+/// keys.
 interface keystore {
     variant error {
         no-such-key-set,
+        no-such-key-pair,
         access-denied,
         other(string)
     }
 
-    // /// Error type for vault operations. The implementation must be provided
-    // /// by the host.
-    // resource error {
-    //     trace: func() -> string;    
-    // }
-
-    variant key-type {
-        signing,
-        key-agreement,
-        authorization,
-        authentication,
-    }
-
-        /// Supported [IANA_JOSE] vault algorithms.
+    /// [IANA_JOSE] Keystore algorithms.
     /// [IANA_JOSE]: https://www.iana.org/assignments/jose/jose.xhtml
     variant algorithm {
         /// ECDSA using `secp256k1` curve and SHA-256. 
@@ -40,21 +30,32 @@ interface keystore {
         y: option<string>,
     }
 
+    /// List algorithms supported by the keystore.
     supported-algorithms: func() -> list<algorithm>;
 
+    /// Open the key set identified by `identifier`.
     open: func(identifier: string) -> result<key-set, error>;
 
     resource key-set {
-        generate: func(key: key-type, alg: algorithm) -> result<jwk, error>;
+        /// Generate a new key pair for the set. Will create a new version if the
+        /// key pair identified by `identifier` already exists.
+        generate: func(identifier: string, alg: algorithm) -> result<key-pair, error>;
 
-        sign: func(key: key-type, data: list<u8>) -> result<list<u8>, error>;
+        /// Get the current key pair for `identifier`.
+        get: func(identifier: string) -> result<key-pair, error>;
 
-        verifying-key: func(key: key-type,) -> result<jwk, error>;
+        /// Delete the key pair identified by `identifier`.
+        delete: func(identifier: string) -> result<_, error>;
+    }
 
-        delete: func(key: key-type) -> result<_, error>;
+    resource key-pair {
+        /// Sign data with the private key.
+        sign: func(data: list<u8>) -> result<list<u8>, error>;
 
-        // exists: func(key: key-type) -> result<bool, error>;
+        /// Returns the public key.
+        public-key: func() -> result<jwk, error>;
 
-        list-versions: func(key: key-type) -> result<list<jwk>, error>;
+        /// Returns all versions of the public key.
+        versions: func() -> result<list<jwk>, error>;
     }
 }

@@ -7,7 +7,7 @@ use std::vec;
 
 use anyhow::anyhow;
 use base64ct::{Base64UrlUnpadded, Encoding};
-use bindings::wasi::vault::keystore::{self, Algorithm, Jwk, KeyType};
+use bindings::wasi::vault::keystore::{self, Algorithm, Jwk};
 use bindings::Vault;
 // use ecdsa::{Signature, Signer as _, SigningKey};
 use ed25519_dalek::Signer;
@@ -23,7 +23,7 @@ use crate::runtime::{self, Runtime, State};
 mod bindings {
     #![allow(clippy::future_not_send)]
 
-    pub use super::KeySet;
+    pub use super::{KeyPair, KeySet};
 
     wasmtime::component::bindgen!({
         world: "vault",
@@ -32,8 +32,8 @@ mod bindings {
         async: true,
         trappable_imports: true,
         with: {
-            // "wasi:vault/keystore/error": Error,
             "wasi:vault/keystore/key-set": KeySet,
+            "wasi:vault/keystore/key-pair": KeyPair,
         },
         additional_derives: [
             Clone,
@@ -54,6 +54,11 @@ const ED25519_SECRET: &str = "cCxmHfFfIJvP74oNKjAuRC3zYoDMo0pFsAs19yKMowY";
 #[derive(Clone)]
 pub struct KeySet {
     identifier: String,
+}
+
+#[derive(Clone)]
+pub struct KeyPair {
+    name: String,
 }
 
 pub struct Capability {}
@@ -103,22 +108,52 @@ impl keystore::Host for State {
 #[async_trait::async_trait]
 impl keystore::HostKeySet for State {
     async fn generate(
-        &mut self, _rep: Resource<KeySet>, _: KeyType, _: Algorithm,
-    ) -> wasmtime::Result<Result<Jwk, keystore::Error>> {
+        &mut self, _rep: Resource<KeySet>, _identifier: String, _alg: Algorithm,
+    ) -> wasmtime::Result<Result<Resource<KeyPair>, keystore::Error>> {
         tracing::debug!("keystore::HostKeySet::generate");
 
         todo!("generate new key for KeyType")
     }
 
+    async fn get(
+        &mut self, rep: Resource<KeySet>, identifier: String,
+    ) -> wasmtime::Result<Result<Resource<KeyPair>, keystore::Error>> {
+        tracing::debug!("keystore::HostKeySet::get");
+
+        let Ok(key_set) = self.table().get(&rep) else {
+            return Ok(Err(keystore::Error::NoSuchKeySet));
+        };
+
+        let name = format!("{}-{identifier}", key_set.identifier);
+        let key_pair = KeyPair { name };
+        Ok(Ok(self.table().push(key_pair)?))
+    }
+
+    async fn delete(
+        &mut self, _rep: Resource<KeySet>, _identifier: String,
+    ) -> wasmtime::Result<Result<(), keystore::Error>> {
+        tracing::debug!("keystore::HostKeySet::delete");
+
+        todo!("generate new key for KeyType")
+    }
+
+    fn drop(&mut self, rep: Resource<KeySet>) -> Result<(), wasmtime::Error> {
+        tracing::debug!("keystore::HostKeySet::drop");
+        self.table().delete(rep).map_or_else(|e| Err(anyhow!(e)), |_| Ok(()))
+    }
+}
+
+#[async_trait::async_trait]
+impl keystore::HostKeyPair for State {
     async fn sign(
-        &mut self, rep: Resource<KeySet>, _: KeyType, data: Vec<u8>,
+        &mut self, rep: Resource<KeyPair>, data: Vec<u8>,
     ) -> wasmtime::Result<Result<Vec<u8>, keystore::Error>> {
         tracing::debug!("keystore::HostKeySet::sign");
 
-        let Ok(key_set) = self.table().get_mut(&rep) else {
+        let Ok(key_pair) = self.table().get(&rep) else {
             return Ok(Err(keystore::Error::NoSuchKeySet));
         };
-        tracing::debug!("identifier: {}", key_set.identifier);
+        tracing::debug!("name: {}", key_pair.name);
 
         let decoded = Base64UrlUnpadded::decode_vec(ED25519_SECRET)
             .map_err(|e| (keystore::Error::Other(format!("issue decoding ED25519_SECRET: {e}"))))?;
@@ -154,8 +189,8 @@ impl keystore::HostKeySet for State {
         // Ok(Ok(sig.to_vec()))
     }
 
-    async fn verifying_key(
-        &mut self, rep: Resource<KeySet>, _: KeyType,
+    async fn public_key(
+        &mut self, rep: Resource<KeyPair>,
     ) -> wasmtime::Result<Result<Jwk, keystore::Error>> {
         tracing::debug!("keystore::HostKeySet::verifying_key");
 
@@ -180,15 +215,8 @@ impl keystore::HostKeySet for State {
         // }))
     }
 
-    async fn delete(
-        &mut self, _rep: Resource<KeySet>, _: KeyType,
-    ) -> wasmtime::Result<Result<(), keystore::Error>> {
-        tracing::debug!("keystore::HostKeySet::delete");
-        todo!()
-    }
-
-    async fn list_versions(
-        &mut self, rep: Resource<KeySet>, _: KeyType,
+    async fn versions(
+        &mut self, rep: Resource<KeyPair>,
     ) -> wasmtime::Result<Result<Vec<Jwk>, keystore::Error>> {
         tracing::debug!("keystore::HostKeySet::list_versions");
 
@@ -213,7 +241,7 @@ impl keystore::HostKeySet for State {
         // }]))
     }
 
-    fn drop(&mut self, rep: Resource<KeySet>) -> Result<(), wasmtime::Error> {
+    fn drop(&mut self, rep: Resource<KeyPair>) -> Result<(), wasmtime::Error> {
         tracing::debug!("keystore::HostKeySet::drop");
         self.table().delete(rep).map_or_else(|e| Err(anyhow!(e)), |_| Ok(()))
     }
