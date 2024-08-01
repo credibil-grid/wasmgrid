@@ -573,9 +573,9 @@ checksum = "8f1fe948ff07f4bd06c30984e69f5b4899c516a3ef74f34df92a2df2ab535495"
 
 [[package]]
 name = "bytes"
-version = "1.7.0"
+version = "1.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fca2be1d5c43812bae364ee3f30b3afcb7877cf59f4aeb94c66f313a41d2fac9"
+checksum = "8318a53db07bb3f8dca91a600466bdb3f2eaadeedfdbcf02e1accbad9271ba50"
 dependencies = [
  "serde",
 ]
@@ -824,7 +824,7 @@ checksum = "06ea2b9bc92be3c2baa9334a323ebca2d6f074ff852cd1d7b11064035cd3868f"
 [[package]]
 name = "core-utils"
 version = "0.1.0-alpha.4"
-source = "git+https://github.com/vercre/vercre#ca401b72c724de4297e4d18fafd8909130464711"
+source = "git+https://github.com/vercre/vercre#5d62b7b155a201dc11cb79702c02fe7046a507c3"
 dependencies = [
  "base64ct",
  "fastrand 2.1.0",
@@ -1181,7 +1181,7 @@ checksum = "e8566979429cf69b49a5c740c60791108e86440e8be149bbea4fe54d2c32d6e2"
 [[package]]
 name = "datasec"
 version = "0.1.0-alpha.4"
-source = "git+https://github.com/vercre/vercre#ca401b72c724de4297e4d18fafd8909130464711"
+source = "git+https://github.com/vercre/vercre#5d62b7b155a201dc11cb79702c02fe7046a507c3"
 dependencies = [
  "aes-gcm",
  "anyhow",
@@ -1283,18 +1283,18 @@ dependencies = [
 
 [[package]]
 name = "derive_more"
-version = "1.0.0-beta.6"
+version = "1.0.0-beta.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f7abbfc297053be59290e3152f8cbcd52c8642e0728b69ee187d991d4c1af08d"
+checksum = "3249c0372e72f5f93b5c0ca54c0ab76bbf6216b6f718925476fd9bc4ffabb4fe"
 dependencies = [
  "derive_more-impl",
 ]
 
 [[package]]
 name = "derive_more-impl"
-version = "1.0.0-beta.6"
+version = "1.0.0-beta.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2bba3e9872d7c58ce7ef0fcf1844fcc3e23ef2a58377b50df35dd98e42a5726e"
+checksum = "27d919ced7590fc17b5d5a3c63b662e8a7d2324212c4e4dbbed975cafd22d16d"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1311,7 +1311,7 @@ checksum = "339544cc9e2c4dc3fc7149fd630c5f22263a4fdf18a98afd0075784968b5cf00"
 [[package]]
 name = "dif-exch"
 version = "0.1.0-alpha.4"
-source = "git+https://github.com/vercre/vercre#ca401b72c724de4297e4d18fafd8909130464711"
+source = "git+https://github.com/vercre/vercre#5d62b7b155a201dc11cb79702c02fe7046a507c3"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2585,7 +2585,7 @@ dependencies = [
  "anyhow",
  "bao-tree",
  "bytes",
- "derive_more 1.0.0-beta.6",
+ "derive_more 1.0.0-beta.7",
  "flume",
  "futures-buffered",
  "futures-lite 2.3.0",
@@ -2630,7 +2630,7 @@ dependencies = [
  "anyhow",
  "crypto_box",
  "data-encoding",
- "derive_more 1.0.0-beta.6",
+ "derive_more 1.0.0-beta.7",
  "ed25519-dalek",
  "getrandom",
  "hex",
@@ -2672,7 +2672,7 @@ dependencies = [
  "bao-tree",
  "bytes",
  "chrono",
- "derive_more 1.0.0-beta.6",
+ "derive_more 1.0.0-beta.7",
  "flume",
  "futures-buffered",
  "futures-lite 2.3.0",
@@ -2711,7 +2711,7 @@ checksum = "e3e730c8767c5d2c2809c9c127919f1ca9a65d6c176d47387bc49d1d0ab27792"
 dependencies = [
  "anyhow",
  "bytes",
- "derive_more 1.0.0-beta.6",
+ "derive_more 1.0.0-beta.7",
  "ed25519-dalek",
  "flume",
  "futures-buffered",
@@ -2750,7 +2750,7 @@ checksum = "60a25bef4066809009d90cb5ff885c0d1adf77690805431f45577e624af0b4c6"
 dependencies = [
  "anyhow",
  "bytes",
- "derive_more 1.0.0-beta.6",
+ "derive_more 1.0.0-beta.7",
  "ed25519-dalek",
  "flume",
  "futures-lite 2.3.0",
@@ -2817,7 +2817,7 @@ dependencies = [
  "bytes",
  "clap",
  "der",
- "derive_more 1.0.0-beta.6",
+ "derive_more 1.0.0-beta.7",
  "duct",
  "flume",
  "futures-buffered",
@@ -3608,7 +3608,7 @@ checksum = "c08d65885ee38876c4f86fa503fb49d7b507c2b62552df7c70b2fce627e06381"
 [[package]]
 name = "openid"
 version = "0.1.0-alpha.4"
-source = "git+https://github.com/vercre/vercre#ca401b72c724de4297e4d18fafd8909130464711"
+source = "git+https://github.com/vercre/vercre#5d62b7b155a201dc11cb79702c02fe7046a507c3"
 dependencies = [
  "anyhow",
  "base64ct",
@@ -3633,12 +3633,12 @@ checksum = "ff011a302c396a5197692431fc1948019154afc178baf7d8e37367442a4601cf"
 
 [[package]]
 name = "os_pipe"
-version = "1.2.0"
+version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "29d73ba8daf8fac13b0501d1abeddcfe21ba7401ada61a819144b6c2a4f32209"
+checksum = "5ffd2b0a5634335b135d5728d84c5e0fd726954b87111f7506a61c502280d982"
 dependencies = [
  "libc",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -4191,7 +4191,7 @@ checksum = "110f0fbbf7c4a694902e11d890157245801d89a18d8e9b8d9d2afd91358a6a7c"
 dependencies = [
  "anyhow",
  "bincode",
- "derive_more 1.0.0-beta.6",
+ "derive_more 1.0.0-beta.7",
  "educe",
  "flume",
  "futures-lite 2.3.0",
@@ -5012,9 +5012,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.121"
+version = "1.0.122"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4ab380d7d9f22ef3f21ad3e6c1ebe8e4fc7a2000ccba2e4d71fc96f15b2cb609"
+checksum = "784b6203951c57ff748476b126ccb5e8e2959a5c19e5c617ab1956be3dbc68da"
 dependencies = [
  "indexmap 2.3.0",
  "itoa",
@@ -5244,12 +5244,12 @@ dependencies = [
 
 [[package]]
 name = "shared_child"
-version = "1.0.0"
+version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b0d94659ad3c2137fef23ae75b03d5241d633f8acded53d672decfa0e6e0caef"
+checksum = "09fa9338aed9a1df411814a5b2252f7cd206c55ae9bf2fa763f8de84603aa60c"
 dependencies = [
  "libc",
- "winapi",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -6387,7 +6387,7 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 [[package]]
 name = "w3c-vc"
 version = "0.1.0-alpha.4"
-source = "git+https://github.com/vercre/vercre#ca401b72c724de4297e4d18fafd8909130464711"
+source = "git+https://github.com/vercre/vercre#5d62b7b155a201dc11cb79702c02fe7046a507c3"
 dependencies = [
  "anyhow",
  "base64ct",
@@ -7179,6 +7179,15 @@ name = "windows-sys"
 version = "0.52.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "282be5f36a8ce781fad8c8ae18fa3f9beff57ec1b52cb3de0789201425d9a33d"
+dependencies = [
+ "windows-targets 0.52.6",
+]
+
+[[package]]
+name = "windows-sys"
+version = "0.59.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1e38bc4d79ed67fd075bcc251a1c39b32a1776bbe92e5bef1f0bf1f8c531853b"
 dependencies = [
  "windows-targets 0.52.6",
 ]

@@ -1,12 +1,12 @@
 [package]
 name = "wasi-bindings"
-description = "WASM guest bindings for wasmgrid capabilities"
+description = "Guest bindings for wasmgrid capabilities"
 authors.workspace = true
 edition.workspace = true
 version = "0.1.0"
 
-[lib]
-crate-type = ["cdylib"]
+# [lib]
+# crate-type = ["cdylib"]
 
 [lints]
 workspace = true
