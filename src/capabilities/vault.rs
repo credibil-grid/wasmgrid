@@ -133,7 +133,6 @@ impl keystore::HostKeySet for State {
         &mut self, _rep: Resource<KeySet>, _identifier: String,
     ) -> wasmtime::Result<Result<(), keystore::Error>> {
         tracing::debug!("keystore::HostKeySet::delete");
-
         todo!("generate new key for KeyType")
     }
 
