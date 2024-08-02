@@ -23,24 +23,24 @@ keyvalue = ["dep:async-nats"]
 messaging = ["dep:async-nats"]
 p2p = ["dep:iroh"]
 rpc = ["dep:async-nats"]
-vault = ["dep:ecdsa", "dep:k256"]
+vault = ["dep:azure_identity", "dep:azure_security_keyvault"]
 
 [dependencies]
 anyhow.workspace = true
 async-nats = { version = "0.35.1", optional = true }
 async-trait.workspace = true
+azure_identity = { version = "0.20.0", optional = true }
+azure_security_keyvault = { version = "0.20.0", optional = true }
 base64ct = { version = "1.6.0", features = ["std"] }
 bytes = "1.7.1"
 clap = { version = "4.5.13", features = ["derive"] }
 dotenv = "0.15.0"
-ecdsa = { version = "0.16.9", optional = true }
 ed25519-dalek = { version = "2.1.1", features = ["rand_core"] }
 futures = "0.3.30"
 http = "1.1.0"
 hyper = "1.4.1"
 iroh = { version = "0.21.0", optional = true }
 jmespath = { version = "0.3.0", optional = true }
-k256 = { version = "0.13.3", optional = true }
 mongodb = { version = "3.0.1", optional = true }
 nkeys = "0.4.3"
 serde_json.workspace = true
@@ -65,11 +65,12 @@ members = [
   "examples/http-http",
   "examples/http-msg",
   "examples/jsondb",
-  "examples/keyvault",
+  "examples/keyvalue",
   "examples/messaging",
   "examples/p2p",
   "examples/rpc/client",
   "examples/rpc/server",
+  "examples/vault",
 ]
 resolver = "2"
 

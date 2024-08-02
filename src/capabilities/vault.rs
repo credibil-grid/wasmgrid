@@ -6,6 +6,7 @@
 use std::vec;
 
 use anyhow::anyhow;
+use azure_security_keyvault::KeyvaultClient;
 use base64ct::{Base64UrlUnpadded, Encoding};
 use bindings::wasi::vault::keystore::{self, Algorithm, Jwk};
 use bindings::Vault;
@@ -79,6 +80,12 @@ impl runtime::Capability for Capability {
 
     /// Provide vault capability for the wasm component.
     async fn run(&self, _runtime: Runtime) -> anyhow::Result<()> {
+        let credential = azure_identity::create_credential()?;
+        let client =
+            KeyvaultClient::new("https://kv-credibil-demo.vault.azure.net", credential).unwrap();
+
+        println!("client: {:?}", client);
+
         Ok(())
     }
 }
@@ -152,7 +159,9 @@ impl keystore::HostKeyPair for State {
         let Ok(key_pair) = self.table().get(&rep) else {
             return Ok(Err(keystore::Error::NoSuchKeySet));
         };
-        tracing::debug!("key_pair.name: {}", key_pair.name);
+        tracing::info!("key_pair.name: {}", key_pair.name);
+
+        tracing::info!("key_pair.name: {}", key_pair.name);
 
         let decoded = Base64UrlUnpadded::decode_vec(ED25519_SECRET)
             .map_err(|e| (keystore::Error::Other(format!("issue decoding ED25519_SECRET: {e}"))))?;
@@ -243,5 +252,57 @@ impl keystore::HostKeyPair for State {
     fn drop(&mut self, rep: Resource<KeyPair>) -> Result<(), wasmtime::Error> {
         tracing::debug!("keystore::HostKeySet::drop");
         self.table().delete(rep).map_or_else(|e| Err(anyhow!(e)), |_| Ok(()))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    // use azure_security_keyvault::prelude::JsonWebKey;
+    // use serde_json::json;
+
+    use super::*;
+
+    #[tokio::test]
+    async fn test_connect() {
+        dotenv::dotenv().ok();
+
+        let credential = azure_identity::create_credential().expect("should create credential");
+        let client =
+            KeyvaultClient::new("https://kv-credibil-demo.vault.azure.net", credential).unwrap();
+        let kv_key = client
+            .key_client()
+            .get("demo-credibil-io-supplier-signing-key")
+            .await
+            .expect("should get key");
+
+        // let json = serde_json::to_string_pretty(&kv_key.key).expect("should serialize key");
+        // println!("jwk: {json}");
+
+        let value = serde_json::to_value(&kv_key.key).expect("should serialize key");
+        assert_eq!(
+            serde_json::json!({
+              "crv": "P-256K",
+              "d": null,
+              "dp": null,
+              "dq": null,
+              "e": null,
+              "k": null,
+              "key_hsm": null,
+              "key_ops": [
+                "sign",
+                "verify"
+              ],
+              "kid": "https://kv-credibil-demo.vault.azure.net/keys/demo-credibil-io-supplier-signing-key/76a8656eb0da4d1dbef2aaf2cd386c75",
+              "kty": "EC",
+              "n": null,
+              "p": null,
+              "q": null,
+              "qi": null,
+              "x": "EVojE7JDz_8fGtX6p4xf5HdWC5oINXNimHRCXj_EhpY",
+              "y": "bBhqRGqk-V-Ckzjsh-FOP8fGggtLdegMCpTLkmX6Qts"
+            }),
+            value
+        );
     }
 }

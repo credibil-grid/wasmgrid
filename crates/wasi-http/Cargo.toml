@@ -1,8 +1,8 @@
 [package]
-name = "wasi-http"
-description = "Wrapper for wasi-http bindings"
 authors.workspace = true
+description = "Wrapper for wasi-http bindings"
 edition.workspace = true
+name = "wasi-http"
 version = "0.1.0"
 
 # [lib]

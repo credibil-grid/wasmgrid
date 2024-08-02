@@ -31,7 +31,6 @@ const DEF_HTTP_ADDR: &str = "0.0.0.0:8080";
 const DEF_MGO_CNN: &str = "mongodb://localhost:27017";
 const DEF_NATS_ADDR: &str = "demo.nats.io";
 
-
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct Args {
@@ -78,8 +77,7 @@ pub async fn main() -> wasmtime::Result<()> {
     #[cfg(feature = "jsondb")]
     let builder = builder.capability(jsondb::new(mgo_cnn));
     #[cfg(feature = "keyvalue")]
-    let builder =
-        builder.capability(keyvalue::new(nats_cnn.clone(), nats_creds.clone()));
+    let builder = builder.capability(keyvalue::new(nats_cnn.clone(), nats_creds.clone()));
     #[cfg(feature = "messaging")]
     let builder = builder.capability(messaging::new(nats_cnn.clone()));
     #[cfg(feature = "p2p")]
