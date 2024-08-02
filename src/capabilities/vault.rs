@@ -282,25 +282,23 @@ mod tests {
         let value = serde_json::to_value(&kv_key.key).expect("should serialize key");
         assert_eq!(
             serde_json::json!({
-              "crv": "P-256K",
-              "d": null,
-              "dp": null,
-              "dq": null,
-              "e": null,
-              "k": null,
-              "key_hsm": null,
-              "key_ops": [
-                "sign",
-                "verify"
-              ],
-              "kid": "https://kv-credibil-demo.vault.azure.net/keys/demo-credibil-io-supplier-signing-key/76a8656eb0da4d1dbef2aaf2cd386c75",
-              "kty": "EC",
-              "n": null,
-              "p": null,
-              "q": null,
-              "qi": null,
-              "x": "EVojE7JDz_8fGtX6p4xf5HdWC5oINXNimHRCXj_EhpY",
-              "y": "bBhqRGqk-V-Ckzjsh-FOP8fGggtLdegMCpTLkmX6Qts"
+                "kty": "EC",
+                "crv": "P-256K",
+                "kid": "https://kv-credibil-demo.vault.azure.net/keys/demo-credibil-io-supplier-signing-key/76a8656eb0da4d1dbef2aaf2cd386c75",
+                "x": "EVojE7JDz_8fGtX6p4xf5HdWC5oINXNimHRCXj_EhpY",
+                "y": "bBhqRGqk-V-Ckzjsh-FOP8fGggtLdegMCpTLkmX6Qts",
+
+                "key_ops": ["sign",  "verify"],
+                "d": null,
+                "dp": null,
+                "dq": null,
+                "e": null,
+                "k": null,
+                "key_hsm": null,
+                "n": null,
+                "p": null,
+                "q": null,
+                "qi": null,
             }),
             value
         );
