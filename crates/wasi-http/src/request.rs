@@ -74,9 +74,10 @@ impl<'a> Request<'a> {
 
         // read body into a buffer.
         let mut buffer = Vec::new();
-        while let Ok(bytes) = stream.blocking_read(4096)
-            && !bytes.is_empty()
-        {
+        loop {
+            let Ok(bytes) = stream.blocking_read(4096) else {
+                break;
+            };
             buffer.extend_from_slice(&bytes);
         }
         drop(stream);

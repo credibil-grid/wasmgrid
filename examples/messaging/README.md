@@ -3,7 +3,7 @@
 Build the example guest:
 
 ```bash
-cargo component build --package msg --release
+cargo component build -Z build-std=panic_abort,std --package msg --release
 ```
 
 Run the guest using the `wasmgrid` runtime:

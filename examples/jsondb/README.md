@@ -3,7 +3,7 @@
 Build the example guest:
 
 ```bash
-cargo component build --package jsondb --release
+cargo component build -Z build-std=panic_abort,std --package jsondb --release
 ```
 
 Run the guest using the `wasmgrid` runtime:

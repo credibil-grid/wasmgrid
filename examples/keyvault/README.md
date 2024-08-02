@@ -3,7 +3,7 @@
 Build the example guest:
 
 ```bash
-cargo component build --package keyvault --release
+cargo component build -Z build-std=panic_abort,std --package keyvault --release
 ```
 
 Run the guest using the `wasmgrid` runtime:

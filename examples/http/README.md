@@ -3,7 +3,7 @@
 Build the example guest:
 
 ```bash
-cargo component build --package http@0.1.0 --release
+cargo component build -Z build-std=panic_abort,std --package http@0.1.0 --release
 ```
 
 Run a guest using the runtime:

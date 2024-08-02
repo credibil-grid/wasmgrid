@@ -6,8 +6,8 @@ client-server application.
 Build the client and server:
 
 ```bash
-cargo component build --package rpc-client --release
-cargo component build --package rpc-server --release
+cargo component build -Z build-std=panic_abort,std --package rpc-client --release
+cargo component build -Z build-std=panic_abort,std --package rpc-server --release
 ```
 
 Run both client and server in separate consoles:

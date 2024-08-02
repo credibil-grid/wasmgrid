@@ -7,7 +7,7 @@ This example demonstrates how to make an outgoing http request to a downstream s
 Build the example guest:
 
 ```bash
-cargo component build --package http-http --release
+cargo component build -Z build-std=panic_abort,std --package http-http --release
 ```
 
 Run a guest using the runtime:

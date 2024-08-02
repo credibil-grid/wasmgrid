@@ -18,7 +18,7 @@ the console for you to use on subsequent runs.
 Build the example guest:
 
 ```bash
-cargo component build --package http-p2p --release
+cargo component build -Z build-std=panic_abort,std --package http-p2p --release
 ```
 
 Run a guest using the runtime:
