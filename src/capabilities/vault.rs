@@ -8,7 +8,7 @@ use std::vec;
 
 use anyhow::anyhow;
 use azure_security_keyvault::prelude::SignatureAlgorithm;
-use azure_security_keyvault::KeyvaultClient;
+use azure_security_keyvault::KeyClient;
 use base64ct::{Base64UrlUnpadded, Encoding};
 use bindings::wasi::vault::keystore::{self, Algorithm, Jwk};
 use bindings::Vault;
@@ -44,7 +44,7 @@ mod bindings {
 
 const ED25519_X: &str = "q6rjRnEH_XK72jvB8FNBJtOl9_gDs6NW49cAz6p2sW4";
 
-static KV_CLIENT: OnceLock<KeyvaultClient> = OnceLock::new();
+static CLIENT: OnceLock<KeyClient> = OnceLock::new();
 
 #[derive(Clone)]
 pub struct KeySet {
@@ -77,9 +77,9 @@ impl runtime::Capability for Capability {
         let credential = azure_identity::create_credential()
             .map_err(|e| anyhow!("could not create credential: {e}"))?;
 
-        let client = KeyvaultClient::new("https://kv-credibil-demo.vault.azure.net", credential)
+        let client = KeyClient::new("https://kv-credibil-demo.vault.azure.net", credential)
             .map_err(|e| anyhow!("issue creating client: {e}"))?;
-        KV_CLIENT.get_or_init(|| client);
+        CLIENT.get_or_init(|| client);
 
         Ok(())
     }
@@ -113,7 +113,6 @@ impl keystore::HostKeySet for State {
         &mut self, _rep: Resource<KeySet>, _identifier: String, _alg: Algorithm,
     ) -> wasmtime::Result<Result<Resource<KeyPair>, keystore::Error>> {
         tracing::debug!("keystore::HostKeySet::generate");
-
         todo!("generate new key for KeyType")
     }
 
@@ -125,9 +124,19 @@ impl keystore::HostKeySet for State {
         let Ok(key_set) = self.table().get(&rep) else {
             return Ok(Err(keystore::Error::NoSuchKeySet));
         };
+        let Some(client) = CLIENT.get() else {
+            return Ok(Err(keystore::Error::Other("no key client".into())));
+        };
 
-        let name = format!("{}-{identifier}", key_set.identifier);
-        let key_pair = KeyPair { name };
+        let key_pair = KeyPair {
+            name: format!("{}-{identifier}", key_set.identifier),
+        };
+
+        // check key exists before saving reference
+        let Ok(_) = client.get(&key_pair.name).await else {
+            return Ok(Err(keystore::Error::NoSuchKeyPair));
+        };
+
         Ok(Ok(self.table().push(key_pair)?))
     }
 
@@ -152,10 +161,10 @@ impl keystore::HostKeyPair for State {
         tracing::debug!("keystore::HostKeySet::sign");
 
         let Ok(key_pair) = self.table().get(&rep) else {
-            return Ok(Err(keystore::Error::NoSuchKeySet));
+            return Ok(Err(keystore::Error::NoSuchKeyPair));
         };
-        let Some(client) = KV_CLIENT.get() else {
-            return Ok(Err(keystore::Error::NoSuchKeySet));
+        let Some(client) = CLIENT.get() else {
+            return Ok(Err(keystore::Error::Other("no key client".into())));
         };
 
         // hash data
@@ -163,13 +172,12 @@ impl keystore::HostKeyPair for State {
         hasher.update(data);
         let bytes = hasher.finalize();
         let Ok(digest) = std::str::from_utf8(&bytes) else {
-            return Ok(Err(keystore::Error::NoSuchKeySet));
+            return Ok(Err(keystore::Error::Other("issue creating digest".into())));
         };
 
-        let Ok(sig_res) =
-            client.key_client().sign(&key_pair.name, SignatureAlgorithm::ES256K, digest).await
+        let Ok(sig_res) = client.sign(&key_pair.name, SignatureAlgorithm::ES256K, digest).await
         else {
-            return Ok(Err(keystore::Error::NoSuchKeySet));
+            return Ok(Err(keystore::Error::Other("issue signing data".into())));
         };
 
         Ok(Ok(sig_res.signature))
@@ -180,24 +188,22 @@ impl keystore::HostKeyPair for State {
     ) -> wasmtime::Result<Result<Jwk, keystore::Error>> {
         tracing::debug!("keystore::HostKeySet::verifying_key");
 
-        let Ok(_key_pair) = self.table().get_mut(&rep) else {
-            return Ok(Err(keystore::Error::NoSuchKeySet));
+        let Ok(key_pair) = self.table().get_mut(&rep) else {
+            return Ok(Err(keystore::Error::NoSuchKeyPair));
         };
-        let Some(client) = KV_CLIENT.get() else {
-            return Ok(Err(keystore::Error::NoSuchKeySet));
+        let Some(client) = CLIENT.get() else {
+            return Ok(Err(keystore::Error::Other("no key client".into())));
         };
-
-        let Ok(key_pair) = client.key_client().get("demo-credibil-io-supplier-signing-key").await
-        else {
+        let Ok(kv_key) = client.get(&key_pair.name).await else {
             return Ok(Err(keystore::Error::NoSuchKeyPair));
         };
 
         Ok(Ok(Jwk {
-            kid: key_pair.key.id.clone(),
-            kty: key_pair.key.key_type,
+            kid: kv_key.key.id.clone(),
+            kty: kv_key.key.key_type,
             crv: "secp256k1".to_string(),
-            x: Base64UrlUnpadded::encode_string(&key_pair.key.x.unwrap_or_default()),
-            y: Some(Base64UrlUnpadded::encode_string(&key_pair.key.y.unwrap_or_default())),
+            x: Base64UrlUnpadded::encode_string(&kv_key.key.x.unwrap_or_default()),
+            y: Some(Base64UrlUnpadded::encode_string(&kv_key.key.y.unwrap_or_default())),
         }))
     }
 
@@ -228,7 +234,6 @@ impl keystore::HostKeyPair for State {
 #[cfg(test)]
 mod tests {
 
-
     use super::*;
 
     #[tokio::test]
@@ -237,12 +242,9 @@ mod tests {
 
         let credential = azure_identity::create_credential().expect("should create credential");
         let client =
-            KeyvaultClient::new("https://kv-credibil-demo.vault.azure.net", credential).unwrap();
-        let kv_key = client
-            .key_client()
-            .get("demo-credibil-io-supplier-signing-key")
-            .await
-            .expect("should get key");
+            KeyClient::new("https://kv-credibil-demo.vault.azure.net", credential).unwrap();
+        let kv_key =
+            client.get("demo-credibil-io-supplier-signing-key").await.expect("should get key");
 
         let jwk = Jwk {
             kid: kv_key.key.id.clone(),
