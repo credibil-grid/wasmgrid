@@ -4,7 +4,7 @@
 //! (<https://github.com/WebAssembly/wasi-vault>).
 
 use std::sync::OnceLock;
-use std::vec;
+use std::{env, vec};
 
 use anyhow::anyhow;
 use azure_security_keyvault::prelude::SignatureAlgorithm;
@@ -74,6 +74,8 @@ impl runtime::Capability for Capability {
 
     /// Provide vault capability for the wasm component.
     async fn run(&self, _runtime: Runtime) -> anyhow::Result<()> {
+        env::set_var("AZURE_CREDENTIAL_KIND", "environment");
+
         let credential = azure_identity::create_credential()
             .map_err(|e| anyhow!("could not create credential: {e}"))?;
         let client = KeyClient::new("https://kv-credibil-demo.vault.azure.net", credential)
@@ -238,6 +240,7 @@ mod tests {
     #[tokio::test]
     async fn test_public_key() {
         dotenv::dotenv().ok();
+        env::set_var("AZURE_CREDENTIAL_KIND", "environment");
 
         let credential = azure_identity::create_credential().expect("should create credential");
         let client =
@@ -258,6 +261,7 @@ mod tests {
     #[tokio::test]
     async fn test_sign() {
         dotenv::dotenv().ok();
+        env::set_var("AZURE_CREDENTIAL_KIND", "environment");
 
         let credential = azure_identity::create_credential().expect("should create credential");
         let client =
