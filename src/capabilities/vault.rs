@@ -9,7 +9,7 @@ use std::vec;
 use anyhow::anyhow;
 use azure_security_keyvault::prelude::SignatureAlgorithm;
 use azure_security_keyvault::KeyClient;
-use base64ct::{Base64UrlUnpadded, Encoding};
+use base64ct::{Base64, Base64UrlUnpadded, Encoding};
 use bindings::wasi::vault::keystore::{self, Algorithm, Jwk};
 use bindings::Vault;
 use sha2::{Digest, Sha256};
@@ -171,14 +171,11 @@ impl keystore::HostKeyPair for State {
         // hash data
         let mut hasher = Sha256::new();
         hasher.update(data);
-        let bytes = hasher.finalize();
-        let Ok(digest) = std::str::from_utf8(&bytes) else {
-            return Ok(Err(keystore::Error::Other("issue creating digest".into())));
-        };
+        let digest = Base64::encode_string(&hasher.finalize());
 
-        let Ok(sig_res) = client.sign(&key_pair.name, SignatureAlgorithm::ES256K, digest).await
-        else {
-            return Ok(Err(keystore::Error::Other("issue signing data".into())));
+        let sig_res = match client.sign(&key_pair.name, SignatureAlgorithm::ES256K, digest).await {
+            Ok(digest) => digest,
+            Err(e) => return Ok(Err(keystore::Error::Other(format!("issue signing data: {e}")))),
         };
 
         Ok(Ok(sig_res.signature))
@@ -234,11 +231,12 @@ impl keystore::HostKeyPair for State {
 
 #[cfg(test)]
 mod tests {
+    use base64ct::{Base64, Encoding};
 
     use super::*;
 
     #[tokio::test]
-    async fn test_connect() {
+    async fn test_public_key() {
         dotenv::dotenv().ok();
 
         let credential = azure_identity::create_credential().expect("should create credential");
@@ -255,5 +253,24 @@ mod tests {
         };
 
         println!("jwk: {:?}", jwk);
+    }
+
+    #[tokio::test]
+    async fn test_sign() {
+        dotenv::dotenv().ok();
+
+        let credential = azure_identity::create_credential().expect("should create credential");
+        let client =
+            KeyClient::new("https://kv-credibil-demo.vault.azure.net", credential).unwrap();
+
+        // hash data
+        let mut hasher = Sha256::new();
+        hasher.update(b"hello world");
+        let digest = Base64::encode_string(&hasher.finalize());
+
+        let _ = client
+            .sign("demo-credibil-io-signing-key", SignatureAlgorithm::ES256K, digest)
+            .await
+            .expect("should sign data");
     }
 }
