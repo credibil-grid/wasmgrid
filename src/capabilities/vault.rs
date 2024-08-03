@@ -123,12 +123,14 @@ impl keystore::HostKeySet for State {
         let Ok(key_set) = self.table().get(&rep) else {
             return Ok(Err(keystore::Error::NoSuchKeySet));
         };
+        tracing::debug!("key: {}-{identifier}", key_set.identifier);
+
         let Some(client) = CLIENT.get() else {
             return Ok(Err(keystore::Error::Other("no key client".into())));
         };
-
         let key_pair = KeyPair {
-            name: format!("{}-{identifier}", key_set.identifier),
+            name: "demo-credibil-io-signing-key".to_string(),
+            // name: format!("{}-{identifier}", key_set.identifier),
         };
 
         // check key exists before saving reference
@@ -185,7 +187,7 @@ impl keystore::HostKeyPair for State {
     async fn public_key(
         &mut self, rep: Resource<KeyPair>,
     ) -> wasmtime::Result<Result<Jwk, keystore::Error>> {
-        tracing::debug!("keystore::HostKeySet::verifying_key");
+        tracing::debug!("keystore::HostKeySet::public_key");
 
         let Ok(key_pair) = self.table().get_mut(&rep) else {
             return Ok(Err(keystore::Error::NoSuchKeyPair));
@@ -242,8 +244,7 @@ mod tests {
         let credential = azure_identity::create_credential().expect("should create credential");
         let client =
             KeyClient::new("https://kv-credibil-demo.vault.azure.net", credential).unwrap();
-        let kv_key =
-            client.get("demo-credibil-io-supplier-signing-key").await.expect("should get key");
+        let kv_key = client.get("demo-credibil-io-signing-key").await.expect("should get key");
 
         let jwk = Jwk {
             kid: kv_key.key.id.clone(),
