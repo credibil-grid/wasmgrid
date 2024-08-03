@@ -1,6 +1,6 @@
 [toolchain]
-# channel = "stable"
 channel = "nightly"
+# channel = "nightly-2024-07-28"
 components = ["clippy", "rust-src", "rustfmt"]
 targets = [
   "aarch64-apple-darwin",

@@ -76,7 +76,6 @@ impl runtime::Capability for Capability {
     async fn run(&self, _runtime: Runtime) -> anyhow::Result<()> {
         let credential = azure_identity::create_credential()
             .map_err(|e| anyhow!("could not create credential: {e}"))?;
-
         let client = KeyClient::new("https://kv-credibil-demo.vault.azure.net", credential)
             .map_err(|e| anyhow!("issue creating client: {e}"))?;
         CLIENT.get_or_init(|| client);
