@@ -80,11 +80,7 @@ async fn handle_request(
     let (sender, receiver) = tokio::sync::oneshot::channel();
 
     // HACK: CORS preflight request for use when testing locally
-    let cors = match env::var("WITH_CORS") {
-        Ok(val) => val.parse().unwrap_or(false),
-        Err(_) => false,
-    };
-
+    let cors = env::var("WITH_CORS").map_or(false, |val| val.parse().unwrap_or(false));
     if cors && request.method() == Method::OPTIONS {
         let resp = hyper::Response::builder()
             .status(StatusCode::OK)

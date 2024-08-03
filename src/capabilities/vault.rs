@@ -3,17 +3,16 @@
 //! This module implements a runtime capability for `wasi:vault`
 //! (<https://github.com/WebAssembly/wasi-vault>).
 
+use std::sync::OnceLock;
 use std::vec;
 
 use anyhow::anyhow;
+use azure_security_keyvault::prelude::SignatureAlgorithm;
 use azure_security_keyvault::KeyvaultClient;
 use base64ct::{Base64UrlUnpadded, Encoding};
 use bindings::wasi::vault::keystore::{self, Algorithm, Jwk};
 use bindings::Vault;
-// use ecdsa::{Signature, Signer as _, SigningKey};
-use ed25519_dalek::Signer;
-use ed25519_dalek::SigningKey;
-// use k256::Secp256k1;
+use sha2::{Digest, Sha256};
 use wasmtime::component::{Linker, Resource};
 use wasmtime_wasi::WasiView;
 
@@ -43,14 +42,9 @@ mod bindings {
     });
 }
 
-// pub type Error = anyhow::Error;
-
-// const SECP1_X: &str = "tXSKB_rubXS7sCjXqupVJEzTcW3MsjmEvq1YpXn96Zg";
-// const SECP1_Y: &str = "dOicXqbjFxoGJ-K0-GJ1kHYJqic_D_OMuUwkQ7Ol6nk";
-// const SECP1_SECRET: &str = "0Md3MhPaKEpnKAyKE498EdDFerD5NLeKJ5Rb-vC16Gs";
-
 const ED25519_X: &str = "q6rjRnEH_XK72jvB8FNBJtOl9_gDs6NW49cAz6p2sW4";
-const ED25519_SECRET: &str = "cCxmHfFfIJvP74oNKjAuRC3zYoDMo0pFsAs19yKMowY";
+
+static KV_CLIENT: OnceLock<KeyvaultClient> = OnceLock::new();
 
 #[derive(Clone)]
 pub struct KeySet {
@@ -80,11 +74,12 @@ impl runtime::Capability for Capability {
 
     /// Provide vault capability for the wasm component.
     async fn run(&self, _runtime: Runtime) -> anyhow::Result<()> {
-        let credential = azure_identity::create_credential()?;
-        let client =
-            KeyvaultClient::new("https://kv-credibil-demo.vault.azure.net", credential).unwrap();
+        let credential = azure_identity::create_credential()
+            .map_err(|e| anyhow!("could not create credential: {e}"))?;
 
-        println!("client: {:?}", client);
+        let client = KeyvaultClient::new("https://kv-credibil-demo.vault.azure.net", credential)
+            .map_err(|e| anyhow!("issue creating client: {e}"))?;
+        KV_CLIENT.get_or_init(|| client);
 
         Ok(())
     }
@@ -159,42 +154,25 @@ impl keystore::HostKeyPair for State {
         let Ok(key_pair) = self.table().get(&rep) else {
             return Ok(Err(keystore::Error::NoSuchKeySet));
         };
-        tracing::info!("key_pair.name: {}", key_pair.name);
+        let Some(client) = KV_CLIENT.get() else {
+            return Ok(Err(keystore::Error::NoSuchKeySet));
+        };
 
-        tracing::info!("key_pair.name: {}", key_pair.name);
+        // hash data
+        let mut hasher = Sha256::new();
+        hasher.update(data);
+        let bytes = hasher.finalize();
+        let Ok(digest) = std::str::from_utf8(&bytes) else {
+            return Ok(Err(keystore::Error::NoSuchKeySet));
+        };
 
-        let decoded = Base64UrlUnpadded::decode_vec(ED25519_SECRET)
-            .map_err(|e| (keystore::Error::Other(format!("issue decoding ED25519_SECRET: {e}"))))?;
+        let Ok(sig_res) =
+            client.key_client().sign(&key_pair.name, SignatureAlgorithm::ES256K, digest).await
+        else {
+            return Ok(Err(keystore::Error::NoSuchKeySet));
+        };
 
-        let secret_key = decoded
-            .try_into()
-            .map_err(|_| (keystore::Error::Other("issue deserializing signing key".to_string())))?;
-
-        let signing_key: SigningKey = SigningKey::from_bytes(&secret_key);
-        Ok(Ok(signing_key.sign(&data).to_bytes().to_vec()))
-
-        // let decoded = match Base64UrlUnpadded::decode_vec(SECP1_SECRET) {
-        //     Ok(decoded) => decoded,
-        //     Err(e) => {
-        //         tracing::debug!("issue decoding SECP1_SECRET: {e}");
-        //         return Ok(Err(self.table().push(anyhow!("issue decoding SECP1_SECRET: {e}"))?));
-        //     }
-        // };
-
-        // let signing_key: ecdsa::SigningKey<Secp256k1> =
-        //     match ecdsa::SigningKey::from_slice(&decoded) {
-        //         Ok(signing_key) => signing_key,
-        //         Err(e) => {
-        //             tracing::debug!("issue deserializing signing key: {e}");
-        //             return Ok(Err(self
-        //                 .table()
-        //                 .push(anyhow!("issue deserializing signing key: {e}"))?));
-        //         }
-        //     };
-
-        // let sig: ecdsa::Signature<Secp256k1> = signing_key.sign(&data);
-
-        // Ok(Ok(sig.to_vec()))
+        Ok(Ok(sig_res.signature))
     }
 
     async fn public_key(
@@ -205,22 +183,22 @@ impl keystore::HostKeyPair for State {
         let Ok(_key_pair) = self.table().get_mut(&rep) else {
             return Ok(Err(keystore::Error::NoSuchKeySet));
         };
+        let Some(client) = KV_CLIENT.get() else {
+            return Ok(Err(keystore::Error::NoSuchKeySet));
+        };
+
+        let Ok(key_pair) = client.key_client().get("demo-credibil-io-supplier-signing-key").await
+        else {
+            return Ok(Err(keystore::Error::NoSuchKeyPair));
+        };
 
         Ok(Ok(Jwk {
-            kid: None,
-            kty: "OKP".into(),
-            crv: "Ed25519".into(),
-            x: ED25519_X.into(),
-            y: None,
+            kid: key_pair.key.id.clone(),
+            kty: key_pair.key.key_type,
+            crv: "secp256k1".to_string(),
+            x: Base64UrlUnpadded::encode_string(&key_pair.key.x.unwrap_or_default()),
+            y: Some(Base64UrlUnpadded::encode_string(&key_pair.key.y.unwrap_or_default())),
         }))
-
-        // Ok(Ok(Jwk {
-        //     kid: None,
-        //     kty: "EC".into(),
-        //     crv: "secp256k1".into(),
-        //     x: SECP1_X.into(),
-        //     y: Some(SECP1_Y.into(),),
-        // }))
     }
 
     async fn versions(
@@ -239,14 +217,6 @@ impl keystore::HostKeyPair for State {
             x: ED25519_X.into(),
             y: None,
         }]))
-
-        // Ok(Ok(vec![Jwk {
-        //     kid: None,
-        //     kty: "EC".into(),
-        //     crv: "secp256k1".into(),
-        //     x: "tXSKB_rubXS7sCjXqupVJEzTcW3MsjmEvq1YpXn96Zg".into(),
-        //     y: Some("dOicXqbjFxoGJ-K0-GJ1kHYJqic_D_OMuUwkQ7Ol6nk".into()),
-        // }]))
     }
 
     fn drop(&mut self, rep: Resource<KeyPair>) -> Result<(), wasmtime::Error> {
@@ -258,8 +228,6 @@ impl keystore::HostKeyPair for State {
 #[cfg(test)]
 mod tests {
 
-    // use azure_security_keyvault::prelude::JsonWebKey;
-    // use serde_json::json;
 
     use super::*;
 
@@ -276,31 +244,14 @@ mod tests {
             .await
             .expect("should get key");
 
-        // let json = serde_json::to_string_pretty(&kv_key.key).expect("should serialize key");
-        // println!("jwk: {json}");
+        let jwk = Jwk {
+            kid: kv_key.key.id.clone(),
+            kty: kv_key.key.key_type,
+            crv: "secp256k1".to_string(),
+            x: Base64UrlUnpadded::encode_string(&kv_key.key.x.unwrap()),
+            y: Some(Base64UrlUnpadded::encode_string(&kv_key.key.y.unwrap())),
+        };
 
-        let value = serde_json::to_value(&kv_key.key).expect("should serialize key");
-        assert_eq!(
-            serde_json::json!({
-                "kty": "EC",
-                "crv": "P-256K",
-                "kid": "https://kv-credibil-demo.vault.azure.net/keys/demo-credibil-io-supplier-signing-key/76a8656eb0da4d1dbef2aaf2cd386c75",
-                "x": "EVojE7JDz_8fGtX6p4xf5HdWC5oINXNimHRCXj_EhpY",
-                "y": "bBhqRGqk-V-Ckzjsh-FOP8fGggtLdegMCpTLkmX6Qts",
-
-                "key_ops": ["sign",  "verify"],
-                "d": null,
-                "dp": null,
-                "dq": null,
-                "e": null,
-                "k": null,
-                "key_hsm": null,
-                "n": null,
-                "p": null,
-                "q": null,
-                "qi": null,
-            }),
-            value
-        );
+        println!("jwk: {:?}", jwk);
     }
 }
