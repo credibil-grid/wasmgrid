@@ -3,8 +3,7 @@
 FROM rust:alpine3.19 AS builder
 
 RUN rustup update && rustup target add x86_64-unknown-linux-musl
-RUN apk --update add --no-cache musl-dev ca-certificates 
-# openssl-dev
+RUN apk --update add --no-cache musl-dev ca-certificates pkgconf openssl-dev
 RUN adduser --disabled-password --gecos "" --home "/nonexistent" \
     --shell "/sbin/nologin" --no-create-home --uid 10001 "wasm"
 
