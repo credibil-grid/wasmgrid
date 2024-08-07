@@ -3,6 +3,12 @@
 //! This module implements a runtime capability for `wasi:vault`
 //! (<https://github.com/WebAssembly/wasi-vault>).
 
+// mod auth;
+// mod azure;
+mod client;
+// mod keyring;
+// mod signer;
+
 use std::sync::OnceLock;
 use std::{env, vec};
 
@@ -12,7 +18,7 @@ use azure_security_keyvault::KeyClient;
 use base64ct::{Base64UrlUnpadded, Encoding};
 use bindings::wasi::vault::keystore::{self, Algorithm, Jwk};
 use bindings::Vault;
-// use sha2::{Digest, Sha256};
+use sha2::{Digest, Sha256};
 use wasmtime::component::{Linker, Resource};
 use wasmtime_wasi::WasiView;
 
@@ -41,8 +47,6 @@ mod bindings {
         // include_generated_code_from_file: true,
     });
 }
-
-const ED25519_X: &str = "q6rjRnEH_XK72jvB8FNBJtOl9_gDs6NW49cAz6p2sW4";
 
 static CLIENT: OnceLock<KeyClient> = OnceLock::new();
 
@@ -74,13 +78,13 @@ impl runtime::Capability for Capability {
 
     /// Provide vault capability for the wasm component.
     async fn run(&self, _runtime: Runtime) -> anyhow::Result<()> {
-        env::set_var("AZURE_CREDENTIAL_KIND", "environment");
+        // env::set_var("AZURE_CREDENTIAL_KIND", "environment");
 
         let credential = azure_identity::create_credential()
             .map_err(|e| anyhow!("could not create credential: {e}"))?;
-        let client = KeyClient::new("https://kv-credibil-demo.vault.azure.net", credential)
-            .map_err(|e| anyhow!("issue creating client: {e}"))?;
-        CLIENT.get_or_init(|| client);
+        // let client = KeyClient::new("https://kv-credibil-demo.vault.azure.net", credential)
+        //     .map_err(|e| anyhow!("issue creating client: {e}"))?;
+        // CLIENT.get_or_init(|| client);
 
         Ok(())
     }
@@ -175,19 +179,22 @@ impl keystore::HostKeyPair for State {
         // let Ok(key_pair) = self.table().get(&rep) else {
         //     return Ok(Err(keystore::Error::NoSuchKeyPair));
         // };
-
         // let Some(client) = CLIENT.get() else {
         //     return Ok(Err(keystore::Error::Other("no key client".into())));
         // };
-
-        // // hash data
+        // // hash data and sign
         // let digest = Base64UrlUnpadded::encode_string(&Sha256::digest(&data));
         // let sig_res = match client.sign(&key_pair.name, SignatureAlgorithm::ES256K, digest).await {
         //     Ok(digest) => digest,
         //     Err(e) => return Ok(Err(keystore::Error::Other(format!("issue signing data: {e}")))),
         // };
-
         // Ok(Ok(sig_res.signature))
+
+        let _digest = Base64UrlUnpadded::encode_string(&Sha256::digest(&data));
+        // let sig_res = match client.sign(&key_pair.name, SignatureAlgorithm::ES256K, digest).await {
+        //     Ok(digest) => digest,
+        //     Err(e) => return Ok(Err(keystore::Error::Other(format!("issue signing data: {e}")))),
+        // };
 
         let decoded = Base64UrlUnpadded::decode_vec(D).expect("should decode");
         let bytes: [u8; 32] = decoded.as_slice().try_into().expect("should convert");
@@ -240,10 +247,10 @@ impl keystore::HostKeyPair for State {
 
         Ok(Ok(vec![Jwk {
             kid: None,
-            kty: "OKP".into(),
-            crv: "Ed25519".into(),
-            x: ED25519_X.into(),
-            y: None,
+            kty: "EC".to_string(),
+            crv: "secp256k1".to_string(),
+            x: X.to_string(),
+            y: Some(Y.to_string()),
         }]))
     }
 
@@ -293,13 +300,14 @@ mod tests {
 
         let payload = "hello world";
 
-        // signing key
+        // sign
         let decoded = Base64UrlUnpadded::decode_vec("0Md3MhPaKEpnKAyKE498EdDFerD5NLeKJ5Rb-vC16Gs")
             .expect("should decode");
         let bytes: [u8; 32] = decoded.as_slice().try_into().unwrap();
         let signing_key = SigningKey::from_bytes(&bytes.into()).unwrap();
+        let signature: Signature<Secp256k1> = signing_key.sign(payload.as_bytes());
 
-        // verifying key
+        // verify
         let mut sec1 = vec![0x04]; // uncompressed format
         sec1.append(
             &mut Base64UrlUnpadded::decode_vec("tXSKB_rubXS7sCjXqupVJEzTcW3MsjmEvq1YpXn96Zg")
@@ -311,11 +319,8 @@ mod tests {
         );
         let verifying_key = VerifyingKey::<Secp256k1>::from_sec1_bytes(&sec1).unwrap();
 
-        // sign & verify
-        let signature: Signature<Secp256k1> = signing_key.sign(payload.as_bytes());
-
         if let Err(e) = verifying_key.verify(payload.as_bytes(), &signature) {
-            println!("signature verification failed: {e}");
+            panic!("signature verification failed: {e}");
         }
     }
 
@@ -323,13 +328,13 @@ mod tests {
     async fn test_sign2() {
         dotenv::dotenv().ok();
         env::set_var("AZURE_CREDENTIAL_KIND", "environment");
-
-        let payload = Base64UrlUnpadded::encode_string(b"hello world");
-        let digest = Base64UrlUnpadded::encode_string(&Sha256::digest(&payload));
-
         let credential = azure_identity::create_credential().expect("should create credential");
         let client =
             KeyClient::new("https://kv-credibil-demo.vault.azure.net", credential).unwrap();
+
+        let payload = "hello world";
+        let digest = Base64UrlUnpadded::encode_string(&Sha256::digest(&payload));
+
         let sig_res = client
             .sign("demo-credibil-io-signing-key", SignatureAlgorithm::ES256K, digest)
             .await
@@ -337,6 +342,7 @@ mod tests {
 
         //  verifying key
         let kv_key = client.get("demo-credibil-io-signing-key").await.expect("should get key");
+
         let mut sec1 = vec![0x04]; // uncompressed format
         sec1.append(&mut kv_key.key.x.unwrap());
         sec1.append(&mut kv_key.key.y.unwrap());
