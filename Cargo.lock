@@ -899,16 +899,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "06ea2b9bc92be3c2baa9334a323ebca2d6f074ff852cd1d7b11064035cd3868f"
 
 [[package]]
-name = "core-utils"
-version = "0.1.0-alpha.4"
-source = "git+https://github.com/vercre/vercre#752cedbb853477624dbb689a9d92ce17085f8ad4"
-dependencies = [
- "base64ct",
- "fastrand 2.1.0",
- "serde",
-]
-
-[[package]]
 name = "cpufeatures"
 version = "0.2.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1221,24 +1211,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e8566979429cf69b49a5c740c60791108e86440e8be149bbea4fe54d2c32d6e2"
 
 [[package]]
-name = "datasec"
-version = "0.1.0-alpha.4"
-source = "git+https://github.com/vercre/vercre#752cedbb853477624dbb689a9d92ce17085f8ad4"
-dependencies = [
- "aes-gcm",
- "anyhow",
- "base64ct",
- "crypto_box",
- "ecdsa",
- "ed25519-dalek",
- "k256",
- "serde",
- "serde_json",
- "tracing",
- "x25519-dalek",
-]
-
-[[package]]
 name = "der"
 version = "0.7.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1335,19 +1307,6 @@ name = "deunicode"
 version = "1.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "339544cc9e2c4dc3fc7149fd630c5f22263a4fdf18a98afd0075784968b5cf00"
-
-[[package]]
-name = "dif-exch"
-version = "0.1.0-alpha.4"
-source = "git+https://github.com/vercre/vercre#752cedbb853477624dbb689a9d92ce17085f8ad4"
-dependencies = [
- "anyhow",
- "chrono",
- "regex",
- "serde",
- "serde_json",
- "serde_json_path",
-]
 
 [[package]]
 name = "digest"
@@ -2450,9 +2409,9 @@ dependencies = [
 
 [[package]]
 name = "hyper-util"
-version = "0.1.6"
+version = "0.1.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3ab92f4f49ee4fb4f997c784b7a2e0fa70050211e0b6a287f898c3c9785ca956"
+checksum = "cde7055719c54e36e95e8719f95883f22072a48ede39db7fc17a4e1d5281e9b9"
 dependencies = [
  "bytes",
  "futures-channel",
@@ -2479,7 +2438,7 @@ dependencies = [
  "iana-time-zone-haiku",
  "js-sys",
  "wasm-bindgen",
- "windows-core 0.51.1",
+ "windows-core 0.52.0",
 ]
 
 [[package]]
@@ -3054,10 +3013,10 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "http 1.1.0",
- "openid",
  "serde_json",
  "tracing",
  "tracing-subscriber",
+ "vercre-openid",
  "wasi 0.13.1+wasi-0.2.0",
  "wasi-bindings",
  "wasi-http",
@@ -3646,9 +3605,9 @@ dependencies = [
 
 [[package]]
 name = "object"
-version = "0.36.2"
+version = "0.36.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3f203fa8daa7bb185f760ae12bd8e097f63d17041dcdcaf675ac54cdf863170e"
+checksum = "27b64972346851a39438c60b341ebc01bba47464ae329e55cf343eb93964efd9"
 dependencies = [
  "crc32fast",
  "hashbrown 0.14.5",
@@ -3676,26 +3635,6 @@ name = "opaque-debug"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c08d65885ee38876c4f86fa503fb49d7b507c2b62552df7c70b2fce627e06381"
-
-[[package]]
-name = "openid"
-version = "0.1.0-alpha.4"
-source = "git+https://github.com/vercre/vercre#752cedbb853477624dbb689a9d92ce17085f8ad4"
-dependencies = [
- "anyhow",
- "base64ct",
- "chrono",
- "core-utils",
- "datasec",
- "dif-exch",
- "image",
- "qrcode",
- "serde",
- "serde_json",
- "serde_qs 0.13.0",
- "thiserror",
- "w3c-vc",
-]
 
 [[package]]
 name = "openssl-probe"
@@ -3931,9 +3870,9 @@ dependencies = [
 
 [[package]]
 name = "pkarr"
-version = "2.1.1"
+version = "2.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a8ffdac8b4b7ea5240c46b28f88de799e0efaa2b93ccb08eaae6e50835dfe137"
+checksum = "83179cf003ff6c5c1ddb04372c48a1f664855e871554a30205e3d25b85ceb00a"
 dependencies = [
  "bytes",
  "document-features",
@@ -4933,9 +4872,9 @@ dependencies = [
 
 [[package]]
 name = "rustls-pki-types"
-version = "1.7.0"
+version = "1.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "976295e77ce332211c0d24d92c0e83e50f5c5f046d11082cea19f3df13a3562d"
+checksum = "fc0a2ce646f8655401bb81e7927b812614bd5d91dbc968696be50603510fcaf0"
 
 [[package]]
 name = "rustls-webpki"
@@ -5672,9 +5611,9 @@ dependencies = [
 
 [[package]]
 name = "swarm-discovery"
-version = "0.2.0"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a0685d4eda80e2dfee7fc413ba861ef11411ca813d836a77ab8f0d3a00286488"
+checksum = "39769914108ae68e261d85ceac7bce7095947130f79c29d4535e9b31fc702a40"
 dependencies = [
  "acto",
  "anyhow",
@@ -5793,15 +5732,15 @@ checksum = "61c41af27dd6d1e27b1b16b489db798443478cef1f06a660c96db617ba5de3b1"
 
 [[package]]
 name = "tempfile"
-version = "3.11.0"
+version = "3.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b8fcd239983515c23a32fb82099f97d0b11b8c72f654ed659363a95c3dad7a53"
+checksum = "04cbcdd0c794ebb0d4cf35e88edd2f7d2c4c3e9a5a6dab322839b321c6a87a64"
 dependencies = [
  "cfg-if",
  "fastrand 2.1.0",
  "once_cell",
  "rustix",
- "windows-sys 0.52.0",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -6380,27 +6319,88 @@ dependencies = [
 ]
 
 [[package]]
-name = "version_check"
-version = "0.9.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
+name = "vercre-core-utils"
+version = "0.1.0-alpha.4"
+source = "git+https://github.com/vercre/vercre#2085623f73291e5df9b2c63840827afd916115a0"
+dependencies = [
+ "base64ct",
+ "fastrand 2.1.0",
+ "serde",
+]
 
 [[package]]
-name = "w3c-vc"
+name = "vercre-datasec"
 version = "0.1.0-alpha.4"
-source = "git+https://github.com/vercre/vercre#752cedbb853477624dbb689a9d92ce17085f8ad4"
+source = "git+https://github.com/vercre/vercre#2085623f73291e5df9b2c63840827afd916115a0"
+dependencies = [
+ "aes-gcm",
+ "anyhow",
+ "base64ct",
+ "crypto_box",
+ "ecdsa",
+ "ed25519-dalek",
+ "k256",
+ "serde",
+ "serde_json",
+ "tracing",
+ "x25519-dalek",
+]
+
+[[package]]
+name = "vercre-dif-exch"
+version = "0.1.0-alpha.4"
+source = "git+https://github.com/vercre/vercre#2085623f73291e5df9b2c63840827afd916115a0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "regex",
+ "serde",
+ "serde_json",
+ "serde_json_path",
+]
+
+[[package]]
+name = "vercre-openid"
+version = "0.1.0-alpha.4"
+source = "git+https://github.com/vercre/vercre#2085623f73291e5df9b2c63840827afd916115a0"
 dependencies = [
  "anyhow",
  "base64ct",
  "chrono",
- "core-utils",
- "datasec",
- "dif-exch",
+ "image",
+ "qrcode",
+ "serde",
+ "serde_json",
+ "serde_qs 0.13.0",
+ "thiserror",
+ "vercre-core-utils",
+ "vercre-datasec",
+ "vercre-dif-exch",
+ "vercre-w3c-vc",
+]
+
+[[package]]
+name = "vercre-w3c-vc"
+version = "0.1.0-alpha.4"
+source = "git+https://github.com/vercre/vercre#2085623f73291e5df9b2c63840827afd916115a0"
+dependencies = [
+ "anyhow",
+ "base64ct",
+ "chrono",
  "serde",
  "serde_json",
  "tracing",
  "uuid",
+ "vercre-core-utils",
+ "vercre-datasec",
+ "vercre-dif-exch",
 ]
+
+[[package]]
+name = "version_check"
+version = "0.9.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 
 [[package]]
 name = "waker-fn"

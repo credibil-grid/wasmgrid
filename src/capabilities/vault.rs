@@ -344,8 +344,9 @@ mod tests {
 
         let signature: Signature<Secp256k1> =
             Signature::from_slice(&sig_res.signature).expect("should get signature");
+        let normalised = signature.normalize_s().unwrap_or(signature);
 
-        match verifying_key.verify(payload.as_bytes(), &signature) {
+        match verifying_key.verify(payload.as_bytes(), &normalised) {
             Ok(_) => println!("VERIFICATION PASSED"),
             Err(_) => panic!("VERIFICATION FAILED"),
         }

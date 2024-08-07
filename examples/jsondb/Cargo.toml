@@ -12,10 +12,10 @@ workspace = true
 [dependencies]
 anyhow.workspace = true
 http.workspace = true
-openid = { git = "https://github.com/vercre/vercre" }
 serde_json.workspace = true
-tracing.workspace = true
 tracing-subscriber.workspace = true
-wasi.workspace = true
+tracing.workspace = true
+vercre-openid = { git = "https://github.com/vercre/vercre" }
 wasi-bindings.workspace = true
 wasi-http.workspace = true
+wasi.workspace = true
