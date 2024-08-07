@@ -276,10 +276,7 @@ impl HostStatement for State {
             bson::doc! {}
         };
 
-        let query = Statement {
-            collection,
-            conditions: doc,
-        };
+        let query = Statement { collection, conditions: doc };
 
         Ok(Ok(self.table().push(query)?))
     }

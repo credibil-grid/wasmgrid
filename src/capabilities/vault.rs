@@ -3,21 +3,17 @@
 //! This module implements a runtime capability for `wasi:vault`
 //! (<https://github.com/WebAssembly/wasi-vault>).
 
-// mod auth;
-// mod azure;
 mod client;
-// mod keyring;
-// mod signer;
+mod key;
 
 use std::sync::OnceLock;
-use std::{env, vec};
+use std::vec;
 
 use anyhow::anyhow;
-// use azure_security_keyvault::prelude::SignatureAlgorithm;
-use azure_security_keyvault::KeyClient;
 use base64ct::{Base64UrlUnpadded, Encoding};
 use bindings::wasi::vault::keystore::{self, Algorithm, Jwk};
 use bindings::Vault;
+use client::KeyClient;
 use sha2::{Digest, Sha256};
 use wasmtime::component::{Linker, Resource};
 use wasmtime_wasi::WasiView;
@@ -44,7 +40,6 @@ mod bindings {
         additional_derives: [
             Clone,
         ],
-        // include_generated_code_from_file: true,
     });
 }
 
@@ -78,13 +73,9 @@ impl runtime::Capability for Capability {
 
     /// Provide vault capability for the wasm component.
     async fn run(&self, _runtime: Runtime) -> anyhow::Result<()> {
-        // env::set_var("AZURE_CREDENTIAL_KIND", "environment");
-
-        let credential = azure_identity::create_credential()
-            .map_err(|e| anyhow!("could not create credential: {e}"))?;
-        // let client = KeyClient::new("https://kv-credibil-demo.vault.azure.net", credential)
-        //     .map_err(|e| anyhow!("issue creating client: {e}"))?;
-        // CLIENT.get_or_init(|| client);
+        let client = KeyClient::new("https://kv-credibil-demo.vault.azure.net")
+            .map_err(|e| anyhow!("issue creating client: {e}"))?;
+        CLIENT.get_or_init(|| client);
 
         Ok(())
     }
@@ -140,7 +131,7 @@ impl keystore::HostKeySet for State {
         };
 
         // check key exists before saving reference
-        let Ok(_) = client.get(&key_pair.name).await else {
+        let Ok(_) = client.get_key(&key_pair.name).await else {
             return Ok(Err(keystore::Error::NoSuchKeyPair));
         };
 
@@ -262,6 +253,8 @@ impl keystore::HostKeyPair for State {
 
 #[cfg(test)]
 mod tests {
+    use std::env;
+
     use azure_security_keyvault::prelude::SignatureAlgorithm;
     use ecdsa::signature::{Signer, Verifier};
     use ecdsa::{Signature, VerifyingKey};
@@ -277,8 +270,11 @@ mod tests {
         env::set_var("AZURE_CREDENTIAL_KIND", "environment");
 
         let credential = azure_identity::create_credential().expect("should create credential");
-        let client =
-            KeyClient::new("https://kv-credibil-demo.vault.azure.net", credential).unwrap();
+        let client = azure_security_keyvault::KeyClient::new(
+            "https://kv-credibil-demo.vault.azure.net",
+            credential,
+        )
+        .unwrap();
         let kv_key = client.get("demo-credibil-io-signing-key").await.expect("should get key");
 
         let jwk = Jwk {
@@ -328,9 +324,13 @@ mod tests {
     async fn test_sign2() {
         dotenv::dotenv().ok();
         env::set_var("AZURE_CREDENTIAL_KIND", "environment");
+
         let credential = azure_identity::create_credential().expect("should create credential");
-        let client =
-            KeyClient::new("https://kv-credibil-demo.vault.azure.net", credential).unwrap();
+        let client = azure_security_keyvault::KeyClient::new(
+            "https://kv-credibil-demo.vault.azure.net",
+            credential,
+        )
+        .unwrap();
 
         let payload = "hello world";
         let digest = Base64UrlUnpadded::encode_string(&Sha256::digest(&payload));

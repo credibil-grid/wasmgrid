@@ -34,14 +34,7 @@ pub struct RequestBuilder {
 
 impl RequestBuilder {
     fn new(method: Method, url: String) -> Self {
-        Self {
-            method,
-            url,
-            headers: Headers::new(),
-            query: None,
-            body: None,
-            errors: Vec::new(),
-        }
+        Self { method, url, headers: Headers::new(), query: None, body: None, errors: Vec::new() }
     }
 
     pub fn header(&mut self, name: &str, value: &str) -> &mut Self {

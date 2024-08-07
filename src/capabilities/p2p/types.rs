@@ -35,9 +35,7 @@ pub struct Blob {
 
 impl Blob {
     pub fn new() -> Self {
-        Self {
-            data: BytesMut::new(),
-        }
+        Self { data: BytesMut::new() }
     }
 }
 

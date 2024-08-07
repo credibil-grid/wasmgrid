@@ -25,11 +25,8 @@ fn handler(request: &Request) -> anyhow::Result<Vec<u8>> {
     tracing::debug!("request.uri: {}", request.uri());
 
     let client = Client::connect("demo.nats.io").unwrap();
-    let message = Message {
-        data: b"Hello World".to_vec(),
-        format: FormatSpec::Raw,
-        metadata: None,
-    };
+    let message =
+        Message { data: b"Hello World".to_vec(), format: FormatSpec::Raw, metadata: None };
     producer::send(client, &"b".into(), &[message]).expect("should send");
 
     let req: serde_json::Value = serde_json::from_slice(&request.body()?)?;

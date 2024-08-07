@@ -68,10 +68,8 @@ impl runtime::Capability for Capability {
         let client = async_nats::connect(&self.addr).await?;
 
         // message processor needs to be accessible to Guest callbacks
-        let processor = PROCESSOR.get_or_init(|| Processor {
-            runtime: runtime.clone(),
-            client: client.clone(),
-        });
+        let processor = PROCESSOR
+            .get_or_init(|| Processor { runtime: runtime.clone(), client: client.clone() });
 
         // get guest configuration (channels to subscribe to)
         let mut store = runtime.new_store();

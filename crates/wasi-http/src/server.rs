@@ -8,31 +8,19 @@ use crate::request::Request;
 pub trait Handler = Fn(&Request) -> anyhow::Result<Vec<u8>>;
 
 pub fn get(handler: impl Handler + 'static) -> MethodHandler {
-    MethodHandler {
-        method: Method::Get,
-        handler: Box::new(handler),
-    }
+    MethodHandler { method: Method::Get, handler: Box::new(handler) }
 }
 
 pub fn post(handler: impl Handler + 'static) -> MethodHandler {
-    MethodHandler {
-        method: Method::Post,
-        handler: Box::new(handler),
-    }
+    MethodHandler { method: Method::Post, handler: Box::new(handler) }
 }
 
 pub fn put(handler: impl Handler + 'static) -> MethodHandler {
-    MethodHandler {
-        method: Method::Put,
-        handler: Box::new(handler),
-    }
+    MethodHandler { method: Method::Put, handler: Box::new(handler) }
 }
 
 pub fn delete(handler: impl Handler + 'static) -> MethodHandler {
-    MethodHandler {
-        method: Method::Delete,
-        handler: Box::new(handler),
-    }
+    MethodHandler { method: Method::Delete, handler: Box::new(handler) }
 }
 
 pub struct Router {
@@ -55,10 +43,7 @@ impl Router {
     /// Add a new route to the router.
     #[must_use]
     pub fn route(self, path: impl Into<String>, handler: MethodHandler) -> Self {
-        let route = Route {
-            path: path.into(),
-            handler,
-        };
+        let route = Route { path: path.into(), handler };
 
         let mut routes = self.routes;
         routes.push(route);

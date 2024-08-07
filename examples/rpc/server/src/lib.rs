@@ -16,9 +16,7 @@ struct Server;
 
 impl server::Guest for Server {
     fn configure() -> Result<ServerConfiguration, Error> {
-        Ok(ServerConfiguration {
-            identifier: "server".into(),
-        })
+        Ok(ServerConfiguration { identifier: "server".into() })
     }
 
     // Whenever a message is received on a subscribed channel, the host will call this
