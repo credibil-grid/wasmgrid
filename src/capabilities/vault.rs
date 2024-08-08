@@ -93,12 +93,6 @@ impl keystore::Host for State {
     ) -> wasmtime::Result<Result<Resource<KeySet>, keystore::Error>> {
         tracing::debug!("keystore::Host::open {identifier}");
 
-        // sanitise the identifier so it can be used as a key name
-        let identifier = identifier
-            .strip_prefix("https://")
-            .map_or(identifier.as_str(), |sanitised| sanitised)
-            .replace(['.', '/'], "-");
-
         let key_set = KeySet { identifier };
         Ok(Ok(self.table().push(key_set)?))
     }
@@ -131,8 +125,7 @@ impl keystore::HostKeySet for State {
             return Ok(Err(keystore::Error::Other("no key client".into())));
         };
         let key_pair = KeyPair {
-            name: "demo-credibil-io-signing-key".to_string(),
-            // name: format!("{}-{identifier}", key_set.identifier),
+            name: format!("{}-{identifier}", key_set.identifier),
         };
 
         // check key exists before saving reference
@@ -249,7 +242,7 @@ mod tests {
         let credential = azure_identity::create_credential().expect("should create credential");
         let client =
             KeyClient::new("https://kv-credibil-demo.vault.azure.net", credential).unwrap();
-        let kv_key = client.get("demo-credibil-io-signing-key").await.expect("should get key");
+        let kv_key = client.get("funder-signing-key").await.expect("should get key");
 
         let jwk = Jwk {
             kid: kv_key.key.id.clone(),
