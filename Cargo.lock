@@ -2461,7 +2461,7 @@ dependencies = [
  "iana-time-zone-haiku",
  "js-sys",
  "wasm-bindgen",
- "windows-core 0.52.0",
+ "windows-core 0.51.1",
 ]
 
 [[package]]
@@ -5063,9 +5063,9 @@ checksum = "388a1df253eca08550bef6c72392cfe7c30914bf41df5269b68cbd6ff8f570a3"
 
 [[package]]
 name = "serde"
-version = "1.0.204"
+version = "1.0.205"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bc76f558e0cbb2a839d37354c575f1dc3fdc6546b5be373ba43d95f231bf7c12"
+checksum = "e33aedb1a7135da52b7c21791455563facbbcc43d0f0f66165b42c21b3dfb150"
 dependencies = [
  "serde_derive",
 ]
@@ -5090,9 +5090,9 @@ dependencies = [
 
 [[package]]
 name = "serde_derive"
-version = "1.0.204"
+version = "1.0.205"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e0cd7e117be63d3c3678776753929474f3b04a43a080c744d6b0ae2a8c28e222"
+checksum = "692d6f5ac90220161d6774db30c662202721e64aed9058d2c394f451261420c1"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -6362,8 +6362,8 @@ dependencies = [
 
 [[package]]
 name = "vercre-core-utils"
-version = "0.1.0-alpha.4"
-source = "git+https://github.com/vercre/vercre#d895605160090265e8d4a69774da413abbba8296"
+version = "0.1.0-alpha.6"
+source = "git+https://github.com/vercre/vercre#038a055f5f7703f8e0bbf54cd11b784cdebfa2c9"
 dependencies = [
  "base64ct",
  "fastrand 2.1.0",
@@ -6372,8 +6372,8 @@ dependencies = [
 
 [[package]]
 name = "vercre-datasec"
-version = "0.1.0-alpha.4"
-source = "git+https://github.com/vercre/vercre#d895605160090265e8d4a69774da413abbba8296"
+version = "0.1.0-alpha.6"
+source = "git+https://github.com/vercre/vercre#038a055f5f7703f8e0bbf54cd11b784cdebfa2c9"
 dependencies = [
  "aes-gcm",
  "anyhow",
@@ -6390,8 +6390,8 @@ dependencies = [
 
 [[package]]
 name = "vercre-dif-exch"
-version = "0.1.0-alpha.4"
-source = "git+https://github.com/vercre/vercre#d895605160090265e8d4a69774da413abbba8296"
+version = "0.1.0-alpha.6"
+source = "git+https://github.com/vercre/vercre#038a055f5f7703f8e0bbf54cd11b784cdebfa2c9"
 dependencies = [
  "anyhow",
  "chrono",
@@ -6403,8 +6403,8 @@ dependencies = [
 
 [[package]]
 name = "vercre-openid"
-version = "0.1.0-alpha.4"
-source = "git+https://github.com/vercre/vercre#d895605160090265e8d4a69774da413abbba8296"
+version = "0.1.0-alpha.6"
+source = "git+https://github.com/vercre/vercre#038a055f5f7703f8e0bbf54cd11b784cdebfa2c9"
 dependencies = [
  "anyhow",
  "base64ct",
@@ -6423,8 +6423,8 @@ dependencies = [
 
 [[package]]
 name = "vercre-w3c-vc"
-version = "0.1.0-alpha.4"
-source = "git+https://github.com/vercre/vercre#d895605160090265e8d4a69774da413abbba8296"
+version = "0.1.0-alpha.6"
+source = "git+https://github.com/vercre/vercre#038a055f5f7703f8e0bbf54cd11b784cdebfa2c9"
 dependencies = [
  "anyhow",
  "base64ct",
