@@ -239,7 +239,7 @@ impl batch::Host for State {
     async fn get_many(
         &mut self, rep: Resource<Bucket>, keys: Vec<String>,
     ) -> wasmtime::Result<Result<Vec<Option<(String, Vec<u8>)>>, store::Error>> {
-        tracing::debug!("batch::Host::get_many {keys:?}");
+        tracing::trace!("batch::Host::get_many {keys:?}");
 
         let Ok(bucket) = self.table().get_mut(&rep) else {
             return Ok(Err(Error::NoSuchStore));
@@ -265,7 +265,7 @@ impl batch::Host for State {
     async fn set_many(
         &mut self, rep: Resource<Bucket>, key_values: Vec<(String, Vec<u8>)>,
     ) -> wasmtime::Result<Result<(), store::Error>> {
-        tracing::debug!("batch::Host::set_many {key_values:?}");
+        tracing::trace!("batch::Host::set_many {key_values:?}");
 
         let Ok(bucket) = self.table().get_mut(&rep) else {
             return Ok(Err(Error::NoSuchStore));
@@ -283,7 +283,7 @@ impl batch::Host for State {
     async fn delete_many(
         &mut self, rep: Resource<Bucket>, keys: Vec<String>,
     ) -> wasmtime::Result<Result<(), store::Error>> {
-        tracing::debug!("batch::Host::delete_many {keys:?}");
+        tracing::trace!("batch::Host::delete_many {keys:?}");
 
         let Ok(bucket) = self.table().get_mut(&rep) else {
             return Ok(Err(Error::NoSuchStore));
