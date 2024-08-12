@@ -88,7 +88,7 @@ impl readwrite::Host for State {
     async fn insert(
         &mut self, db: Resource<Database>, s: Resource<Statement>, d: Vec<u8>,
     ) -> wasmtime::Result<Result<(), Resource<Error>>> {
-        tracing::debug!("readwrite::Host::insert");
+        tracing::trace!("readwrite::Host::insert");
 
         let table = self.table();
         let database = table.get(&db)?;
@@ -97,13 +97,13 @@ impl readwrite::Host for State {
         let doc = match serde_json::from_slice::<bson::Document>(&d) {
             Ok(doc) => doc,
             Err(e) => {
-                tracing::debug!("issue deserializing document for insert: {e}");
+                tracing::error!("issue deserializing document for insert: {e}");
                 return Ok(Err(self.table().push(anyhow!("issue deserializing document: {e}"))?));
             }
         };
 
         if let Err(e) = database.collection(&stmt.collection).insert_one(doc).await {
-            tracing::debug!("issue inserting document: {e}");
+            tracing::error!("issue inserting document: {e}");
             return Ok(Err(self.table().push(anyhow!("issue inserting document: {e}"))?));
         }
 
@@ -113,20 +113,20 @@ impl readwrite::Host for State {
     async fn find(
         &mut self, db: Resource<Database>, s: Resource<Statement>,
     ) -> wasmtime::Result<Result<Vec<Vec<u8>>, Resource<Error>>> {
-        tracing::debug!("readwrite::Host::find");
+        tracing::trace!("readwrite::Host::find");
 
         let table = self.table();
         let database = table.get(&db)?;
         let stmt = table.get(&s)?;
 
-        tracing::debug!("readwrite::Host::find: {}, {:?}", stmt.collection, stmt.conditions);
+        tracing::trace!("readwrite::Host::find: {}, {:?}", stmt.collection, stmt.conditions);
 
         let mut results: Vec<Vec<u8>> = Vec::new();
         let mut cursor: Cursor<bson::Document> =
             match database.collection(&stmt.collection).find(stmt.conditions.clone()).await {
                 Ok(cursor) => cursor,
                 Err(e) => {
-                    tracing::debug!("issue finding documents: {e}");
+                    tracing::error!("issue finding documents: {e}");
                     return Ok(Err(self.table().push(anyhow!("issue finding documents: {e}"))?));
                 }
             };
@@ -134,7 +134,7 @@ impl readwrite::Host for State {
             let ser = match serde_json::to_vec(&doc) {
                 Ok(ser) => ser,
                 Err(e) => {
-                    tracing::debug!("issue serializing result: {e}");
+                    tracing::error!("issue serializing result: {e}");
                     return Ok(Err(self.table().push(anyhow!("issue serializing result: {e}"))?));
                 }
             };
@@ -163,7 +163,7 @@ impl readwrite::Host for State {
     async fn update(
         &mut self, db: Resource<Database>, s: Resource<Statement>, d: Vec<u8>,
     ) -> wasmtime::Result<Result<(), Resource<Error>>> {
-        tracing::debug!("readwrite::Host::update");
+        tracing::trace!("readwrite::Host::update");
 
         let table = self.table();
         let database = table.get(&db)?;
@@ -172,7 +172,7 @@ impl readwrite::Host for State {
         let doc = match serde_json::from_slice::<bson::Document>(&d) {
             Ok(doc) => doc,
             Err(e) => {
-                tracing::debug!("issue deserializing replacement document: {e}");
+                tracing::error!("issue deserializing replacement document: {e}");
                 return Ok(Err(self
                     .table()
                     .push(anyhow!("issue deserializing replacement document: {e}"))?));
@@ -182,7 +182,7 @@ impl readwrite::Host for State {
         if let Err(e) =
             database.collection(&stmt.collection).replace_one(stmt.conditions.clone(), doc).await
         {
-            tracing::debug!("issue replacing document: {e}");
+            tracing::error!("issue replacing document: {e}");
             return Ok(Err(self.table().push(anyhow!("issue replacing document: {e}"))?));
         }
 
@@ -192,7 +192,7 @@ impl readwrite::Host for State {
     async fn delete(
         &mut self, db: Resource<Database>, s: Resource<Statement>,
     ) -> wasmtime::Result<Result<(), Resource<Error>>> {
-        tracing::debug!("readwrite::Host::delete");
+        tracing::trace!("readwrite::Host::delete");
 
         let table = self.table();
         let database = table.get(&db)?;
@@ -203,7 +203,7 @@ impl readwrite::Host for State {
             .delete_one(stmt.conditions.clone())
             .await
         {
-            tracing::debug!("issue deleting document: {e}");
+            tracing::error!("issue deleting document: {e}");
             return Ok(Err(self.table().push(anyhow!("issue deleting document: {e}"))?));
         }
 
@@ -219,7 +219,7 @@ impl HostDatabase for State {
     async fn connect(
         &mut self, name: String,
     ) -> wasmtime::Result<Result<Resource<Database>, Resource<Error>>> {
-        tracing::debug!("HostDatabase::open");
+        tracing::trace!("HostDatabase::open");
 
         let Some(client) = MONGODB.get() else {
             return Ok(Err(self.table().push(anyhow!("MongoDB not connected"))?));
@@ -229,7 +229,7 @@ impl HostDatabase for State {
     }
 
     fn drop(&mut self, rep: Resource<Database>) -> wasmtime::Result<()> {
-        tracing::debug!("HostDatabase::drop");
+        tracing::trace!("HostDatabase::drop");
         self.table().delete(rep)?;
         Ok(())
     }
@@ -246,7 +246,7 @@ impl HostStatement for State {
     async fn prepare(
         &mut self, collection: String, jmes_path: Option<String>,
     ) -> wasmtime::Result<Result<Resource<Statement>, Resource<Error>>> {
-        tracing::debug!("HostFilter::prepare {collection} {jmes_path:?}");
+        tracing::trace!("HostFilter::prepare {collection} {jmes_path:?}");
 
         let doc = if let Some(jmes_path) = jmes_path {
             // create Mongo filter from JMESPath expression
@@ -285,7 +285,7 @@ impl HostStatement for State {
     }
 
     fn drop(&mut self, rep: Resource<Statement>) -> wasmtime::Result<()> {
-        tracing::debug!("HostFilter::drop");
+        tracing::trace!("HostFilter::drop");
         self.table().delete(rep)?;
         Ok(())
     }
@@ -295,13 +295,13 @@ impl HostStatement for State {
 #[async_trait::async_trait]
 impl HostError for State {
     async fn trace(&mut self, rep: Resource<Error>) -> wasmtime::Result<String> {
-        tracing::debug!("HostError::trace");
+        tracing::trace!("HostError::trace");
         let error = self.table().get(&rep)?;
         Ok(error.to_string())
     }
 
     fn drop(&mut self, rep: Resource<Error>) -> wasmtime::Result<()> {
-        tracing::debug!("HostError::drop");
+        tracing::trace!("HostError::drop");
         self.table().delete(rep)?;
         Ok(())
     }
