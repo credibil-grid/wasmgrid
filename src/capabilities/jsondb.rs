@@ -119,7 +119,7 @@ impl readwrite::Host for State {
         let database = table.get(&db)?;
         let stmt = table.get(&s)?;
 
-        tracing::trace!("readwrite::Host::find: {}, {:?}", stmt.collection, stmt.conditions);
+        tracing::debug!("readwrite::Host::find: {}, {:?}", stmt.collection, stmt.conditions);
 
         let mut results: Vec<Vec<u8>> = Vec::new();
         let mut cursor: Cursor<bson::Document> =
