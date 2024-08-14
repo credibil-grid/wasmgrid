@@ -91,7 +91,7 @@ impl keystore::Host for State {
     async fn open(
         &mut self, identifier: String,
     ) -> wasmtime::Result<Result<Resource<KeySet>, keystore::Error>> {
-        tracing::debug!("keystore::Host::open {identifier}");
+        tracing::trace!("keystore::Host::open {identifier}");
 
         let key_set = KeySet { identifier };
         Ok(Ok(self.table().push(key_set)?))
@@ -107,14 +107,14 @@ impl keystore::HostKeySet for State {
     async fn generate(
         &mut self, _rep: Resource<KeySet>, _identifier: String, _alg: Algorithm,
     ) -> wasmtime::Result<Result<Resource<KeyPair>, keystore::Error>> {
-        tracing::debug!("keystore::HostKeySet::generate");
+        tracing::trace!("keystore::HostKeySet::generate");
         todo!("generate new key for KeyType")
     }
 
     async fn get(
         &mut self, rep: Resource<KeySet>, identifier: String,
     ) -> wasmtime::Result<Result<Resource<KeyPair>, keystore::Error>> {
-        tracing::debug!("keystore::HostKeySet::get");
+        tracing::trace!("keystore::HostKeySet::get");
 
         let Ok(key_set) = self.table().get(&rep) else {
             return Ok(Err(keystore::Error::NoSuchKeySet));
@@ -139,12 +139,12 @@ impl keystore::HostKeySet for State {
     async fn delete(
         &mut self, _rep: Resource<KeySet>, _identifier: String,
     ) -> wasmtime::Result<Result<(), keystore::Error>> {
-        tracing::debug!("keystore::HostKeySet::delete");
+        tracing::trace!("keystore::HostKeySet::delete");
         todo!("generate new key for KeyType")
     }
 
     fn drop(&mut self, rep: Resource<KeySet>) -> Result<(), wasmtime::Error> {
-        tracing::debug!("keystore::HostKeySet::drop");
+        tracing::trace!("keystore::HostKeySet::drop");
         self.table().delete(rep).map_or_else(|e| Err(anyhow!(e)), |_| Ok(()))
     }
 }
@@ -154,7 +154,7 @@ impl keystore::HostKeyPair for State {
     async fn sign(
         &mut self, rep: Resource<KeyPair>, data: Vec<u8>,
     ) -> wasmtime::Result<Result<Vec<u8>, keystore::Error>> {
-        tracing::debug!("keystore::HostKeyPair::sign");
+        tracing::trace!("keystore::HostKeyPair::sign");
 
         let Ok(key_pair) = self.table().get(&rep) else {
             return Ok(Err(keystore::Error::NoSuchKeyPair));
@@ -177,7 +177,7 @@ impl keystore::HostKeyPair for State {
     async fn public_key(
         &mut self, rep: Resource<KeyPair>,
     ) -> wasmtime::Result<Result<Jwk, keystore::Error>> {
-        tracing::debug!("keystore::HostKeyPair::public_key");
+        tracing::trace!("keystore::HostKeyPair::public_key");
 
         let Ok(key_pair) = self.table().get_mut(&rep) else {
             return Ok(Err(keystore::Error::NoSuchKeyPair));
@@ -201,7 +201,7 @@ impl keystore::HostKeyPair for State {
     async fn versions(
         &mut self, rep: Resource<KeyPair>,
     ) -> wasmtime::Result<Result<Vec<Jwk>, keystore::Error>> {
-        tracing::debug!("keystore::HostKeySet::list_versions");
+        tracing::trace!("keystore::HostKeySet::list_versions");
 
         let Ok(_key_set) = self.table().get_mut(&rep) else {
             return Ok(Err(keystore::Error::NoSuchKeySet));
@@ -217,7 +217,7 @@ impl keystore::HostKeyPair for State {
     }
 
     fn drop(&mut self, rep: Resource<KeyPair>) -> Result<(), wasmtime::Error> {
-        tracing::debug!("keystore::HostKeyPair::drop");
+        tracing::trace!("keystore::HostKeyPair::drop");
         self.table().delete(rep).map_or_else(|e| Err(anyhow!(e)), |_| Ok(()))
     }
 }

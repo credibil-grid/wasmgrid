@@ -98,7 +98,7 @@ struct Processor {
 
 impl Processor {
     async fn subscribe(&self, channels: Vec<String>) -> anyhow::Result<()> {
-        tracing::debug!("Processor::subscribe: {:?}", channels);
+        tracing::trace!("Processor::subscribe: {:?}", channels);
 
         // subscribe to channels
         let mut subscribers = vec![];
@@ -121,7 +121,7 @@ impl Processor {
 
     // Forward NATS message to the wasm Guest.
     async fn forward(&self, msg: async_nats::Message) -> anyhow::Result<()> {
-        tracing::debug!("handle_message: {msg:?}");
+        tracing::trace!("handle_message: {msg:?}");
 
         let mut store = self.runtime.new_store();
         let (messaging, _) =
@@ -146,7 +146,7 @@ impl HostClient for State {
     async fn connect(
         &mut self, name: String,
     ) -> wasmtime::Result<anyhow::Result<Resource<Client>, Resource<Error>>> {
-        tracing::debug!("HostClient::connect {name}");
+        tracing::trace!("HostClient::connect {name}");
 
         let processor = PROCESSOR.get().ok_or_else(|| anyhow!("PROCESSOR not initialized"))?;
         let client = processor.client.clone();
@@ -156,7 +156,7 @@ impl HostClient for State {
     }
 
     fn drop(&mut self, client: Resource<Client>) -> wasmtime::Result<()> {
-        tracing::debug!("HostClient::drop");
+        tracing::trace!("HostClient::drop");
         self.table().delete(client)?;
         Ok(())
     }
@@ -186,7 +186,7 @@ impl consumer::Host for State {
     async fn subscribe_receive(
         &mut self, client: Resource<Client>, ch: String,
     ) -> wasmtime::Result<Result<Vec<Message>, Resource<Error>>> {
-        tracing::debug!("consumer::Host::subscribe_receive {ch}");
+        tracing::trace!("consumer::Host::subscribe_receive {ch}");
 
         let client = self.table().get(&client)?;
         let mut subscriber = client.subscribe(ch).await?;
@@ -199,7 +199,7 @@ impl consumer::Host for State {
     async fn update_guest_configuration(
         &mut self, gc: GuestConfiguration,
     ) -> wasmtime::Result<Result<(), Resource<Error>>> {
-        tracing::debug!("consumer::Host::update_guest_configuration");
+        tracing::trace!("consumer::Host::update_guest_configuration");
 
         let processor = PROCESSOR.get().ok_or_else(|| anyhow!("Processor not initialized"))?;
         Ok(Ok(processor.subscribe(gc.channels).await?))
@@ -227,7 +227,7 @@ impl producer::Host for State {
     async fn send(
         &mut self, client: Resource<Client>, ch: String, messages: Vec<Message>,
     ) -> wasmtime::Result<Result<(), Resource<Error>>> {
-        tracing::debug!("producer::Host::send: {:?}", ch);
+        tracing::trace!("producer::Host::send: {:?}", ch);
 
         let client = self.table().get(&client)?;
         for m in messages {
@@ -242,13 +242,13 @@ impl producer::Host for State {
 #[async_trait::async_trait]
 impl HostError for State {
     async fn trace(&mut self, rep: Resource<Error>) -> wasmtime::Result<String> {
-        tracing::debug!("HostError::trace");
+        tracing::trace!("HostError::trace");
         let error = self.table().get(&rep)?;
         Ok(error.to_string())
     }
 
     fn drop(&mut self, rep: Resource<Error>) -> wasmtime::Result<()> {
-        tracing::debug!("HostError::drop");
+        tracing::trace!("HostError::drop");
         self.table().delete(rep)?;
         Ok(())
     }

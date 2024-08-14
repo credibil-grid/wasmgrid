@@ -178,7 +178,7 @@ impl wasmtime_wasi::HostOutputStream for StdoutStream {
     fn write(&mut self, bytes: Bytes) -> StreamResult<()> {
         let out = String::from_utf8(bytes.to_vec())
             .map_err(|e| StreamError::LastOperationFailed(anyhow!(e)))?;
-        tracing::debug!(target: "wasmgrid::guest", "{out}");
+        println!("{out}");
         Ok(())
     }
 
@@ -215,7 +215,7 @@ impl wasmtime_wasi::HostOutputStream for ErroutStream {
     fn write(&mut self, bytes: Bytes) -> StreamResult<()> {
         let out = String::from_utf8(bytes.to_vec())
             .map_err(|e| StreamError::LastOperationFailed(anyhow!(e)))?;
-        tracing::error!(target: "wasmgrid::guest", "{out}");
+        println!("{out}");
         Ok(())
     }
 

@@ -35,7 +35,7 @@ pub struct Document {
 impl Host for State {
     /// Create a new author.
     async fn create_owner(&mut self) -> wasmtime::Result<Result<Owner, Error>> {
-        tracing::debug!("Host::create_owner");
+        tracing::trace!("Host::create_owner");
         let iroh = iroh_node()?;
         let author = iroh.authors.create().await?;
         Ok(Ok(author.fmt_short()))
@@ -46,19 +46,19 @@ impl Host for State {
         &mut self, owner: Owner,
     ) -> wasmtime::Result<Result<(Resource<Document>, ContainerToken), Error>> {
         // Do not log owner - it is sensitive.
-        tracing::debug!("Host::create_container");
+        tracing::trace!("Host::create_container");
 
         let Some(author) = find_author(&owner).await? else {
             return Ok(Err("Author not found".into()));
         };
         let iroh = iroh_node()?;
         let doc = iroh.docs.create().await?;
-        tracing::debug!(
+        tracing::trace!(
             "Host::create_container: created document with id: {}",
             doc.id().to_string()
         );
         let ticket = doc.share(ShareMode::Write, AddrInfoOptions::default()).await?;
-        tracing::debug!("Host::create_container: shared document with ticket: {ticket}");
+        tracing::trace!("Host::create_container: shared document with ticket: {ticket}");
 
         let container = Document { author, doc };
         let stashed = self.table().push(container)?;
@@ -70,7 +70,7 @@ impl Host for State {
         &mut self, owner: Owner, token: ContainerToken,
     ) -> wasmtime::Result<Result<Resource<Document>, Error>> {
         // Do not log ticket - it is sensitive.
-        tracing::debug!("Host::get_container");
+        tracing::trace!("Host::get_container");
 
         let Some(author) = find_author(&owner).await? else {
             return Ok(Err("Author not found".into()));
@@ -88,7 +88,7 @@ impl Host for State {
         &mut self, container: Resource<Document>,
     ) -> wasmtime::Result<Result<(), Error>> {
         // Do not log ticket - it is sensitive.
-        tracing::debug!("Host::delete_container");
+        tracing::trace!("Host::delete_container");
 
         let iroh = iroh_node()?;
         let container = self.table().get_mut(&container)?;
@@ -104,7 +104,7 @@ impl HostContainer for State {
     async fn name(
         &mut self, container: Resource<Document>,
     ) -> wasmtime::Result<Result<String, Error>> {
-        tracing::debug!("HostContainer::name");
+        tracing::trace!("HostContainer::name");
         let container = self.table().get_mut(&container)?;
         Ok(Ok(container.doc.id().to_string()))
     }
@@ -121,7 +121,7 @@ impl HostContainer for State {
     async fn get_data(
         &mut self, container: Resource<Document>, name: ObjectName, start: u64, end: u64,
     ) -> wasmtime::Result<Result<Resource<BlobValue>, Error>> {
-        tracing::debug!("HostContainer::get_data {name} {start} {end}");
+        tracing::trace!("HostContainer::get_data {name} {start} {end}");
         let document = self.table().get_mut(&container)?;
         let Some(entry) = document.doc.get_exact(document.author, name, false).await? else {
             return Ok(Err("Entry not found".into()));
@@ -142,7 +142,7 @@ impl HostContainer for State {
     async fn write_data(
         &mut self, container: Resource<Document>, name: ObjectName, data: Resource<BlobValue>,
     ) -> wasmtime::Result<Result<(), Error>> {
-        tracing::debug!("HostContainer::write_data {name}");
+        tracing::trace!("HostContainer::write_data {name}");
         let table = self.table();
         let document = table.get(&container)?;
         tracing::debug!("HostContainer::write_data: writing to document {}", document.doc.id());
@@ -158,7 +158,7 @@ impl HostContainer for State {
     async fn list_objects(
         &mut self, container: Resource<Document>,
     ) -> wasmtime::Result<Result<Resource<StreamObjectNames>, Error>> {
-        tracing::debug!("HostContainer::list_objects");
+        tracing::trace!("HostContainer::list_objects");
         let document = self.table().get_mut(&container)?;
         let entries = document.doc.get_many(Query::single_latest_per_key()).await?;
         let objects: Pin<Box<dyn Stream<Item = anyhow::Result<Entry>> + Send>> = Box::pin(entries);
@@ -170,7 +170,7 @@ impl HostContainer for State {
     async fn delete_object(
         &mut self, container: Resource<Document>, name: ObjectName,
     ) -> wasmtime::Result<Result<(), Error>> {
-        tracing::debug!("HostContainer::delete_object {name}");
+        tracing::trace!("HostContainer::delete_object {name}");
         let document = self.table().get_mut(&container)?;
         document.doc.del(document.author, name).await?;
         Ok(Ok(()))
@@ -181,7 +181,7 @@ impl HostContainer for State {
     async fn delete_objects(
         &mut self, container: Resource<Document>, names: Vec<ObjectName>,
     ) -> wasmtime::Result<Result<(), Error>> {
-        tracing::debug!("HostContainer::delete_objects");
+        tracing::trace!("HostContainer::delete_objects");
         let document = self.table().get_mut(&container)?;
         for name in names {
             document.doc.del(document.author, name).await?;
@@ -193,7 +193,7 @@ impl HostContainer for State {
     async fn has_object(
         &mut self, container: Resource<Document>, name: ObjectName,
     ) -> wasmtime::Result<Result<bool, Error>> {
-        tracing::debug!("HostContainer::has_object {name}");
+        tracing::trace!("HostContainer::has_object {name}");
         let document = self.table().get_mut(&container)?;
         match document.doc.get_exact(document.author, name, false).await? {
             None => Ok(Ok(false)),
@@ -206,7 +206,7 @@ impl HostContainer for State {
     async fn object_info(
         &mut self, container: Resource<Document>, name: ObjectName,
     ) -> wasmtime::Result<Result<ObjectMetadata, Error>> {
-        tracing::debug!("HostContainer::object_info {name}");
+        tracing::trace!("HostContainer::object_info {name}");
         let document = self.table().get_mut(&container)?;
         let Some(entry) = document.doc.get_exact(document.author, name, false).await? else {
             return Ok(Err("Entry not found".into()));
@@ -225,7 +225,7 @@ impl HostContainer for State {
     async fn clear(
         &mut self, container: Resource<Document>,
     ) -> wasmtime::Result<Result<(), Error>> {
-        tracing::debug!("HostContainer::clear");
+        tracing::trace!("HostContainer::clear");
         let document = self.table().get_mut(&container)?;
         let mut keys = Vec::new();
         let mut entries = document.doc.get_many(Query::all()).await?;
@@ -240,7 +240,7 @@ impl HostContainer for State {
 
     /// Remove the document from the runtime state.
     fn drop(&mut self, container: Resource<Document>) -> wasmtime::Result<()> {
-        tracing::debug!("HostContainer::drop");
+        tracing::trace!("HostContainer::drop");
         self.table().delete(container)?;
         Ok(())
     }
@@ -291,7 +291,7 @@ impl HostStreamObjectNames for State {
     /// Remove the entries stream from runtime state.
     #[allow(unused_must_use)]
     fn drop(&mut self, stream: Resource<StreamObjectNames>) -> wasmtime::Result<()> {
-        tracing::debug!("HostStreamObjectNames::drop");
+        tracing::trace!("HostStreamObjectNames::drop");
         self.table().delete(stream)?;
         Ok(())
     }
