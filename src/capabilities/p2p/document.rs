@@ -145,7 +145,7 @@ impl HostContainer for State {
         tracing::trace!("HostContainer::write_data {name}");
         let table = self.table();
         let document = table.get(&container)?;
-        tracing::trace!("HostContainer::write_data: writing to document {}", document.doc.id());
+        tracing::debug!("HostContainer::write_data: writing to document {}", document.doc.id());
         let value = table.get(&data)?;
         let blob = value.blob.clone();
         // TODO: This await never resolves.
