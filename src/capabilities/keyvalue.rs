@@ -92,7 +92,7 @@ impl store::Host for State {
     async fn open(
         &mut self, identifier: String,
     ) -> wasmtime::Result<Result<Resource<Bucket>, store::Error>> {
-        tracing::debug!("store::Host::open {identifier}");
+        tracing::trace!("store::Host::open {identifier}");
 
         let Some(jetstream) = JETSTREAM.get() else {
             return Ok(Err(store::Error::Other("JetStream not initialized".into())));
@@ -118,6 +118,7 @@ impl store::Host for State {
                 {
                     Ok(bucket) => bucket,
                     Err(e) => {
+                        tracing::error!("Failed to create {identifier} bucket: {e}");
                         return Ok(Err(store::Error::Other(format!(
                             "Failed to create {identifier} bucket: {e}"
                         ))))
@@ -135,7 +136,7 @@ impl store::HostBucket for State {
     async fn get(
         &mut self, rep: Resource<Bucket>, key: String,
     ) -> wasmtime::Result<Result<Option<Vec<u8>>, store::Error>> {
-        tracing::debug!("store::HostBucket::get {key}");
+        tracing::trace!("store::HostBucket::get {key}");
 
         let Ok(bucket) = self.table().get_mut(&rep) else {
             return Ok(Err(store::Error::NoSuchStore));
@@ -146,7 +147,7 @@ impl store::HostBucket for State {
     async fn set(
         &mut self, rep: Resource<Bucket>, key: String, value: Vec<u8>,
     ) -> wasmtime::Result<Result<(), store::Error>, wasmtime::Error> {
-        tracing::debug!("store::HostBucket::set {key}");
+        tracing::trace!("store::HostBucket::set {key}");
 
         let Ok(bucket) = self.table().get_mut(&rep) else {
             return Ok(Err(store::Error::NoSuchStore));
@@ -157,7 +158,7 @@ impl store::HostBucket for State {
     async fn delete(
         &mut self, rep: Resource<Bucket>, key: String,
     ) -> Result<Result<(), store::Error>, wasmtime::Error> {
-        tracing::debug!("store::HostBucket::delete {key}");
+        tracing::trace!("store::HostBucket::delete {key}");
 
         let Ok(bucket) = self.table().get_mut(&rep) else {
             return Ok(Err(store::Error::NoSuchStore));
@@ -168,7 +169,7 @@ impl store::HostBucket for State {
     async fn exists(
         &mut self, rep: Resource<Bucket>, key: String,
     ) -> wasmtime::Result<Result<bool, store::Error>> {
-        tracing::debug!("store::HostBucket::exists {key}");
+        tracing::trace!("store::HostBucket::exists {key}");
 
         let Ok(bucket) = self.table().get_mut(&rep) else {
             return Ok(Err(store::Error::NoSuchStore));
@@ -179,7 +180,7 @@ impl store::HostBucket for State {
     async fn list_keys(
         &mut self, rep: Resource<Bucket>, cursor: Option<u64>,
     ) -> Result<Result<KeyResponse, store::Error>, wasmtime::Error> {
-        tracing::debug!("store::HostBucket::list_keys {cursor:?}");
+        tracing::trace!("store::HostBucket::list_keys {cursor:?}");
 
         let Ok(bucket) = self.table().get_mut(&rep) else {
             return Ok(Err(store::Error::NoSuchStore));
@@ -196,7 +197,7 @@ impl store::HostBucket for State {
 
     // LATER: Can a JetStream bucket be closed?
     fn drop(&mut self, rep: Resource<Bucket>) -> Result<(), wasmtime::Error> {
-        tracing::debug!("store::HostBucket::drop");
+        tracing::trace!("store::HostBucket::drop");
         self.table().delete(rep).map_or_else(|e| Err(anyhow!(e)), |_| Ok(()))
     }
 }
@@ -206,13 +207,13 @@ impl atomics::Host for State {
     async fn increment(
         &mut self, rep: Resource<Bucket>, key: String, delta: u64,
     ) -> wasmtime::Result<Result<u64, Error>> {
-        tracing::debug!("atomics::Host::increment {key}, {delta}");
+        tracing::trace!("atomics::Host::increment {key}, {delta}");
 
         let Ok(bucket) = self.table().get_mut(&rep) else {
             return Ok(Err(Error::NoSuchStore));
         };
         let Ok(Some(value)) = bucket.get(key.clone()).await else {
-            tracing::debug!("no value for {key}");
+            tracing::error!("no value for {key}");
             return Ok(Err(Error::Other(format!("no value for {key}"))));
         };
 
@@ -225,7 +226,7 @@ impl atomics::Host for State {
 
         // update value in bucket
         if let Err(e) = bucket.put(key, inc.to_be_bytes().to_vec().into()).await {
-            tracing::debug!("issue saving increment: {e}");
+            tracing::error!("issue saving increment: {e}");
             return Ok(Err(Error::Other(format!("issue saving increment: {e}"))));
         }
 
@@ -238,7 +239,7 @@ impl batch::Host for State {
     async fn get_many(
         &mut self, rep: Resource<Bucket>, keys: Vec<String>,
     ) -> wasmtime::Result<Result<Vec<Option<(String, Vec<u8>)>>, store::Error>> {
-        tracing::debug!("batch::Host::get_many {keys:?}");
+        tracing::trace!("batch::Host::get_many {keys:?}");
 
         let Ok(bucket) = self.table().get_mut(&rep) else {
             return Ok(Err(Error::NoSuchStore));
@@ -249,7 +250,7 @@ impl batch::Host for State {
             let value = match bucket.get(key.clone()).await {
                 Ok(value) => value,
                 Err(e) => {
-                    tracing::debug!("issue getting value: {e}");
+                    tracing::error!("issue getting value: {e}");
                     return Ok(Err(Error::Other(format!("issue getting value: {key}"))));
                 }
             };
@@ -264,14 +265,14 @@ impl batch::Host for State {
     async fn set_many(
         &mut self, rep: Resource<Bucket>, key_values: Vec<(String, Vec<u8>)>,
     ) -> wasmtime::Result<Result<(), store::Error>> {
-        tracing::debug!("batch::Host::set_many {key_values:?}");
+        tracing::trace!("batch::Host::set_many {key_values:?}");
 
         let Ok(bucket) = self.table().get_mut(&rep) else {
             return Ok(Err(Error::NoSuchStore));
         };
         for (key, value) in key_values {
             if let Err(e) = bucket.put(key, value.into()).await {
-                tracing::debug!("issue saving value: {e}");
+                tracing::error!("issue Are  value: {e}");
                 return Ok(Err(Error::Other(format!("issue saving value: {e}"))));
             }
         }
@@ -282,14 +283,14 @@ impl batch::Host for State {
     async fn delete_many(
         &mut self, rep: Resource<Bucket>, keys: Vec<String>,
     ) -> wasmtime::Result<Result<(), store::Error>> {
-        tracing::debug!("batch::Host::delete_many {keys:?}");
+        tracing::trace!("batch::Host::delete_many {keys:?}");
 
         let Ok(bucket) = self.table().get_mut(&rep) else {
             return Ok(Err(Error::NoSuchStore));
         };
         for key in keys {
             if let Err(e) = bucket.delete(key).await {
-                tracing::debug!("issue deleting value: {e}");
+                tracing::error!("issue deleting value: {e}");
                 return Ok(Err(Error::Other(format!("issue deleting value: {e}"))));
             }
         }

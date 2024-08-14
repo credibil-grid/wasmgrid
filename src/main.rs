@@ -10,6 +10,7 @@ use std::env;
 use anyhow::Error;
 use clap::Parser;
 use dotenv::dotenv;
+use tracing_subscriber::fmt::format::FmtSpan;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 #[cfg(feature = "http")]
@@ -67,7 +68,10 @@ pub async fn main() -> wasmtime::Result<()> {
 
     // tracing
     let subscriber =
-        FmtSubscriber::builder().with_env_filter(EnvFilter::from_default_env()).finish();
+        FmtSubscriber::builder()
+        .with_span_events(FmtSpan::NONE)
+        .with_env_filter(EnvFilter::from_default_env())
+        .finish();
     tracing::subscriber::set_global_default(subscriber)?;
 
     // init capabilities

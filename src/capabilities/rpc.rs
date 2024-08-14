@@ -15,6 +15,7 @@ use futures::stream::StreamExt;
 use wasmtime::component::{Linker, Resource};
 use wasmtime::Store;
 use wasmtime_wasi::WasiView;
+use tracing::Level;
 
 use crate::runtime::{self, Runtime, State};
 
@@ -93,7 +94,7 @@ impl runtime::Capability for Capability {
             .exports(runtime.instance_pre().engine())
             .any(|e| e.0.starts_with(self.namespace()))
         {
-            tracing::debug!("rpc server not required");
+            tracing::warn!("rpc server not required");
             return Ok(());
         }
 
@@ -139,7 +140,7 @@ async fn handle_request(pre: RpcPre<State>, request: Message) -> anyhow::Result<
         let endpoint = request.subject.trim_start_matches("rpc:").replace('.', "/");
 
         // forward request to 'server' component
-        tracing::debug!("forwarding request to {endpoint}");
+        tracing::span!(Level::INFO, "forwarding request to {endpoint}");
 
         let mut store = Store::new(pre.engine(), State::new());
         store.limiter(|t| &mut t.limits);
@@ -160,7 +161,7 @@ impl client::Host for State {
     async fn call(
         &mut self, endpoint: String, request: Vec<u8>,
     ) -> wasmtime::Result<Result<Vec<u8>, Resource<Error>>> {
-        tracing::debug!("client::Host::call for {endpoint}");
+        tracing::span!(Level::INFO, "client::Host::call for {endpoint}");
 
         // convert endpoint to safe NATS subject
         let subject = format!("rpc:{}", endpoint.replacen('/', ".", 1));
@@ -173,7 +174,7 @@ impl client::Host for State {
         if let Some(headers) = &msg.headers
             && let Some(error) = headers.get("Error")
         {
-            tracing::debug!("client::Host::call Err: {error}");
+            tracing::error!("client::Host::call Err: {error}");
             return Ok(Err(self.table().push(anyhow!("{error}"))?));
         }
 
@@ -185,13 +186,13 @@ impl client::Host for State {
 #[async_trait::async_trait]
 impl HostError for State {
     async fn trace(&mut self, rep: Resource<Error>) -> wasmtime::Result<String> {
-        tracing::debug!("HostError::trace");
+        tracing::trace!("HostError::trace");
         let error = self.table().get(&rep)?;
         Ok(error.to_string())
     }
 
     fn drop(&mut self, rep: Resource<Error>) -> wasmtime::Result<()> {
-        tracing::debug!("HostError::drop");
+        tracing::trace!("HostError::drop");
         self.table().delete(rep)?;
         Ok(())
     }

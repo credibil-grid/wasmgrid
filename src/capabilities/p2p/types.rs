@@ -104,21 +104,21 @@ impl Host for State {}
 #[async_trait::async_trait]
 impl HostOutgoingValue for State {
     async fn new_outgoing_value(&mut self) -> wasmtime::Result<Resource<BlobValue>> {
-        tracing::debug!("HostOutgoingValue::new_outgoing_value");
+        tracing::trace!("HostOutgoingValue::new_outgoing_value");
         Ok(self.table().push(BlobValue::new(Blob::new()))?)
     }
 
     async fn outgoing_value_write_body(
         &mut self, value: Resource<BlobValue>,
     ) -> wasmtime::Result<Result<Resource<OutputStream>, ()>> {
-        tracing::debug!("HostOutgoingValue::outgoing_value_write_body");
+        tracing::trace!("HostOutgoingValue::outgoing_value_write_body");
         let value = self.table().get_mut(&value)?;
         let os = Box::new(value.blob.clone()) as Box<dyn HostOutputStream>;
         Ok(Ok(self.table().push(os)?))
     }
 
     fn drop(&mut self, value: Resource<BlobValue>) -> wasmtime::Result<()> {
-        tracing::debug!("HostOutgoingValue::drop");
+        tracing::trace!("HostOutgoingValue::drop");
         self.table().delete(value)?;
         Ok(())
     }
@@ -129,7 +129,7 @@ impl HostIncomingValue for State {
     async fn incoming_value_consume_sync(
         &mut self, value: Resource<BlobValue>,
     ) -> wasmtime::Result<Result<IncomingValueSyncBody, Error>> {
-        tracing::debug!("HostIncomingValue::incoming_value_consume_sync");
+        tracing::trace!("HostIncomingValue::incoming_value_consume_sync");
         let value = self.table().get_mut(&value)?;
         let data = value.blob.data.to_vec();
         Ok(Ok(data))
@@ -138,7 +138,7 @@ impl HostIncomingValue for State {
     async fn incoming_value_consume_async(
         &mut self, value: Resource<BlobValue>,
     ) -> wasmtime::Result<Result<Resource<IncomingValueAsyncBody>, Error>> {
-        tracing::debug!("HostIncomingValue::incoming_value_consume_async");
+        tracing::trace!("HostIncomingValue::incoming_value_consume_async");
         let value = self.table().get_mut(&value)?;
         let s = Box::new(value.blob.clone()) as Box<dyn HostInputStream>;
         let t = InputStream::Host(s);
@@ -146,13 +146,13 @@ impl HostIncomingValue for State {
     }
 
     async fn size(&mut self, value: Resource<BlobValue>) -> wasmtime::Result<u64> {
-        tracing::debug!("HostIncomingValue::size");
+        tracing::trace!("HostIncomingValue::size");
         let value = self.table().get_mut(&value)?;
         Ok(value.blob.data.len() as u64)
     }
 
     fn drop(&mut self, value: Resource<BlobValue>) -> wasmtime::Result<()> {
-        tracing::debug!("HostIncomingValue::drop");
+        tracing::trace!("HostIncomingValue::drop");
         self.table().delete(value)?;
         Ok(())
     }
