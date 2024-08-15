@@ -161,9 +161,10 @@ impl client::Host for State {
     async fn call(
         &mut self, endpoint: String, request: Vec<u8>,
     ) -> wasmtime::Result<Result<Vec<u8>, Resource<Error>>> {
-        let span = tracing::span!(Level::INFO, "client::Host::call", endpoint = %endpoint);
-        let _enter = span.enter();
-        tracing::debug!("client::Host::call for {}", endpoint);
+        tracing::span!(Level::INFO, "client::Host::call", endpoint = %endpoint).in_scope(|| {
+            tracing::info!("client::Host::call for {}", endpoint);
+        });
+
 
         // convert endpoint to safe NATS subject
         let subject = format!("rpc:{}", endpoint.replacen('/', ".", 1));
