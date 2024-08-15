@@ -177,8 +177,10 @@ impl client::Host for State {
             tracing::error!("client::Host::call Err: {error}");
             return Ok(Err(self.table().push(anyhow!("{error}"))?));
         }
-
-        tracing::debug!("client::Host::call Ok: {msg:?}");
+       
+       // simplify the logging output
+        tracing::debug!("client::Host::call Ok");
+        tracing::trace!("client::Host::call Ok: {msg:?}");
         Ok(Ok(msg.payload.to_vec()))
     }
 }
