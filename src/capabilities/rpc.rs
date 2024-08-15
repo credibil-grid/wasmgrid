@@ -140,7 +140,9 @@ async fn handle_request(pre: RpcPre<State>, request: Message) -> anyhow::Result<
         let endpoint = request.subject.trim_start_matches("rpc:").replace('.', "/");
 
         // forward request to 'server' component
-        tracing::span!(Level::INFO, "forwarding request to {endpoint}");
+        tracing::span!(Level::INFO, "forwarding request", endpoint = %endpoint).in_scope(|| {
+            tracing::info!("forwarding request to {endpoint}");
+        });
 
         let mut store = Store::new(pre.engine(), State::new());
         store.limiter(|t| &mut t.limits);
@@ -164,7 +166,6 @@ impl client::Host for State {
         tracing::span!(Level::INFO, "client::Host::call", endpoint = %endpoint).in_scope(|| {
             tracing::info!("client::Host::call for {}", endpoint);
         });
-
 
         // convert endpoint to safe NATS subject
         let subject = format!("rpc:{}", endpoint.replacen('/', ".", 1));

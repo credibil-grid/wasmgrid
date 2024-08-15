@@ -10,7 +10,7 @@ can support components based on the [`wasi-cloud-core`](https://github.com/WebAs
 Add a `.env` file in the root of the project with the following values:
 
 ```bash
-RUST_LOG="wasmgrid=debug" # tracing log level
+RUST_LOG="wasmgrid=debug" # tracing log level, alternatively use "wasmgrid=debug,async_nats=info,azure_core=info" to filter out async_nats debug logs
 HTTP_ADDR="0.0.0.0:8080"
 MGO_CNN="<MongoDB connection string>"
 NATS_CNN="demo.nats.io"
