@@ -179,7 +179,7 @@ impl client::Host for State {
         }
        
        // simplify the logging output
-        tracing::debug!("client::Host::call Ok");
+        tracing::info!("client::Host::call Ok: {endpoint}");
         tracing::trace!("client::Host::call Ok: {msg:?}");
         Ok(Ok(msg.payload.to_vec()))
     }
