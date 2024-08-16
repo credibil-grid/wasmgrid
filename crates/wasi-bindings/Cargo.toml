@@ -13,3 +13,4 @@ workspace = true
 
 [dependencies]
 wit-bindgen = "0.29.0"
+wasmtime-wasi.workspace = true

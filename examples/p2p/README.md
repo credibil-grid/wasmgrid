@@ -1,11 +1,13 @@
 # HTTP-P2P Example
 
-This component will listen to a message on http then store the message on a local Iroh file-based node. Then it will attempt to read it back out and then finally delete it. You will need to provide some environment variables which you can do in a `.env` file in the root of the project. For
+This component will listen to a message on http then store the message on a local Iroh file-based node. Then it will attempt to read it back out and then finally delete it.
+
+You will need to provide some environment variables which you can do in a `.env` file in the root of the project. For
 example:
 
 ```bash
 RUST_LOG=debug
-IROH_DATA_DIR="/Users/goldie/Library/Application Support/io.credibil.wallet"
+IROH_DATA_DIR="/Users/username/Library/Application Support/io.credibil.wallet"
 IROH_PORT=11204
 IROH_AUTHOR=zsv3g2zcqsyicbte
 ```
@@ -18,13 +20,13 @@ the console for you to use on subsequent runs.
 Build the example guest:
 
 ```bash
-cargo component build -Z build-std=panic_abort,std --package http-p2p --release
+cargo component build -Z build-std=panic_abort,std --package p2p --release
 ```
 
 Run a guest using the runtime:
 
 ```bash
-cargo run -- ./target/wasm32-wasip1/release/http_p2p.wasm
+cargo run -- ./target/wasm32-wasip1/release/p2p.wasm
 ```
 
 In a separate console, call the guest:
@@ -32,5 +34,3 @@ In a separate console, call the guest:
 ```bash
 curl -d '{"entries": [{"key": "text", "data": "hello"}]}' http://localhost:8080
 ```
-
-

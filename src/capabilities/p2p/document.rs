@@ -5,8 +5,7 @@ use anyhow::{anyhow, Context};
 use futures::stream::Stream;
 use futures::TryStreamExt;
 use iroh::base::node_addr::AddrInfoOptions;
-use iroh::client::docs::{Entry, ShareMode};
-use iroh::client::MemDoc;
+use iroh::client::docs::{Doc, Entry, ShareMode};
 use iroh::docs::store::Query;
 use iroh::docs::{AuthorId, DocTicket};
 use wasmtime::component::Resource;
@@ -28,7 +27,7 @@ impl container::Host for State {}
 /// Document is a wrapper for a container that implements Iroh operations.
 pub struct Document {
     author: AuthorId,
-    doc: MemDoc,
+    doc: Doc,
 }
 
 #[async_trait::async_trait]
@@ -37,7 +36,7 @@ impl Host for State {
     async fn create_owner(&mut self) -> wasmtime::Result<Result<Owner, Error>> {
         tracing::debug!("Host::create_owner");
         let iroh = iroh_node()?;
-        let author = iroh.authors.create().await?;
+        let author = iroh.authors().create().await?;
         Ok(Ok(author.fmt_short()))
     }
 
@@ -52,7 +51,7 @@ impl Host for State {
             return Ok(Err("Author not found".into()));
         };
         let iroh = iroh_node()?;
-        let doc = iroh.docs.create().await?;
+        let doc = iroh.docs().create().await?;
         tracing::debug!(
             "Host::create_container: created document with id: {}",
             doc.id().to_string()
@@ -77,7 +76,7 @@ impl Host for State {
         };
         let ticket = DocTicket::from_str(&token).context("invalid token")?;
         let iroh = iroh_node()?;
-        let doc = iroh.docs.import(ticket.clone()).await?;
+        let doc = iroh.docs().import(ticket.clone()).await?;
         let container = Document { author, doc };
         let stashed = self.table().push(container)?;
         Ok(Ok(stashed))
@@ -93,7 +92,7 @@ impl Host for State {
         let iroh = iroh_node()?;
         let container = self.table().get_mut(&container)?;
         container.doc.close().await?;
-        iroh.docs.drop_doc(container.doc.id()).await?;
+        iroh.docs().drop_doc(container.doc.id()).await?;
         Ok(Ok(()))
     }
 }
@@ -133,7 +132,7 @@ impl HostContainer for State {
         let len = test_end - start + 1;
         let hash = entry.content_hash();
         let iroh = iroh_node()?;
-        let data = iroh.blobs.read_at_to_bytes(hash, start, Some(usize::try_from(len)?)).await?;
+        let data = iroh.blobs().read_at_to_bytes(hash, start, Some(usize::try_from(len)?)).await?;
         let blob = Blob::from(data);
         Ok(Ok(self.table().push(BlobValue::new(blob))?))
     }

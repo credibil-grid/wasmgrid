@@ -6,7 +6,7 @@
 # wit-deps
 # ```
 
-blobstore = "https://github.com/WebAssembly/wasi-blobstore/archive/main.tar.gz"
+# blobstore = "https://github.com/WebAssembly/wasi-blobstore/archive/main.tar.gz"
 keyvalue = "https://github.com/WebAssembly/wasi-keyvalue/archive/main.tar.gz"
 messaging = "https://github.com/WebAssembly/wasi-messaging/archive/main.tar.gz"
 # vault = "wit"

@@ -1,0 +1,43 @@
+/// Operations on a container of entries that make up a blob.
+interface container {
+    use types.{container-id, error, owner, token, entry, entry-metadata};
+
+    /// Create a new owner on the underlying node and receive an owner token to use for document
+    /// management.
+    create-owner: func() -> result<owner, error>;
+
+    /// Create a new container
+    create-container: func(owner: owner) -> result<tuple<container, token>, error>;
+
+    /// Retrieve an existing container using a token
+    get-container: func(owner: owner, token: token) -> result<container, error>;
+
+    /// Delete a container and all objects within it
+    delete-container: func(container: container) -> result<_, error>;
+
+    /// A container is a collection of entries that make up a blob.
+    /// 
+    /// 1. Iroh calls this a document.
+    resource container {
+        /// Return the container identifier.
+        id: func() -> result<container-id, error>;
+
+        /// Write an entry to the container.
+        write-entry: func(key: string, data: entry) -> result<_, error>;
+
+        /// List entry keys in the container.
+        list-entries: func() -> result<list<string>, error>;
+
+        /// Get entry metadata. Returns an error if the entry does not exist.
+        get-entry-metadata: func(key: string) -> result<entry-metadata, error>;
+
+        /// Read an entry from the container.
+        read-entry: func(key: string) -> result<entry, error>;
+
+        /// Remove an entry from the container.
+        delete-entry: func(key: string) -> result<_, error>;
+
+        /// Remove all entries from the container.
+        clear-entries: func() -> result<_, error>;
+    }
+}
