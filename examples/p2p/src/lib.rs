@@ -6,6 +6,7 @@ use tracing_subscriber::{EnvFilter, FmtSubscriber};
 use wasi::exports::http::incoming_handler::Guest;
 use wasi::http::types::{IncomingRequest, ResponseOutparam};
 use wasi_bindings::p2p::container;
+use wasi_bindings::p2p::types::Permission;
 use wasi_http::{self, post, Request, Router};
 struct HttpGuest;
 
@@ -45,17 +46,19 @@ fn handler(req: &Request) -> anyhow::Result<Vec<u8>> {
     // Establish an author - either by using an environment variable or creating a new one.
     let mut author = std::env::var("IROH_AUTHOR").unwrap_or_else(|_| "create".into());
     if author == "create" {
-        author = create_author()?;
+        author = container::create_author().map_err(|e| anyhow!(e))?;
     }
     tracing::debug!("using author: {author}");
     log.entries.push(("author".into(), author.clone()));
 
     // Create the document.
-    let (container, ticket) = container::create_container(&author).map_err(|e| anyhow!(e))?;
+    let document = container::create_container().map_err(|e| anyhow!(e))?;
     tracing::debug!("created container");
+    // Get a ticket with write permission.
+    let ticket = document.get_token(Permission::Write).map_err(|e| anyhow!(e))?;
     log.entries.push(("ticket".into(), ticket.clone()));
     tracing::debug!("ticket: {ticket}");
-    let container_id = container.id().map_err(|e| anyhow!(e))?;
+    let container_id = document.id().map_err(|e| anyhow!(e))?;
     log.entries.push(("container ID".into(), container_id.clone()));
     tracing::debug!("container ID: {container_id}");
 
@@ -95,18 +98,6 @@ fn handler(req: &Request) -> anyhow::Result<Vec<u8>> {
 
     tracing::debug!("log: {:?}", log);
     serde_json::to_vec(&log).map_err(Into::into)
-}
-
-fn create_author() -> anyhow::Result<String> {
-    tracing::debug!("creating author");
-    let author = match container::create_owner() {
-        Ok(author) => author,
-        Err(err) => {
-            tracing::debug!("error creating author: {:?}", err);
-            return Err(anyhow!(err));
-        }
-    };
-    Ok(author)
 }
 
 wasi::http::proxy::export!(HttpGuest);
