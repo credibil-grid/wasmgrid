@@ -1,30 +1,56 @@
-// Types used by a peer-to-peer node.
+/// Types used by a peer-to-peer node.
 interface types {
-    // Public key of a container owner. Containers can have more than one owner, where individual
-    // owners may have read/write/both access.
-    type owner = string;
-
-    // Token that gives access to a container.
-    type container-token = string;
-
-    // Permissions that holder of a container token can have.
-    variant permission {
-        // Holder can read the container.
-        read,
-
-        // Holder can write to the container.
-        write,
-
-        // Holder can read and write to the container.
-        read-write,
+    /// The set of errors that may be raised by functions in this package.
+    variant error {
+        /// The service providing the capability cannot be used.
+        capability-unavailable,
+        /// The service providing the capability returned an error.
+        capability-error(string),
+        /// An error occurred while trying to read an entry stream.
+        read-error(string),
+        /// An error occurred while trying to write an entry stream.
+        write-error(string),
+        /// No container with the specified identifier exists.
+        no-such-container,
+        /// No entry with the specified key exists in the container.
+        no-such-entry,
+        /// An unspecified error occurred.
+        other(string),
     }
 
-    // Changes to a container state
-    variant container-event {
-        // Container was updated.
-        updated,
+    /// Container identifier.
+    type container-id = string;
 
-        // Container was deleted.
-        deleted,        
+    /// Public key of a container author.
+    /// 
+    /// 1. Iroh calls this a short author ID that can be resolved to an author public key.
+    type author = string;
+
+    /// Token that gives access to a container.
+    /// 
+    /// 1. Iroh calls this a ticket.
+    type token = string;
+
+    /// Permissions that holder of a container token can have.
+    variant permission {
+        /// Holder can read the container.
+        read,
+
+        /// Holder can write to the container. Write implies read.
+        write,
+    }
+
+    /// Information about an entry in a container.
+    record entry-metadata {
+        /// Name of the entry.
+        name: string,
+        /// Name of the container the entry is in.
+        container: string,
+        /// Size of the entry in bytes.
+        size: u64,
+        /// Time the entry was created (seconds since Unix epoch).
+        created-at: u64,
+        /// Author of the entry.
+        author: author,
     }
 }

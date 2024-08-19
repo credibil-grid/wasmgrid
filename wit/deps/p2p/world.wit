@@ -1,9 +1,7 @@
 package wasi:p2p@0.1.0-draft;
 
 world imports {
-    import document;
-    import wasi:blobstore/container@0.2.0-draft;
-    import wasi:blobstore/types@0.2.0-draft;
+    import container;
 }
 
 world p2p {
