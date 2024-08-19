@@ -85,6 +85,10 @@ mod p2p_bindings {
             "wasi:p2p/types@0.1.0-draft": generate,
             "wasi:p2p/container@0.1.0-draft": generate,
         },
+        additional_derives: [
+            serde::Serialize,
+            serde::Deserialize,
+        ]
     });
 }
 

@@ -1,5 +1,7 @@
 #![feature(let_chains)]
 
+use std::u64;
+
 use anyhow::anyhow;
 use serde::{Deserialize, Serialize};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
@@ -63,38 +65,47 @@ fn handler(req: &Request) -> anyhow::Result<Vec<u8>> {
     tracing::debug!("container ID: {container_id}");
 
     // Add entries.
-    // for entry in doc.entries.iter() {
-    //     tracing::debug!("adding entry: {entry:?}");
-    //     let data = OutgoingValue::new_outgoing_value();
-    //     let content = data
-    //         .outgoing_value_write_body()
-    //         .map_err(|_| anyhow!("unable to get outgoing value body"))?;
-    //     let allowed_length = content.check_write().map_err(|e| anyhow!(e))?;
-    //     if allowed_length < entry.data.len() as u64 {
-    //         return Err(anyhow!("data too large"));
-    //     }
-    //     content.write(entry.data.as_bytes()).map_err(|e| anyhow!(e))?;
-    //     container.write_data(&entry.key, &data).map_err(|e| anyhow!(e))?;
-    //     tracing::debug!("entry written");
-    // }
+    for entry in doc.entries.iter() {
+        tracing::debug!("adding entry: {entry:?}");
+        let data = entry.data.as_bytes();
+        document.write_entry(&entry.key, &author, &data).map_err(|e| anyhow!(e))?;
+        tracing::debug!("entry written");
+    }
 
     // Read the document back again.
-    // let container = document::get_container(&author, &ticket).map_err(|e| anyhow!(e))?;
-    // tracing::debug!("retrieved container");
+    let document = container::get_container(&ticket).map_err(|e| anyhow!(e))?;
+    tracing::debug!("retrieved container");
 
     // List entry keys.
-    // let keys = container.list_objects().map_err(|e| anyhow!(e))?;
-    // let (names, _end) =
-    //     StreamObjectNames::read_stream_object_names(&keys, 1024).map_err(|e| anyhow!(e))?;
-    // tracing::debug!("keys: {:?}", names);
+    let keys = document.list_entries().map_err(|e| anyhow!(e))?;
+    tracing::debug!("keys: {:?}", keys);
+    log.entries.push(("keys".into(), keys.join(", ")));
 
     // Get entry metadata.
+    for key in keys.iter() {
+        let metadata = document.get_entry_metadata(&key).map_err(|e| anyhow!(e))?;
+        tracing::debug!("metadata for {key}: {metadata:?}");
+        let metadata_str = serde_json::to_string(&metadata).map_err(|e| anyhow!(e))?;
+        log.entries.push((format!("metadata for {key}", key = key), metadata_str));
+    }
 
     // Get entry content.
+    for key in keys.iter() {
+        let content = document.read_entry(&key, 0, u64::MAX).map_err(|e| anyhow!(e))?;
+        let content_str = String::from_utf8(content).map_err(|e| anyhow!(e))?;
+        tracing::debug!("content for {key}: {content_str}");
+        log.entries.push((key.into(), content_str));
+    }
 
     // Delete the entries.
+    for key in keys.iter() {
+        document.delete_entry(&key).map_err(|e| anyhow!(e))?;
+        tracing::debug!("deleted entry: {key}");
+    }
 
     // Delete the document.
+    container::delete_container(document).map_err(|e| anyhow!(e))?;
+    tracing::debug!("deleted document");
 
     tracing::debug!("log: {:?}", log);
     serde_json::to_vec(&log).map_err(Into::into)

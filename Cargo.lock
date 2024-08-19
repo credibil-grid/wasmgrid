@@ -6564,6 +6564,7 @@ dependencies = [
 name = "wasi-bindings"
 version = "0.1.0"
 dependencies = [
+ "serde",
  "wit-bindgen",
 ]
 
@@ -6717,6 +6718,7 @@ dependencies = [
  "k256",
  "mongodb",
  "nkeys",
+ "serde",
  "serde_json",
  "sha2",
  "tokio",

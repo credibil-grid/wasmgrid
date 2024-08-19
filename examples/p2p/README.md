@@ -5,7 +5,7 @@ This component will listen to a message on http then store the message on a loca
 You will need to provide some environment variables which you can do in a `.env` file in the root of the project. For example:
 
 ```bash
-RUST_LOG=debug
+RUST_LOG="wasmgrid=debug,p2p=debug,iroh=info"
 IROH_DATA_DIR="/Users/username/Library/Application Support/io.credibil.wallet"
 IROH_PORT=11204
 IROH_AUTHOR=zsv3g2zcqsyicbte

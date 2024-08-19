@@ -37,7 +37,11 @@ mod bindings {
         trappable_imports: true,
         with: {
             "wasi:p2p/container/container": Document,
-        }
+        },
+        additional_derives: [
+            serde::Deserialize,
+            serde::Serialize,
+        ]
     });
 }
 
