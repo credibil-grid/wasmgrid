@@ -2,8 +2,7 @@
 
 This component will listen to a message on http then store the message on a local Iroh file-based node. Then it will attempt to read it back out and then finally delete it.
 
-You will need to provide some environment variables which you can do in a `.env` file in the root of the project. For
-example:
+You will need to provide some environment variables which you can do in a `.env` file in the root of the project. For example:
 
 ```bash
 RUST_LOG=debug
