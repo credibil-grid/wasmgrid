@@ -1,9 +1,0 @@
-/// A watcher provides a way for a guest component to handle changes to a container's state. This
-/// allows the runtime to synchronise the peer-to-peer node and keep the guest informed of changes.
-/// TODO: this needs designing and implementing. Should resemble a messaging subscriber.
-interface watcher {
-    use types.{container-event, container-token};
-
-    /// Handle a change to the container.
-    on-update: func(event: container-event, token: option<container-token>);
-}

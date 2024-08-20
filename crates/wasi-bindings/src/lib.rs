@@ -82,22 +82,18 @@ mod p2p_bindings {
         path: "../../wit",
         world: "p2p",
         with: {
-            "wasi:io/error@0.2.0": generate,
-            "wasi:io/poll@0.2.0": generate,
-            "wasi:io/streams@0.2.0": generate,
-            "wasi:blobstore/types@0.2.0-draft": generate,
-            "wasi:blobstore/container@0.2.0-draft": generate,
             "wasi:p2p/types@0.1.0-draft": generate,
-            "wasi:p2p/document@0.1.0-draft": generate,
+            "wasi:p2p/container@0.1.0-draft": generate,
         },
+        additional_derives: [
+            serde::Serialize,
+            serde::Deserialize,
+        ]
     });
 }
 
 pub mod p2p {
     pub use crate::p2p_bindings::wasi::p2p::*;
-    pub mod exports {
-        pub use crate::p2p_bindings::wasi::blobstore::container::*;
-    }
 }
 
 /// Bindings for the `wasi:wrpc` world.

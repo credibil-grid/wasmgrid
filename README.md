@@ -14,6 +14,9 @@ RUST_LOG="wasmgrid=debug" # tracing log level, alternatively use "wasmgrid=debug
 HTTP_ADDR="0.0.0.0:8080"
 MGO_CNN="<MongoDB connection string>"
 NATS_CNN="demo.nats.io"
+AZURE_TENANT_ID=<Azure Tenant ID for key vault>
+AZURE_CLIENT_ID=<Azure Client ID for key vault>
+AZURE_CLIENT_SECRET=<Azure Client Secret for key vault>
 # when using Synadia Cloud:
 NATS_CNN="tls://connect.ngs.global"
 NATS_JWT="<user JWT>"
