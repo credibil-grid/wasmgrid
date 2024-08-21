@@ -10,13 +10,7 @@ use std::env;
 use anyhow::Error;
 use clap::Parser;
 use dotenv::dotenv;
-use tracing_subscriber::layer::SubscriberExt;
-use tracing_subscriber::{EnvFilter, Registry};
-
-use opentelemetry::trace::TracerProvider as _;
-use opentelemetry_sdk::trace::TracerProvider;
-use opentelemetry_stdout as stdout;
-
+use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 #[cfg(feature = "http")]
 use crate::capabilities::http;
@@ -71,19 +65,12 @@ pub async fn main() -> wasmtime::Result<()> {
         None
     };
 
-    let provider = TracerProvider::builder()
-        .with_simple_exporter(stdout::SpanExporter::default())
-        .build();
-    let tracer = provider.tracer("wasmgrid");
+    let subscriber =
+        FmtSubscriber::builder()
+        .with_env_filter(EnvFilter::from_default_env())
+        .finish();
 
-    let telemetry = tracing_opentelemetry::layer()
-        .with_tracer(tracer); 
-   
-    let subscriber = Registry::default()
-        .with(EnvFilter::from_default_env())
-        .with(telemetry);
-
-    tracing::subscriber::set_global_default(subscriber).expect("should set subscriber");
+    tracing::subscriber::set_global_default(subscriber)?;
 
     // init capabilities
     let builder = runtime::Builder::new();
