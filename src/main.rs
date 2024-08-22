@@ -10,7 +10,9 @@ use std::env;
 use anyhow::Error;
 use clap::Parser;
 use dotenv::dotenv;
-use tracing_subscriber::{EnvFilter, FmtSubscriber};
+// use tracing_subscriber::{EnvFilter, FmtSubscriber, Registry};
+use tracing_subscriber::{EnvFilter, FmtSubscriber, Registry};
+use tracing_subscriber::layer::SubscriberExt;
 
 #[cfg(feature = "http")]
 use crate::capabilities::http;
@@ -65,12 +67,16 @@ pub async fn main() -> wasmtime::Result<()> {
         None
     };
 
-    let subscriber =
-        FmtSubscriber::builder()
-        .with_env_filter(EnvFilter::from_default_env())
-        .finish();
-
+    let telemetry = otel_azure::telemetry()?;
+    let subscriber = Registry::default().with(telemetry);
     tracing::subscriber::set_global_default(subscriber)?;
+
+    // let subscriber =
+    //     FmtSubscriber::builder()
+    //     .with_env_filter(EnvFilter::from_default_env())
+    //     .finish();
+
+    // tracing::subscriber::set_global_default(subscriber)?;
 
     // init capabilities
     let builder = runtime::Builder::new();

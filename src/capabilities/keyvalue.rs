@@ -121,7 +121,7 @@ impl store::Host for State {
                         tracing::error!("Failed to create {identifier} bucket: {e}");
                         return Ok(Err(store::Error::Other(format!(
                             "Failed to create {identifier} bucket: {e}"
-                        ))))
+                        ))));
                     }
                 }
             }
