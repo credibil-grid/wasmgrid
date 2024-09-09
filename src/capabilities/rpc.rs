@@ -12,10 +12,10 @@ use bindings::wasi::rpc::types;
 use bindings::{Rpc, RpcPre};
 use bytes::Bytes;
 use futures::stream::StreamExt;
+use tracing::Level;
 use wasmtime::component::{Linker, Resource};
 use wasmtime::Store;
 use wasmtime_wasi::WasiView;
-use tracing::Level;
 
 use crate::runtime::{self, Runtime, State};
 
@@ -181,8 +181,8 @@ impl client::Host for State {
             tracing::error!("client::Host::call Err: {error}");
             return Ok(Err(self.table().push(anyhow!("{error}"))?));
         }
-       
-       // simplify the logging output
+
+        // simplify the logging output
         tracing::debug!("client::Host::call Ok: {endpoint}");
         tracing::trace!("client::Host::call Ok: {msg:?}");
         Ok(Ok(msg.payload.to_vec()))
