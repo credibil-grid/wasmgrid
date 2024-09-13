@@ -14,6 +14,13 @@ pub fn get(handler: impl Handler + 'static) -> MethodHandler {
     }
 }
 
+pub fn patch(handler: impl Handler + 'static) -> MethodHandler {
+    MethodHandler {
+        method: Method::Patch,
+        handler: Box::new(handler),
+    }
+}
+
 pub fn post(handler: impl Handler + 'static) -> MethodHandler {
     MethodHandler {
         method: Method::Post,
@@ -171,6 +178,7 @@ pub fn serve<'a>(
 pub(crate) fn is_match(m1: &Method, m2: &Method) -> bool {
     match m1 {
         &Method::Get => matches!(m2, &Method::Get),
+        &Method::Patch => matches!(m2, &Method::Patch),
         &Method::Post => matches!(m2, &Method::Post),
         &Method::Put => matches!(m2, &Method::Put),
         &Method::Delete => matches!(m2, &Method::Delete),
