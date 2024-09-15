@@ -10,9 +10,10 @@ use bindings::wasi::jsondb::readwrite;
 use bindings::wasi::jsondb::types::{self, HostDatabase, HostError, HostStatement};
 use bindings::Jsondb;
 use futures::TryStreamExt;
-use jmespath::ast::Ast;
+use jmespath::ast::{Ast, Comparator};
+use mongodb::bson::{self, Document};
 use mongodb::options::ClientOptions;
-use mongodb::{bson, Client, Cursor};
+use mongodb::{Client, Cursor};
 use wasmtime::component::{Linker, Resource};
 use wasmtime_wasi::WasiView;
 
@@ -251,27 +252,31 @@ impl HostStatement for State {
         let doc = if let Some(jmes_path) = jmes_path {
             // create Mongo filter from JMESPath expression
             let expr = jmespath::compile(&jmes_path)?;
-            let Ast::Projection { rhs, .. } = expr.as_ast() else {
-                return Ok(Err(self.table().push(anyhow!("invalid JMESPath projection"))?));
-            };
-            let Ast::Condition { predicate, .. } = rhs.as_ref() else {
-                return Ok(Err(self.table().push(anyhow!("invalid JMESPath condition"))?));
-            };
-            let Ast::Comparison { lhs, rhs, .. } = predicate.as_ref() else {
-                return Ok(Err(self.table().push(anyhow!("invalid JMESPath comparison"))?));
-            };
-            let Ast::Field { name, .. } = lhs.as_ref() else {
-                return Ok(Err(self.table().push(anyhow!("invalid JMESPath LHS"))?));
-            };
-            let Ast::Literal { value, .. } = rhs.as_ref() else {
-                return Ok(Err(self.table().push(anyhow!("invalid JMESPath RHS"))?));
-            };
-            let Some(value) = value.as_string() else {
-                return Ok(Err(self.table().push(anyhow!("invalid JMESPath value"))?));
-            };
 
-            tracing::debug!("HostFilter::prepare: key {name}: value {value}");
-            bson::doc! {name: value}
+            // let Ast::Projection { rhs, .. } = expr.as_ast() else {
+            //     return Ok(Err(self.table().push(anyhow!("invalid JMESPath projection"))?));
+            // };
+            // let Ast::Condition { predicate, .. } = rhs.as_ref() else {
+            //     return Ok(Err(self.table().push(anyhow!("invalid JMESPath condition"))?));
+            // };
+            // let Ast::Comparison { lhs, rhs, .. } = predicate.as_ref() else {
+            //     return Ok(Err(self.table().push(anyhow!("invalid JMESPath comparison"))?));
+            // };
+            // let Ast::Field { name, .. } = lhs.as_ref() else {
+            //     return Ok(Err(self.table().push(anyhow!("invalid JMESPath LHS"))?));
+            // };
+            // let Ast::Literal { value, .. } = rhs.as_ref() else {
+            //     return Ok(Err(self.table().push(anyhow!("invalid JMESPath RHS"))?));
+            // };
+            // let Some(value) = value.as_string() else {
+            //     return Ok(Err(self.table().push(anyhow!("invalid JMESPath value"))?));
+            // };
+
+            // tracing::debug!("HostFilter::prepare: key {name}: value {value}");
+            // bson::doc! {name: value}
+
+            let ast = expr.as_ast();
+            process(ast)?
         } else {
             bson::doc! {}
         };
@@ -288,6 +293,56 @@ impl HostStatement for State {
         tracing::trace!("HostFilter::drop");
         self.table().delete(rep)?;
         Ok(())
+    }
+}
+
+// Parse part of a JMESPath abstract syntax tree into a bson query.
+// TODO: this is incomplete. It only supports a subset of JMESPath and assumes
+// every literal is a string.
+fn process(ast: &Ast) -> anyhow::Result<Document> {
+    match ast {
+        Ast::Projection { rhs, .. } => {
+            process(rhs)
+        }
+        Ast::Condition { predicate, .. } => {
+            process(predicate)
+        }
+        Ast::And { lhs, rhs, .. } => {
+            let lhs_doc = process(lhs)?;
+            let rhs_doc = process(rhs)?;
+            Ok(bson::doc! { "$and": [lhs_doc, rhs_doc] })
+        }
+        Ast::Comparison {
+            lhs, rhs, comparator, ..
+        } => {
+            let lhs_str = process_string(lhs)?;
+            let rhs_str = process_string(rhs)?;
+            let doc = match comparator {
+                Comparator::Equal => bson::doc! { lhs_str: { "$eq": rhs_str } },
+                Comparator::NotEqual => bson::doc! { lhs_str: { "$ne": rhs_str } },
+                Comparator::LessThan => bson::doc! { lhs_str: { "$lt": rhs_str } },
+                Comparator::LessThanEqual => bson::doc! { lhs_str: { "$lte": rhs_str } },
+                Comparator::GreaterThan => bson::doc! { lhs_str: { "$gt": rhs_str } },
+                Comparator::GreaterThanEqual => bson::doc! { lhs_str: { "$gte": rhs_str } },
+            };
+            Ok(doc)
+        }
+        _ => Err(anyhow!("unsupported JMESPath node: {ast}")),
+    }
+}
+
+// Parse part of a JMESPath abstract syntax tree into a bson query where the
+// node is expected to be translatable to a string literal.
+fn process_string(ast: &Ast) -> anyhow::Result<String> {
+    match ast {
+        Ast::Field { name, .. } => Ok(name.into()),
+        Ast::Literal { value, .. } => {
+            let value = value
+                .as_string()
+                .ok_or_else(|| anyhow!("JMESPath literal not convertable to string"))?;
+            Ok(value.into())
+        }
+        _ => Err(anyhow!("unsupported JMESPath string node: {ast}")),
     }
 }
 
