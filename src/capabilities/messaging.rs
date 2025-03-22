@@ -115,7 +115,6 @@ impl Processor {
                 tracing::error!("error processing message {e:?}");
             }
         }
-
         Ok(())
     }
 
