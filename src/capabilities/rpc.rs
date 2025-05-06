@@ -41,7 +41,7 @@ use wasmtime_wasi::IoView;
 use self::generated::wasi::rpc::client::{self, HostError};
 use self::generated::wasi::rpc::types;
 use self::generated::{Rpc, RpcPre};
-use crate::runtime::{self, Runtime, State};
+use crate::runtime::{self, Runtime, Ctx};
 
 // TODO: create a client struct with both NATS client and request timeout
 static CLIENT: OnceLock<async_nats::Client> = OnceLock::new();
@@ -64,7 +64,7 @@ impl runtime::Capability for Capability {
         "wasi:rpc"
     }
 
-    fn add_to_linker(&self, linker: &mut Linker<State>) -> anyhow::Result<()> {
+    fn add_to_linker(&self, linker: &mut Linker<Ctx>) -> anyhow::Result<()> {
         Rpc::add_to_linker(linker, |t| t)
     }
 
@@ -100,7 +100,7 @@ impl runtime::Capability for Capability {
 
         // get 'server' component's name
         let pre = RpcPre::new(runtime.instance_pre().clone())?;
-        let mut store = Store::new(pre.engine(), State::new());
+        let mut store = Store::new(pre.engine(), Ctx::new());
         let rpc = pre.instantiate_async(&mut store).await?;
         let cfg = rpc.wasi_rpc_server().call_configure(&mut store).await??;
 
@@ -134,7 +134,7 @@ impl runtime::Capability for Capability {
 }
 
 // Forward request to the wasm Guest.
-async fn handle_request(pre: RpcPre<State>, request: Message) -> anyhow::Result<Vec<u8>> {
+async fn handle_request(pre: RpcPre<Ctx>, request: Message) -> anyhow::Result<Vec<u8>> {
     tokio::spawn(async move {
         // convert subject to endpoint
         let endpoint = request.subject.trim_start_matches("rpc:").replace('.', "/");
@@ -144,7 +144,7 @@ async fn handle_request(pre: RpcPre<State>, request: Message) -> anyhow::Result<
             tracing::info!("forwarding request to {endpoint}");
         });
 
-        let mut store = Store::new(pre.engine(), State::new());
+        let mut store = Store::new(pre.engine(), Ctx::new());
         store.limiter(|t| &mut t.limits);
 
         let rpc = pre.instantiate_async(&mut store).await?;
@@ -156,9 +156,9 @@ async fn handle_request(pre: RpcPre<State>, request: Message) -> anyhow::Result<
     .await?
 }
 
-impl types::Host for State {}
+impl types::Host for Ctx {}
 
-impl client::Host for State {
+impl client::Host for Ctx {
     #[allow(clippy::cognitive_complexity)]
     async fn call(
         &mut self, endpoint: String, request: Vec<u8>,
@@ -189,7 +189,7 @@ impl client::Host for State {
     }
 }
 
-impl HostError for State {
+impl HostError for Ctx {
     async fn trace(&mut self, rep: Resource<Error>) -> wasmtime::Result<String> {
         tracing::trace!("HostError::trace");
         let error = self.table().get(&rep)?;

@@ -26,7 +26,7 @@ use wasmtime_wasi_http::body::HyperOutgoingBody;
 use wasmtime_wasi_http::io::TokioIo;
 use wasmtime_wasi_http::{WasiHttpCtx, WasiHttpView};
 
-use crate::runtime::{self, Runtime, State};
+use crate::runtime::{self, Ctx, Runtime};
 
 pub struct Capability {
     pub addr: String,
@@ -42,7 +42,7 @@ impl runtime::Capability for Capability {
         "wasi:http"
     }
 
-    fn add_to_linker(&self, linker: &mut Linker<State>) -> anyhow::Result<()> {
+    fn add_to_linker(&self, linker: &mut Linker<Ctx>) -> anyhow::Result<()> {
         wasmtime_wasi_http::add_only_http_to_linker_async(linker)
     }
 
@@ -74,7 +74,7 @@ impl runtime::Capability for Capability {
 
 // Forward request to the wasm Guest.
 async fn handle_request(
-    pre: ProxyPre<State>, mut request: Request<Incoming>,
+    pre: ProxyPre<Ctx>, mut request: Request<Incoming>,
 ) -> anyhow::Result<hyper::Response<HyperOutgoingBody>> {
     let (sender, receiver) = tokio::sync::oneshot::channel();
 
@@ -134,7 +134,7 @@ async fn handle_request(
 
         // prepare wasmtime http request and response
         // let mut store = runtime.new_store();
-        let mut store = Store::new(pre.engine(), State::new());
+        let mut store = Store::new(pre.engine(), Ctx::new());
         store.limiter(|t| &mut t.limits);
 
         store.data_mut().metadata.insert("wasi_http_ctx".into(), Box::new(WasiHttpCtx::new()));
@@ -167,7 +167,7 @@ async fn handle_request(
     }
 }
 
-impl WasiHttpView for State {
+impl WasiHttpView for Ctx {
     // fn table(&mut self) -> &mut ResourceTable {
     //     WasiView::table(self)
     // }

@@ -41,7 +41,7 @@ use self::generated::wasi::messaging::messaging_types::{
 };
 use self::generated::wasi::messaging::{consumer, producer};
 use self::generated::{Messaging, MessagingPre};
-use crate::runtime::{self, Runtime, State};
+use crate::runtime::{self, Runtime, Ctx};
 
 pub type Client = async_nats::Client;
 pub type Error = anyhow::Error;
@@ -62,7 +62,7 @@ impl runtime::Capability for Capability {
         "wasi:messaging"
     }
 
-    fn add_to_linker(&self, linker: &mut Linker<State>) -> anyhow::Result<()> {
+    fn add_to_linker(&self, linker: &mut Linker<Ctx>) -> anyhow::Result<()> {
         Messaging::add_to_linker(linker, |t| t)
     }
 
@@ -77,7 +77,7 @@ impl runtime::Capability for Capability {
 
         // get guest configuration (channels to subscribe to)
         let pre = MessagingPre::new(runtime.instance_pre().clone())?;
-        let mut store = Store::new(pre.engine(), State::new());
+        let mut store = Store::new(pre.engine(), Ctx::new());
         let messaging = pre.instantiate_async(&mut store).await?;
 
         let gc = match messaging.wasi_messaging_messaging_guest().call_configure(&mut store).await?
@@ -127,7 +127,7 @@ impl Processor {
         tracing::trace!("handle_message: {msg:?}");
 
         let pre = MessagingPre::new(self.runtime.instance_pre().clone())?;
-        let mut store = Store::new(pre.engine(), State::new());
+        let mut store = Store::new(pre.engine(), Ctx::new());
         let messaging = pre.instantiate_async(&mut store).await?;
 
         let message = to_message(msg);
@@ -143,9 +143,9 @@ impl Processor {
     }
 }
 
-impl messaging_types::Host for State {}
+impl messaging_types::Host for Ctx {}
 
-impl HostClient for State {
+impl HostClient for Ctx {
     async fn connect(
         &mut self, name: String,
     ) -> wasmtime::Result<anyhow::Result<Resource<Client>, Resource<Error>>> {
@@ -165,7 +165,7 @@ impl HostClient for State {
     }
 }
 
-impl consumer::Host for State {
+impl consumer::Host for Ctx {
     async fn subscribe_try_receive(
         &mut self, client: Resource<Client>, ch: String, t_milliseconds: u32,
     ) -> wasmtime::Result<Result<Option<Vec<Message>>, Resource<Error>>> {
@@ -224,7 +224,7 @@ impl consumer::Host for State {
     }
 }
 
-impl producer::Host for State {
+impl producer::Host for Ctx {
     async fn send(
         &mut self, client: Resource<Client>, ch: String, messages: Vec<Message>,
     ) -> wasmtime::Result<Result<(), Resource<Error>>> {
@@ -240,7 +240,7 @@ impl producer::Host for State {
     }
 }
 
-impl HostError for State {
+impl HostError for Ctx {
     async fn trace(&mut self) -> wasmtime::Result<String> {
         tracing::trace!("HostError::trace");
         Ok("error".to_string())

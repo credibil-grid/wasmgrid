@@ -40,7 +40,7 @@ use wasmtime_wasi::IoView;
 
 use self::generated::Vault;
 use self::generated::wasi::vault::keystore::{self, Algorithm, Jwk};
-use crate::runtime::{self, Runtime, State};
+use crate::runtime::{self, Runtime, Ctx};
 
 const ED25519_X: &str = "q6rjRnEH_XK72jvB8FNBJtOl9_gDs6NW49cAz6p2sW4";
 
@@ -68,7 +68,7 @@ impl runtime::Capability for Capability {
         "wasi:vault"
     }
 
-    fn add_to_linker(&self, linker: &mut Linker<State>) -> anyhow::Result<()> {
+    fn add_to_linker(&self, linker: &mut Linker<Ctx>) -> anyhow::Result<()> {
         Vault::add_to_linker(linker, |t| t)
     }
 
@@ -86,7 +86,7 @@ impl runtime::Capability for Capability {
     }
 }
 
-impl keystore::Host for State {
+impl keystore::Host for Ctx {
     async fn open(
         &mut self, identifier: String,
     ) -> wasmtime::Result<Result<Resource<KeySet>, keystore::Error>> {
@@ -101,7 +101,7 @@ impl keystore::Host for State {
     }
 }
 
-impl keystore::HostKeySet for State {
+impl keystore::HostKeySet for Ctx {
     async fn generate(
         &mut self, _rep: Resource<KeySet>, _identifier: String, _alg: Algorithm,
     ) -> wasmtime::Result<Result<Resource<KeyPair>, keystore::Error>> {
@@ -147,7 +147,7 @@ impl keystore::HostKeySet for State {
     }
 }
 
-impl keystore::HostKeyPair for State {
+impl keystore::HostKeyPair for Ctx {
     async fn sign(
         &mut self, rep: Resource<KeyPair>, data: Vec<u8>,
     ) -> wasmtime::Result<Result<Vec<u8>, keystore::Error>> {

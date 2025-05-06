@@ -43,7 +43,7 @@ use wasmtime_wasi::IoView;
 use self::generated::Keyvalue;
 use self::generated::wasi::keyvalue;
 use self::generated::wasi::keyvalue::store::KeyResponse;
-use crate::runtime::{self, Runtime, State};
+use crate::runtime::{self, Ctx, Runtime};
 
 pub type Bucket = async_nats::jetstream::kv::Store;
 
@@ -83,7 +83,7 @@ impl runtime::Capability for Capability {
         "wasi:keyvalue"
     }
 
-    fn add_to_linker(&self, linker: &mut Linker<State>) -> anyhow::Result<()> {
+    fn add_to_linker(&self, linker: &mut Linker<Ctx>) -> anyhow::Result<()> {
         Keyvalue::add_to_linker(linker, |t| t)
     }
 
@@ -110,8 +110,8 @@ impl runtime::Capability for Capability {
     }
 }
 
-// Implement the [`wasi_keyvalue::KeyValueView`]` trait for State.
-impl keyvalue::store::Host for State {
+// Implement the [`wasi_keyvalue::KeyValueView`]` trait for Ctx.
+impl keyvalue::store::Host for Ctx {
     // Open bucket specified by identifier, save to state and return as a resource.
     async fn open(&mut self, identifier: String) -> Result<Resource<Bucket>, Error> {
         tracing::trace!("store::Host::open {identifier}");
@@ -151,7 +151,7 @@ impl keyvalue::store::Host for State {
     }
 }
 
-impl keyvalue::store::HostBucket for State {
+impl keyvalue::store::HostBucket for Ctx {
     async fn get(&mut self, rep: Resource<Bucket>, key: String) -> Result<Option<Vec<u8>>, Error> {
         tracing::trace!("store::HostBucket::get {key}");
 
@@ -220,7 +220,7 @@ impl keyvalue::store::HostBucket for State {
     }
 }
 
-impl keyvalue::atomics::Host for State {
+impl keyvalue::atomics::Host for Ctx {
     async fn increment(
         &mut self, rep: Resource<Bucket>, key: String, delta: u64,
     ) -> Result<u64, Error> {
@@ -251,7 +251,7 @@ impl keyvalue::atomics::Host for State {
     }
 }
 
-impl keyvalue::batch::Host for State {
+impl keyvalue::batch::Host for Ctx {
     async fn get_many(
         &mut self, rep: Resource<Bucket>, keys: Vec<String>,
     ) -> Result<Vec<Option<(String, Vec<u8>)>>, Error> {

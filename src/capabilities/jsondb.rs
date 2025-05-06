@@ -39,7 +39,7 @@ use wasmtime_wasi::IoView;
 use self::generated::Jsondb;
 use self::generated::wasi::jsondb::readwrite;
 use self::generated::wasi::jsondb::types::{self, HostDatabase, HostError, HostStatement};
-use crate::runtime::{self, Runtime, State};
+use crate::runtime::{self, Runtime, Ctx};
 
 static MONGODB: OnceLock<mongodb::Client> = OnceLock::new();
 
@@ -65,7 +65,7 @@ impl runtime::Capability for Capability {
         "wasi:jsondb"
     }
 
-    fn add_to_linker(&self, linker: &mut Linker<State>) -> anyhow::Result<()> {
+    fn add_to_linker(&self, linker: &mut Linker<Ctx>) -> anyhow::Result<()> {
         Jsondb::add_to_linker(linker, |t| t)
     }
 
@@ -84,8 +84,8 @@ impl runtime::Capability for Capability {
     }
 }
 
-// Implement the [`wasi_sql::ReadWriteView`]` trait for State.
-impl readwrite::Host for State {
+// Implement the [`wasi_sql::ReadWriteView`]` trait for Ctx.
+impl readwrite::Host for Ctx {
     async fn insert(
         &mut self, db: Resource<Database>, s: Resource<Statement>, d: Vec<u8>,
     ) -> wasmtime::Result<Result<(), Resource<Error>>> {
@@ -213,10 +213,10 @@ impl readwrite::Host for State {
     }
 }
 
-impl types::Host for State {}
+impl types::Host for Ctx {}
 
-// Implement the [`HostDatabase`]` trait for State.
-impl HostDatabase for State {
+// Implement the [`HostDatabase`]` trait for Ctx.
+impl HostDatabase for Ctx {
     async fn connect(
         &mut self, name: String,
     ) -> wasmtime::Result<Result<Resource<Database>, Resource<Error>>> {
@@ -236,8 +236,8 @@ impl HostDatabase for State {
     }
 }
 
-// Implement the [`HostStatement`]` trait for State.
-impl HostStatement for State {
+// Implement the [`HostStatement`]` trait for Ctx.
+impl HostStatement for Ctx {
     // Prepare a bson query for the specified collection, translating the JMESPath
     // to a bson query. For example,
     // [?credential_issuer=='https://issuance.demo.credibil.io'] will translate
@@ -341,8 +341,8 @@ fn process_string(ast: &Ast) -> anyhow::Result<String> {
     }
 }
 
-// Implement the [`wasi::sql::HostError`]` trait for State.
-impl HostError for State {
+// Implement the [`wasi::sql::HostError`]` trait for Ctx.
+impl HostError for Ctx {
     async fn trace(&mut self, rep: Resource<Error>) -> wasmtime::Result<String> {
         tracing::trace!("HostError::trace");
         let error = self.table().get(&rep)?;
@@ -362,7 +362,7 @@ mod tests {
 
     #[tokio::test]
     async fn prepare() {
-        let mut state = State::default();
+        let mut state = Ctx::default();
         let _ = state
             .prepare(
                 "test".into(),

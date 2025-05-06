@@ -43,7 +43,7 @@ use self::generated::wasi::p2p::container;
 use self::generated::wasi::p2p::types::{
     self, Author, ContainerId, EntryMetadata, Error, Permission, Token,
 };
-use crate::runtime::{self, Runtime, State};
+use crate::runtime::{self, Runtime, Ctx};
 
 // Handle to the local Iroh node.
 static IROH_NODE: OnceLock<FsNode> = OnceLock::new();
@@ -62,7 +62,7 @@ impl Debug for Document {
 
 /// Implementation of the `wasi:p2p/container` interface.
 #[async_trait::async_trait]
-impl container::Host for State {
+impl container::Host for Ctx {
     /// Create a new author.
     async fn create_author(&mut self) -> wasmtime::Result<Result<Author, Error>> {
         tracing::trace!("container::Host::create_owner");
@@ -170,7 +170,7 @@ impl container::Host for State {
 
 /// Implementation of the `wasi:p2p/container/container` interface.
 #[async_trait::async_trait]
-impl container::HostContainer for State {
+impl container::HostContainer for Ctx {
     /// Get the ID of the document as a string.
     async fn id(
         &mut self, container: Resource<Document>,
@@ -455,7 +455,7 @@ async fn get_container_entry(container: &Document, key: &str) -> Result<Option<E
 }
 
 /// Implementation of the `wasi:p2p/types` interface.
-impl types::Host for State {}
+impl types::Host for Ctx {}
 
 /// Capability configuration.
 pub struct Capability;
@@ -472,7 +472,7 @@ impl runtime::Capability for Capability {
         "wasi:p2p"
     }
 
-    fn add_to_linker(&self, linker: &mut Linker<State>) -> anyhow::Result<()> {
+    fn add_to_linker(&self, linker: &mut Linker<Ctx>) -> anyhow::Result<()> {
         P2p::add_to_linker(linker, |t| t)
     }
 

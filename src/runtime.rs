@@ -20,7 +20,7 @@ pub trait Capability: Send {
     fn namespace(&self) -> &'static str;
 
     /// Add the capability to the wasm component linker.
-    fn add_to_linker(&self, linker: &mut Linker<State>) -> anyhow::Result<()>;
+    fn add_to_linker(&self, linker: &mut Linker<Ctx>) -> anyhow::Result<()>;
 
     /// Start and run the runtime.
     async fn run(&self, runtime: Runtime) -> anyhow::Result<()>;
@@ -29,13 +29,13 @@ pub trait Capability: Send {
 /// Runtime for a wasm component.
 #[derive(Clone)]
 pub struct Runtime {
-    instance_pre: InstancePre<State>,
+    instance_pre: InstancePre<Ctx>,
 }
 
 impl Runtime {
     /// Returns a "pre-instantiated" Instance — an efficient form of instantiation
     /// where import type-checking and lookup has been resolved.
-    pub const fn instance_pre(&self) -> &InstancePre<State> {
+    pub const fn instance_pre(&self) -> &InstancePre<Ctx> {
         &self.instance_pre
     }
 }
@@ -107,16 +107,16 @@ impl Builder {
 
 pub type Metadata = Box<dyn Any + Send>;
 
-/// State implements messaging host interfaces. In addition, it holds the host-defined
+/// Ctx implements messaging host interfaces. In addition, it holds the host-defined
 /// state used by the wasm runtime [`Store`].
-pub struct State {
-    ctx: WasiCtx,
+pub struct Ctx {
     table: ResourceTable,
+    ctx: WasiCtx,
     pub limits: StoreLimits,
     pub metadata: HashMap<String, Metadata>,
 }
 
-impl Default for State {
+impl Default for Ctx {
     fn default() -> Self {
         let mut ctx = WasiCtxBuilder::new();
         ctx.inherit_args();
@@ -136,21 +136,21 @@ impl Default for State {
     }
 }
 
-impl State {
-    /// Create a new State instance.
+impl Ctx {
+    /// Create a new Ctx instance.
     pub fn new() -> Self {
         Self::default()
     }
 }
 
-impl IoView for State {
+impl IoView for Ctx {
     fn table(&mut self) -> &mut ResourceTable {
         &mut self.table
     }
 }
 
-// Implement the [`wasmtime_wasi::ctx::WasiView`] trait for State.
-impl WasiView for State {
+// Implement the [`wasmtime_wasi::ctx::WasiView`] trait for Ctx.
+impl WasiView for Ctx {
     fn ctx(&mut self) -> &mut WasiCtx {
         &mut self.ctx
     }
