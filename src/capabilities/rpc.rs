@@ -3,28 +3,9 @@
 //! This module implements a runtime capability for `wasi:messaging`
 //! (<https://github.com/WebAssembly/wasi-messaging>).
 
-use std::sync::{Arc, OnceLock};
-
-use anyhow::anyhow;
-use async_nats::{AuthError, ConnectOptions, HeaderMap, Message};
-use bindings::wasi::rpc::client::{self, HostError};
-use bindings::wasi::rpc::types;
-use bindings::{Rpc, RpcPre};
-use bytes::Bytes;
-use futures::stream::StreamExt;
-use tracing::Level;
-use wasmtime::Store;
-use wasmtime::component::{Linker, Resource};
-use wasmtime_wasi::IoView;
-
-use crate::runtime::{self, Runtime, State};
-
-// TODO: create a client struct with both NATS client and request timeout
-static CLIENT: OnceLock<async_nats::Client> = OnceLock::new();
-
 /// Wrap generation of wit bindings to simplify exports.
 /// See <https://docs.rs/wasmtime/latest/wasmtime/component/macro.bindgen.html>
-mod bindings {
+mod generated {
     #![allow(clippy::future_not_send)]
     #![allow(clippy::trait_duplication_in_bounds)]
     pub use super::Error;
@@ -45,6 +26,25 @@ mod bindings {
         // ],
     });
 }
+
+use std::sync::{Arc, OnceLock};
+
+use anyhow::anyhow;
+use async_nats::{AuthError, ConnectOptions, HeaderMap, Message};
+use bytes::Bytes;
+use futures::stream::StreamExt;
+use tracing::Level;
+use wasmtime::Store;
+use wasmtime::component::{Linker, Resource};
+use wasmtime_wasi::IoView;
+
+use self::generated::wasi::rpc::client::{self, HostError};
+use self::generated::wasi::rpc::types;
+use self::generated::{Rpc, RpcPre};
+use crate::runtime::{self, Runtime, State};
+
+// TODO: create a client struct with both NATS client and request timeout
+static CLIENT: OnceLock<async_nats::Client> = OnceLock::new();
 
 pub type Error = anyhow::Error;
 

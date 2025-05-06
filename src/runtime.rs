@@ -110,10 +110,9 @@ pub type Metadata = Box<dyn Any + Send>;
 /// State implements messaging host interfaces. In addition, it holds the host-defined
 /// state used by the wasm runtime [`Store`].
 pub struct State {
-    table: ResourceTable,
     ctx: WasiCtx,
+    table: ResourceTable,
     pub limits: StoreLimits,
-
     pub metadata: HashMap<String, Metadata>,
 }
 

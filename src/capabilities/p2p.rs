@@ -1,30 +1,8 @@
 //! # WASI Peer-to-Peer Host
 
-use std::fmt::Debug;
-use std::str::FromStr;
-use std::sync::OnceLock;
-
-use anyhow::{anyhow, Context};
-use bindings::wasi::p2p::container;
-use bindings::wasi::p2p::types::{
-    self, Author, ContainerId, EntryMetadata, Error, Permission, Token,
-};
-use bindings::P2p;
-use futures::{StreamExt, TryStreamExt};
-use iroh::base::node_addr::AddrInfoOptions;
-use iroh::client::docs::{Entry, ShareMode};
-use iroh::client::Doc;
-use iroh::docs::store::Query;
-use iroh::docs::{AuthorId, DocTicket};
-use iroh::node::FsNode;
-use wasmtime::component::{Linker, Resource};
-use wasmtime_wasi::WasiView;
-
-use crate::runtime::{self, Runtime, State};
-
 /// Wrap generation of wit bindings to simplify exports.
 /// See <https://docs.rs/wasmtime/latest/wasmtime/component/macro.bindgen.html>
-mod bindings {
+mod generated {
     #![allow(clippy::future_not_send)]
 
     pub use super::Document;
@@ -44,6 +22,28 @@ mod bindings {
         ]
     });
 }
+
+use std::fmt::Debug;
+use std::str::FromStr;
+use std::sync::OnceLock;
+
+use anyhow::{Context, anyhow};
+use futures::{StreamExt, TryStreamExt};
+use iroh::base::node_addr::AddrInfoOptions;
+use iroh::client::Doc;
+use iroh::client::docs::{Entry, ShareMode};
+use iroh::docs::store::Query;
+use iroh::docs::{AuthorId, DocTicket};
+use iroh::node::FsNode;
+use wasmtime::component::{Linker, Resource};
+use wasmtime_wasi::WasiView;
+
+use self::generated::P2p;
+use self::generated::wasi::p2p::container;
+use self::generated::wasi::p2p::types::{
+    self, Author, ContainerId, EntryMetadata, Error, Permission, Token,
+};
+use crate::runtime::{self, Runtime, State};
 
 // Handle to the local Iroh node.
 static IROH_NODE: OnceLock<FsNode> = OnceLock::new();

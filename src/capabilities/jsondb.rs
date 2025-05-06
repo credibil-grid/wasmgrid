@@ -3,27 +3,9 @@
 //! This module implements a runtime capability for `wasi:sql`
 //! (<https://github.com/WebAssembly/wasi-sql>).
 
-use std::sync::OnceLock;
-
-use anyhow::anyhow;
-use bindings::Jsondb;
-use bindings::wasi::jsondb::readwrite;
-use bindings::wasi::jsondb::types::{self, HostDatabase, HostError, HostStatement};
-use futures::TryStreamExt;
-use jmespath::ast::{Ast, Comparator};
-use mongodb::bson::{self, Document};
-use mongodb::options::ClientOptions;
-use mongodb::{Client, Cursor};
-use wasmtime::component::{Linker, Resource, bindgen};
-use wasmtime_wasi::IoView;
-
-use crate::runtime::{self, Runtime, State};
-
-static MONGODB: OnceLock<mongodb::Client> = OnceLock::new();
-
 /// Wrap generation of wit bindings to simplify exports.
 /// See <https://docs.rs/wasmtime/latest/wasmtime/component/macro.bindgen.html>
-mod bindings {
+mod generated {
     #![allow(clippy::future_not_send)]
     #![allow(clippy::trait_duplication_in_bounds)]
     use super::bindgen;
@@ -42,6 +24,24 @@ mod bindings {
         }
     });
 }
+
+use std::sync::OnceLock;
+
+use anyhow::anyhow;
+use futures::TryStreamExt;
+use jmespath::ast::{Ast, Comparator};
+use mongodb::bson::{self, Document};
+use mongodb::options::ClientOptions;
+use mongodb::{Client, Cursor};
+use wasmtime::component::{Linker, Resource, bindgen};
+use wasmtime_wasi::IoView;
+
+use self::generated::Jsondb;
+use self::generated::wasi::jsondb::readwrite;
+use self::generated::wasi::jsondb::types::{self, HostDatabase, HostError, HostStatement};
+use crate::runtime::{self, Runtime, State};
+
+static MONGODB: OnceLock<mongodb::Client> = OnceLock::new();
 
 pub type Database = mongodb::Database;
 pub type Error = anyhow::Error;

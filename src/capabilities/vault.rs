@@ -3,24 +3,9 @@
 //! This module implements a runtime capability for `wasi:vault`
 //! (<https://github.com/WebAssembly/wasi-vault>).
 
-use std::sync::OnceLock;
-use std::{env, vec};
-
-use anyhow::anyhow;
-use azure_security_keyvault::KeyClient;
-use azure_security_keyvault::prelude::SignatureAlgorithm;
-use base64ct::{Base64UrlUnpadded, Encoding};
-use bindings::Vault;
-use bindings::wasi::vault::keystore::{self, Algorithm, Jwk};
-use sha2::{Digest, Sha256};
-use wasmtime::component::{Linker, Resource};
-use wasmtime_wasi::IoView;
-
-use crate::runtime::{self, Runtime, State};
-
 /// Wrap generation of wit bindings to simplify exports.
 /// See <https://docs.rs/wasmtime/latest/wasmtime/component/macro.bindgen.html>
-mod bindings {
+mod generated {
     #![allow(clippy::future_not_send)]
 
     pub use super::{KeyPair, KeySet};
@@ -41,6 +26,21 @@ mod bindings {
         // include_generated_code_from_file: true,
     });
 }
+
+use std::sync::OnceLock;
+use std::{env, vec};
+
+use anyhow::anyhow;
+use azure_security_keyvault::KeyClient;
+use azure_security_keyvault::prelude::SignatureAlgorithm;
+use base64ct::{Base64UrlUnpadded, Encoding};
+use sha2::{Digest, Sha256};
+use wasmtime::component::{Linker, Resource};
+use wasmtime_wasi::IoView;
+
+use self::generated::Vault;
+use self::generated::wasi::vault::keystore::{self, Algorithm, Jwk};
+use crate::runtime::{self, Runtime, State};
 
 const ED25519_X: &str = "q6rjRnEH_XK72jvB8FNBJtOl9_gDs6NW49cAz6p2sW4";
 

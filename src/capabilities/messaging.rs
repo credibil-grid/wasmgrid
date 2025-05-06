@@ -3,25 +3,9 @@
 //! This module implements a runtime capability for `wasi:messaging`
 //! (<https://github.com/WebAssembly/wasi-messaging>).
 
-use std::sync::OnceLock;
-
-use anyhow::anyhow;
-use bindings::wasi::messaging::messaging_types::{
-    self, FormatSpec, GuestConfiguration, HostClient, HostError, Message,
-};
-use bindings::wasi::messaging::{consumer, producer};
-use bindings::{Messaging, MessagingPre};
-use futures::stream::{self, StreamExt};
-use tokio::time::{Duration, sleep};
-use wasmtime::Store;
-use wasmtime::component::{Linker, Resource, bindgen};
-use wasmtime_wasi::IoView;
-
-use crate::runtime::{self, Runtime, State};
-
 /// Wrap generation of wit bindings to simplify exports.
 /// See <https://docs.rs/wasmtime/latest/wasmtime/component/macro.bindgen.html>
-mod bindings {
+mod generated {
     #![allow(clippy::future_not_send)]
     #![allow(clippy::trait_duplication_in_bounds)]
     use super::bindgen;
@@ -42,6 +26,22 @@ mod bindings {
         // },
     });
 }
+
+use std::sync::OnceLock;
+
+use anyhow::anyhow;
+use futures::stream::{self, StreamExt};
+use tokio::time::{Duration, sleep};
+use wasmtime::Store;
+use wasmtime::component::{Linker, Resource, bindgen};
+use wasmtime_wasi::IoView;
+
+use self::generated::wasi::messaging::messaging_types::{
+    self, FormatSpec, GuestConfiguration, HostClient, HostError, Message,
+};
+use self::generated::wasi::messaging::{consumer, producer};
+use self::generated::{Messaging, MessagingPre};
+use crate::runtime::{self, Runtime, State};
 
 pub type Client = async_nats::Client;
 pub type Error = anyhow::Error;
