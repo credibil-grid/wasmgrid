@@ -3,13 +3,13 @@
 Build the example guest:
 
 ```bash
-cargo component build -Z build-std=panic_abort,std --package http@0.1.0 --release
+cargo build --package http@0.1.0 --target wasm32-wasip2 --release
 ```
 
 Run a guest using the runtime:
 
 ```bash
-cargo run -- ./target/wasm32-wasip1/release/http.wasm
+cargo run -- ./target/wasm32-wasip2/release/http.wasm
 ```
 
 In a separate console, call the guest:

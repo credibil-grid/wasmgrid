@@ -11,18 +11,17 @@ use http::uri::PathAndQuery;
 use http::uri::Uri; // Authority,
 use hyper::body::Incoming;
 use hyper::header::{
-    HeaderValue, ACCESS_CONTROL_ALLOW_HEADERS, ACCESS_CONTROL_ALLOW_METHODS,
-    ACCESS_CONTROL_ALLOW_ORIGIN, FORWARDED, HOST,
+    ACCESS_CONTROL_ALLOW_HEADERS, ACCESS_CONTROL_ALLOW_METHODS, ACCESS_CONTROL_ALLOW_ORIGIN,
+    FORWARDED, HOST, HeaderValue,
 };
 use hyper::server::conn::http1;
 use hyper::service::service_fn;
 use hyper::{Method, Request, StatusCode};
 use tokio::net::TcpListener;
-use wasmtime::component::Linker;
 use wasmtime::Store;
-use wasmtime_wasi::{ResourceTable, WasiView};
-use wasmtime_wasi_http::bindings::http::types::Scheme;
+use wasmtime::component::Linker;
 use wasmtime_wasi_http::bindings::ProxyPre;
+use wasmtime_wasi_http::bindings::http::types::Scheme;
 use wasmtime_wasi_http::body::HyperOutgoingBody;
 use wasmtime_wasi_http::io::TokioIo;
 use wasmtime_wasi_http::{WasiHttpCtx, WasiHttpView};
@@ -39,7 +38,7 @@ pub const fn new(addr: String) -> Capability {
 
 #[async_trait::async_trait]
 impl runtime::Capability for Capability {
-    fn namespace(&self) -> &str {
+    fn namespace(&self) -> &'static str {
         "wasi:http"
     }
 
@@ -80,7 +79,7 @@ async fn handle_request(
     let (sender, receiver) = tokio::sync::oneshot::channel();
 
     // HACK: CORS preflight request for use when testing locally
-    let cors = env::var("WITH_CORS").map_or(false, |val| val.parse().unwrap_or(false));
+    let cors = env::var("WITH_CORS").is_ok_and(|val| val.parse().unwrap_or(false));
     if cors && request.method() == Method::OPTIONS {
         let resp = hyper::Response::builder()
             .status(StatusCode::OK)
@@ -169,9 +168,9 @@ async fn handle_request(
 }
 
 impl WasiHttpView for State {
-    fn table(&mut self) -> &mut ResourceTable {
-        WasiView::table(self)
-    }
+    // fn table(&mut self) -> &mut ResourceTable {
+    //     WasiView::table(self)
+    // }
 
     fn ctx(&mut self) -> &mut WasiHttpCtx {
         self.metadata.get_mut("wasi_http_ctx").unwrap().downcast_mut::<WasiHttpCtx>().unwrap()

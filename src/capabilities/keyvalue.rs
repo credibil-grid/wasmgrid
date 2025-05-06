@@ -7,14 +7,14 @@ use std::sync::{Arc, OnceLock};
 use std::time::Duration;
 
 use anyhow::anyhow;
-use async_nats::{jetstream, AuthError, ConnectOptions};
+use async_nats::{AuthError, ConnectOptions, jetstream};
+use bindings::Keyvalue;
 use bindings::wasi::keyvalue::store::{self, Error, KeyResponse};
 use bindings::wasi::keyvalue::{atomics, batch};
-use bindings::Keyvalue;
 use futures::TryStreamExt;
 use jetstream::kv;
-use wasmtime::component::{Linker, Resource};
-use wasmtime_wasi::WasiView;
+use wasmtime::component::{Linker, Resource, bindgen};
+use wasmtime_wasi::IoView;
 
 use crate::runtime::{self, Runtime, State};
 
@@ -22,9 +22,12 @@ use crate::runtime::{self, Runtime, State};
 /// See <https://docs.rs/wasmtime/latest/wasmtime/component/macro.bindgen.html>
 mod bindings {
     #![allow(clippy::future_not_send)]
-    pub use super::Bucket;
+    #![allow(clippy::trait_duplication_in_bounds)]
 
-    wasmtime::component::bindgen!({
+    pub use super::Bucket;
+    use super::bindgen;
+
+    bindgen!({
         world: "keyvalue",
         path: "wit",
         tracing: true,
@@ -54,7 +57,7 @@ pub const fn new(addr: String, creds: Option<crate::NatsCreds>) -> Capability {
 
 #[async_trait::async_trait]
 impl runtime::Capability for Capability {
-    fn namespace(&self) -> &str {
+    fn namespace(&self) -> &'static str {
         "wasi:keyvalue"
     }
 
@@ -86,7 +89,6 @@ impl runtime::Capability for Capability {
 }
 
 // Implement the [`wasi_keyvalue::KeyValueView`]` trait for State.
-#[async_trait::async_trait]
 impl store::Host for State {
     // Open bucket specified by identifier, save to state and return as a resource.
     async fn open(
@@ -131,7 +133,6 @@ impl store::Host for State {
     }
 }
 
-#[async_trait::async_trait]
 impl store::HostBucket for State {
     async fn get(
         &mut self, rep: Resource<Bucket>, key: String,
@@ -196,13 +197,12 @@ impl store::HostBucket for State {
     }
 
     // LATER: Can a JetStream bucket be closed?
-    fn drop(&mut self, rep: Resource<Bucket>) -> Result<(), wasmtime::Error> {
+    async fn drop(&mut self, rep: Resource<Bucket>) -> Result<(), wasmtime::Error> {
         tracing::trace!("store::HostBucket::drop");
         self.table().delete(rep).map_or_else(|e| Err(anyhow!(e)), |_| Ok(()))
     }
 }
 
-#[async_trait::async_trait]
 impl atomics::Host for State {
     async fn increment(
         &mut self, rep: Resource<Bucket>, key: String, delta: u64,
@@ -234,7 +234,6 @@ impl atomics::Host for State {
     }
 }
 
-#[async_trait::async_trait]
 impl batch::Host for State {
     async fn get_many(
         &mut self, rep: Resource<Bucket>, keys: Vec<String>,

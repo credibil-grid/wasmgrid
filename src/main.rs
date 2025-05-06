@@ -20,12 +20,12 @@ use crate::capabilities::jsondb;
 use crate::capabilities::keyvalue;
 #[cfg(feature = "messaging")]
 use crate::capabilities::messaging;
-#[cfg(feature = "p2p")]
-use crate::capabilities::p2p;
+// #[cfg(feature = "p2p")]
+// use crate::capabilities::p2p;
 #[cfg(feature = "rpc")]
 use crate::capabilities::rpc;
-#[cfg(feature = "vault")]
-use crate::capabilities::vault;
+// #[cfg(feature = "vault")]
+// use crate::capabilities::vault;
 
 const DEF_HTTP_ADDR: &str = "0.0.0.0:8080";
 const DEF_MGO_CNN: &str = "mongodb://localhost:27017";
@@ -80,12 +80,12 @@ pub async fn main() -> wasmtime::Result<()> {
     let builder = builder.capability(keyvalue::new(nats_cnn.clone(), nats_creds.clone()));
     #[cfg(feature = "messaging")]
     let builder = builder.capability(messaging::new(nats_cnn.clone()));
-    #[cfg(feature = "p2p")]
-    let builder = builder.capability(p2p::new());
+    // #[cfg(feature = "p2p")]
+    // let builder = builder.capability(p2p::new());
     #[cfg(feature = "rpc")]
     let builder = builder.capability(rpc::new(nats_cnn, nats_creds));
-    #[cfg(feature = "vault")]
-    let builder = builder.capability(vault::new());
+    // #[cfg(feature = "vault")]
+    // let builder = builder.capability(vault::new());
 
     builder.run(args.wasm)?;
 

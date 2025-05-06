@@ -9,7 +9,7 @@ use wasi::exports::http::incoming_handler::Guest;
 use wasi::http::types::{IncomingRequest, ResponseOutparam};
 use wasi_bindings::p2p::container;
 use wasi_bindings::p2p::types::Permission;
-use wasi_http::{self, post, Request, Router};
+use wasi_http::{self, Request, Router, post};
 struct HttpGuest;
 
 impl Guest for HttpGuest {

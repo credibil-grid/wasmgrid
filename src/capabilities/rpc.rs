@@ -13,9 +13,9 @@ use bindings::{Rpc, RpcPre};
 use bytes::Bytes;
 use futures::stream::StreamExt;
 use tracing::Level;
-use wasmtime::component::{Linker, Resource};
 use wasmtime::Store;
-use wasmtime_wasi::WasiView;
+use wasmtime::component::{Linker, Resource};
+use wasmtime_wasi::IoView;
 
 use crate::runtime::{self, Runtime, State};
 
@@ -26,7 +26,7 @@ static CLIENT: OnceLock<async_nats::Client> = OnceLock::new();
 /// See <https://docs.rs/wasmtime/latest/wasmtime/component/macro.bindgen.html>
 mod bindings {
     #![allow(clippy::future_not_send)]
-
+    #![allow(clippy::trait_duplication_in_bounds)]
     pub use super::Error;
 
     wasmtime::component::bindgen!({
@@ -60,7 +60,7 @@ pub const fn new(addr: String, creds: Option<crate::NatsCreds>) -> Capability {
 
 #[async_trait::async_trait]
 impl runtime::Capability for Capability {
-    fn namespace(&self) -> &str {
+    fn namespace(&self) -> &'static str {
         "wasi:rpc"
     }
 
@@ -158,8 +158,8 @@ async fn handle_request(pre: RpcPre<State>, request: Message) -> anyhow::Result<
 
 impl types::Host for State {}
 
-#[async_trait::async_trait]
 impl client::Host for State {
+    #[allow(clippy::cognitive_complexity)]
     async fn call(
         &mut self, endpoint: String, request: Vec<u8>,
     ) -> wasmtime::Result<Result<Vec<u8>, Resource<Error>>> {
@@ -189,7 +189,6 @@ impl client::Host for State {
     }
 }
 
-#[async_trait::async_trait]
 impl HostError for State {
     async fn trace(&mut self, rep: Resource<Error>) -> wasmtime::Result<String> {
         tracing::trace!("HostError::trace");
@@ -197,7 +196,7 @@ impl HostError for State {
         Ok(error.to_string())
     }
 
-    fn drop(&mut self, rep: Resource<Error>) -> wasmtime::Result<()> {
+    async fn drop(&mut self, rep: Resource<Error>) -> wasmtime::Result<()> {
         tracing::trace!("HostError::drop");
         self.table().delete(rep)?;
         Ok(())

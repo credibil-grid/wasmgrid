@@ -6,16 +6,16 @@
 use std::sync::OnceLock;
 
 use anyhow::anyhow;
+use bindings::Jsondb;
 use bindings::wasi::jsondb::readwrite;
 use bindings::wasi::jsondb::types::{self, HostDatabase, HostError, HostStatement};
-use bindings::Jsondb;
 use futures::TryStreamExt;
 use jmespath::ast::{Ast, Comparator};
 use mongodb::bson::{self, Document};
 use mongodb::options::ClientOptions;
 use mongodb::{Client, Cursor};
-use wasmtime::component::{Linker, Resource};
-use wasmtime_wasi::WasiView;
+use wasmtime::component::{Linker, Resource, bindgen};
+use wasmtime_wasi::IoView;
 
 use crate::runtime::{self, Runtime, State};
 
@@ -25,10 +25,11 @@ static MONGODB: OnceLock<mongodb::Client> = OnceLock::new();
 /// See <https://docs.rs/wasmtime/latest/wasmtime/component/macro.bindgen.html>
 mod bindings {
     #![allow(clippy::future_not_send)]
-
+    #![allow(clippy::trait_duplication_in_bounds)]
+    use super::bindgen;
     pub use super::{Database, Error, Statement};
 
-    wasmtime::component::bindgen!({
+    bindgen!({
         world: "jsondb",
         path: "wit",
         tracing: true,
@@ -60,7 +61,7 @@ pub const fn new(addr: String) -> Capability {
 
 #[async_trait::async_trait]
 impl runtime::Capability for Capability {
-    fn namespace(&self) -> &str {
+    fn namespace(&self) -> &'static str {
         "wasi:jsondb"
     }
 
@@ -84,7 +85,6 @@ impl runtime::Capability for Capability {
 }
 
 // Implement the [`wasi_sql::ReadWriteView`]` trait for State.
-#[async_trait::async_trait]
 impl readwrite::Host for State {
     async fn insert(
         &mut self, db: Resource<Database>, s: Resource<Statement>, d: Vec<u8>,
@@ -111,6 +111,7 @@ impl readwrite::Host for State {
         Ok(Ok(()))
     }
 
+    #[allow(clippy::cognitive_complexity)]
     async fn find(
         &mut self, db: Resource<Database>, s: Resource<Statement>,
     ) -> wasmtime::Result<Result<Vec<Vec<u8>>, Resource<Error>>> {
@@ -215,7 +216,6 @@ impl readwrite::Host for State {
 impl types::Host for State {}
 
 // Implement the [`HostDatabase`]` trait for State.
-#[async_trait::async_trait]
 impl HostDatabase for State {
     async fn connect(
         &mut self, name: String,
@@ -229,7 +229,7 @@ impl HostDatabase for State {
         Ok(Ok(self.table().push(db)?))
     }
 
-    fn drop(&mut self, rep: Resource<Database>) -> wasmtime::Result<()> {
+    async fn drop(&mut self, rep: Resource<Database>) -> wasmtime::Result<()> {
         tracing::trace!("HostDatabase::drop");
         self.table().delete(rep)?;
         Ok(())
@@ -237,7 +237,6 @@ impl HostDatabase for State {
 }
 
 // Implement the [`HostStatement`]` trait for State.
-#[async_trait::async_trait]
 impl HostStatement for State {
     // Prepare a bson query for the specified collection, translating the JMESPath
     // to a bson query. For example,
@@ -289,7 +288,7 @@ impl HostStatement for State {
         Ok(Ok(self.table().push(query)?))
     }
 
-    fn drop(&mut self, rep: Resource<Statement>) -> wasmtime::Result<()> {
+    async fn drop(&mut self, rep: Resource<Statement>) -> wasmtime::Result<()> {
         tracing::trace!("HostFilter::drop");
         self.table().delete(rep)?;
         Ok(())
@@ -301,12 +300,8 @@ impl HostStatement for State {
 // every literal is a string.
 fn process(ast: &Ast) -> anyhow::Result<Document> {
     match ast {
-        Ast::Projection { rhs, .. } => {
-            process(rhs)
-        }
-        Ast::Condition { predicate, .. } => {
-            process(predicate)
-        }
+        Ast::Projection { rhs, .. } => process(rhs),
+        Ast::Condition { predicate, .. } => process(predicate),
         Ast::And { lhs, rhs, .. } => {
             let lhs_doc = process(lhs)?;
             let rhs_doc = process(rhs)?;
@@ -347,7 +342,6 @@ fn process_string(ast: &Ast) -> anyhow::Result<String> {
 }
 
 // Implement the [`wasi::sql::HostError`]` trait for State.
-#[async_trait::async_trait]
 impl HostError for State {
     async fn trace(&mut self, rep: Resource<Error>) -> wasmtime::Result<String> {
         tracing::trace!("HostError::trace");
@@ -355,7 +349,7 @@ impl HostError for State {
         Ok(error.to_string())
     }
 
-    fn drop(&mut self, rep: Resource<Error>) -> wasmtime::Result<()> {
+    async fn drop(&mut self, rep: Resource<Error>) -> wasmtime::Result<()> {
         tracing::trace!("HostError::drop");
         self.table().delete(rep)?;
         Ok(())

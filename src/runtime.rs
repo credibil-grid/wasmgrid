@@ -8,7 +8,8 @@ use bytes::Bytes;
 use wasmtime::component::{Component, InstancePre, Linker};
 use wasmtime::{Config, Engine, StoreLimits};
 use wasmtime_wasi::{
-    HostOutputStream, ResourceTable, StreamError, StreamResult, WasiCtx, WasiCtxBuilder, WasiView,
+    IoView, OutputStream, ResourceTable, StreamError, StreamResult, WasiCtx, WasiCtxBuilder,
+    WasiView,
 };
 
 /// Capability represents a particular runtime capability depended on by wasm
@@ -16,7 +17,7 @@ use wasmtime_wasi::{
 #[async_trait::async_trait]
 pub trait Capability: Send {
     /// Returns the wasi namespace the capability supports. For example, `wasi:http`.
-    fn namespace(&self) -> &str;
+    fn namespace(&self) -> &'static str;
 
     /// Add the capability to the wasm component linker.
     fn add_to_linker(&self, linker: &mut Linker<State>) -> anyhow::Result<()>;
@@ -143,12 +144,14 @@ impl State {
     }
 }
 
-// Implement the [`wasmtime_wasi::ctx::WasiView`] trait for State.
-impl WasiView for State {
+impl IoView for State {
     fn table(&mut self) -> &mut ResourceTable {
         &mut self.table
     }
+}
 
+// Implement the [`wasmtime_wasi::ctx::WasiView`] trait for State.
+impl WasiView for State {
     fn ctx(&mut self) -> &mut WasiCtx {
         &mut self.ctx
     }
@@ -158,7 +161,7 @@ impl WasiView for State {
 struct Stdout;
 
 impl wasmtime_wasi::StdoutStream for Stdout {
-    fn stream(&self) -> Box<dyn HostOutputStream> {
+    fn stream(&self) -> Box<dyn OutputStream> {
         Box::new(StdoutStream {})
     }
 
@@ -170,11 +173,11 @@ impl wasmtime_wasi::StdoutStream for Stdout {
 struct StdoutStream;
 
 #[async_trait::async_trait]
-impl wasmtime_wasi::Subscribe for StdoutStream {
+impl wasmtime_wasi::Pollable for StdoutStream {
     async fn ready(&mut self) {}
 }
 
-impl wasmtime_wasi::HostOutputStream for StdoutStream {
+impl OutputStream for StdoutStream {
     fn write(&mut self, bytes: Bytes) -> StreamResult<()> {
         let out = String::from_utf8(bytes.to_vec())
             .map_err(|e| StreamError::LastOperationFailed(anyhow!(e)))?;
@@ -195,7 +198,7 @@ impl wasmtime_wasi::HostOutputStream for StdoutStream {
 struct Errout;
 
 impl wasmtime_wasi::StdoutStream for Errout {
-    fn stream(&self) -> Box<dyn HostOutputStream> {
+    fn stream(&self) -> Box<dyn OutputStream> {
         Box::new(ErroutStream {})
     }
 
@@ -207,11 +210,11 @@ impl wasmtime_wasi::StdoutStream for Errout {
 struct ErroutStream;
 
 #[async_trait::async_trait]
-impl wasmtime_wasi::Subscribe for ErroutStream {
+impl wasmtime_wasi::Pollable for ErroutStream {
     async fn ready(&mut self) {}
 }
 
-impl wasmtime_wasi::HostOutputStream for ErroutStream {
+impl wasmtime_wasi::OutputStream for ErroutStream {
     fn write(&mut self, bytes: Bytes) -> StreamResult<()> {
         let out = String::from_utf8(bytes.to_vec())
             .map_err(|e| StreamError::LastOperationFailed(anyhow!(e)))?;

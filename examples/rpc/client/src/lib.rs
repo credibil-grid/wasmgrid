@@ -5,7 +5,7 @@ use tracing_subscriber::{EnvFilter, FmtSubscriber};
 use wasi::exports::http::incoming_handler::Guest as HttpGuest;
 use wasi::http::types::{IncomingRequest, ResponseOutparam};
 use wasi_bindings::rpc;
-use wasi_http::{self, post, Request, Router};
+use wasi_http::{self, Request, Router, post};
 
 pub struct Http;
 

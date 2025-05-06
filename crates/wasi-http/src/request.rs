@@ -1,6 +1,6 @@
-use anyhow::{anyhow, Result};
-use http::header::AUTHORIZATION;
+use anyhow::{Result, anyhow};
 use http::Uri;
+use http::header::AUTHORIZATION;
 use serde::de::DeserializeOwned;
 use wasi::http::types::{Fields, IncomingRequest, Method, Scheme};
 

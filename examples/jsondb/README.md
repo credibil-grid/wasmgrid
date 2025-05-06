@@ -3,13 +3,13 @@
 Build the example guest:
 
 ```bash
-cargo component build -Z build-std=panic_abort,std --package jsondb --release
+cargo build --package jsondb --target wasm32-wasip2 --release
 ```
 
 Run the guest using the `wasmgrid` runtime:
 
 ```bash
-cargo run -- ./target/wasm32-wasip1/release/jsondb.wasm
+cargo run -- ./target/wasm32-wasip2/release/jsondb.wasm
 ```
 
 In a separate console, send some messages to the guest:

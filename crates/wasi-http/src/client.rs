@@ -1,8 +1,8 @@
 use anyhow::anyhow;
-use http::header::{AUTHORIZATION, CONTENT_TYPE};
 use http::Uri;
-use serde::de::DeserializeOwned;
+use http::header::{AUTHORIZATION, CONTENT_TYPE};
 use serde::Serialize;
+use serde::de::DeserializeOwned;
 use wasi::http::outgoing_handler;
 use wasi::http::types::{Headers, Method, OutgoingBody, OutgoingRequest, Scheme};
 

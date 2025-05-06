@@ -10,11 +10,12 @@ use bindings::wasi::messaging::messaging_types::{
     self, FormatSpec, GuestConfiguration, HostClient, HostError, Message,
 };
 use bindings::wasi::messaging::{consumer, producer};
-use bindings::Messaging;
+use bindings::{Messaging, MessagingPre};
 use futures::stream::{self, StreamExt};
-use tokio::time::{sleep, Duration};
-use wasmtime::component::{Linker, Resource};
-use wasmtime_wasi::WasiView;
+use tokio::time::{Duration, sleep};
+use wasmtime::Store;
+use wasmtime::component::{Linker, Resource, bindgen};
+use wasmtime_wasi::IoView;
 
 use crate::runtime::{self, Runtime, State};
 
@@ -22,10 +23,11 @@ use crate::runtime::{self, Runtime, State};
 /// See <https://docs.rs/wasmtime/latest/wasmtime/component/macro.bindgen.html>
 mod bindings {
     #![allow(clippy::future_not_send)]
-
+    #![allow(clippy::trait_duplication_in_bounds)]
+    use super::bindgen;
     pub use super::{Client, Error};
 
-    wasmtime::component::bindgen!({
+    bindgen!({
         world: "messaging",
         path: "wit",
         tracing: true,
@@ -56,7 +58,7 @@ pub const fn new(addr: String) -> Capability {
 
 #[async_trait::async_trait]
 impl runtime::Capability for Capability {
-    fn namespace(&self) -> &str {
+    fn namespace(&self) -> &'static str {
         "wasi:messaging"
     }
 
@@ -74,8 +76,10 @@ impl runtime::Capability for Capability {
         });
 
         // get guest configuration (channels to subscribe to)
-        let mut store = runtime.new_store();
-        let (messaging, _) = Messaging::instantiate_pre(&mut store, runtime.instance_pre()).await?;
+        let pre = MessagingPre::new(runtime.instance_pre().clone())?;
+        let mut store = Store::new(pre.engine(), State::new());
+        let messaging = pre.instantiate_async(&mut store).await?;
+
         let gc = match messaging.wasi_messaging_messaging_guest().call_configure(&mut store).await?
         {
             Ok(gc) => gc,
@@ -122,9 +126,10 @@ impl Processor {
     async fn forward(&self, msg: async_nats::Message) -> anyhow::Result<()> {
         tracing::trace!("handle_message: {msg:?}");
 
-        let mut store = self.runtime.new_store();
-        let (messaging, _) =
-            Messaging::instantiate_pre(&mut store, self.runtime.instance_pre()).await?;
+        let pre = MessagingPre::new(self.runtime.instance_pre().clone())?;
+        let mut store = Store::new(pre.engine(), State::new());
+        let messaging = pre.instantiate_async(&mut store).await?;
+
         let message = to_message(msg);
 
         if let Err(e) =
@@ -140,7 +145,6 @@ impl Processor {
 
 impl messaging_types::Host for State {}
 
-#[async_trait::async_trait]
 impl HostClient for State {
     async fn connect(
         &mut self, name: String,
@@ -154,14 +158,13 @@ impl HostClient for State {
         Ok(Ok(resource))
     }
 
-    fn drop(&mut self, client: Resource<Client>) -> wasmtime::Result<()> {
+    async fn drop(&mut self, client: Resource<Client>) -> wasmtime::Result<()> {
         tracing::trace!("HostClient::drop");
         self.table().delete(client)?;
         Ok(())
     }
 }
 
-#[async_trait::async_trait]
 impl consumer::Host for State {
     async fn subscribe_try_receive(
         &mut self, client: Resource<Client>, ch: String, t_milliseconds: u32,
@@ -221,7 +224,6 @@ impl consumer::Host for State {
     }
 }
 
-#[async_trait::async_trait]
 impl producer::Host for State {
     async fn send(
         &mut self, client: Resource<Client>, ch: String, messages: Vec<Message>,
@@ -238,15 +240,13 @@ impl producer::Host for State {
     }
 }
 
-#[async_trait::async_trait]
 impl HostError for State {
-    async fn trace(&mut self, rep: Resource<Error>) -> wasmtime::Result<String> {
+    async fn trace(&mut self) -> wasmtime::Result<String> {
         tracing::trace!("HostError::trace");
-        let error = self.table().get(&rep)?;
-        Ok(error.to_string())
+        Ok("error".to_string())
     }
 
-    fn drop(&mut self, rep: Resource<Error>) -> wasmtime::Result<()> {
+    async fn drop(&mut self, rep: Resource<Error>) -> wasmtime::Result<()> {
         tracing::trace!("HostError::drop");
         self.table().delete(rep)?;
         Ok(())

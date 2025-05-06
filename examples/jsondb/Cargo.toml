@@ -1,7 +1,7 @@
 [package]
+name = "jsondb"
 authors.workspace = true
 edition.workspace = true
-name = "jsondb"
 
 [lib]
 crate-type = ["cdylib"]
@@ -15,7 +15,7 @@ http.workspace = true
 serde_json.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
-vercre-openid = { git = "https://github.com/vercre/vercre" }
+# vercre-openid = { git = "https://github.com/vercre/vercre" }
 wasi.workspace = true
 wasi-bindings.workspace = true
 wasi-http.workspace = true

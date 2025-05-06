@@ -12,9 +12,9 @@ pub mod jsondb;
 pub mod keyvalue;
 #[cfg(feature = "messaging")]
 pub mod messaging;
-#[cfg(feature = "p2p")]
-pub mod p2p;
+// #[cfg(feature = "p2p")]
+// pub mod p2p;
 #[cfg(feature = "rpc")]
 pub mod rpc;
-#[cfg(feature = "vault")]
-pub mod vault;
+// #[cfg(feature = "vault")]
+// pub mod vault;

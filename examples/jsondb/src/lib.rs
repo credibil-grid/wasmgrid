@@ -3,12 +3,11 @@
 use anyhow::anyhow;
 use serde_json::json;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
-use vercre_openid::issuer::Issuer as IssuerMetadata;
 use wasi::exports::http::incoming_handler::Guest;
 use wasi::http::types::{IncomingRequest, ResponseOutparam};
 use wasi_bindings::jsondb::readwrite;
 use wasi_bindings::jsondb::types::{Database, Statement};
-use wasi_http::{self, post, Request, Router};
+use wasi_http::{self, Request, Router, post};
 
 struct HttpGuest;
 
@@ -42,7 +41,7 @@ fn handler(request: &Request) -> anyhow::Result<Vec<u8>> {
     let results = readwrite::find(&db, &query).map_err(|e| anyhow!(e.trace()))?;
     let doc = results.first().ok_or_else(|| anyhow!("No issuer metadata found"))?;
 
-    let md: IssuerMetadata = serde_json::from_slice(&doc)?;
+    let md: serde_json::Value = serde_json::from_slice(&doc)?;
     tracing::debug!("md: {:?}", md);
 
     let resp = json!({

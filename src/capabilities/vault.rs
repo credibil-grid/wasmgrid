@@ -7,14 +7,14 @@ use std::sync::OnceLock;
 use std::{env, vec};
 
 use anyhow::anyhow;
-use azure_security_keyvault::prelude::SignatureAlgorithm;
 use azure_security_keyvault::KeyClient;
+use azure_security_keyvault::prelude::SignatureAlgorithm;
 use base64ct::{Base64UrlUnpadded, Encoding};
-use bindings::wasi::vault::keystore::{self, Algorithm, Jwk};
 use bindings::Vault;
+use bindings::wasi::vault::keystore::{self, Algorithm, Jwk};
 use sha2::{Digest, Sha256};
 use wasmtime::component::{Linker, Resource};
-use wasmtime_wasi::WasiView;
+use wasmtime_wasi::IoView;
 
 use crate::runtime::{self, Runtime, State};
 
@@ -64,7 +64,7 @@ pub const fn new() -> Capability {
 
 #[async_trait::async_trait]
 impl runtime::Capability for Capability {
-    fn namespace(&self) -> &str {
+    fn namespace(&self) -> &'static str {
         "wasi:vault"
     }
 
@@ -86,7 +86,6 @@ impl runtime::Capability for Capability {
     }
 }
 
-#[async_trait::async_trait]
 impl keystore::Host for State {
     async fn open(
         &mut self, identifier: String,
@@ -102,7 +101,6 @@ impl keystore::Host for State {
     }
 }
 
-#[async_trait::async_trait]
 impl keystore::HostKeySet for State {
     async fn generate(
         &mut self, _rep: Resource<KeySet>, _identifier: String, _alg: Algorithm,
@@ -143,13 +141,12 @@ impl keystore::HostKeySet for State {
         todo!("generate new key for KeyType")
     }
 
-    fn drop(&mut self, rep: Resource<KeySet>) -> Result<(), wasmtime::Error> {
+    async fn drop(&mut self, rep: Resource<KeySet>) -> Result<(), wasmtime::Error> {
         tracing::trace!("keystore::HostKeySet::drop");
         self.table().delete(rep).map_or_else(|e| Err(anyhow!(e)), |_| Ok(()))
     }
 }
 
-#[async_trait::async_trait]
 impl keystore::HostKeyPair for State {
     async fn sign(
         &mut self, rep: Resource<KeyPair>, data: Vec<u8>,

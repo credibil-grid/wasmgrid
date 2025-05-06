@@ -468,7 +468,7 @@ pub const fn new() -> Capability {
 /// Implentation required by the `wasmgrid` runtime.
 #[async_trait::async_trait]
 impl runtime::Capability for Capability {
-    fn namespace(&self) -> &str {
+    fn namespace(&self) -> &'static str {
         "wasi:p2p"
     }
 
