@@ -88,7 +88,7 @@ impl runtime::Capability for Capability {
     }
 
     /// Provide key/value storage capability for the specified wasm component.
-    async fn run(&self, _: InstancePre<Ctx>) -> anyhow::Result<()> {
+    async fn start(&self, _: InstancePre<Ctx>) -> anyhow::Result<()> {
         // build connection options
         let opts = if let Some(creds) = &self.creds {
             let key_pair = Arc::new(nkeys::KeyPair::from_seed(&creds.seed)?);

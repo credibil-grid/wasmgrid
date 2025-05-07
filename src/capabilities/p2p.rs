@@ -35,7 +35,7 @@ use iroh::client::docs::{Entry, ShareMode};
 use iroh::docs::store::Query;
 use iroh::docs::{AuthorId, DocTicket};
 use iroh::node::FsNode;
-use wasmtime::component::{Linker, Resource};
+use wasmtime::component::{InstancePre, Linker, Resource};
 use wasmtime_wasi::WasiView;
 
 use self::generated::P2p;
@@ -43,7 +43,7 @@ use self::generated::wasi::p2p::container;
 use self::generated::wasi::p2p::types::{
     self, Author, ContainerId, EntryMetadata, Error, Permission, Token,
 };
-use crate::runtime::{self, Runtime, Ctx};
+use crate::runtime::{self, Ctx};
 
 // Handle to the local Iroh node.
 static IROH_NODE: OnceLock<FsNode> = OnceLock::new();
@@ -477,7 +477,7 @@ impl runtime::Capability for Capability {
     }
 
     #[allow(clippy::large_futures)]
-    async fn run(&self, _runtime: Runtime) -> anyhow::Result<()> {
+    async fn start(&self, _runtime: Runtime) -> anyhow::Result<()> {
         start_node().await.context("failed to start Iroh")?;
         Ok(())
     }

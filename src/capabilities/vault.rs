@@ -35,12 +35,12 @@ use azure_security_keyvault::KeyClient;
 use azure_security_keyvault::prelude::SignatureAlgorithm;
 use base64ct::{Base64UrlUnpadded, Encoding};
 use sha2::{Digest, Sha256};
-use wasmtime::component::{Linker, Resource};
+use wasmtime::component::{InstancePre, Linker, Resource};
 use wasmtime_wasi::IoView;
 
 use self::generated::Vault;
 use self::generated::wasi::vault::keystore::{self, Algorithm, Jwk};
-use crate::runtime::{self, Runtime, Ctx};
+use crate::runtime::{self, Ctx};
 
 const ED25519_X: &str = "q6rjRnEH_XK72jvB8FNBJtOl9_gDs6NW49cAz6p2sW4";
 
@@ -73,7 +73,7 @@ impl runtime::Capability for Capability {
     }
 
     /// Provide vault capability for the wasm component.
-    async fn run(&self, _runtime: Runtime) -> anyhow::Result<()> {
+    async fn start(&self, _runtime: Runtime) -> anyhow::Result<()> {
         env::set_var("AZURE_CREDENTIAL_KIND", "environment");
 
         let credential = azure_identity::create_credential()

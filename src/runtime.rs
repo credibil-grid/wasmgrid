@@ -25,11 +25,10 @@ pub trait Capability: Send {
     fn add_to_linker(&self, linker: &mut Linker<Ctx>) -> anyhow::Result<()>;
 
     /// Start and run the runtime.
-    async fn run(&self, pre: InstancePre<Ctx>) -> anyhow::Result<()>;
+    async fn start(&self, pre: InstancePre<Ctx>) -> anyhow::Result<()>;
 }
 
 /// Runtime for a wasm component.
-#[derive(Default)]
 pub struct Runtime {
     capabilities: Vec<Box<dyn Capability>>,
 }
@@ -37,7 +36,9 @@ pub struct Runtime {
 impl Runtime {
     /// Create a new Builder instance.
     pub fn new() -> Self {
-        Self::default()
+        Self {
+            capabilities: Vec::new(),
+        }
     }
 
     /// Add a capability to the wasm runtime.
@@ -68,9 +69,9 @@ impl Runtime {
         // let runtime = Runtime { instance_pre };
 
         // start capabilities
-        for cap in self.capabilities {
+        for capability in self.capabilities {
             // check whether capability is required by the wasm component
-            let namespace = cap.namespace();
+            let namespace = capability.namespace();
             if !component_type.imports(&engine).any(|e| e.0.starts_with(namespace))
                 && !component_type.exports(&engine).any(|e| e.0.starts_with(namespace))
             {
@@ -84,7 +85,7 @@ impl Runtime {
 
             tokio::spawn(async move {
                 tracing::debug!("{namespace} starting");
-                if let Err(e) = cap.run(pre).await {
+                if let Err(e) = capability.start(pre).await {
                     tracing::error!("error starting {namespace}: {e}");
                 }
             });

@@ -19,14 +19,14 @@ use hyper::service::service_fn;
 use hyper::{Method, Request, StatusCode};
 use tokio::net::TcpListener;
 use wasmtime::Store;
-use wasmtime::component::Linker;
+use wasmtime::component::{InstancePre, Linker};
 use wasmtime_wasi_http::bindings::ProxyPre;
 use wasmtime_wasi_http::bindings::http::types::Scheme;
 use wasmtime_wasi_http::body::HyperOutgoingBody;
 use wasmtime_wasi_http::io::TokioIo;
 use wasmtime_wasi_http::{WasiHttpCtx, WasiHttpView};
 
-use crate::runtime::{self, Ctx, Runtime};
+use crate::runtime::{self, Ctx};
 
 pub struct Capability {
     pub addr: String,
@@ -47,11 +47,11 @@ impl runtime::Capability for Capability {
     }
 
     /// Provide http proxy capability the specified wasm component.
-    async fn run(&self, runtime: Runtime) -> anyhow::Result<()> {
+    async fn start(&self, pre: InstancePre<Ctx>) -> anyhow::Result<()> {
         let listener = TcpListener::bind(&self.addr).await?;
         tracing::info!("listening for http requests on: {}", listener.local_addr()?);
 
-        let pre = ProxyPre::new(runtime.instance_pre().clone())?;
+        let pre = ProxyPre::new(pre.clone())?;
 
         // listen for requests until terminated
         loop {

@@ -35,13 +35,13 @@ use bytes::Bytes;
 use futures::stream::StreamExt;
 use tracing::Level;
 use wasmtime::Store;
-use wasmtime::component::{Linker, Resource};
+use wasmtime::component::{InstancePre, Linker, Resource};
 use wasmtime_wasi::IoView;
 
 use self::generated::wasi::rpc::client::{self, HostError};
 use self::generated::wasi::rpc::types;
 use self::generated::{Rpc, RpcPre};
-use crate::runtime::{self, Runtime, Ctx};
+use crate::runtime::{self, Ctx};
 
 // TODO: create a client struct with both NATS client and request timeout
 static CLIENT: OnceLock<async_nats::Client> = OnceLock::new();
@@ -68,7 +68,7 @@ impl runtime::Capability for Capability {
         Rpc::add_to_linker(linker, |t| t)
     }
 
-    async fn run(&self, runtime: Runtime) -> anyhow::Result<()> {
+    async fn start(&self, pre: InstancePre<Ctx>) -> anyhow::Result<()> {
         // build connection options
         let opts = if let Some(creds) = &self.creds {
             let key_pair = Arc::new(nkeys::KeyPair::from_seed(&creds.seed)?);
@@ -91,7 +91,7 @@ impl runtime::Capability for Capability {
             .instance_pre()
             .component()
             .component_type()
-            .exports(runtime.instance_pre().engine())
+            .exports(pre.engine())
             .any(|e| e.0.starts_with(self.namespace()))
         {
             tracing::warn!("rpc server not required");
@@ -99,7 +99,7 @@ impl runtime::Capability for Capability {
         }
 
         // get 'server' component's name
-        let pre = RpcPre::new(runtime.instance_pre().clone())?;
+        let pre = RpcPre::new(pre.clone())?;
         let mut store = Store::new(pre.engine(), Ctx::new());
         let rpc = pre.instantiate_async(&mut store).await?;
         let cfg = rpc.wasi_rpc_server().call_configure(&mut store).await??;

@@ -33,7 +33,7 @@ use anyhow::anyhow;
 use futures::stream::{self, StreamExt};
 use tokio::time::{Duration, sleep};
 use wasmtime::Store;
-use wasmtime::component::{Linker, Resource, bindgen};
+use wasmtime::component::{InstancePre, Linker, Resource, bindgen};
 use wasmtime_wasi::IoView;
 
 use self::generated::wasi::messaging::messaging_types::{
@@ -41,7 +41,7 @@ use self::generated::wasi::messaging::messaging_types::{
 };
 use self::generated::wasi::messaging::{consumer, producer};
 use self::generated::{Messaging, MessagingPre};
-use crate::runtime::{self, Runtime, Ctx};
+use crate::runtime::{self, Ctx};
 
 pub type Client = async_nats::Client;
 pub type Error = anyhow::Error;
@@ -66,7 +66,7 @@ impl runtime::Capability for Capability {
         Messaging::add_to_linker(linker, |t| t)
     }
 
-    async fn run(&self, runtime: Runtime) -> anyhow::Result<()> {
+    async fn start(&self, pre: InstancePre<Ctx>) -> anyhow::Result<()> {
         let client = async_nats::connect(&self.addr).await?;
 
         // message processor needs to be accessible to Guest callbacks
@@ -76,7 +76,7 @@ impl runtime::Capability for Capability {
         });
 
         // get guest configuration (channels to subscribe to)
-        let pre = MessagingPre::new(runtime.instance_pre().clone())?;
+        let pre = MessagingPre::new(pre.clone())?;
         let mut store = Store::new(pre.engine(), Ctx::new());
         let messaging = pre.instantiate_async(&mut store).await?;
 
@@ -96,7 +96,7 @@ impl runtime::Capability for Capability {
 
 #[derive(Clone)]
 struct Processor {
-    runtime: Runtime,
+    pre: InstancePre<Ctx>,
     client: Client,
 }
 
@@ -126,7 +126,7 @@ impl Processor {
     async fn forward(&self, msg: async_nats::Message) -> anyhow::Result<()> {
         tracing::trace!("handle_message: {msg:?}");
 
-        let pre = MessagingPre::new(self.runtime.instance_pre().clone())?;
+        let pre = MessagingPre::new(self.pre.clone())?;
         let mut store = Store::new(pre.engine(), Ctx::new());
         let messaging = pre.instantiate_async(&mut store).await?;
 

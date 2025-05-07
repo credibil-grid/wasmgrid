@@ -33,13 +33,13 @@ use jmespath::ast::{Ast, Comparator};
 use mongodb::bson::{self, Document};
 use mongodb::options::ClientOptions;
 use mongodb::{Client, Cursor};
-use wasmtime::component::{Linker, Resource, bindgen};
+use wasmtime::component::{InstancePre, Linker, Resource, bindgen};
 use wasmtime_wasi::IoView;
 
 use self::generated::Jsondb;
 use self::generated::wasi::jsondb::readwrite;
 use self::generated::wasi::jsondb::types::{self, HostDatabase, HostError, HostStatement};
-use crate::runtime::{self, Runtime, Ctx};
+use crate::runtime::{self, Ctx};
 
 static MONGODB: OnceLock<mongodb::Client> = OnceLock::new();
 
@@ -70,7 +70,7 @@ impl runtime::Capability for Capability {
     }
 
     /// Provide jsondb capability for the specified wasm component.
-    async fn run(&self, _: Runtime) -> anyhow::Result<()> {
+    async fn start(&self, _: InstancePre<Ctx>) -> anyhow::Result<()> {
         let mut opts = ClientOptions::parse(&self.addr).await?;
         opts.app_name = Some("Credibil Grid".into());
         let client = Client::with_options(opts)?;
