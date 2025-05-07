@@ -54,18 +54,20 @@ impl Runtime {
         let mut config = Config::new();
         config.async_support(true);
         let engine = Engine::new(&config)?;
+        let component = Component::from_file(&engine, wasm)?;
+
+        // link dependencies
         let mut linker = Linker::new(&engine);
         wasmtime_wasi::add_to_linker_async(&mut linker)?;
-
         for c in &self.capabilities {
             c.add_to_linker(&mut linker)?;
         }
 
         // pre-instantiate wasm component
-        let component = Component::from_file(&engine, wasm)?;
-        let component_type = component.component_type();
         let instance_pre = linker.instantiate_pre(&component)?;
+        let component_type = component.component_type();
 
+        // start capabilities
         for c in self.capabilities {
             // check whether capability is required
             let namespace = c.namespace();
