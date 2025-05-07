@@ -5,7 +5,7 @@
 use std::any::Any;
 use std::collections::HashMap;
 
-use anyhow::anyhow;
+use anyhow::{Result, anyhow};
 use bytes::Bytes;
 use wasmtime::component::{Component, InstancePre, Linker};
 use wasmtime::{Config, Engine, StoreLimits};
@@ -17,24 +17,24 @@ use wasmtime_wasi::{
 /// Capability represents a particular runtime capability depended on by wasm
 /// components. For example, an HTTP server or a message broker.
 #[async_trait::async_trait]
-pub trait Capability: Send {
+pub trait Capability: Sync + Send {
     /// Returns the wasi namespace the capability supports. For example, `wasi:http`.
     fn namespace(&self) -> &'static str;
 
     /// Add the capability to the wasm component linker.
-    fn add_to_linker(&self, linker: &mut Linker<Ctx>) -> anyhow::Result<()>;
+    fn add_to_linker(&self, linker: &mut Linker<Ctx>) -> Result<()>;
 
     /// Start and run the runtime.
-    async fn start(&self, pre: InstancePre<Ctx>) -> anyhow::Result<()>;
+    async fn start(&self, pre: InstancePre<Ctx>) -> Result<()>;
 }
 
 /// Runtime for a wasm component.
 pub struct Runtime {
-    capabilities: Vec<Box<dyn Capability>>,
+    capabilities: Vec<Box<dyn Capability + 'static>>,
 }
 
 impl Runtime {
-    /// Create a new Builder instance.
+    /// Create a new Runtime instance.
     pub fn new() -> Self {
         Self {
             capabilities: Vec::new(),
@@ -48,43 +48,51 @@ impl Runtime {
     }
 
     /// Run the wasm component with the specified capabilities.
-    pub fn start(self, wasm: String) -> anyhow::Result<()> {
-        tracing::debug!("starting runtime");
-
-        // create engine
+    pub fn start(self, wasm: String) -> Result<()> {
+        // --------------------------------------
+        // Step 1: init engine & capabilities
+        // --------------------------------------
         let mut config = Config::new();
         config.async_support(true);
         let engine = Engine::new(&config)?;
-        let component = Component::from_file(&engine, wasm)?;
-        let mut linker = Linker::new(&engine);
+        tracing::debug!("engine started");
 
-        // link dependencies
+        // compile wasm component
+        let component = Component::from_file(&engine, wasm)?;
+        tracing::debug!("component compiled");
+
+        // link capabilities
+        let mut linker = Linker::new(&engine);
         wasmtime_wasi::add_to_linker_async(&mut linker)?;
         for c in &self.capabilities {
             c.add_to_linker(&mut linker)?;
         }
+        tracing::debug!("capabilities linked");
 
+        // --------------------------------------
+        // Step 2: init component & link to capabilities
+        // --------------------------------------
         // pre-instantiate wasm component
         let instance_pre = linker.instantiate_pre(&component)?;
+
         let component_type = component.component_type();
+        let mut imports = component_type.imports(&engine);
+        let mut exports = component_type.exports(&engine);
 
         // start capabilities
         for c in self.capabilities {
             // check whether capability is required
             let namespace = c.namespace();
-            if !component_type.imports(&engine).any(|e| e.0.starts_with(namespace))
-                && !component_type.exports(&engine).any(|e| e.0.starts_with(namespace))
+            if !imports.any(|e| e.0.starts_with(namespace))
+                && !exports.any(|e| e.0.starts_with(namespace))
             {
                 continue;
             }
 
             // start capability
-            tracing::debug!("starting {namespace} capability");
             let pre = instance_pre.clone();
-            let namespace = namespace.to_string();
-
             tokio::spawn(async move {
-                tracing::debug!("{namespace} starting");
+                tracing::debug!("starting {namespace}");
                 if let Err(e) = c.start(pre).await {
                     tracing::error!("error starting {namespace}: {e}");
                 }

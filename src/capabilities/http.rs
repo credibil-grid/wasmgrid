@@ -49,18 +49,18 @@ impl runtime::Capability for Capability {
     /// Provide http proxy capability the specified wasm component.
     async fn start(&self, pre: InstancePre<Ctx>) -> anyhow::Result<()> {
         let listener = TcpListener::bind(&self.addr).await?;
-        tracing::info!("listening for http requests on: {}", listener.local_addr()?);
+        tracing::info!("http server listening on: {}", listener.local_addr()?);
 
         // listen for requests until terminated
         loop {
             let (stream, _) = listener.accept().await?;
             let io = TokioIo::new(stream);
-            let proxy = ProxyPre::new(pre.clone())?;
+            let proxy_pre = ProxyPre::new(pre.clone())?;
 
             tokio::spawn(async move {
                 if let Err(e) = http1::Builder::new()
                     .keep_alive(true)
-                    .serve_connection(io, service_fn(|req| handle_request(proxy.clone(), req)))
+                    .serve_connection(io, service_fn(|req| handle_request(proxy_pre.clone(), req)))
                     .await
                 {
                     tracing::error!("connection error: {e:?}");
@@ -72,7 +72,7 @@ impl runtime::Capability for Capability {
 
 // Forward request to the wasm Guest.
 async fn handle_request(
-    pre: ProxyPre<Ctx>, mut request: Request<Incoming>,
+    proxy_pre: ProxyPre<Ctx>, mut request: Request<Incoming>,
 ) -> anyhow::Result<hyper::Response<HyperOutgoingBody>> {
     let (sender, receiver) = tokio::sync::oneshot::channel();
 
@@ -131,8 +131,7 @@ async fn handle_request(
         };
 
         // prepare wasmtime http request and response
-        // let mut store = runtime.new_store();
-        let mut store = Store::new(pre.engine(), Ctx::new());
+        let mut store = Store::new(proxy_pre.engine(), Ctx::new());
         store.limiter(|t| &mut t.limits);
 
         store.data_mut().metadata.insert("wasi_http_ctx".into(), Box::new(WasiHttpCtx::new()));
@@ -140,7 +139,7 @@ async fn handle_request(
         let outgoing = store.data_mut().new_response_outparam(sender)?;
 
         // call guest with request
-        let proxy = pre.instantiate_async(&mut store).await?;
+        let proxy = proxy_pre.instantiate_async(&mut store).await?;
         proxy.wasi_http_incoming_handler().call_handle(&mut store, incoming, outgoing).await
     });
 
@@ -160,16 +159,12 @@ async fn handle_request(
                 Ok(Ok(())) => anyhow!("task failed without error"),
                 Err(e) => e.into(),
             };
-            Err(anyhow!("guest did not invoke `response-outparam::set`: {e:?}"))
+            Err(anyhow!("guest did not invoke `response-outparam::set`: {e}"))
         }
     }
 }
 
 impl WasiHttpView for Ctx {
-    // fn table(&mut self) -> &mut ResourceTable {
-    //     WasiView::table(self)
-    // }
-
     fn ctx(&mut self) -> &mut WasiHttpCtx {
         self.metadata.get_mut("wasi_http_ctx").unwrap().downcast_mut::<WasiHttpCtx>().unwrap()
     }

@@ -48,14 +48,13 @@ struct NatsCreds {
 
 #[tokio::main]
 pub async fn main() -> wasmtime::Result<()> {
+    if cfg!(debug_assertions) {
+        dotenv().ok();
+    }
     let subscriber =
         FmtSubscriber::builder().with_env_filter(EnvFilter::from_default_env()).finish();
     tracing::subscriber::set_global_default(subscriber)?;
 
-    // env vars
-    if cfg!(debug_assertions) {
-        dotenv().ok();
-    }
     let http_addr = env::var("HTTP_ADDR").unwrap_or_else(|_| DEF_HTTP_ADDR.into());
     // let mgo_cnn = env::var("MGO_CNN").unwrap_or_else(|_| DEF_MGO_CNN.into());
     let nats_cnn = env::var("NATS_ADDR").unwrap_or_else(|_| DEF_NATS_ADDR.into());
