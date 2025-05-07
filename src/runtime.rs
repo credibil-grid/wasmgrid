@@ -51,13 +51,14 @@ impl Runtime {
     pub fn start(self, wasm: String) -> anyhow::Result<()> {
         tracing::debug!("starting runtime");
 
+        // create engine
         let mut config = Config::new();
         config.async_support(true);
         let engine = Engine::new(&config)?;
         let component = Component::from_file(&engine, wasm)?;
+        let mut linker = Linker::new(&engine);
 
         // link dependencies
-        let mut linker = Linker::new(&engine);
         wasmtime_wasi::add_to_linker_async(&mut linker)?;
         for c in &self.capabilities {
             c.add_to_linker(&mut linker)?;
