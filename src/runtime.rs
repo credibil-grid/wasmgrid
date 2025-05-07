@@ -63,8 +63,8 @@ impl Runtime {
 
         // pre-instantiate wasm component
         let component = Component::from_file(&engine, wasm)?;
-        let instance_pre = linker.instantiate_pre(&component)?;
         let component_type = component.component_type();
+        let instance_pre = linker.instantiate_pre(&component)?;
 
         for c in self.capabilities {
             // check whether capability is required
