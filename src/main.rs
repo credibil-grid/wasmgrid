@@ -47,13 +47,14 @@ struct NatsCreds {
 
 #[tokio::main]
 pub async fn main() -> wasmtime::Result<()> {
-    let args = Args::parse();
+    let subscriber =
+        FmtSubscriber::builder().with_env_filter(EnvFilter::from_default_env()).finish();
+    tracing::subscriber::set_global_default(subscriber)?;
 
     // env vars
     if cfg!(debug_assertions) {
         dotenv().ok();
     }
-
     let http_addr = env::var("HTTP_ADDR").unwrap_or_else(|_| DEF_HTTP_ADDR.into());
     let mgo_cnn = env::var("MGO_CNN").unwrap_or_else(|_| DEF_MGO_CNN.into());
     let nats_cnn = env::var("NATS_ADDR").unwrap_or_else(|_| DEF_NATS_ADDR.into());
@@ -64,11 +65,6 @@ pub async fn main() -> wasmtime::Result<()> {
     } else {
         None
     };
-
-    let subscriber =
-        FmtSubscriber::builder().with_env_filter(EnvFilter::from_default_env()).finish();
-
-    tracing::subscriber::set_global_default(subscriber)?;
 
     // init capabilities
     let builder = runtime::Builder::new();
@@ -87,6 +83,7 @@ pub async fn main() -> wasmtime::Result<()> {
     // #[cfg(feature = "vault")]
     // let builder = builder.capability(vault::new());
 
+    let args = Args::parse();
     builder.run(args.wasm)?;
 
     shutdown().await
