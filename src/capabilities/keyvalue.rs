@@ -37,13 +37,13 @@ use anyhow::{Result, anyhow};
 use async_nats::{AuthError, ConnectOptions, jetstream};
 use futures::TryStreamExt;
 use jetstream::kv;
-use wasmtime::component::{Linker, Resource, ResourceTableError, bindgen};
+use wasmtime::component::{InstancePre, Linker, Resource, ResourceTableError, bindgen};
 use wasmtime_wasi::IoView;
 
 use self::generated::Keyvalue;
 use self::generated::wasi::keyvalue;
 use self::generated::wasi::keyvalue::store::KeyResponse;
-use crate::runtime::{self, Ctx, Runtime};
+use crate::runtime::{self, Ctx};
 
 pub type Bucket = async_nats::jetstream::kv::Store;
 
@@ -88,7 +88,7 @@ impl runtime::Capability for Capability {
     }
 
     /// Provide key/value storage capability for the specified wasm component.
-    async fn run(&self, _runtime: Runtime) -> anyhow::Result<()> {
+    async fn run(&self, _: InstancePre<Ctx>) -> anyhow::Result<()> {
         // build connection options
         let opts = if let Some(creds) = &self.creds {
             let key_pair = Arc::new(nkeys::KeyPair::from_seed(&creds.seed)?);

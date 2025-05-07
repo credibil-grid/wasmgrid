@@ -25,29 +25,16 @@ pub trait Capability: Send {
     fn add_to_linker(&self, linker: &mut Linker<Ctx>) -> anyhow::Result<()>;
 
     /// Start and run the runtime.
-    async fn run(&self, runtime: Runtime) -> anyhow::Result<()>;
+    async fn run(&self, pre: InstancePre<Ctx>) -> anyhow::Result<()>;
 }
 
 /// Runtime for a wasm component.
-#[derive(Clone)]
-pub struct Runtime {
-    instance_pre: InstancePre<Ctx>,
-}
-
-impl Runtime {
-    /// Returns a "pre-instantiated" Instance — an efficient form of instantiation
-    /// where import type-checking and lookup has been resolved.
-    pub const fn instance_pre(&self) -> &InstancePre<Ctx> {
-        &self.instance_pre
-    }
-}
-
 #[derive(Default)]
-pub struct Builder {
+pub struct Runtime {
     capabilities: Vec<Box<dyn Capability>>,
 }
 
-impl Builder {
+impl Runtime {
     /// Create a new Builder instance.
     pub fn new() -> Self {
         Self::default()
@@ -60,15 +47,15 @@ impl Builder {
     }
 
     /// Run the wasm component with the specified capabilities.
-    pub fn run(self, wasm: String) -> anyhow::Result<()> {
+    pub fn start(self, wasm: String) -> anyhow::Result<()> {
         tracing::debug!("starting runtime");
 
         let mut config = Config::new();
         config.async_support(true);
         let engine = Engine::new(&config)?;
-
         let mut linker = Linker::new(&engine);
         wasmtime_wasi::add_to_linker_async(&mut linker)?;
+
         for cap in &self.capabilities {
             cap.add_to_linker(&mut linker)?;
         }
@@ -78,7 +65,7 @@ impl Builder {
         let instance_pre = linker.instantiate_pre(&component)?;
         let component_type = component.component_type();
 
-        let runtime = Runtime { instance_pre };
+        // let runtime = Runtime { instance_pre };
 
         // start capabilities
         for cap in self.capabilities {
@@ -92,12 +79,12 @@ impl Builder {
 
             // start capability
             tracing::debug!("starting {namespace} capability");
-            let runtime = runtime.clone();
+            let pre = instance_pre.clone();
             let namespace = namespace.to_string();
 
             tokio::spawn(async move {
                 tracing::debug!("{namespace} starting");
-                if let Err(e) = cap.run(runtime).await {
+                if let Err(e) = cap.run(pre).await {
                     tracing::error!("error starting {namespace}: {e}");
                 }
             });

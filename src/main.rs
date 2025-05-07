@@ -68,13 +68,13 @@ pub async fn main() -> wasmtime::Result<()> {
     };
 
     // init capabilities
-    let builder = runtime::Builder::new();
+    let runtime = runtime::Runtime::new();
     // #[cfg(feature = "http")]
     // let builder = builder.capability(http::new(http_addr));
     // #[cfg(feature = "jsondb")]
     // let builder = builder.capability(jsondb::new(mgo_cnn));
     #[cfg(feature = "keyvalue")]
-    let builder = builder.capability(keyvalue::new(nats_cnn.clone(), nats_creds.clone()));
+    let runtime = runtime.capability(keyvalue::new(nats_cnn.clone(), nats_creds.clone()));
     // #[cfg(feature = "messaging")]
     // let builder = builder.capability(messaging::new(nats_cnn.clone()));
     // #[cfg(feature = "rpc")]
@@ -86,7 +86,7 @@ pub async fn main() -> wasmtime::Result<()> {
     // let builder = builder.capability(vault::new());
 
     let args = Args::parse();
-    builder.run(args.wasm)?;
+    runtime.start(args.wasm)?;
 
     shutdown().await
 }
