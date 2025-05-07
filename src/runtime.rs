@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 //! # WebAssembly Runtime
 
 use std::any::Any;
