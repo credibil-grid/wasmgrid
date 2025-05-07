@@ -51,18 +51,16 @@ impl runtime::Capability for Capability {
         let listener = TcpListener::bind(&self.addr).await?;
         tracing::info!("listening for http requests on: {}", listener.local_addr()?);
 
-        let pre = ProxyPre::new(pre.clone())?;
-
         // listen for requests until terminated
         loop {
             let (stream, _) = listener.accept().await?;
             let io = TokioIo::new(stream);
-            let pre = pre.clone();
+            let proxy = ProxyPre::new(pre.clone())?;
 
             tokio::spawn(async move {
                 if let Err(e) = http1::Builder::new()
                     .keep_alive(true)
-                    .serve_connection(io, service_fn(|req| handle_request(pre.clone(), req)))
+                    .serve_connection(io, service_fn(|req| handle_request(proxy.clone(), req)))
                     .await
                 {
                     tracing::error!("connection error: {e:?}");

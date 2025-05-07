@@ -4,8 +4,8 @@
 //! that provides a concrete implementation in support of a specific set of WASI
 //! interfaces.
 
-// #[cfg(feature = "http")]
-// pub mod http;
+#[cfg(feature = "http")]
+pub mod http;
 // #[cfg(feature = "jsondb")]
 // pub mod jsondb;
 #[cfg(feature = "keyvalue")]

@@ -66,9 +66,9 @@ impl Runtime {
         let instance_pre = linker.instantiate_pre(&component)?;
         let component_type = component.component_type();
 
-        for capability in self.capabilities {
+        for c in self.capabilities {
             // check whether capability is required
-            let namespace = capability.namespace();
+            let namespace = c.namespace();
             if !component_type.imports(&engine).any(|e| e.0.starts_with(namespace))
                 && !component_type.exports(&engine).any(|e| e.0.starts_with(namespace))
             {
@@ -82,7 +82,7 @@ impl Runtime {
 
             tokio::spawn(async move {
                 tracing::debug!("{namespace} starting");
-                if let Err(e) = capability.start(pre).await {
+                if let Err(e) = c.start(pre).await {
                     tracing::error!("error starting {namespace}: {e}");
                 }
             });
