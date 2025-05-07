@@ -57,20 +57,17 @@ impl Runtime {
         let mut linker = Linker::new(&engine);
         wasmtime_wasi::add_to_linker_async(&mut linker)?;
 
-        for cap in &self.capabilities {
-            cap.add_to_linker(&mut linker)?;
+        for c in &self.capabilities {
+            c.add_to_linker(&mut linker)?;
         }
 
-        // pre-instantiate component
+        // pre-instantiate wasm component
         let component = Component::from_file(&engine, wasm)?;
         let instance_pre = linker.instantiate_pre(&component)?;
         let component_type = component.component_type();
 
-        // let runtime = Runtime { instance_pre };
-
-        // start capabilities
         for capability in self.capabilities {
-            // check whether capability is required by the wasm component
+            // check whether capability is required
             let namespace = capability.namespace();
             if !component_type.imports(&engine).any(|e| e.0.starts_with(namespace))
                 && !component_type.exports(&engine).any(|e| e.0.starts_with(namespace))
