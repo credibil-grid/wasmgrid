@@ -1,6 +1,6 @@
-//! # WASI Messaging Capability
+//! # WASI Messaging Service
 //!
-//! This module implements a runtime capability for `wasi:messaging`
+//! This module implements a runtime service for `wasi:messaging`
 //! (<https://github.com/WebAssembly/wasi-messaging>).
 
 /// Wrap generation of wit bindings to simplify exports.
@@ -48,16 +48,16 @@ pub type Error = anyhow::Error;
 
 static PROCESSOR: OnceLock<Processor> = OnceLock::new();
 
-pub struct Capability {
+pub struct Service {
     pub addr: String,
 }
 
-pub const fn new(addr: String) -> Capability {
-    Capability { addr }
+pub const fn new(addr: String) -> Service {
+    Service { addr }
 }
 
 #[async_trait::async_trait]
-impl runtime::Capability for Capability {
+impl runtime::Service for Service {
     fn namespace(&self) -> &'static str {
         "wasi:messaging"
     }

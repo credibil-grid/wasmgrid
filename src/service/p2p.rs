@@ -457,17 +457,17 @@ async fn get_container_entry(container: &Document, key: &str) -> Result<Option<E
 /// Implementation of the `wasi:p2p/types` interface.
 impl types::Host for Ctx {}
 
-/// Capability configuration.
-pub struct Capability;
+/// Service configuration.
+pub struct Service;
 
-/// Create a new capability.
-pub const fn new() -> Capability {
-    Capability
+/// Create a new service.
+pub const fn new() -> Service {
+    Service
 }
 
 /// Implentation required by the `wasmgrid` runtime.
 #[async_trait::async_trait]
-impl runtime::Capability for Capability {
+impl runtime::Service for Service {
     fn namespace(&self) -> &'static str {
         "wasi:p2p"
     }

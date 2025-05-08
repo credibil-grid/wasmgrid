@@ -1,6 +1,6 @@
 [package]
 authors.workspace = true
-description = "Guest bindings for wasmgrid capabilities"
+description = "Guest bindings for wasmgrid service"
 edition.workspace = true
 name = "wasi-bindings"
 version = "0.1.0"

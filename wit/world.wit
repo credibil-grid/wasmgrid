@@ -1,4 +1,4 @@
-package wasmgrid:capabilities;
+package wasmgrid:service;
 
 world jsondb {
 	include wasi:jsondb/imports@0.1.0-draft;

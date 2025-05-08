@@ -20,7 +20,7 @@ use super::bindings::wasi::p2p::document::Host;
 use super::bindings::wasi::p2p::types::{ContainerToken, Owner};
 use super::iroh_node;
 use super::types::{Blob, BlobValue};
-use crate::capabilities::p2p::find_author;
+use crate::service::p2p::find_author;
 use crate::runtime::Ctx;
 
 impl container::Host for Ctx {}

@@ -1,6 +1,6 @@
-//! # WASI Http Capability
+//! # WASI Http Service
 //!
-//! This module implements a runtime capability for `wasi:http`
+//! This module implements a runtime service for `wasi:http`
 //! (<https://github.com/WebAssembly/wasi-http>).
 
 use std::clone::Clone;
@@ -28,16 +28,19 @@ use wasmtime_wasi_http::{WasiHttpCtx, WasiHttpView};
 
 use crate::runtime::{self, Ctx};
 
-pub struct Capability {
+const DEF_HTTP_ADDR: &str = "0.0.0.0:8080";
+
+pub struct Service {
     pub addr: String,
 }
 
-pub const fn new(addr: String) -> Capability {
-    Capability { addr }
+pub fn new() -> Service {
+    let addr = env::var("HTTP_ADDR").unwrap_or_else(|_| DEF_HTTP_ADDR.into());
+    Service { addr }
 }
 
 #[async_trait::async_trait]
-impl runtime::Capability for Capability {
+impl runtime::Service for Service {
     fn namespace(&self) -> &'static str {
         "wasi:http"
     }
@@ -46,7 +49,7 @@ impl runtime::Capability for Capability {
         wasmtime_wasi_http::add_only_http_to_linker_async(linker)
     }
 
-    /// Provide http proxy capability the specified wasm component.
+    /// Provide http proxy service the specified wasm component.
     async fn start(&self, pre: InstancePre<Ctx>) -> anyhow::Result<()> {
         let listener = TcpListener::bind(&self.addr).await?;
         tracing::info!("http server listening on: {}", listener.local_addr()?);

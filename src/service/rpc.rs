@@ -1,6 +1,6 @@
-//! # RPC Capability
+//! # RPC Service
 //!
-//! This module implements a runtime capability for `wasi:messaging`
+//! This module implements a runtime service for `wasi:messaging`
 //! (<https://github.com/WebAssembly/wasi-messaging>).
 
 /// Wrap generation of wit bindings to simplify exports.
@@ -49,17 +49,17 @@ static CLIENT: OnceLock<async_nats::Client> = OnceLock::new();
 pub type Error = anyhow::Error;
 
 #[derive(Debug)]
-pub struct Capability {
+pub struct Service {
     addr: String,
     creds: Option<crate::NatsCreds>,
 }
 
-pub const fn new(addr: String, creds: Option<crate::NatsCreds>) -> Capability {
-    Capability { addr, creds }
+pub const fn new(addr: String, creds: Option<crate::NatsCreds>) -> Service {
+    Service { addr, creds }
 }
 
 #[async_trait::async_trait]
-impl runtime::Capability for Capability {
+impl runtime::Service for Service {
     fn namespace(&self) -> &'static str {
         "wasi:rpc"
     }

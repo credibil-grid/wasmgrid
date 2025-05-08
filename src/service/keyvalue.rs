@@ -1,6 +1,6 @@
-//! # WASI Key/Value Capability
+//! # WASI Key/Value Service
 //!
-//! This module implements a runtime capability for `wasi:keyvalue`
+//! This module implements a runtime service for `wasi:keyvalue`
 //! (<https://github.com/WebAssembly/wasi-keyvalue>).
 
 /// Wrap generation of wit bindings to simplify exports.
@@ -30,6 +30,7 @@ mod generated {
     });
 }
 
+use std::env;
 use std::sync::{Arc, OnceLock};
 use std::time::Duration;
 
@@ -47,6 +48,7 @@ use crate::runtime::{self, Ctx};
 
 pub type Bucket = async_nats::jetstream::kv::Store;
 
+const DEF_NATS_ADDR: &str = "demo.nats.io";
 static JETSTREAM: OnceLock<jetstream::Context> = OnceLock::new();
 
 #[derive(Debug)]
@@ -68,17 +70,22 @@ impl From<anyhow::Error> for Error {
     }
 }
 
-pub struct Capability {
+pub struct Service {
     addr: String,
-    creds: Option<crate::NatsCreds>,
+    jwt: Option<String>,
+    seed: Option<String>,
 }
 
-pub const fn new(addr: String, creds: Option<crate::NatsCreds>) -> Capability {
-    Capability { addr, creds }
+pub fn new() -> Service {
+    Service {
+        addr: env::var("NATS_ADDR").unwrap_or_else(|_| DEF_NATS_ADDR.into()),
+        jwt: env::var("NATS_JWT").ok(),
+        seed: env::var("NATS_SEED").ok(),
+    }
 }
 
 #[async_trait::async_trait]
-impl runtime::Capability for Capability {
+impl runtime::Service for Service {
     fn namespace(&self) -> &'static str {
         "wasi:keyvalue"
     }
@@ -87,12 +94,14 @@ impl runtime::Capability for Capability {
         Keyvalue::add_to_linker(linker, |t| t)
     }
 
-    /// Provide key/value storage capability for the specified wasm component.
+    /// Provide key/value storage service for the specified wasm component.
     async fn start(&self, _: InstancePre<Ctx>) -> anyhow::Result<()> {
         // build connection options
-        let opts = if let Some(creds) = &self.creds {
-            let key_pair = Arc::new(nkeys::KeyPair::from_seed(&creds.seed)?);
-            ConnectOptions::with_jwt(creds.jwt.clone(), move |nonce| {
+        let opts = if let Some(jwt) = &self.jwt
+            && let Some(seed) = &self.seed
+        {
+            let key_pair = Arc::new(nkeys::KeyPair::from_seed(&seed)?);
+            ConnectOptions::with_jwt(jwt.clone(), move |nonce| {
                 let key_pair = key_pair.clone();
                 async move { key_pair.sign(&nonce).map_err(AuthError::new) }
             })

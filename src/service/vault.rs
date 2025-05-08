@@ -1,6 +1,6 @@
-//! # WASI Vault Capability
+//! # WASI Vault Service
 //!
-//! This module implements a runtime capability for `wasi:vault`
+//! This module implements a runtime service for `wasi:vault`
 //! (<https://github.com/WebAssembly/wasi-vault>).
 
 /// Wrap generation of wit bindings to simplify exports.
@@ -56,14 +56,14 @@ pub struct KeyPair {
     name: String,
 }
 
-pub struct Capability {}
+pub struct Service {}
 
-pub const fn new() -> Capability {
-    Capability {}
+pub const fn new() -> Service {
+    Service {}
 }
 
 #[async_trait::async_trait]
-impl runtime::Capability for Capability {
+impl runtime::Service for Service {
     fn namespace(&self) -> &'static str {
         "wasi:vault"
     }
@@ -72,7 +72,7 @@ impl runtime::Capability for Capability {
         Vault::add_to_linker(linker, |t| t)
     }
 
-    /// Provide vault capability for the wasm component.
+    /// Provide vault service for the wasm component.
     async fn start(&self, _runtime: Runtime) -> anyhow::Result<()> {
         env::set_var("AZURE_CREDENTIAL_KIND", "environment");
 

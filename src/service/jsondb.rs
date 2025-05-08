@@ -1,6 +1,6 @@
-//! # WASI JSON Database Capability
+//! # WASI JSON Database Service
 //!
-//! This module implements a runtime capability for `wasi:sql`
+//! This module implements a runtime service for `wasi:sql`
 //! (<https://github.com/WebAssembly/wasi-sql>).
 
 /// Wrap generation of wit bindings to simplify exports.
@@ -51,16 +51,16 @@ pub struct Statement {
     conditions: bson::Document,
 }
 
-pub struct Capability {
+pub struct Service {
     pub addr: String,
 }
 
-pub const fn new(addr: String) -> Capability {
-    Capability { addr }
+pub const fn new(addr: String) -> Service {
+    Service { addr }
 }
 
 #[async_trait::async_trait]
-impl runtime::Capability for Capability {
+impl runtime::Service for Service {
     fn namespace(&self) -> &'static str {
         "wasi:jsondb"
     }
@@ -69,7 +69,7 @@ impl runtime::Capability for Capability {
         Jsondb::add_to_linker(linker, |t| t)
     }
 
-    /// Provide jsondb capability for the specified wasm component.
+    /// Provide jsondb service for the specified wasm component.
     async fn start(&self, _: InstancePre<Ctx>) -> anyhow::Result<()> {
         let mut opts = ClientOptions::parse(&self.addr).await?;
         opts.app_name = Some("Credibil Grid".into());
