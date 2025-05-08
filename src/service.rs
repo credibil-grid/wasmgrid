@@ -31,7 +31,6 @@ pub type Metadata = Box<dyn Any + Send>;
 
 /// Service represents a particular runtime service depended on by wasm
 /// components. For example, an HTTP server or a message broker.
-#[async_trait::async_trait]
 pub trait Service: Sync + Send {
     /// Returns the wasi namespace the service supports. For example, `wasi:http`.
     fn namespace(&self) -> &'static str;
@@ -45,7 +44,7 @@ pub trait Service: Sync + Send {
     fn add_to_linker(&self, linker: &mut Linker<Ctx>) -> Result<()>;
 
     /// Start and run the runtime.
-    async fn start(&self, pre: InstancePre<Ctx>) -> Result<()>;
+    fn start(&self, pre: InstancePre<Ctx>) -> impl Future<Output = Result<()>> + Send;
 }
 
 /// Ctx implements messaging host interfaces. In addition, it holds the

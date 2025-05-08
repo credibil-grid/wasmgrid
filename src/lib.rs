@@ -3,7 +3,7 @@
 
 //! # WebAssembly Runtime
 
-mod service;
+pub mod service;
 mod trace;
 
 use std::fs::{self, File};
@@ -14,18 +14,6 @@ use anyhow::{Result, anyhow};
 use wasmtime::component::{Component, Linker};
 use wasmtime::{Config, Engine};
 
-#[cfg(feature = "http")]
-use crate::service::http;
-// #[cfg(feature = "vault")]
-// use crate::service::vault;
-#[cfg(feature = "jsondb")]
-use crate::service::jsondb;
-#[cfg(feature = "keyvalue")]
-use crate::service::keyvalue;
-#[cfg(feature = "messaging")]
-use crate::service::messaging;
-#[cfg(feature = "rpc")]
-use crate::service::rpc;
 use crate::service::{Ctx, Service};
 
 /// Compile `wasm32-wasip2` component.
@@ -81,46 +69,14 @@ fn serialize(wasm: &PathBuf) -> Result<Vec<u8>> {
 
 /// Runtime for a wasm component.
 pub struct Runtime {
-    service: Vec<Box<dyn Service + 'static>>,
-}
-
-impl Default for Runtime {
-    fn default() -> Self {
-        Self::new()
-    }
+    engine: Engine,
+    component: Component,
+    linker: Linker<Ctx>,
+    required: Vec<&'static str>,
 }
 
 impl Runtime {
     /// Create a new Runtime instance.
-    #[must_use]
-    pub fn new() -> Self {
-        let mut runtime = Self { service: Vec::new() };
-        if cfg!(feature = "http") {
-            runtime.with_service(http::new());
-        }
-        if cfg!(feature = "keyvalue") {
-            runtime.with_service(keyvalue::new());
-        }
-        if cfg!(feature = "rpc") {
-            runtime.with_service(rpc::new());
-        }
-        if cfg!(feature = "messaging") {
-            runtime.with_service(messaging::new());
-        }
-        if cfg!(feature = "jsondb") {
-            runtime.with_service(jsondb::new());
-        }
-        // if cfg!(feature = "vault") {
-        //     runtime.with_service(vault::new());
-        // }
-        runtime
-    }
-
-    /// Add a service to the wasm runtime.
-    fn with_service(&mut self, service: impl Service + 'static) -> &mut Self {
-        self.service.push(Box::new(service));
-        self
-    }
 
     /// Run the wasm component with the specified service.
     ///
@@ -128,19 +84,15 @@ impl Runtime {
     ///
     /// Returns an error if the component cannot be loaded, the linker cannot
     /// be created, or the service cannot be started.
-    #[allow(clippy::cognitive_complexity)]
-    pub fn start(self, wasm: PathBuf, compile: bool) -> Result<()> {
-        // --------------------------------------
-        // Step 1: start engine (~2ms)
-        // --------------------------------------
+    #[must_use]
+    pub fn new(wasm: PathBuf, compile: bool) -> Result<Self> {
+        // start engine
         let mut config = Config::new();
         config.async_support(true);
         let engine = Engine::new(&config)?;
         tracing::trace!("engine started");
 
-        // --------------------------------------
-        // Step 2: load component (compiling if required) (~9ms)
-        // --------------------------------------
+        // load component (compiling if required)
         let component = if compile {
             let serialized = serialize(&wasm)?;
             unsafe { Component::deserialize(&engine, &serialized)? }
@@ -149,43 +101,61 @@ impl Runtime {
         };
         tracing::trace!("component loaded");
 
-        // --------------------------------------
-        // Step 3: resolve component imports (~1ms)
-        // --------------------------------------
-        let mut linker = Linker::new(&engine);
+        // resolve component dependencies
+        let mut linker: Linker<Ctx> = Linker::new(&engine);
         wasmtime_wasi::add_to_linker_async(&mut linker)?;
 
-        let component_type = component.component_type();
-        let mut imports = component_type.imports(&engine);
-        let mut exports = component_type.exports(&engine);
+        Ok(Self {
+            engine,
+            linker,
+            component,
+            required: Vec::new(),
+        })
+    }
 
-        let mut required = vec![];
-        for svc in self.service {
-            if imports.any(|e| e.0.starts_with(svc.namespace()))
-                || exports.any(|e| e.0.starts_with(svc.namespace()))
-            {
-                svc.add_to_linker(&mut linker)?;
-                required.push(svc);
+    /// Add service dependencies to the linker.
+    pub fn link(&mut self, service: &impl Service) -> Result<&Self> {
+        let component_type = self.component.component_type();
+        let mut imports = component_type.imports(&self.engine);
+        let mut exports = component_type.exports(&self.engine);
+
+        let namespace = service.namespace();
+
+        if imports.any(|e| e.0.starts_with(namespace))
+            || exports.any(|e| e.0.starts_with(namespace))
+        {
+            service.add_to_linker(&mut self.linker)?;
+            self.required.push(namespace);
+            tracing::trace!("{namespace} service linked");
+        }
+
+        Ok(self)
+    }
+
+    // pub fn instantiate(&self)->Result<()>{
+    //     let instance_pre = self.linker.instantiate_pre(&self.component)?;
+    //     Ok(())
+    // }
+
+    // Initiate service
+    pub fn start(&self, service: impl Service + 'static) -> Result<()> {
+        let namespace = service.namespace();
+
+        if !self.required.contains(&namespace) {
+            tracing::warn!("skipping {namespace} service");
+            return Ok(());
+        }
+
+        // resolve component imports to linked services
+        let instance_pre = self.linker.instantiate_pre(&self.component)?;
+
+        let pre = instance_pre.clone();
+        tokio::spawn(async move {
+            tracing::debug!("starting {namespace}");
+            if let Err(e) = service.start(pre).await {
+                tracing::error!("error starting {namespace}: {e}");
             }
-        }
-        tracing::trace!("service linked");
-
-        // --------------------------------------
-        // Step 3: initiate required services (~2ms)
-        // --------------------------------------
-        // ..resolve component imports to linked services
-        let instance_pre = linker.instantiate_pre(&component)?;
-
-        for svc in required {
-            let pre = instance_pre.clone();
-            tokio::spawn(async move {
-                let namespace = svc.namespace();
-                tracing::debug!("starting {namespace}");
-                if let Err(e) = svc.start(pre).await {
-                    tracing::error!("error starting {namespace}: {e}");
-                }
-            });
-        }
+        });
 
         Ok(())
     }

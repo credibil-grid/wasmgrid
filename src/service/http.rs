@@ -6,7 +6,7 @@
 use std::clone::Clone;
 use std::env;
 
-use anyhow::anyhow;
+use anyhow::{Result, anyhow};
 use http::uri::PathAndQuery;
 use http::uri::Uri; // Authority,
 use hyper::body::Incoming;
@@ -39,18 +39,17 @@ pub fn new() -> Service {
     Service { addr }
 }
 
-#[async_trait::async_trait]
 impl crate::Service for Service {
     fn namespace(&self) -> &'static str {
         "wasi:http"
     }
 
-    fn add_to_linker(&self, linker: &mut Linker<Ctx>) -> anyhow::Result<()> {
+    fn add_to_linker(&self, linker: &mut Linker<Ctx>) -> Result<()> {
         wasmtime_wasi_http::add_only_http_to_linker_async(linker)
     }
 
     /// Provide http proxy service the specified wasm component.
-    async fn start(&self, pre: InstancePre<Ctx>) -> anyhow::Result<()> {
+    async fn start(&self, pre: InstancePre<Ctx>) -> Result<()> {
         let listener = TcpListener::bind(&self.addr).await?;
         tracing::info!("http server listening on: {}", listener.local_addr()?);
 
@@ -76,7 +75,7 @@ impl crate::Service for Service {
 // Forward request to the wasm Guest.
 async fn handle_request(
     proxy_pre: ProxyPre<Ctx>, mut request: Request<Incoming>,
-) -> anyhow::Result<hyper::Response<HyperOutgoingBody>> {
+) -> Result<hyper::Response<HyperOutgoingBody>> {
     let (sender, receiver) = tokio::sync::oneshot::channel();
 
     // HACK: CORS preflight request for use when testing locally

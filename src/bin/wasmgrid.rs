@@ -7,6 +7,18 @@ use clap::{Parser, Subcommand};
 use dotenv::dotenv;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 use wasmgrid::Runtime;
+#[cfg(feature = "http")]
+use wasmgrid::service::http;
+// #[cfg(feature = "vault")]
+// use crate::service::vault;
+#[cfg(feature = "jsondb")]
+use wasmgrid::service::jsondb;
+#[cfg(feature = "keyvalue")]
+use wasmgrid::service::keyvalue;
+#[cfg(feature = "messaging")]
+use wasmgrid::service::messaging;
+#[cfg(feature = "rpc")]
+use wasmgrid::service::rpc;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -56,7 +68,29 @@ pub async fn main() -> wasmtime::Result<()> {
             return Ok(());
         }
         Command::Run { wasm, compile } => {
-            Runtime::new().start(wasm, compile)?;
+            let mut rt = Runtime::new(wasm, compile)?;
+
+            if cfg!(feature = "http") {
+                let http = http::new();
+                rt.link(&http)?.start(http)?;
+            }
+            if cfg!(feature = "keyvalue") {
+                let keyvalue = keyvalue::new();
+                rt.link(&keyvalue)?.start(keyvalue)?;
+            }
+            if cfg!(feature = "jsondb") {
+                let jsondb = jsondb::new();
+                rt.link(&jsondb)?.start(jsondb)?;
+            }
+            if cfg!(feature = "messaging") {
+                let messaging = messaging::new();
+                rt.link(&messaging)?.start(messaging)?;
+            }
+            if cfg!(feature = "rpc") {
+                let rpc = rpc::new();
+                rt.link(&rpc)?.start(rpc)?;
+            }
+
             shutdown().await
         }
     }

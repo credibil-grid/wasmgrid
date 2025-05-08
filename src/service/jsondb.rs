@@ -63,7 +63,6 @@ pub fn new() -> Service {
     }
 }
 
-#[async_trait::async_trait]
 impl crate::Service for Service {
     fn namespace(&self) -> &'static str {
         "wasi:jsondb"
