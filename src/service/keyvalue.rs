@@ -44,7 +44,7 @@ use wasmtime_wasi::IoView;
 use self::generated::Keyvalue;
 use self::generated::wasi::keyvalue;
 use self::generated::wasi::keyvalue::store::KeyResponse;
-use crate::runtime::{self, Ctx};
+use crate::Ctx;
 
 pub type Bucket = async_nats::jetstream::kv::Store;
 
@@ -85,7 +85,7 @@ pub fn new() -> Service {
 }
 
 #[async_trait::async_trait]
-impl runtime::Service for Service {
+impl crate::Service for Service {
     fn namespace(&self) -> &'static str {
         "wasi:keyvalue"
     }
@@ -100,7 +100,7 @@ impl runtime::Service for Service {
         let opts = if let Some(jwt) = &self.jwt
             && let Some(seed) = &self.seed
         {
-            let key_pair = Arc::new(nkeys::KeyPair::from_seed(&seed)?);
+            let key_pair = Arc::new(nkeys::KeyPair::from_seed(seed)?);
             ConnectOptions::with_jwt(jwt.clone(), move |nonce| {
                 let key_pair = key_pair.clone();
                 async move { key_pair.sign(&nonce).map_err(AuthError::new) }
@@ -136,7 +136,7 @@ impl keyvalue::store::Host for Ctx {
                 .create_key_value(kv::Config {
                     bucket: identifier.clone(),
                     history: 1,
-                    max_age: Duration::from_mins(10),
+                    max_age: Duration::from_secs(10 * 60),
                     max_bytes: 100 * 1024 * 1024, // 100 MiB
                     ..kv::Config::default()
                 })

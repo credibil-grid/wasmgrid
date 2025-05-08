@@ -8,9 +8,13 @@ name = "wasmgrid"
 rust-version.workspace = true
 version = "0.1.0"
 
+[lib]
+doctest = false
+
 [[bin]]
 name = "wasmgrid"
-path = "src/main.rs"
+path = "src/bin/wasmgrid.rs"
+doc = false
 
 [lints]
 workspace = true

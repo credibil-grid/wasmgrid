@@ -26,7 +26,7 @@ use wasmtime_wasi_http::body::HyperOutgoingBody;
 use wasmtime_wasi_http::io::TokioIo;
 use wasmtime_wasi_http::{WasiHttpCtx, WasiHttpView};
 
-use crate::runtime::{self, Ctx};
+use crate::Ctx;
 
 const DEF_HTTP_ADDR: &str = "0.0.0.0:8080";
 
@@ -40,7 +40,7 @@ pub fn new() -> Service {
 }
 
 #[async_trait::async_trait]
-impl runtime::Service for Service {
+impl crate::Service for Service {
     fn namespace(&self) -> &'static str {
         "wasi:http"
     }

@@ -1,6 +1,9 @@
-#![allow(dead_code)]
+// #![allow(dead_code)]
+#![feature(let_chains)]
 
 //! # WebAssembly Runtime
+
+mod service;
 
 use std::any::Any;
 use std::collections::HashMap;
@@ -30,14 +33,24 @@ use crate::service::keyvalue;
 // use crate::service::jsondb;
 
 /// Compile wasm component
+///
+/// # Errors
+///
+/// Returns an error if the WASM component cannot be loaded from the specified
+/// path, cannot be compiled, or cannot be serialized to the specified output
+/// directory.
 pub fn compile(wasm: String) -> Result<()> {
     let mut config = Config::new();
     config.async_support(true);
     let engine = Engine::new(&config)?;
-    let component = Component::from_file(&engine, wasm)?;
+    let component = Component::from_file(&engine, &wasm)?;
     let serialized = component.serialize()?;
 
-    let mut file = File::create("compiled.bin")?;
+    let file_name =
+        wasm.split('/').last().ok_or_else(|| anyhow!("failed to get file name"))?.to_string();
+    let file_name = file_name.replace(".wasm", ".bin");
+
+    let mut file = File::create(file_name)?;
     file.write_all(&serialized)?;
 
     Ok(())
@@ -72,18 +85,17 @@ impl Runtime {
         if cfg!(feature = "keyvalue") {
             runtime.with_service(keyvalue::new());
         }
-        // if cfg!(feature = "messaging") {
-        //      runtime.with_service(messaging::new(nats_cnn.clone()));
-        // }
-        // if cfg!(feature = "jsondb") {
-        //     let mgo_cnn = env::var("MGO_CNN").unwrap_or_else(|_| DEF_MGO_CNN.into());
-        //     runtime.with_service(jsondb::new(mgo_cnn));
-        // }
         // if cfg!(feature = "rpc") {
-        //     runtime.with_service(rpc::new(nats_cnn, nats_creds));
+        //     runtime.with_service(rpc::new());
         // }
         // if cfg!(feature = "vault") {
         //     runtime.with_service(vault::new());
+        // }
+        // if cfg!(feature = "messaging") {
+        //      runtime.with_service(messaging::new());
+        // }
+        // if cfg!(feature = "jsondb") {
+        //     runtime.with_service(jsondb::new());
         // }
         runtime
     }
@@ -121,12 +133,12 @@ impl Runtime {
         let mut exports = component_type.exports(&engine);
 
         let mut required = vec![];
-        for c in self.service {
-            if imports.any(|e| e.0.starts_with(c.namespace()))
-                || exports.any(|e| e.0.starts_with(c.namespace()))
+        for svc in self.service {
+            if imports.any(|e| e.0.starts_with(svc.namespace()))
+                || exports.any(|e| e.0.starts_with(svc.namespace()))
             {
-                c.add_to_linker(&mut linker)?;
-                required.push(c);
+                svc.add_to_linker(&mut linker)?;
+                required.push(svc);
             }
         }
         tracing::trace!("service linked");
@@ -134,15 +146,15 @@ impl Runtime {
         // --------------------------------------
         // Step 3: initiate service (~2ms)
         // --------------------------------------
-        // resolve component imports to linked service
+        // resolve component imports to linked services
         let instance_pre = linker.instantiate_pre(&component)?;
 
-        for c in required {
+        for svc in required {
             let pre = instance_pre.clone();
             tokio::spawn(async move {
-                let namespace = c.namespace();
+                let namespace = svc.namespace();
                 tracing::debug!("starting {namespace}");
-                if let Err(e) = c.start(pre).await {
+                if let Err(e) = svc.start(pre).await {
                     tracing::error!("error starting {namespace}: {e}");
                 }
             });

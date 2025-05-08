@@ -41,6 +41,7 @@ use self::generated::wasi::jsondb::readwrite;
 use self::generated::wasi::jsondb::types::{self, HostDatabase, HostError, HostStatement};
 use crate::runtime::{self, Ctx};
 
+const DEF_MGO_CNN: &str = "mongodb://localhost:27017";
 static MONGODB: OnceLock<mongodb::Client> = OnceLock::new();
 
 pub type Database = mongodb::Database;
@@ -55,8 +56,10 @@ pub struct Service {
     pub addr: String,
 }
 
-pub const fn new(addr: String) -> Service {
-    Service { addr }
+pub const fn new() -> Service {
+    Service {
+        addr: env::var("MGO_CNN").unwrap_or_else(|_| DEF_MGO_CNN.into()),
+    }
 }
 
 #[async_trait::async_trait]

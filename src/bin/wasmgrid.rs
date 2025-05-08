@@ -1,25 +1,18 @@
-#![allow(clippy::redundant_pub_crate)]
-#![feature(let_chains)]
-#![feature(duration_constructors)]
-
-mod runtime;
-mod service;
+//! # Wasmgrid CLI
 
 use anyhow::Error;
 use clap::Parser;
 use dotenv::dotenv;
-use runtime::Runtime;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
-
-// const DEF_MGO_CNN: &str = "mongodb://localhost:27017";
+use wasmgrid::Runtime;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct Args {
     /// Path to the wasm file to host.
-    wasm: String,
+    guest: String,
 
-    /// Compile the wasm file only.
+    /// Compile the wasm file specified by `--wasm`.
     #[arg(short, long, default_value_t = false)]
     compile: bool,
 
@@ -40,14 +33,13 @@ pub async fn main() -> wasmtime::Result<()> {
 
     let args = Args::parse();
     if args.compile {
-        runtime::compile(args.wasm)?;
+        wasmgrid::compile(args.guest)?;
         return Ok(());
     }
 
     // init services
     let runtime = Runtime::new();
-
-    runtime.start(args.wasm)?;
+    runtime.start(args.guest)?;
 
     shutdown().await
 }
