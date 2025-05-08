@@ -152,9 +152,10 @@ impl Runtime {
     ///
     /// Returns an error if the component cannot be loaded, the linker cannot
     /// be created, or the service cannot be started.
+    #[allow(clippy::cognitive_complexity)]
     pub fn start(self, wasm: PathBuf, compile: bool) -> Result<()> {
         // --------------------------------------
-        // Step 1: compile component (~2ms)
+        // Step 1: start engine (~2ms)
         // --------------------------------------
         let mut config = Config::new();
         config.async_support(true);
