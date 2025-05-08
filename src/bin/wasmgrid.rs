@@ -50,14 +50,13 @@ pub async fn main() -> wasmtime::Result<()> {
     tracing::subscriber::set_global_default(subscriber)?;
     tracing::trace!("initializing");
 
-    let args = Cli::parse();
-    match args.command {
+    match Cli::parse().command {
         Command::Compile { wasm, output } => {
             wasmgrid::compile(&wasm, output)?;
             return Ok(());
         }
-        Command::Run { wasm, .. } => {
-            Runtime::new().start(wasm)?;
+        Command::Run { wasm, compile } => {
+            Runtime::new().start(wasm,compile)?;
             shutdown().await
         }
     }

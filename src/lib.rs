@@ -52,11 +52,7 @@ pub fn compile(wasm: &PathBuf, output: Option<PathBuf>) -> Result<()> {
     };
 
     // compile component
-    let mut config = Config::new();
-    config.async_support(true);
-    let engine = Engine::new(&config)?;
-    let component = Component::from_file(&engine, wasm)?;
-    let serialized = component.serialize()?;
+    let serialized = serialize(wasm)?;
 
     // define output file
     let mut out_path = output.unwrap_or_else(|| PathBuf::from("."));
@@ -77,6 +73,15 @@ pub fn compile(wasm: &PathBuf, output: Option<PathBuf>) -> Result<()> {
     file.write_all(&serialized)?;
 
     Ok(())
+}
+
+// Compile and serialize a wasm component.
+fn serialize(wasm: &PathBuf) -> Result<Vec<u8>> {
+    let mut config = Config::new();
+    config.async_support(true);
+    let engine = Engine::new(&config)?;
+    let component = Component::from_file(&engine, wasm)?;
+    component.serialize()
 }
 
 /// Service represents a particular runtime service depended on by wasm
@@ -147,7 +152,7 @@ impl Runtime {
     ///
     /// Returns an error if the component cannot be loaded, the linker cannot
     /// be created, or the service cannot be started.
-    pub fn start(self, wasm: PathBuf) -> Result<()> {
+    pub fn start(self, wasm: PathBuf, compile: bool) -> Result<()> {
         // --------------------------------------
         // Step 1: compile component (~2ms)
         // --------------------------------------
@@ -157,9 +162,14 @@ impl Runtime {
         tracing::trace!("engine started");
 
         // --------------------------------------
-        // Step 2: load compiled component (~9ms)
+        // Step 2: load component (compiling if required) (~9ms)
         // --------------------------------------
-        let component = unsafe { Component::deserialize_file(&engine, wasm)? };
+        let component = if compile {
+            let serialized = serialize(&wasm)?;
+            unsafe { Component::deserialize(&engine, &serialized)? }
+        } else {
+            unsafe { Component::deserialize_file(&engine, wasm)? }
+        };
         tracing::trace!("component loaded");
 
         // --------------------------------------
@@ -184,9 +194,9 @@ impl Runtime {
         tracing::trace!("service linked");
 
         // --------------------------------------
-        // Step 3: initiate service (~2ms)
+        // Step 3: initiate required services (~2ms)
         // --------------------------------------
-        // resolve component imports to linked services
+        // ..resolve component imports to linked services
         let instance_pre = linker.instantiate_pre(&component)?;
 
         for svc in required {
