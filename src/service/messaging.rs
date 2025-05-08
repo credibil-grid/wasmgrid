@@ -27,9 +27,11 @@ mod generated {
     });
 }
 
-use std::sync::OnceLock;
+use std::env;
+use std::sync::{Arc, OnceLock};
 
 use anyhow::anyhow;
+use async_nats::{AuthError, ConnectOptions};
 use futures::stream::{self, StreamExt};
 use tokio::time::{Duration, sleep};
 use wasmtime::Store;
@@ -41,23 +43,30 @@ use self::generated::wasi::messaging::messaging_types::{
 };
 use self::generated::wasi::messaging::{consumer, producer};
 use self::generated::{Messaging, MessagingPre};
-use crate::runtime::{self, Ctx};
+use crate::Ctx;
 
 pub type Client = async_nats::Client;
 pub type Error = anyhow::Error;
 
+const DEF_NATS_ADDR: &str = "demo.nats.io";
 static PROCESSOR: OnceLock<Processor> = OnceLock::new();
 
 pub struct Service {
-    pub addr: String,
+    addr: String,
+    jwt: Option<String>,
+    seed: Option<String>,
 }
 
-pub const fn new(addr: String) -> Service {
-    Service { addr }
+pub fn new() -> Service {
+    Service {
+        addr: env::var("NATS_ADDR").unwrap_or_else(|_| DEF_NATS_ADDR.into()),
+        jwt: env::var("NATS_JWT").ok(),
+        seed: env::var("NATS_SEED").ok(),
+    }
 }
 
 #[async_trait::async_trait]
-impl runtime::Service for Service {
+impl crate::Service for Service {
     fn namespace(&self) -> &'static str {
         "wasi:messaging"
     }
@@ -67,11 +76,27 @@ impl runtime::Service for Service {
     }
 
     async fn start(&self, pre: InstancePre<Ctx>) -> anyhow::Result<()> {
-        let client = async_nats::connect(&self.addr).await?;
+        // build connection options
+        let opts = if let Some(jwt) = &self.jwt
+            && let Some(seed) = &self.seed
+        {
+            let key_pair = Arc::new(nkeys::KeyPair::from_seed(seed)?);
+            ConnectOptions::with_jwt(jwt.clone(), move |nonce| {
+                let key_pair = key_pair.clone();
+                async move { key_pair.sign(&nonce).map_err(AuthError::new) }
+            })
+            .name("wasmgrid")
+        } else {
+            ConnectOptions::new()
+        };
+
+        // create JetStream context and store in global state
+        let client = opts.connect(&self.addr).await?;
+        tracing::info!("connected to JetStream on {}", self.addr);
 
         // message processor needs to be accessible to Guest callbacks
         let processor = PROCESSOR.get_or_init(|| Processor {
-            runtime: runtime.clone(),
+            pre: pre.clone(),
             client: client.clone(),
         });
 

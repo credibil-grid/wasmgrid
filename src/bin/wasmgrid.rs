@@ -56,13 +56,13 @@ pub async fn main() -> wasmtime::Result<()> {
             return Ok(());
         }
         Command::Run { wasm, compile } => {
-            Runtime::new().start(wasm,compile)?;
+            Runtime::new().start(wasm, compile)?;
             shutdown().await
         }
     }
 }
 
-// Wait for shutdown signal
+// Wait for shutdown signal.
 async fn shutdown() -> Result<(), Error> {
     tokio::select! {
         _ = tokio::signal::ctrl_c() => Ok(()),

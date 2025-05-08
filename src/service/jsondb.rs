@@ -25,6 +25,7 @@ mod generated {
     });
 }
 
+use std::env;
 use std::sync::OnceLock;
 
 use anyhow::anyhow;
@@ -39,7 +40,7 @@ use wasmtime_wasi::IoView;
 use self::generated::Jsondb;
 use self::generated::wasi::jsondb::readwrite;
 use self::generated::wasi::jsondb::types::{self, HostDatabase, HostError, HostStatement};
-use crate::runtime::{self, Ctx};
+use crate::Ctx;
 
 const DEF_MGO_CNN: &str = "mongodb://localhost:27017";
 static MONGODB: OnceLock<mongodb::Client> = OnceLock::new();
@@ -56,14 +57,14 @@ pub struct Service {
     pub addr: String,
 }
 
-pub const fn new() -> Service {
+pub fn new() -> Service {
     Service {
         addr: env::var("MGO_CNN").unwrap_or_else(|_| DEF_MGO_CNN.into()),
     }
 }
 
 #[async_trait::async_trait]
-impl runtime::Service for Service {
+impl crate::Service for Service {
     fn namespace(&self) -> &'static str {
         "wasi:jsondb"
     }

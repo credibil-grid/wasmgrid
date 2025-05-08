@@ -27,6 +27,7 @@ mod generated {
     });
 }
 
+use std::env;
 use std::sync::{Arc, OnceLock};
 
 use anyhow::anyhow;
@@ -41,9 +42,10 @@ use wasmtime_wasi::IoView;
 use self::generated::wasi::rpc::client::{self, HostError};
 use self::generated::wasi::rpc::types;
 use self::generated::{Rpc, RpcPre};
-use crate::runtime::{self, Ctx};
+use crate::Ctx;
 
 // TODO: create a client struct with both NATS client and request timeout
+const DEF_NATS_ADDR: &str = "demo.nats.io";
 static CLIENT: OnceLock<async_nats::Client> = OnceLock::new();
 
 pub type Error = anyhow::Error;
@@ -51,15 +53,20 @@ pub type Error = anyhow::Error;
 #[derive(Debug)]
 pub struct Service {
     addr: String,
-    creds: Option<crate::NatsCreds>,
+    jwt: Option<String>,
+    seed: Option<String>,
 }
 
-pub const fn new(addr: String, creds: Option<crate::NatsCreds>) -> Service {
-    Service { addr, creds }
+pub fn new() -> Service {
+    Service {
+        addr: env::var("NATS_ADDR").unwrap_or_else(|_| DEF_NATS_ADDR.into()),
+        jwt: env::var("NATS_JWT").ok(),
+        seed: env::var("NATS_SEED").ok(),
+    }
 }
 
 #[async_trait::async_trait]
-impl runtime::Service for Service {
+impl crate::Service for Service {
     fn namespace(&self) -> &'static str {
         "wasi:rpc"
     }
@@ -70,9 +77,11 @@ impl runtime::Service for Service {
 
     async fn start(&self, pre: InstancePre<Ctx>) -> anyhow::Result<()> {
         // build connection options
-        let opts = if let Some(creds) = &self.creds {
-            let key_pair = Arc::new(nkeys::KeyPair::from_seed(&creds.seed)?);
-            ConnectOptions::with_jwt(creds.jwt.clone(), move |nonce| {
+        let opts = if let Some(jwt) = &self.jwt
+            && let Some(seed) = &self.seed
+        {
+            let key_pair = Arc::new(nkeys::KeyPair::from_seed(seed)?);
+            ConnectOptions::with_jwt(jwt.clone(), move |nonce| {
                 let key_pair = key_pair.clone();
                 async move { key_pair.sign(&nonce).map_err(AuthError::new) }
             })
@@ -87,8 +96,7 @@ impl runtime::Service for Service {
         CLIENT.set(client.clone()).map_err(|_| anyhow!("CLIENT already initialized"))?;
 
         // check to see if server is required
-        if !runtime
-            .instance_pre()
+        if !pre
             .component()
             .component_type()
             .exports(pre.engine())

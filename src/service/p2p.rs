@@ -43,7 +43,7 @@ use self::generated::wasi::p2p::container;
 use self::generated::wasi::p2p::types::{
     self, Author, ContainerId, EntryMetadata, Error, Permission, Token,
 };
-use crate::runtime::{self, Ctx};
+use crate::Ctx;
 
 // Handle to the local Iroh node.
 static IROH_NODE: OnceLock<FsNode> = OnceLock::new();
@@ -467,7 +467,7 @@ pub const fn new() -> Service {
 
 /// Implentation required by the `wasmgrid` runtime.
 #[async_trait::async_trait]
-impl runtime::Service for Service {
+impl crate::Service for Service {
     fn namespace(&self) -> &'static str {
         "wasi:p2p"
     }

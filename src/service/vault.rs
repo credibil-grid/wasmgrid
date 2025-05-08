@@ -40,7 +40,7 @@ use wasmtime_wasi::IoView;
 
 use self::generated::Vault;
 use self::generated::wasi::vault::keystore::{self, Algorithm, Jwk};
-use crate::runtime::{self, Ctx};
+use crate::Ctx;
 
 const ED25519_X: &str = "q6rjRnEH_XK72jvB8FNBJtOl9_gDs6NW49cAz6p2sW4";
 
@@ -63,7 +63,7 @@ pub const fn new() -> Service {
 }
 
 #[async_trait::async_trait]
-impl runtime::Service for Service {
+impl crate::Service for Service {
     fn namespace(&self) -> &'static str {
         "wasi:vault"
     }

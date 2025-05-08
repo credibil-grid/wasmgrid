@@ -22,16 +22,16 @@ use wasmtime_wasi::{
 
 #[cfg(feature = "http")]
 use crate::service::http;
-#[cfg(feature = "keyvalue")]
-use crate::service::keyvalue;
-// #[cfg(feature = "messaging")]
-// use crate::service::messaging;
-// #[cfg(feature = "rpc")]
-// use crate::service::rpc;
 // #[cfg(feature = "vault")]
 // use crate::service::vault;
-// #[cfg(feature = "jsondb")]
-// use crate::service::jsondb;
+#[cfg(feature = "jsondb")]
+use crate::service::jsondb;
+#[cfg(feature = "keyvalue")]
+use crate::service::keyvalue;
+#[cfg(feature = "messaging")]
+use crate::service::messaging;
+#[cfg(feature = "rpc")]
+use crate::service::rpc;
 
 /// Compile `wasm32-wasip2` component.
 ///
@@ -125,17 +125,17 @@ impl Runtime {
         if cfg!(feature = "keyvalue") {
             runtime.with_service(keyvalue::new());
         }
-        // if cfg!(feature = "rpc") {
-        //     runtime.with_service(rpc::new());
-        // }
+        if cfg!(feature = "rpc") {
+            runtime.with_service(rpc::new());
+        }
+        if cfg!(feature = "messaging") {
+            runtime.with_service(messaging::new());
+        }
+        if cfg!(feature = "jsondb") {
+            runtime.with_service(jsondb::new());
+        }
         // if cfg!(feature = "vault") {
         //     runtime.with_service(vault::new());
-        // }
-        // if cfg!(feature = "messaging") {
-        //      runtime.with_service(messaging::new());
-        // }
-        // if cfg!(feature = "jsondb") {
-        //     runtime.with_service(jsondb::new());
         // }
         runtime
     }
