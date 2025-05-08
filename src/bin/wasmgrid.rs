@@ -1,24 +1,43 @@
 //! # Wasmgrid CLI
 
+use std::path::PathBuf;
+
 use anyhow::Error;
-use clap::Parser;
+use clap::{Parser, Subcommand};
 use dotenv::dotenv;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 use wasmgrid::Runtime;
 
-#[derive(Parser, Debug)]
+#[derive(Parser)]
 #[command(version, about, long_about = None)]
-struct Args {
-    /// Path to the wasm file to host.
-    guest: String,
+struct Cli {
+    #[command(subcommand)]
+    command: Command,
+}
 
-    /// Compile the wasm file specified by `--wasm`.
-    #[arg(short, long, default_value_t = false)]
-    compile: bool,
+#[derive(Subcommand)]
+enum Command {
+    /// Compile the specified wasm32-wasip2 component.
+    Compile {
+        /// The path to the wasm file to compile.
+        wasm: PathBuf,
 
-    /// Path to a compiled wasm file.
-    #[arg(short, long)]
-    binary: Option<String>,
+        /// An optional output directory. If not set, the compiled component
+        /// will be written to the same location as the input file.
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+    },
+
+    /// Run the specified wasm guest.
+    Run {
+        /// The path to the wasm file to run.
+        wasm: PathBuf,
+
+        /// The wasm file requires compiling (leave unset if the file is
+        /// pre-compiled).
+        #[arg(short, long, default_value_t = false)]
+        compile: bool,
+    },
 }
 
 #[tokio::main]
@@ -31,17 +50,17 @@ pub async fn main() -> wasmtime::Result<()> {
     tracing::subscriber::set_global_default(subscriber)?;
     tracing::trace!("initializing");
 
-    let args = Args::parse();
-    if args.compile {
-        wasmgrid::compile(args.guest)?;
-        return Ok(());
+    let args = Cli::parse();
+    match args.command {
+        Command::Compile { wasm, output } => {
+            wasmgrid::compile(&wasm, output)?;
+            return Ok(());
+        }
+        Command::Run { wasm, .. } => {
+            Runtime::new().start(wasm)?;
+            shutdown().await
+        }
     }
-
-    // init services
-    let runtime = Runtime::new();
-    runtime.start(args.guest)?;
-
-    shutdown().await
 }
 
 // Wait for shutdown signal

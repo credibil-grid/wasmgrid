@@ -7,8 +7,9 @@ mod service;
 
 use std::any::Any;
 use std::collections::HashMap;
-use std::fs::File;
+use std::fs::{self, File};
 use std::io::Write;
+use std::path::PathBuf;
 
 use anyhow::{Result, anyhow};
 use bytes::Bytes;
@@ -32,25 +33,47 @@ use crate::service::keyvalue;
 // #[cfg(feature = "jsondb")]
 // use crate::service::jsondb;
 
-/// Compile wasm component
+/// Compile `wasm32-wasip2` component.
+///
+/// For example, to compile the `http` component, run:
+///
+/// ```
+/// cargo build --package http@0.1.0 --target wasm32-wasip2 --release
+/// ```
 ///
 /// # Errors
 ///
 /// Returns an error if the WASM component cannot be loaded from the specified
 /// path, cannot be compiled, or cannot be serialized to the specified output
 /// directory.
-pub fn compile(wasm: String) -> Result<()> {
+pub fn compile(wasm: &PathBuf, output: Option<PathBuf>) -> Result<()> {
+    let Some(file_name) = wasm.file_name() else {
+        return Err(anyhow!("invalid file name"));
+    };
+
+    // compile component
     let mut config = Config::new();
     config.async_support(true);
     let engine = Engine::new(&config)?;
-    let component = Component::from_file(&engine, &wasm)?;
+    let component = Component::from_file(&engine, wasm)?;
     let serialized = component.serialize()?;
 
-    let file_name =
-        wasm.split('/').last().ok_or_else(|| anyhow!("failed to get file name"))?.to_string();
-    let file_name = file_name.replace(".wasm", ".bin");
+    // define output file
+    let mut out_path = output.unwrap_or_else(|| PathBuf::from("."));
+    if out_path.is_dir() {
+        let file_name = file_name.to_string_lossy().to_string();
+        let file_name = file_name.replace(".wasm", ".bin");
+        out_path.push(file_name);
+    }
 
-    let mut file = File::create(file_name)?;
+    // create output directory if it doesn't exist
+    if let Some(dir) = out_path.parent()
+        && !fs::exists(dir)?
+    {
+        fs::create_dir_all(dir)?;
+    }
+
+    let mut file = File::create(out_path)?;
     file.write_all(&serialized)?;
 
     Ok(())
@@ -64,6 +87,11 @@ pub trait Service: Sync + Send {
     fn namespace(&self) -> &'static str;
 
     /// Add the service to the wasm component linker.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the service encounters an error adding generated
+    /// bindings to the linker.
     fn add_to_linker(&self, linker: &mut Linker<Ctx>) -> Result<()>;
 
     /// Start and run the runtime.
@@ -75,8 +103,15 @@ pub struct Runtime {
     service: Vec<Box<dyn Service + 'static>>,
 }
 
+impl Default for Runtime {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Runtime {
     /// Create a new Runtime instance.
+    #[must_use]
     pub fn new() -> Self {
         let mut runtime = Self { service: Vec::new() };
         if cfg!(feature = "http") {
@@ -107,7 +142,12 @@ impl Runtime {
     }
 
     /// Run the wasm component with the specified service.
-    pub fn start(self, wasm: String) -> Result<()> {
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the component cannot be loaded, the linker cannot
+    /// be created, or the service cannot be started.
+    pub fn start(self, wasm: PathBuf) -> Result<()> {
         // --------------------------------------
         // Step 1: compile component (~2ms)
         // --------------------------------------
@@ -168,6 +208,7 @@ pub type Metadata = Box<dyn Any + Send>;
 
 /// Ctx implements messaging host interfaces. In addition, it holds the host-defined
 /// state used by the wasm runtime [`Store`].
+#[allow(clippy::struct_field_names)]
 pub struct Ctx {
     table: ResourceTable,
     ctx: WasiCtx,
@@ -197,6 +238,7 @@ impl Default for Ctx {
 
 impl Ctx {
     /// Create a new Ctx instance.
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
