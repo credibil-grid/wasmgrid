@@ -76,7 +76,7 @@ members = [
   "examples/jsondb",
   "examples/keyvalue",
   "examples/messaging",
-  "examples/p2p",
+  # "examples/p2p",
   "examples/rpc/client",
   "examples/rpc/server",
   "examples/vault",

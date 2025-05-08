@@ -76,25 +76,25 @@ pub mod messaging {
     }
 }
 
-/// Bindings for the `wasi:p2p` world.
-mod p2p_bindings {
-    wit_bindgen::generate!({
-        path: "../../wit",
-        world: "p2p",
-        with: {
-            "wasi:p2p/types@0.1.0-draft": generate,
-            "wasi:p2p/container@0.1.0-draft": generate,
-        },
-        additional_derives: [
-            serde::Serialize,
-            serde::Deserialize,
-        ]
-    });
-}
+// /// Bindings for the `wasi:p2p` world.
+// mod p2p_bindings {
+//     wit_bindgen::generate!({
+//         path: "../../wit",
+//         world: "p2p",
+//         with: {
+//             "wasi:p2p/types@0.1.0-draft": generate,
+//             "wasi:p2p/container@0.1.0-draft": generate,
+//         },
+//         additional_derives: [
+//             serde::Serialize,
+//             serde::Deserialize,
+//         ]
+//     });
+// }
 
-pub mod p2p {
-    pub use crate::p2p_bindings::wasi::p2p::*;
-}
+// pub mod p2p {
+//     pub use crate::p2p_bindings::wasi::p2p::*;
+// }
 
 /// Bindings for the `wasi:wrpc` world.
 mod rpc_bindings {
