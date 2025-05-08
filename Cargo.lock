@@ -4646,6 +4646,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "runtime"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "bytes",
+ "http 1.3.1",
+ "serde",
+ "serde_json",
+ "serde_urlencoded",
+ "tokio",
+ "tracing",
+ "wasi 0.14.2+wasi-0.2.4",
+ "wasmtime",
+ "wasmtime-wasi",
+]
+
+[[package]]
 name = "rustc-demangle"
 version = "0.1.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6506,6 +6524,7 @@ dependencies = [
  "k256",
  "mongodb",
  "nkeys",
+ "runtime",
  "serde",
  "serde_json",
  "sha2",
