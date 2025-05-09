@@ -28,10 +28,10 @@ pub trait Service: Sync + Send {
 /// Service represents a particular runtime service depended on by wasm
 /// components. For example, an HTTP server or a message broker.
 pub trait Instantiator: Service + Sync + Send {
-    // type Ctx: IoView + WasiView;
+    type Resources;
 
     /// Start and run the runtime.
-    fn run(&self, _: InstancePre<Self::Ctx>) -> impl Future<Output = Result<()>> + Send {
-        async { Ok(()) }
-    }
+    fn run(
+        &self, pre: InstancePre<Self::Ctx>, resources: Self::Resources,
+    ) -> impl Future<Output = Result<()>> + Send;
 }

@@ -20,8 +20,8 @@ pub async fn main() -> wasmtime::Result<()> {
             return Ok(());
         }
         runtime::Command::Run { wasm, compile } => {
-            let ctx = wasmgrid::Ctx::new().await;
-            let mut rt = runtime::Runtime::new(wasm, compile, ctx)?;
+            // let ctx = wasmgrid::Ctx::new().await;
+            let mut rt = runtime::Runtime::new(wasm, compile)?;
 
             if cfg!(feature = "http") {
                 let http = http::new();
@@ -34,9 +34,11 @@ pub async fn main() -> wasmtime::Result<()> {
 
             rt.instantiate().await?;
 
+            let client = async_nats::ConnectOptions::new().connect("demo.nats.io").await.unwrap();
+
             if cfg!(feature = "http") {
                 let http = http::new();
-                rt.run(http)?;
+                rt.run(http, client)?;
             }
 
             // wait for shutdown signal

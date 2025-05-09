@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use anyhow::Result;
 use wasmtime::component::{Component, InstancePre, Linker};
-use wasmtime::{Config, Engine, Store};
+use wasmtime::{Config, Engine};
 use wasmtime_wasi::WasiView;
 
 use crate::compiler;
@@ -15,7 +15,6 @@ pub struct Runtime<T> {
     pub engine: Engine,
     pub component: Component,
     pub linker: Linker<T>,
-    pub store: Store<T>,
     instance_pre: Option<InstancePre<T>>,
 }
 
@@ -26,7 +25,7 @@ impl<T: WasiView + 'static> Runtime<T> {
     ///
     /// Returns an error if the component cannot be loaded, the linker cannot
     /// be created, or the service cannot be started.
-    pub fn new(wasm: PathBuf, compile: bool, ctx: T) -> Result<Self> {
+    pub fn new(wasm: PathBuf, compile: bool) -> Result<Self> {
         tracing::trace!("initializing");
 
         // start engine
@@ -34,8 +33,6 @@ impl<T: WasiView + 'static> Runtime<T> {
         config.async_support(true);
         let engine = Engine::new(&config)?;
         tracing::trace!("engine started");
-
-        let store = Store::new(&engine, ctx);
 
         // load component (compiling if required)
         let component = if compile {
@@ -55,7 +52,6 @@ impl<T: WasiView + 'static> Runtime<T> {
             linker,
             component,
             instance_pre: None,
-            store,
         })
     }
 
@@ -85,9 +81,6 @@ impl<T: WasiView + 'static> Runtime<T> {
 
     /// Resolve component imports to linked services
     pub async fn instantiate(&mut self) -> Result<()> {
-        // self.instance =
-        //     Some(self.linker.instantiate_async(&mut self.store, &self.component).await?);
-
         self.instance_pre = Some(self.linker.instantiate_pre(&self.component)?);
         Ok(())
     }
@@ -97,13 +90,10 @@ impl<T: WasiView + 'static> Runtime<T> {
     /// # Errors
     ///
     /// TODO: document errors
-    pub fn run(&mut self, service: impl Instantiator<Ctx = T> + 'static) -> Result<()> {
+    pub  fn run<R:Send+'static>(
+        &mut self, service: impl Instantiator<Ctx = T, Resources = R> + 'static, resources: R,
+    ) -> Result<()> {
         let namespace = service.namespace();
-
-        // if !self.required.contains(&namespace) {
-        //     tracing::warn!("skipping {namespace} service");
-        //     return Ok(());
-        // }
 
         let instance_pre = self
             .instance_pre
@@ -112,7 +102,8 @@ impl<T: WasiView + 'static> Runtime<T> {
 
         tokio::spawn(async move {
             tracing::debug!("starting {namespace}");
-            if let Err(e) = service.run(instance_pre).await {
+
+            if let Err(e) = service.run(instance_pre, resources).await {
                 tracing::error!("error starting {namespace}: {e}");
             }
         });

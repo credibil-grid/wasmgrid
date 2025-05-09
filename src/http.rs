@@ -53,8 +53,10 @@ impl runtime::Service for Service {
 }
 
 impl runtime::Instantiator for Service {
+    type Resources = async_nats::Client;
+
     /// Provide http proxy service the specified wasm component.
-    async fn run(&self, pre: InstancePre<Ctx>) -> Result<()> {
+    async fn run(&self, pre: InstancePre<Self::Ctx>, resources: Self::Resources) -> Result<()> {
         let listener = TcpListener::bind(&self.addr).await?;
         tracing::info!("http server listening on: {}", listener.local_addr()?);
 
@@ -63,11 +65,15 @@ impl runtime::Instantiator for Service {
             let (stream, _) = listener.accept().await?;
             let io = TokioIo::new(stream);
             let proxy_pre = ProxyPre::new(pre.clone())?;
+            let cli = resources.clone();
 
             tokio::spawn(async move {
                 if let Err(e) = http1::Builder::new()
                     .keep_alive(true)
-                    .serve_connection(io, service_fn(|req| handle_request(proxy_pre.clone(), req)))
+                    .serve_connection(
+                        io,
+                        service_fn(|req| handle_request(proxy_pre.clone(), cli.clone(), req)),
+                    )
                     .await
                 {
                     tracing::error!("connection error: {e:?}");
@@ -79,7 +85,7 @@ impl runtime::Instantiator for Service {
 
 // Forward request to the wasm Guest.
 async fn handle_request(
-    proxy_pre: ProxyPre<Ctx>, mut request: Request<Incoming>,
+    proxy_pre: ProxyPre<Ctx>, nats_client: async_nats::Client, mut request: Request<Incoming>,
 ) -> Result<hyper::Response<HyperOutgoingBody>> {
     let (sender, receiver) = tokio::sync::oneshot::channel();
 
@@ -138,10 +144,9 @@ async fn handle_request(
         };
 
         // prepare wasmtime http request and response
-        let mut store = Store::new(proxy_pre.engine(), Ctx::new().await);
+        let mut store = Store::new(proxy_pre.engine(), Ctx::new(nats_client).await);
         store.limiter(|t| &mut t.limits);
 
-        store.data_mut().data.insert("wasi_http_ctx".into(), Box::new(WasiHttpCtx::new()));
         let incoming = store.data_mut().new_incoming_request(scheme, req)?;
         let outgoing = store.data_mut().new_response_outparam(sender)?;
 
@@ -173,6 +178,6 @@ async fn handle_request(
 
 impl WasiHttpView for Ctx {
     fn ctx(&mut self) -> &mut WasiHttpCtx {
-        self.data.get_mut("wasi_http_ctx").unwrap().downcast_mut::<WasiHttpCtx>().unwrap()
+        &mut self.http_ctx
     }
 }
