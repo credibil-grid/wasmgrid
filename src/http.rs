@@ -26,7 +26,7 @@ use wasmtime_wasi_http::body::HyperOutgoingBody;
 use wasmtime_wasi_http::io::TokioIo;
 use wasmtime_wasi_http::{WasiHttpCtx, WasiHttpView};
 
-use crate::service::Ctx;
+use crate::Ctx;
 
 const DEF_HTTP_ADDR: &str = "0.0.0.0:8080";
 
@@ -34,6 +34,7 @@ pub struct Service {
     pub addr: String,
 }
 
+#[must_use]
 pub fn new() -> Service {
     let addr = env::var("HTTP_ADDR").unwrap_or_else(|_| DEF_HTTP_ADDR.into());
     Service { addr }

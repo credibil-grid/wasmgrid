@@ -7,17 +7,17 @@ use clap::{Parser, Subcommand};
 use dotenv::dotenv;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 #[cfg(feature = "http")]
-use wasmgrid::service::http;
+use wasmgrid::http;
 // #[cfg(feature = "jsondb")]
-// use wasmgrid::service::jsondb;
+// use wasmgrid::jsondb;
 #[cfg(feature = "keyvalue")]
-use wasmgrid::service::keyvalue;
+use wasmgrid::keyvalue;
 // #[cfg(feature = "messaging")]
-// use wasmgrid::service::messaging;
+// use wasmgrid::messaging;
 // #[cfg(feature = "rpc")]
-// use wasmgrid::service::rpc;
+// use wasmgrid::rpc;
 // #[cfg(feature = "vault")]
-// use crate::service::vault;
+// use crate::vault;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]

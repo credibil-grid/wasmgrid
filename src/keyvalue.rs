@@ -44,7 +44,7 @@ use wasmtime_wasi::IoView;
 use self::generated::Keyvalue;
 use self::generated::wasi::keyvalue;
 use self::generated::wasi::keyvalue::store::KeyResponse;
-use crate::service::Ctx;
+use crate::Ctx;
 
 pub type Bucket = async_nats::jetstream::kv::Store;
 
@@ -76,6 +76,7 @@ pub struct Service {
     seed: Option<String>,
 }
 
+#[must_use]
 pub fn new() -> Service {
     Service {
         addr: env::var("NATS_ADDR").unwrap_or_else(|_| DEF_NATS_ADDR.into()),
