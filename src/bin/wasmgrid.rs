@@ -6,7 +6,6 @@ use anyhow::Error;
 use clap::{Parser, Subcommand};
 use dotenv::dotenv;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
-use wasmgrid::Runtime;
 #[cfg(feature = "http")]
 use wasmgrid::service::http;
 // #[cfg(feature = "jsondb")]
@@ -64,11 +63,11 @@ pub async fn main() -> wasmtime::Result<()> {
 
     match Cli::parse().command {
         Command::Compile { wasm, output } => {
-            wasmgrid::compile(&wasm, output)?;
+            runtime::compile(&wasm, output)?;
             return Ok(());
         }
         Command::Run { wasm, compile } => {
-            let mut rt = Runtime::new(wasm, compile)?;
+            let mut rt = runtime::Runtime::new(wasm, compile)?;
 
             if cfg!(feature = "http") {
                 let http = http::new();

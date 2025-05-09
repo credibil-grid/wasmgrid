@@ -84,7 +84,7 @@ pub fn new() -> Service {
     }
 }
 
-impl crate::Service for Service {
+impl runtime::Service for Service {
     type Ctx = Ctx;
 
     fn namespace(&self) -> &'static str {
