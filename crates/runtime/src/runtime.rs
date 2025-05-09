@@ -158,4 +158,11 @@ impl<T: WasiView + 'static> Runtime<T> {
 
         Ok(())
     }
+
+    /// Wait for shutdown signal.
+    pub async fn shutdown(&self) -> Result<()> {
+        tokio::select! {
+            _ = tokio::signal::ctrl_c() => Ok(()),
+        }
+    }
 }

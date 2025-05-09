@@ -16,6 +16,7 @@ workspace = true
 anyhow.workspace = true
 async-trait.workspace = true
 bytes = "1.10.1"
+clap = { version = "4.5.37", features = ["derive"] }
 http.workspace = true
 serde.workspace = true
 serde_json.workspace = true

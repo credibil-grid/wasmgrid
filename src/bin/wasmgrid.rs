@@ -1,10 +1,13 @@
 //! # Wasmgrid CLI
 
-use std::path::PathBuf;
-
-use anyhow::Error;
-use clap::{Parser, Subcommand};
 use dotenv::dotenv;
+// #[cfg(feature = "messaging")]
+// use wasmgrid::messaging;
+// #[cfg(feature = "rpc")]
+// use wasmgrid::rpc;
+// #[cfg(feature = "vault")]
+// use crate::vault;
+use runtime::{Cli, Command, Parser};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 #[cfg(feature = "http")]
 use wasmgrid::http;
@@ -12,44 +15,6 @@ use wasmgrid::http;
 // use wasmgrid::jsondb;
 #[cfg(feature = "keyvalue")]
 use wasmgrid::keyvalue;
-// #[cfg(feature = "messaging")]
-// use wasmgrid::messaging;
-// #[cfg(feature = "rpc")]
-// use wasmgrid::rpc;
-// #[cfg(feature = "vault")]
-// use crate::vault;
-
-#[derive(Parser)]
-#[command(version, about, long_about = None)]
-struct Cli {
-    #[command(subcommand)]
-    command: Command,
-}
-
-#[derive(Subcommand)]
-enum Command {
-    /// Compile the specified wasm32-wasip2 component.
-    Compile {
-        /// The path to the wasm file to compile.
-        wasm: PathBuf,
-
-        /// An optional output directory. If not set, the compiled component
-        /// will be written to the same location as the input file.
-        #[arg(short, long)]
-        output: Option<PathBuf>,
-    },
-
-    /// Run the specified wasm guest.
-    Run {
-        /// The path to the wasm file to run.
-        wasm: PathBuf,
-
-        /// The wasm file requires compiling (leave unset if the file is
-        /// pre-compiled).
-        #[arg(short, long, default_value_t = false)]
-        compile: bool,
-    },
-}
 
 #[tokio::main]
 pub async fn main() -> wasmtime::Result<()> {
@@ -90,14 +55,8 @@ pub async fn main() -> wasmtime::Result<()> {
             //     rt.link(&rpc)?.start(rpc)?;
             // }
 
-            shutdown().await
+            // wait for shutdown signal
+            rt.shutdown().await
         }
-    }
-}
-
-// Wait for shutdown signal.
-async fn shutdown() -> Result<(), Error> {
-    tokio::select! {
-        _ = tokio::signal::ctrl_c() => Ok(()),
     }
 }
