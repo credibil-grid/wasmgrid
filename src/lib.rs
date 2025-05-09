@@ -13,8 +13,10 @@ use std::path::PathBuf;
 use anyhow::{Result, anyhow};
 use wasmtime::component::{Component, Linker};
 use wasmtime::{Config, Engine};
+use wasmtime_wasi::WasiView;
+use wasmtime_wasi_http::WasiHttpView;
 
-use crate::service::{Ctx, Service};
+use crate::service::Service;
 
 /// Compile `wasm32-wasip2` component.
 ///
@@ -68,14 +70,14 @@ fn serialize(wasm: &PathBuf) -> Result<Vec<u8>> {
 }
 
 /// Runtime for a wasm component.
-pub struct Runtime {
+pub struct Runtime<T> {
     engine: Engine,
     component: Component,
-    linker: Linker<Ctx>,
+    linker: Linker<T>,
     required: Vec<&'static str>,
 }
 
-impl Runtime {
+impl<T: WasiView + WasiHttpView + 'static> Runtime<T> {
     /// Create a new Runtime instance.
 
     /// Run the wasm component with the specified service.
@@ -102,7 +104,7 @@ impl Runtime {
         tracing::trace!("component loaded");
 
         // resolve component dependencies
-        let mut linker: Linker<Ctx> = Linker::new(&engine);
+        let mut linker: Linker<T> = Linker::new(&engine);
         wasmtime_wasi::add_to_linker_async(&mut linker)?;
 
         Ok(Self {
@@ -114,7 +116,7 @@ impl Runtime {
     }
 
     /// Add service dependencies to the linker.
-    pub fn link(&mut self, service: &impl Service) -> Result<&Self> {
+    pub fn link(&mut self, service: &impl Service<Ctx = T>) -> Result<&Self> {
         let component_type = self.component.component_type();
         let mut imports = component_type.imports(&self.engine);
         let mut exports = component_type.exports(&self.engine);
@@ -138,7 +140,7 @@ impl Runtime {
     // }
 
     // Initiate service
-    pub fn start(&self, service: impl Service + 'static) -> Result<()> {
+    pub fn start(&self, service: impl Service<Ctx = T> + 'static) -> Result<()> {
         let namespace = service.namespace();
 
         if !self.required.contains(&namespace) {

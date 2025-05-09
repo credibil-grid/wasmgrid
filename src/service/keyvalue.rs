@@ -44,7 +44,7 @@ use wasmtime_wasi::IoView;
 use self::generated::Keyvalue;
 use self::generated::wasi::keyvalue;
 use self::generated::wasi::keyvalue::store::KeyResponse;
-use crate::Ctx;
+use crate::service::Ctx;
 
 pub type Bucket = async_nats::jetstream::kv::Store;
 
@@ -85,16 +85,18 @@ pub fn new() -> Service {
 }
 
 impl crate::Service for Service {
+    type Ctx = Ctx;
+
     fn namespace(&self) -> &'static str {
         "wasi:keyvalue"
     }
 
-    fn add_to_linker(&self, linker: &mut Linker<Ctx>) -> anyhow::Result<()> {
+    fn add_to_linker(&self, linker: &mut Linker<Self::Ctx>) -> anyhow::Result<()> {
         Keyvalue::add_to_linker(linker, |t| t)
     }
 
     /// Provide key/value storage service for the specified wasm component.
-    async fn start(&self, _: InstancePre<Ctx>) -> anyhow::Result<()> {
+    async fn start(&self, _: InstancePre<Self::Ctx>) -> anyhow::Result<()> {
         // build connection options
         let opts = if let Some(jwt) = &self.jwt
             && let Some(seed) = &self.seed
