@@ -71,6 +71,18 @@ impl<'a> KeyValue<'a> {
     }
 }
 
+pub struct Service;
+
+impl runtime::Linkable for Service {
+    type Ctx = Ctx;
+
+    fn add_to_linker(&self,linker: &mut Linker<Self::Ctx>) -> anyhow::Result<()> {
+        add_to_linker(linker, |c: &mut Ctx| KeyValue::new(&c.nats_client, &mut c.table))?;
+        tracing::trace!("added to linker");
+        Ok(())
+    }
+}
+
 /// Add all the `wasi-keyvalue` world's interfaces to a [`Linker`].
 fn add_to_linker<T: Send>(
     l: &mut Linker<T>, f: impl Fn(&mut T) -> KeyValue<'_> + Send + Sync + Copy + 'static,
@@ -78,25 +90,6 @@ fn add_to_linker<T: Send>(
     keyvalue::store::add_to_linker_get_host(l, f)?;
     keyvalue::atomics::add_to_linker_get_host(l, f)?;
     keyvalue::batch::add_to_linker_get_host(l, f)
-}
-
-pub struct Service;
-
-#[must_use]
-pub fn new() -> Service {
-    Service
-}
-
-impl runtime::Service for Service {
-    type Ctx = Ctx;
-
-    fn namespace(&self) -> &'static str {
-        "wasi:keyvalue"
-    }
-
-    fn add_to_linker(&self, linker: &mut Linker<Self::Ctx>) -> anyhow::Result<()> {
-        add_to_linker(linker, |c: &mut Ctx| KeyValue::new(&c.nats_client, &mut c.table))
-    }
 }
 
 // Implement the [`wasi_keyvalue::KeyValueView`]` trait for  KeyValue<'_>.

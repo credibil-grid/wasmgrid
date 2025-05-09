@@ -3,23 +3,21 @@
 use std::path::PathBuf;
 
 use anyhow::Result;
-use wasmtime::component::{Component, InstancePre, Linker};
+use wasmtime::component::{Component, Linker};
 use wasmtime::{Config, Engine};
 use wasmtime_wasi::WasiView;
 
 use crate::compiler;
-use crate::service::{Instantiator, Service};
+use crate::service::{Linkable, Runnable};
 
 /// Runtime for a wasm component.
 pub struct Runtime<T> {
-    pub engine: Engine,
     pub component: Component,
     pub linker: Linker<T>,
-    instance_pre: Option<InstancePre<T>>,
 }
 
 impl<T: WasiView + 'static> Runtime<T> {
-    /// Create a new Runtime instance.
+    /// Create a new Runtime instance for the specified component.
     ///
     /// # Errors
     ///
@@ -32,7 +30,6 @@ impl<T: WasiView + 'static> Runtime<T> {
         let mut config = Config::new();
         config.async_support(true);
         let engine = Engine::new(&config)?;
-        tracing::trace!("engine started");
 
         // load component (compiling if required)
         let component = if compile {
@@ -41,73 +38,38 @@ impl<T: WasiView + 'static> Runtime<T> {
         } else {
             unsafe { Component::deserialize_file(&engine, wasm)? }
         };
-        tracing::trace!("component loaded");
 
-        // resolve component dependencies
+        // resolve dependencies
         let mut linker: Linker<T> = Linker::new(&engine);
         wasmtime_wasi::add_to_linker_async(&mut linker)?;
 
-        Ok(Self {
-            engine,
-            linker,
-            component,
-            instance_pre: None,
-        })
+        tracing::trace!("initialized");
+        Ok(Self { component, linker })
     }
 
-    /// Add service dependencies to the linker.
+    /// Add each service's dependency linker.
     ///
     /// # Errors
     ///
     /// Returns an error if the service cannot be added to the linker.
-    pub fn link(&mut self, service: &impl Service<Ctx = T>) -> Result<()> {
-        // let component_type = self.component.component_type();
-        // let mut imports = component_type.imports(&self.engine);
-        // let mut exports = component_type.exports(&self.engine);
-
-        // let namespace = service.namespace();
-        // tracing::trace!("linking {namespace} service");
-
-        // if imports.any(|e| e.0.starts_with(namespace))
-        //     || exports.any(|e| e.0.starts_with(namespace))
-        // {
-        service.add_to_linker(&mut self.linker)?;
-        // self.required.push(namespace);
-        tracing::trace!("{} linked", service.namespace());
-        // }
-
-        Ok(())
+    pub fn link(&mut self, service: &impl Linkable<Ctx = T>) -> Result<()> {
+        service.add_to_linker(&mut self.linker)
     }
 
-    /// Resolve component imports to linked services
-    pub async fn instantiate(&mut self) -> Result<()> {
-        self.instance_pre = Some(self.linker.instantiate_pre(&self.component)?);
-        Ok(())
-    }
-
-    /// Initiate service.
+    /// Initiate the service on it's own thread.
     ///
     /// # Errors
     ///
     /// TODO: document errors
-    pub  fn run<R:Send+'static>(
-        &mut self, service: impl Instantiator<Ctx = T, Resources = R> + 'static, resources: R,
+    pub fn run<R: Send + 'static>(
+        &mut self, service: impl Runnable<Ctx = T, Resources = R> + 'static, resources: R,
     ) -> Result<()> {
-        let namespace = service.namespace();
-
-        let instance_pre = self
-            .instance_pre
-            .clone()
-            .ok_or_else(|| anyhow::anyhow!("service {namespace} not instantiated"))?;
-
+        let instance_pre = self.linker.instantiate_pre(&self.component)?;
         tokio::spawn(async move {
-            tracing::debug!("starting {namespace}");
-
             if let Err(e) = service.run(instance_pre, resources).await {
-                tracing::error!("error starting {namespace}: {e}");
+                tracing::error!("error starting service: {e}");
             }
         });
-
         Ok(())
     }
 

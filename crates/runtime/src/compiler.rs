@@ -51,9 +51,9 @@ pub fn compile(wasm: &PathBuf, output: Option<PathBuf>) -> Result<()> {
 }
 
 /// Compile and serialize a wasm component.
-/// 
+///
 /// # Errors
-/// 
+///
 /// Returns an error if the WASM component cannot be loaded from the specified
 /// path, cannot be compiled, or cannot be serialized.
 pub fn serialize(wasm: &PathBuf) -> Result<Vec<u8>> {

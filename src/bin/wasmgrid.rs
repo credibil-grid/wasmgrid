@@ -20,25 +20,19 @@ pub async fn main() -> wasmtime::Result<()> {
             return Ok(());
         }
         runtime::Command::Run { wasm, compile } => {
-            // let ctx = wasmgrid::Ctx::new().await;
             let mut rt = runtime::Runtime::new(wasm, compile)?;
 
             if cfg!(feature = "http") {
-                let http = http::new();
-                rt.link(&http)?;
+                rt.link(&http::Service)?;
             }
             if cfg!(feature = "keyvalue") {
-                let keyvalue = keyvalue::new();
-                rt.link(&keyvalue)?;
+                rt.link(&keyvalue::Service)?;
             }
-
-            rt.instantiate().await?;
 
             let client = async_nats::ConnectOptions::new().connect("demo.nats.io").await.unwrap();
 
             if cfg!(feature = "http") {
-                let http = http::new();
-                rt.run(http, client)?;
+                rt.run(http::Service, client)?;
             }
 
             // wait for shutdown signal
