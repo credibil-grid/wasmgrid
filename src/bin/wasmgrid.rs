@@ -20,7 +20,9 @@ pub async fn main() -> wasmtime::Result<()> {
             return Ok(());
         }
         runtime::Command::Run { wasm, compile } => {
-            let mut rt = runtime::Runtime::new(wasm, compile)?;
+            let compiled = if compile { runtime::compile(&wasm, None)? } else { wasm };
+
+            let mut rt = runtime::Runtime::new(compiled)?;
 
             if cfg!(feature = "http") {
                 rt.link(&http::Service)?;
@@ -35,7 +37,6 @@ pub async fn main() -> wasmtime::Result<()> {
                 rt.run(http::Service, client)?;
             }
 
-            // wait for shutdown signal
             rt.shutdown().await
         }
     }

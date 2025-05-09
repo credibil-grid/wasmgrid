@@ -7,7 +7,6 @@ use wasmtime::component::{Component, Linker};
 use wasmtime::{Config, Engine};
 use wasmtime_wasi::WasiView;
 
-use crate::compiler;
 use crate::service::{Linkable, Runnable};
 
 /// Runtime for a wasm component.
@@ -23,21 +22,14 @@ impl<T: WasiView + 'static> Runtime<T> {
     ///
     /// Returns an error if the component cannot be loaded, the linker cannot
     /// be created, or the service cannot be started.
-    pub fn new(wasm: PathBuf, compile: bool) -> Result<Self> {
+    pub fn new(wasm: PathBuf) -> Result<Self> {
         tracing::trace!("initializing");
 
-        // start engine
+        // load compiled component
         let mut config = Config::new();
         config.async_support(true);
         let engine = Engine::new(&config)?;
-
-        // load component (compiling if required)
-        let component = if compile {
-            let serialized = compiler::serialize(&wasm)?;
-            unsafe { Component::deserialize(&engine, &serialized)? }
-        } else {
-            unsafe { Component::deserialize_file(&engine, wasm)? }
-        };
+        let component = unsafe { Component::deserialize_file(&engine, wasm)? };
 
         // resolve dependencies
         let mut linker: Linker<T> = Linker::new(&engine);

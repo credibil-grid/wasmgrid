@@ -21,7 +21,7 @@ use wasmtime::{Config, Engine};
 /// Returns an error if the WASM component cannot be loaded from the specified
 /// path, cannot be compiled, or cannot be serialized to the specified output
 /// directory.
-pub fn compile(wasm: &PathBuf, output: Option<PathBuf>) -> Result<()> {
+pub fn compile(wasm: &PathBuf, output: Option<PathBuf>) -> Result<PathBuf> {
     let Some(file_name) = wasm.file_name() else {
         return Err(anyhow!("invalid file name"));
     };
@@ -44,10 +44,10 @@ pub fn compile(wasm: &PathBuf, output: Option<PathBuf>) -> Result<()> {
         fs::create_dir_all(dir)?;
     }
 
-    let mut file = File::create(out_path)?;
+    let mut file = File::create(&out_path)?;
     file.write_all(&serialized)?;
 
-    Ok(())
+    Ok(out_path)
 }
 
 /// Compile and serialize a wasm component.
