@@ -3,7 +3,7 @@
 use std::path::PathBuf;
 
 use anyhow::Result;
-use wasmtime::component::{Component, Linker};
+use wasmtime::component::{Component, InstancePre, Linker};
 use wasmtime::{Config, Engine};
 use wasmtime_wasi::WasiView;
 
@@ -16,6 +16,7 @@ pub struct Runtime<T> {
     component: Component,
     linker: Linker<T>,
     required: Vec<&'static str>,
+    instance_pre: Option<InstancePre<T>>,
 }
 
 impl<T: WasiView + 'static> Runtime<T> {
@@ -52,6 +53,7 @@ impl<T: WasiView + 'static> Runtime<T> {
             linker,
             component,
             required: Vec::new(),
+            instance_pre: None,
         })
     }
 
@@ -60,12 +62,13 @@ impl<T: WasiView + 'static> Runtime<T> {
     /// # Errors
     ///
     /// Returns an error if the service cannot be added to the linker.
-    pub fn link(&mut self, service: &impl Service<Ctx = T>) -> Result<&Self> {
+    pub fn link(&mut self, service: &impl Service<Ctx = T>) -> Result<()> {
         let component_type = self.component.component_type();
         let mut imports = component_type.imports(&self.engine);
         let mut exports = component_type.exports(&self.engine);
 
         let namespace = service.namespace();
+        tracing::trace!("linking {namespace} service");
 
         if imports.any(|e| e.0.starts_with(namespace))
             || exports.any(|e| e.0.starts_with(namespace))
@@ -75,13 +78,14 @@ impl<T: WasiView + 'static> Runtime<T> {
             tracing::trace!("{namespace} service linked");
         }
 
-        Ok(self)
+        Ok(())
     }
 
-    // pub fn instantiate(&self)->Result<()>{
-    //     let instance_pre = self.linker.instantiate_pre(&self.component)?;
-    //     Ok(())
-    // }
+    /// Resolve component imports to linked services
+    pub fn instantiate(&mut self) -> Result<()> {
+        self.instance_pre = Some(self.linker.instantiate_pre(&self.component)?);
+        Ok(())
+    }
 
     /// Initiate service.
     ///
@@ -96,8 +100,10 @@ impl<T: WasiView + 'static> Runtime<T> {
             return Ok(());
         }
 
-        // resolve component imports to linked services
-        let instance_pre = self.linker.instantiate_pre(&self.component)?;
+        let instance_pre = self
+            .instance_pre
+            .clone()
+            .ok_or_else(|| anyhow::anyhow!("service {namespace} not instantiated"))?;
 
         tokio::spawn(async move {
             tracing::debug!("starting {namespace}");
@@ -110,9 +116,9 @@ impl<T: WasiView + 'static> Runtime<T> {
     }
 
     /// Wait for a shutdown signal from the OS.
-    /// 
+    ///
     /// # Errors
-    /// 
+    ///
     /// Returns an error if there is an issue processing the shutdown signal.
     pub async fn shutdown(&self) -> Result<()> {
         tokio::select! {

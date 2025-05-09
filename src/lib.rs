@@ -15,7 +15,7 @@ pub mod keyvalue;
 use std::any::Any;
 use std::collections::HashMap;
 
-// use wasmtime_wasi_http::WasiHttpView;
+
 use runtime::{Errout, Stdout};
 use wasmtime::StoreLimits;
 use wasmtime_wasi::{IoView, ResourceTable, WasiCtx, WasiCtxBuilder, WasiView};
@@ -29,11 +29,13 @@ pub struct Ctx {
     table: ResourceTable,
     ctx: WasiCtx,
     pub limits: StoreLimits,
-    pub metadata: HashMap<String, Metadata>,
+    pub data: HashMap<String, Metadata>,
 }
 
-impl Default for Ctx {
-    fn default() -> Self {
+impl Ctx {
+    /// Create a new Ctx instance.
+    #[must_use]
+    pub fn new() -> Self {
         let mut ctx = WasiCtxBuilder::new();
         ctx.inherit_args();
         ctx.inherit_env();
@@ -45,18 +47,14 @@ impl Default for Ctx {
             table: ResourceTable::default(),
             ctx: ctx.build(),
             limits: StoreLimits::default(),
-
-            // TODO: wrap Hashmap in custom type to create accessors
-            metadata: HashMap::default(),
+            data: HashMap::default(),
         }
     }
 }
 
-impl Ctx {
-    /// Create a new Ctx instance.
-    #[must_use]
-    pub fn new() -> Self {
-        Self::default()
+impl Default for Ctx {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

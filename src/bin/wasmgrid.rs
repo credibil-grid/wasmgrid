@@ -24,11 +24,22 @@ pub async fn main() -> wasmtime::Result<()> {
 
             if cfg!(feature = "http") {
                 let http = http::new();
-                rt.link(&http)?.start(http)?;
+                rt.link(&http)?;
             }
             if cfg!(feature = "keyvalue") {
                 let keyvalue = keyvalue::new();
-                rt.link(&keyvalue)?.start(keyvalue)?;
+                rt.link(&keyvalue)?;
+            }
+
+            rt.instantiate()?;
+
+            if cfg!(feature = "http") {
+                let http = http::new();
+                rt.start(http)?;
+            }
+            if cfg!(feature = "keyvalue") {
+                let keyvalue = keyvalue::new();
+                rt.start(keyvalue)?;
             }
 
             // wait for shutdown signal

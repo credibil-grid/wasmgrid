@@ -139,7 +139,7 @@ async fn handle_request(
         let mut store = Store::new(proxy_pre.engine(), Ctx::new());
         store.limiter(|t| &mut t.limits);
 
-        store.data_mut().metadata.insert("wasi_http_ctx".into(), Box::new(WasiHttpCtx::new()));
+        store.data_mut().data.insert("wasi_http_ctx".into(), Box::new(WasiHttpCtx::new()));
         let incoming = store.data_mut().new_incoming_request(scheme, req)?;
         let outgoing = store.data_mut().new_response_outparam(sender)?;
 
@@ -171,6 +171,6 @@ async fn handle_request(
 
 impl WasiHttpView for Ctx {
     fn ctx(&mut self) -> &mut WasiHttpCtx {
-        self.metadata.get_mut("wasi_http_ctx").unwrap().downcast_mut::<WasiHttpCtx>().unwrap()
+        self.data.get_mut("wasi_http_ctx").unwrap().downcast_mut::<WasiHttpCtx>().unwrap()
     }
 }
