@@ -24,32 +24,22 @@ mod generated {
         trappable_error_type: {
             "wasi:keyvalue/store/error" => Error,
         },
-        // trappable_error_type: {
-        //     "wasi:keyvalue/keyvalue-types/error" => Error,
-        // },
     });
 }
 
-use std::env;
-use std::sync::{Arc, OnceLock};
 use std::time::Duration;
 
 use anyhow::{Result, anyhow};
-use async_nats::{AuthError, ConnectOptions, jetstream};
+use async_nats::jetstream::{self, kv};
 use futures::TryStreamExt;
-use jetstream::kv;
-use wasmtime::component::{InstancePre, Linker, Resource, ResourceTableError, bindgen};
+use wasmtime::component::{Linker, Resource, ResourceTableError, bindgen};
 use wasmtime_wasi::ResourceTable;
 
-// use self::generated::Keyvalue;
 use self::generated::wasi::keyvalue;
 use self::generated::wasi::keyvalue::store::KeyResponse;
 use crate::Ctx;
 
 pub type Bucket = async_nats::jetstream::kv::Store;
-
-const DEF_NATS_ADDR: &str = "demo.nats.io";
-static JETSTREAM: OnceLock<jetstream::Context> = OnceLock::new();
 
 #[derive(Debug)]
 pub enum Error {
@@ -70,19 +60,14 @@ impl From<anyhow::Error> for Error {
     }
 }
 
-pub struct Service {
-    addr: String,
-    jwt: Option<String>,
-    seed: Option<String>,
-}
-
 pub struct KeyValue<'a> {
+    client: &'a async_nats::Client,
     table: &'a mut ResourceTable,
 }
 
 impl<'a> KeyValue<'a> {
-    pub fn new(table: &'a mut ResourceTable) -> Self {
-        Self { table }
+    pub fn new(client: &'a async_nats::Client, table: &'a mut ResourceTable) -> Self {
+        Self { client, table }
     }
 }
 
@@ -95,13 +80,11 @@ fn add_to_linker<T: Send>(
     keyvalue::batch::add_to_linker_get_host(l, f)
 }
 
+pub struct Service;
+
 #[must_use]
 pub fn new() -> Service {
-    Service {
-        addr: env::var("NATS_ADDR").unwrap_or_else(|_| DEF_NATS_ADDR.into()),
-        jwt: env::var("NATS_JWT").ok(),
-        seed: env::var("NATS_SEED").ok(),
-    }
+    Service
 }
 
 impl runtime::Service for Service {
@@ -112,31 +95,7 @@ impl runtime::Service for Service {
     }
 
     fn add_to_linker(&self, linker: &mut Linker<Self::Ctx>) -> anyhow::Result<()> {
-        add_to_linker(linker, |c: &mut Ctx| KeyValue::new(&mut c.table))
-    }
-
-    /// Provide key/value storage service for the specified wasm component.
-    async fn start(&self, _: InstancePre<Self::Ctx>) -> anyhow::Result<()> {
-        // build connection options
-        let opts = if let Some(jwt) = &self.jwt
-            && let Some(seed) = &self.seed
-        {
-            let key_pair = Arc::new(nkeys::KeyPair::from_seed(seed)?);
-            ConnectOptions::with_jwt(jwt.clone(), move |nonce| {
-                let key_pair = key_pair.clone();
-                async move { key_pair.sign(&nonce).map_err(AuthError::new) }
-            })
-            .name("wasmgrid")
-        } else {
-            ConnectOptions::new()
-        };
-
-        // create JetStream context and store in global state
-        let client = opts.connect(&self.addr).await?;
-        tracing::info!("connected to JetStream on {}", self.addr);
-        JETSTREAM.get_or_init(|| jetstream::new(client));
-
-        Ok(())
+        add_to_linker(linker, |c: &mut Ctx| KeyValue::new(&c.nats_client, &mut c.table))
     }
 }
 
@@ -146,9 +105,7 @@ impl keyvalue::store::Host for KeyValue<'_> {
     async fn open(&mut self, identifier: String) -> Result<Resource<Bucket>, Error> {
         tracing::trace!("store::Host::open {identifier}");
 
-        let Some(jetstream) = JETSTREAM.get() else {
-            return Err(anyhow!("JetStream not initialized").into());
-        };
+        let jetstream = jetstream::new(self.client.clone());
 
         let bucket = if let Ok(bucket) = jetstream.get_key_value(&identifier).await {
             bucket
@@ -243,8 +200,7 @@ impl keyvalue::store::HostBucket for KeyValue<'_> {
         Ok(KeyResponse { keys, cursor })
     }
 
-    // LATER: Can a JetStream bucket be closed?
-    async fn drop(&mut self, rep: Resource<Bucket>) -> Result<(), wasmtime::Error> {
+    async fn drop(&mut self, rep: Resource<Bucket>) -> Result<(), anyhow::Error> {
         tracing::trace!("store::HostBucket::drop");
         self.table.delete(rep).map_or_else(|e| Err(anyhow!(e)), |_| Ok(()))
     }

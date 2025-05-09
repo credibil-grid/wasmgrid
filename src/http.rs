@@ -50,9 +50,11 @@ impl runtime::Service for Service {
     fn add_to_linker(&self, linker: &mut Linker<Self::Ctx>) -> Result<()> {
         wasmtime_wasi_http::add_only_http_to_linker_async(linker)
     }
+}
 
+impl runtime::Instantiator for Service {
     /// Provide http proxy service the specified wasm component.
-    async fn start(&self, pre: InstancePre<Ctx>) -> Result<()> {
+    async fn run(&self, pre: InstancePre<Ctx>) -> Result<()> {
         let listener = TcpListener::bind(&self.addr).await?;
         tracing::info!("http server listening on: {}", listener.local_addr()?);
 
@@ -136,7 +138,7 @@ async fn handle_request(
         };
 
         // prepare wasmtime http request and response
-        let mut store = Store::new(proxy_pre.engine(), Ctx::new());
+        let mut store = Store::new(proxy_pre.engine(), Ctx::new().await);
         store.limiter(|t| &mut t.limits);
 
         store.data_mut().data.insert("wasi_http_ctx".into(), Box::new(WasiHttpCtx::new()));

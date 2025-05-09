@@ -15,6 +15,7 @@ pub mod keyvalue;
 use std::any::Any;
 use std::collections::HashMap;
 
+use async_nats::ConnectOptions;
 use runtime::{Errout, Stdout};
 use wasmtime::StoreLimits;
 use wasmtime_wasi::{IoView, ResourceTable, WasiCtx, WasiCtxBuilder, WasiView};
@@ -23,18 +24,18 @@ pub type Metadata = Box<dyn Any + Send>;
 
 /// Ctx implements messaging host interfaces. In addition, it holds the
 /// host-defined state used by the wasm runtime [`Store`].
-#[allow(clippy::struct_field_names)]
 pub struct Ctx {
     table: ResourceTable,
     wasi_ctx: WasiCtx,
     pub limits: StoreLimits,
     pub data: HashMap<String, Metadata>,
+    pub nats_client: async_nats::Client,
 }
 
 impl Ctx {
     /// Create a new Ctx instance.
     #[must_use]
-    pub fn new() -> Self {
+    pub async fn new() -> Self {
         let mut ctx = WasiCtxBuilder::new();
         ctx.inherit_args();
         ctx.inherit_env();
@@ -42,20 +43,23 @@ impl Ctx {
         ctx.stdout(Stdout {});
         ctx.stderr(Errout {});
 
+        let client = ConnectOptions::new().connect("demo.nats.io").await.unwrap();
+
         Self {
             table: ResourceTable::default(),
             wasi_ctx: ctx.build(),
             limits: StoreLimits::default(),
             data: HashMap::default(),
+            nats_client: client,
         }
     }
 }
 
-impl Default for Ctx {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+// impl Default for Ctx {
+//     fn default() -> Self {
+//         Self::new()
+//     }
+// }
 
 impl IoView for Ctx {
     fn table(&mut self) -> &mut ResourceTable {

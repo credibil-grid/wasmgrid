@@ -1,7 +1,7 @@
 //! # Wasmgrid CLI
 
 use dotenv::dotenv;
-use runtime::{Cli, Command, Parser};
+use runtime::{Cli, Parser};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 use wasmgrid::{http, keyvalue};
 
@@ -15,12 +15,13 @@ pub async fn main() -> wasmtime::Result<()> {
     tracing::subscriber::set_global_default(subscriber)?;
 
     match Cli::parse().command {
-        Command::Compile { wasm, output } => {
+        runtime::Command::Compile { wasm, output } => {
             runtime::compile(&wasm, output)?;
             return Ok(());
         }
-        Command::Run { wasm, compile } => {
-            let mut rt = runtime::Runtime::new(wasm, compile)?;
+        runtime::Command::Run { wasm, compile } => {
+            let ctx = wasmgrid::Ctx::new().await;
+            let mut rt = runtime::Runtime::new(wasm, compile, ctx)?;
 
             if cfg!(feature = "http") {
                 let http = http::new();
@@ -31,15 +32,11 @@ pub async fn main() -> wasmtime::Result<()> {
                 rt.link(&keyvalue)?;
             }
 
-            rt.instantiate()?;
+            rt.instantiate().await?;
 
             if cfg!(feature = "http") {
                 let http = http::new();
-                rt.start(http)?;
-            }
-            if cfg!(feature = "keyvalue") {
-                let keyvalue = keyvalue::new();
-                rt.start(keyvalue)?;
+                rt.run(http)?;
             }
 
             // wait for shutdown signal

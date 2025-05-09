@@ -23,7 +23,15 @@ pub trait Service: Sync + Send {
     /// Returns an error if the service encounters an error adding generated
     /// bindings to the linker.
     fn add_to_linker(&self, linker: &mut Linker<Self::Ctx>) -> Result<()>;
+}
+
+/// Service represents a particular runtime service depended on by wasm
+/// components. For example, an HTTP server or a message broker.
+pub trait Instantiator: Service + Sync + Send {
+    // type Ctx: IoView + WasiView;
 
     /// Start and run the runtime.
-    fn start(&self, pre: InstancePre<Self::Ctx>) -> impl Future<Output = Result<()>> + Send;
+    fn run(&self, _: InstancePre<Self::Ctx>) -> impl Future<Output = Result<()>> + Send {
+        async { Ok(()) }
+    }
 }
