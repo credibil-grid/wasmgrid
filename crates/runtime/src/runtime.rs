@@ -53,15 +53,6 @@ pub fn compile(wasm: &PathBuf, output: Option<PathBuf>) -> Result<()> {
     Ok(())
 }
 
-// Compile and serialize a wasm component.
-fn serialize(wasm: &PathBuf) -> Result<Vec<u8>> {
-    let mut config = Config::new();
-    config.async_support(true);
-    let engine = Engine::new(&config)?;
-    let component = Component::from_file(&engine, wasm)?;
-    component.serialize()
-}
-
 /// Runtime for a wasm component.
 pub struct Runtime<T> {
     engine: Engine,
@@ -78,6 +69,8 @@ impl<T: WasiView + 'static> Runtime<T> {
     /// Returns an error if the component cannot be loaded, the linker cannot
     /// be created, or the service cannot be started.
     pub fn new(wasm: PathBuf, compile: bool) -> Result<Self> {
+        tracing::trace!("initializing");
+
         // start engine
         let mut config = Config::new();
         config.async_support(true);
@@ -159,10 +152,19 @@ impl<T: WasiView + 'static> Runtime<T> {
         Ok(())
     }
 
-    /// Wait for shutdown signal.
+    /// Wait for a shutdown signal for the OS.
     pub async fn shutdown(&self) -> Result<()> {
         tokio::select! {
             _ = tokio::signal::ctrl_c() => Ok(()),
         }
     }
+}
+
+// Compile and serialize a wasm component.
+fn serialize(wasm: &PathBuf) -> Result<Vec<u8>> {
+    let mut config = Config::new();
+    config.async_support(true);
+    let engine = Engine::new(&config)?;
+    let component = Component::from_file(&engine, wasm)?;
+    component.serialize()
 }

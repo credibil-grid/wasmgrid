@@ -12,5 +12,4 @@ version = "0.1.0"
 workspace = true
 
 [dependencies]
-serde.workspace = true
 wit-bindgen = "0.42.1"

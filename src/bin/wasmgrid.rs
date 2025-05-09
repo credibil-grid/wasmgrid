@@ -1,3 +1,5 @@
+#![feature(impl_trait_in_assoc_type)]
+
 //! # Wasmgrid CLI
 
 use dotenv::dotenv;
@@ -24,7 +26,8 @@ pub async fn main() -> wasmtime::Result<()> {
     let subscriber =
         FmtSubscriber::builder().with_env_filter(EnvFilter::from_default_env()).finish();
     tracing::subscriber::set_global_default(subscriber)?;
-    tracing::trace!("initializing");
+
+    // runtime::init()?;
 
     match Cli::parse().command {
         Command::Compile { wasm, output } => {
@@ -42,21 +45,10 @@ pub async fn main() -> wasmtime::Result<()> {
                 let keyvalue = keyvalue::new();
                 rt.link(&keyvalue)?.start(keyvalue)?;
             }
-            // if cfg!(feature = "jsondb") {
-            //     let jsondb = jsondb::new();
-            //     rt.link(&jsondb)?.start(jsondb)?;
-            // }
-            // if cfg!(feature = "messaging") {
-            //     let messaging = messaging::new();
-            //     rt.link(&messaging)?.start(messaging)?;
-            // }
-            // if cfg!(feature = "rpc") {
-            //     let rpc = rpc::new();
-            //     rt.link(&rpc)?.start(rpc)?;
-            // }
 
             // wait for shutdown signal
             rt.shutdown().await
         }
     }
 }
+
