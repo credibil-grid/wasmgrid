@@ -3,7 +3,7 @@
 use dotenv::dotenv;
 use runtime::{Cli, Command, Parser};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
-use wasmgrid::*;
+use wasmgrid::{http, keyvalue};
 
 #[tokio::main]
 pub async fn main() -> wasmtime::Result<()> {

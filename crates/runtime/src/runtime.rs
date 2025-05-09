@@ -110,6 +110,10 @@ impl<T: WasiView + 'static> Runtime<T> {
     }
 
     /// Wait for a shutdown signal from the OS.
+    /// 
+    /// # Errors
+    /// 
+    /// Returns an error if there is an issue processing the shutdown signal.
     pub async fn shutdown(&self) -> Result<()> {
         tokio::select! {
             _ = tokio::signal::ctrl_c() => Ok(()),
