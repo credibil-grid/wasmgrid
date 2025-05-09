@@ -15,7 +15,6 @@ pub mod keyvalue;
 use std::any::Any;
 use std::collections::HashMap;
 
-
 use runtime::{Errout, Stdout};
 use wasmtime::StoreLimits;
 use wasmtime_wasi::{IoView, ResourceTable, WasiCtx, WasiCtxBuilder, WasiView};
@@ -27,7 +26,7 @@ pub type Metadata = Box<dyn Any + Send>;
 #[allow(clippy::struct_field_names)]
 pub struct Ctx {
     table: ResourceTable,
-    ctx: WasiCtx,
+    wasi_ctx: WasiCtx,
     pub limits: StoreLimits,
     pub data: HashMap<String, Metadata>,
 }
@@ -45,7 +44,7 @@ impl Ctx {
 
         Self {
             table: ResourceTable::default(),
-            ctx: ctx.build(),
+            wasi_ctx: ctx.build(),
             limits: StoreLimits::default(),
             data: HashMap::default(),
         }
@@ -67,6 +66,6 @@ impl IoView for Ctx {
 // Implement the [`wasmtime_wasi::ctx::WasiView`] trait for Ctx.
 impl WasiView for Ctx {
     fn ctx(&mut self) -> &mut WasiCtx {
-        &mut self.ctx
+        &mut self.wasi_ctx
     }
 }
