@@ -51,7 +51,7 @@ impl runtime::Runnable for Service {
     async fn run(&self, pre: InstancePre<Self::Ctx>, resources: Self::Resources) -> Result<()> {
         // bail if server is not required
         let component_type = pre.component().component_type();
-        let mut exports = component_type.imports(&pre.engine());
+        let mut exports = component_type.imports(pre.engine());
         if !exports.any(|e| e.0.starts_with("wasi:http")) {
             tracing::debug!("http server not required");
             return Ok(());
@@ -92,7 +92,7 @@ async fn handle(
     }
 
     // prepare wasmtime http request and response
-    let mut store = Store::new(proxy_pre.engine(), Ctx::new(resources).await);
+    let mut store = Store::new(proxy_pre.engine(), Ctx::new(resources));
     store.limiter(|t| &mut t.limits);
 
     let (sender, receiver) = tokio::sync::oneshot::channel();

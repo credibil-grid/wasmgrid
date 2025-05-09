@@ -27,7 +27,7 @@ pub struct Ctx {
 impl Ctx {
     /// Create a new Ctx instance.
     #[must_use]
-    pub async fn new(nats_client: async_nats::Client) -> Self {
+    pub fn new(nats_client: async_nats::Client) -> Self {
         let mut ctx = WasiCtxBuilder::new();
         ctx.inherit_args();
         ctx.inherit_env();
