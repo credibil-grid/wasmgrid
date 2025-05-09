@@ -1,15 +1,8 @@
-#[cfg(feature = "http")]
 pub mod http;
-// #[cfg(feature = "jsondb")]
-// pub mod jsondb;
-#[cfg(feature = "keyvalue")]
 pub mod keyvalue;
-
-// #[cfg(feature = "messaging")]
+pub mod rpc;
+// pub mod jsondb;
 // pub mod messaging;
-// #[cfg(feature = "rpc")]
-// pub mod rpc;
-// #[cfg(feature = "vault")]
 // pub mod vault;
 
 use runtime::{Errout, Stdout};

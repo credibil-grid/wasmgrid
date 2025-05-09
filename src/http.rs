@@ -49,6 +49,14 @@ impl runtime::Runnable for Service {
 
     /// Provide http proxy service the specified wasm component.
     async fn run(&self, pre: InstancePre<Self::Ctx>, resources: Self::Resources) -> Result<()> {
+        // bail if server is not required
+        let component_type = pre.component().component_type();
+        let mut exports = component_type.imports(&pre.engine());
+        if !exports.any(|e| e.0.starts_with("wasi:http")) {
+            tracing::debug!("http server not required");
+            return Ok(());
+        }
+
         let addr = env::var("HTTP_ADDR").unwrap_or_else(|_| DEF_HTTP_ADDR.into());
         let listener = TcpListener::bind(&addr).await?;
         tracing::info!("http server listening on: {}", listener.local_addr()?);
@@ -58,12 +66,12 @@ impl runtime::Runnable for Service {
             let (stream, _) = listener.accept().await?;
             let io = TokioIo::new(stream);
             let proxy_pre = ProxyPre::new(pre.clone())?;
-            let cli = resources.clone();
+            let res = resources.clone();
 
             tokio::spawn(async move {
                 if let Err(e) = http1::Builder::new()
                     .keep_alive(true)
-                    .serve_connection(io, service_fn(|r| handle(proxy_pre.clone(), cli.clone(), r)))
+                    .serve_connection(io, service_fn(|r| handle(proxy_pre.clone(), res.clone(), r)))
                     .await
                 {
                     tracing::error!("connection error: {e:?}");

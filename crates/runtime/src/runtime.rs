@@ -16,7 +16,8 @@ pub struct Runtime<T> {
 }
 
 impl<T: WasiView + 'static> Runtime<T> {
-    /// Create a new Runtime instance for the specified component.
+    /// Create a new Runtime instance for the specified (pre-compiled)
+    /// wasm component.
     ///
     /// # Errors
     ///
@@ -59,7 +60,7 @@ impl<T: WasiView + 'static> Runtime<T> {
         let instance_pre = self.linker.instantiate_pre(&self.component)?;
         tokio::spawn(async move {
             if let Err(e) = service.run(instance_pre, resources).await {
-                tracing::error!("error starting service: {e}");
+                tracing::error!("error running service: {e}");
             }
         });
         Ok(())

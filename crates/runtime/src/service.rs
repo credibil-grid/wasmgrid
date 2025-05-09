@@ -1,7 +1,7 @@
 //! # Service
 //!
 //! This module contains traits implemented by concrete WASI services.
-//! 
+//!
 //! Each service is a module that provides a concrete implementation in support
 //! of a specific set of WASI interfaces.
 

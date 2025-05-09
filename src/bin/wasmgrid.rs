@@ -3,7 +3,7 @@
 use dotenv::dotenv;
 use runtime::{Cli, Parser};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
-use wasmgrid::{http, keyvalue};
+use wasmgrid::{http, keyvalue, rpc};
 
 #[tokio::main]
 pub async fn main() -> wasmtime::Result<()> {
@@ -21,21 +21,20 @@ pub async fn main() -> wasmtime::Result<()> {
         }
         runtime::Command::Run { wasm, compile } => {
             let compiled = if compile { runtime::compile(&wasm, None)? } else { wasm };
-
             let mut rt = runtime::Runtime::new(compiled)?;
 
-            if cfg!(feature = "http") {
-                rt.link(&http::Service)?;
-            }
-            if cfg!(feature = "keyvalue") {
-                rt.link(&keyvalue::Service)?;
-            }
+            // link services
+            rt.link(&http::Service)?;
+            rt.link(&rpc::Service)?;
+            rt.link(&keyvalue::Service)?;
 
-            let client = async_nats::ConnectOptions::new().connect("demo.nats.io").await.unwrap();
+            // TODO: load all required resources (maybe lazy instantiate?)
+            let resources =
+                async_nats::ConnectOptions::new().connect("demo.nats.io").await.unwrap();
 
-            if cfg!(feature = "http") {
-                rt.run(http::Service, client)?;
-            }
+            // start `Runnable` services
+            rt.run(http::Service, resources.clone())?;
+            rt.run(rpc::Service, resources)?;
 
             rt.shutdown().await
         }

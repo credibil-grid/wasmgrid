@@ -8,7 +8,7 @@
 mod generated {
     #![allow(clippy::future_not_send)]
     #![allow(clippy::trait_duplication_in_bounds)]
-    pub use super::Error;
+    pub use anyhow::Error;
 
     wasmtime::component::bindgen!({
         world: "rpc",
@@ -27,87 +27,71 @@ mod generated {
     });
 }
 
-use std::env;
-use std::sync::{Arc, OnceLock};
-
-use anyhow::anyhow;
-use async_nats::{AuthError, ConnectOptions, HeaderMap, Message};
+use anyhow::{Error, Result, anyhow};
+use async_nats::{HeaderMap, Message};
 use bytes::Bytes;
 use futures::stream::StreamExt;
 use tracing::Level;
 use wasmtime::Store;
 use wasmtime::component::{InstancePre, Linker, Resource};
-use wasmtime_wasi::IoView;
+use wasmtime_wasi::ResourceTable;
 
+use self::generated::RpcPre;
+use self::generated::wasi::rpc;
 use self::generated::wasi::rpc::client::{self, HostError};
 use self::generated::wasi::rpc::types;
-use self::generated::{Rpc, RpcPre};
 use crate::Ctx;
 
-// TODO: create a client struct with both NATS client and request timeout
-const DEF_NATS_ADDR: &str = "demo.nats.io";
-static CLIENT: OnceLock<async_nats::Client> = OnceLock::new();
+type Resources = <Service as runtime::Runnable>::Resources;
 
-pub type Error = anyhow::Error;
-
-#[derive(Debug)]
-pub struct Service {
-    addr: String,
-    jwt: Option<String>,
-    seed: Option<String>,
+pub struct RpcClient<'a> {
+    client: &'a async_nats::Client,
+    table: &'a mut ResourceTable,
 }
 
-pub fn new() -> Service {
-    Service {
-        addr: env::var("NATS_ADDR").unwrap_or_else(|_| DEF_NATS_ADDR.into()),
-        jwt: env::var("NATS_JWT").ok(),
-        seed: env::var("NATS_SEED").ok(),
+impl<'a> RpcClient<'a> {
+    pub fn new(client: &'a async_nats::Client, table: &'a mut ResourceTable) -> Self {
+        Self { client, table }
     }
 }
 
-impl crate::Service for Service {
-    fn namespace(&self) -> &'static str {
-        "wasi:rpc"
+pub struct Service;
+
+impl runtime::Linkable for Service {
+    type Ctx = Ctx;
+
+    fn add_to_linker(&self, linker: &mut Linker<Self::Ctx>) -> Result<()> {
+        add_to_linker(linker, |c: &mut Ctx| RpcClient::new(&c.nats_client, &mut c.table))?;
+        tracing::trace!("added to linker");
+        Ok(())
     }
+}
 
-    fn add_to_linker(&self, linker: &mut Linker<Ctx>) -> anyhow::Result<()> {
-        Rpc::add_to_linker(linker, |t| t)
-    }
+/// Add all the `wasi-keyvalue` world's interfaces to a [`Linker`].
+fn add_to_linker<T: Send>(
+    l: &mut Linker<T>, f: impl Fn(&mut T) -> RpcClient<'_> + Send + Sync + Copy + 'static,
+) -> Result<()> {
+    rpc::client::add_to_linker_get_host(l, f)?;
+    rpc::types::add_to_linker_get_host(l, f)
+}
 
-    async fn start(&self, pre: InstancePre<Ctx>) -> anyhow::Result<()> {
-        // build connection options
-        let opts = if let Some(jwt) = &self.jwt
-            && let Some(seed) = &self.seed
-        {
-            let key_pair = Arc::new(nkeys::KeyPair::from_seed(seed)?);
-            ConnectOptions::with_jwt(jwt.clone(), move |nonce| {
-                let key_pair = key_pair.clone();
-                async move { key_pair.sign(&nonce).map_err(AuthError::new) }
-            })
-            .name("wasmgrid")
-        } else {
-            ConnectOptions::new()
-        };
+impl runtime::Runnable for Service {
+    type Resources = async_nats::Client;
 
-        // connect
-        let client = opts.connect(&self.addr).await?;
-        tracing::info!("connected to: {}", &self.addr);
-        CLIENT.set(client.clone()).map_err(|_| anyhow!("CLIENT already initialized"))?;
-
-        // check to see if server is required
-        if !pre
-            .component()
-            .component_type()
-            .exports(pre.engine())
-            .any(|e| e.0.starts_with(self.namespace()))
-        {
-            tracing::warn!("rpc server not required");
+    async fn run(&self, pre: InstancePre<Self::Ctx>, resources: Self::Resources) -> Result<()> {
+        // bail if server is not required
+        let component_type = pre.component().component_type();
+        let mut exports = component_type.exports(&pre.engine());
+        if !exports.any(|e| e.0.starts_with("wasi:rpc")) {
+            tracing::debug!("rpc server not required");
             return Ok(());
         }
 
+        let client = resources.clone();
+
         // get 'server' component's name
         let pre = RpcPre::new(pre.clone())?;
-        let mut store = Store::new(pre.engine(), Ctx::new());
+        let mut store = Store::new(pre.engine(), Ctx::new(client.clone()).await);
         let rpc = pre.instantiate_async(&mut store).await?;
         let cfg = rpc.wasi_rpc_server().call_configure(&mut store).await??;
 
@@ -121,8 +105,9 @@ impl crate::Service for Service {
             let Some(subject) = request.clone().reply else {
                 return Err(anyhow!("reply subject not found"));
             };
+            let res = resources.clone();
 
-            match handle_request(pre.clone(), request).await {
+            match handle(pre.clone(), res, request).await {
                 Ok(resp) => client.publish(subject, resp.into()).await?,
                 Err(e) => {
                     tracing::error!("rpc server error: {e:?}");
@@ -141,31 +126,33 @@ impl crate::Service for Service {
 }
 
 // Forward request to the wasm Guest.
-async fn handle_request(pre: RpcPre<Ctx>, request: Message) -> anyhow::Result<Vec<u8>> {
+async fn handle(
+    pre: RpcPre<Ctx>, resources: Resources, message: Message,
+) -> anyhow::Result<Vec<u8>> {
     tokio::spawn(async move {
         // convert subject to endpoint
-        let endpoint = request.subject.trim_start_matches("rpc:").replace('.', "/");
+        let endpoint = message.subject.trim_start_matches("rpc:").replace('.', "/");
 
         // forward request to 'server' component
         tracing::span!(Level::INFO, "forwarding request", endpoint = %endpoint).in_scope(|| {
             tracing::info!("forwarding request to {endpoint}");
         });
 
-        let mut store = Store::new(pre.engine(), Ctx::new());
+        let mut store = Store::new(pre.engine(), Ctx::new(resources).await);
         store.limiter(|t| &mut t.limits);
 
         let rpc = pre.instantiate_async(&mut store).await?;
         rpc.wasi_rpc_server()
-            .call_handle(&mut store, &endpoint, &request.payload.to_vec())
+            .call_handle(&mut store, &endpoint, &message.payload.to_vec())
             .await?
             .map_err(|e| anyhow!(e))
     })
     .await?
 }
 
-impl types::Host for Ctx {}
+impl types::Host for RpcClient<'_> {}
 
-impl client::Host for Ctx {
+impl client::Host for RpcClient<'_> {
     #[allow(clippy::cognitive_complexity)]
     async fn call(
         &mut self, endpoint: String, request: Vec<u8>,
@@ -178,7 +165,7 @@ impl client::Host for Ctx {
         let subject = format!("rpc:{}", endpoint.replacen('/', ".", 1));
 
         // forward request to RPC server
-        let client = CLIENT.get().ok_or_else(|| anyhow!("CLIENT not initialized"))?;
+        let client = self.client.clone();
         let msg = client.request(subject, request.into()).await?;
 
         // check RPC server's reponse for error
@@ -186,7 +173,7 @@ impl client::Host for Ctx {
             && let Some(error) = headers.get("Error")
         {
             tracing::error!("client::Host::call Err: {error}");
-            return Ok(Err(self.table().push(anyhow!("{error}"))?));
+            return Ok(Err(self.table.push(anyhow!("{error}"))?));
         }
 
         // simplify the logging output
@@ -196,16 +183,16 @@ impl client::Host for Ctx {
     }
 }
 
-impl HostError for Ctx {
+impl HostError for RpcClient<'_> {
     async fn trace(&mut self, rep: Resource<Error>) -> wasmtime::Result<String> {
         tracing::trace!("HostError::trace");
-        let error = self.table().get(&rep)?;
+        let error = self.table.get(&rep)?;
         Ok(error.to_string())
     }
 
     async fn drop(&mut self, rep: Resource<Error>) -> wasmtime::Result<()> {
         tracing::trace!("HostError::drop");
-        self.table().delete(rep)?;
+        self.table.delete(rep)?;
         Ok(())
     }
 }

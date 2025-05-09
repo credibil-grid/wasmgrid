@@ -76,7 +76,7 @@ pub struct Service;
 impl runtime::Linkable for Service {
     type Ctx = Ctx;
 
-    fn add_to_linker(&self,linker: &mut Linker<Self::Ctx>) -> anyhow::Result<()> {
+    fn add_to_linker(&self, linker: &mut Linker<Self::Ctx>) -> anyhow::Result<()> {
         add_to_linker(linker, |c: &mut Ctx| KeyValue::new(&c.nats_client, &mut c.table))?;
         tracing::trace!("added to linker");
         Ok(())
