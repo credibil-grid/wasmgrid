@@ -1,5 +1,6 @@
 //! # Wasmgrid CLI
 
+use async_nats::ConnectOptions;
 use dotenv::dotenv;
 use runtime::{Cli, Parser};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
@@ -28,11 +29,10 @@ pub async fn main() -> wasmtime::Result<()> {
             rt.link(&rpc::Service)?;
             rt.link(&keyvalue::Service)?;
 
-            // TODO: load all required resources (maybe lazy instantiate?)
-            let resources =
-                async_nats::ConnectOptions::new().connect("demo.nats.io").await.unwrap();
+            // TODO: load all required resources (lazy instantiate?)
+            let resources = ConnectOptions::new().connect("demo.nats.io").await?;
 
-            // start `Runnable` services
+            // start `Runnable` services (servers)
             rt.run(http::Service, resources.clone())?;
             rt.run(rpc::Service, resources)?;
 
