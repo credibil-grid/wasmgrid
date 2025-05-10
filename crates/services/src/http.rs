@@ -93,7 +93,8 @@ async fn handle(
     }
 
     // prepare wasmtime http request and response
-    let mut store = Store::new(proxy_pre.engine(), Ctx::new(resources));
+    let mut store =
+        Store::new(proxy_pre.engine(), Ctx::new(resources, proxy_pre.instance_pre().clone()));
     store.limiter(|t| &mut t.limits);
 
     let (sender, receiver) = tokio::sync::oneshot::channel();

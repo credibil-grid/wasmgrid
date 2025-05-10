@@ -26,13 +26,13 @@ pub async fn run(pre: InstancePre<Ctx>, client: Client) -> Result<()> {
     let client = client.clone();
 
     // get 'server' component's name
-    let pre = RpcPre::new(pre.clone())?;
-    let mut store = Store::new(pre.engine(), Ctx::new(client.clone()));
-    let rpc = pre.instantiate_async(&mut store).await?;
+    let rpc_pre = RpcPre::new(pre.clone())?;
+    let mut store = Store::new(pre.engine(), Ctx::new(client.clone(), pre.clone()));
+    let rpc = rpc_pre.instantiate_async(&mut store).await?;
     let sc = rpc.wasi_rpc_server().call_configure(&mut store).await??;
 
     // process_requests rpc requests
-    subscribe(sc, client, pre).await
+    subscribe(sc, client, rpc_pre).await
 }
 
 async fn subscribe(sc: ServerConfiguration, client: Client, pre: RpcPre<Ctx>) -> Result<()> {
@@ -75,7 +75,7 @@ async fn call_guest(pre: RpcPre<Ctx>, client: Client, message: Message) -> Resul
         tracing::info!("forwarding request to {endpoint}");
     });
 
-    let mut store = Store::new(pre.engine(), Ctx::new(client));
+    let mut store = Store::new(pre.engine(), Ctx::new(client, pre.instance_pre().clone()));
     store.limiter(|t| &mut t.limits);
 
     let rpc = pre.instantiate_async(&mut store).await?;

@@ -20,18 +20,18 @@ pub async fn run(pre: InstancePre<Ctx>, client: Client) -> Result<()> {
     }
 
     // get guest configuration
-    let pre = MessagingPre::new(pre.clone())?;
-    let mut store = Store::new(pre.engine(), Ctx::new(client.clone()));
-    let messaging = pre.instantiate_async(&mut store).await?;
+    let mut store = Store::new(pre.engine(), Ctx::new(client.clone(), pre.clone()));
+    let msg_pre = MessagingPre::new(pre.clone())?;
+    let messaging = msg_pre.instantiate_async(&mut store).await?;
     let Ok(gc) = messaging.wasi_messaging_messaging_guest().call_configure(&mut store).await?
     else {
         return Err(anyhow!("failed to configure messaging guest"));
     };
 
-    subscribe(gc.channels, client, pre).await
+    subscribe(gc.channels, client, pre.clone()).await
 }
 
-async fn subscribe(channels: Vec<String>, client: Client, pre: MessagingPre<Ctx>) -> Result<()> {
+pub async fn subscribe(channels: Vec<String>, client: Client, pre: InstancePre<Ctx>) -> Result<()> {
     tracing::debug!("subscribing to requests");
 
     let mut subscribers = vec![];
@@ -55,13 +55,12 @@ async fn subscribe(channels: Vec<String>, client: Client, pre: MessagingPre<Ctx>
     Ok(())
 }
 
-// Forward message to the wasm Guest.
-async fn call_guest(
-    pre: MessagingPre<Ctx>, client: Client, msg: async_nats::Message,
-) -> Result<()> {
-    let mut store = Store::new(pre.engine(), Ctx::new(client));
-    let messaging = pre.instantiate_async(&mut store).await?;
-    let wasi_msg = msg_conv(msg);
+// Forward message to the wasm component.
+async fn call_guest(pre: InstancePre<Ctx>, client: Client, msg: async_nats::Message) -> Result<()> {
+    let mut store = Store::new(pre.engine(), Ctx::new(client, pre.clone()));
+    let msg_pre = MessagingPre::new(pre.clone())?;
+    let messaging = msg_pre.instantiate_async(&mut store).await?;
+    let wasi_msg = msg_conv(&msg);
 
     if let Err(e) =
         messaging.wasi_messaging_messaging_guest().call_handler(&mut store, &[wasi_msg]).await?
@@ -73,7 +72,7 @@ async fn call_guest(
     Ok(())
 }
 
-pub fn msg_conv(msg: async_nats::Message) -> Message {
+pub fn msg_conv(msg: &async_nats::Message) -> Message {
     Message {
         data: msg.payload.to_vec(),
         metadata: Some(vec![(String::from("channel"), msg.subject.to_string())]),

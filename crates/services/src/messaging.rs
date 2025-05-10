@@ -7,6 +7,8 @@ mod host;
 mod server;
 
 mod generated {
+    #![allow(clippy::trait_duplication_in_bounds)]
+    
     pub use anyhow::Error;
     pub use async_nats::Client;
 
@@ -40,7 +42,7 @@ impl Linkable for Service {
 
     fn add_to_linker(&self, linker: &mut Linker<Self::Ctx>) -> Result<()> {
         host::add_to_linker(linker, |c: &mut Self::Ctx| {
-            host::MsgHost::new(&c.nats_client, &mut c.table)
+            host::MsgHost::new(&c.nats_client, &mut c.table, &c.instance_pre)
         })?;
         tracing::trace!("added to linker");
         Ok(())

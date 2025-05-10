@@ -7,13 +7,15 @@ pub mod rpc;
 pub mod messaging;
 // pub mod vault;
 
+use async_nats::Client;
 use runtime::{Errout, Stdout};
 use wasmtime::StoreLimits;
+use wasmtime::component::InstancePre;
 use wasmtime_wasi::{IoView, ResourceTable, WasiCtx, WasiCtxBuilder, WasiView};
 use wasmtime_wasi_http::WasiHttpCtx;
 
 pub struct Resources {
-    pub nats_client: async_nats::Client,
+    pub nats_client: Client,
 }
 
 /// Ctx implements messaging host interfaces. In addition, it holds the
@@ -23,14 +25,15 @@ pub struct Ctx {
     table: ResourceTable,
     wasi_ctx: WasiCtx,
     limits: StoreLimits,
-    nats_client: async_nats::Client,
+    nats_client: Client,
     http_ctx: WasiHttpCtx,
+    instance_pre: InstancePre<Ctx>,
 }
 
 impl Ctx {
     /// Create a new Ctx instance.
     #[must_use]
-    pub fn new(nats_client: async_nats::Client) -> Self {
+    pub fn new(nats_client: Client, instance_pre: InstancePre<Self>) -> Self {
         let mut ctx = WasiCtxBuilder::new();
         ctx.inherit_args();
         ctx.inherit_env();
@@ -44,6 +47,7 @@ impl Ctx {
             limits: StoreLimits::default(),
             nats_client,
             http_ctx: WasiHttpCtx::new(),
+            instance_pre,
         }
     }
 }

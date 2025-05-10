@@ -7,6 +7,7 @@ mod host;
 mod server;
 
 mod generated {
+    #![allow(clippy::trait_duplication_in_bounds)]
     pub use anyhow::Error;
 
     wasmtime::component::bindgen!({

@@ -2,9 +2,10 @@ use anyhow::{Error, Result};
 use async_nats::Client;
 use futures::StreamExt;
 use tokio::time::{Duration, sleep};
-use wasmtime::component::{Linker, Resource};
+use wasmtime::component::{InstancePre, Linker, Resource};
 use wasmtime_wasi::ResourceTable;
 
+use crate::Ctx;
 use crate::messaging::generated::wasi::messaging::messaging_types::{GuestConfiguration, Message};
 use crate::messaging::generated::wasi::messaging::{consumer, messaging_types, producer};
 use crate::messaging::server;
@@ -12,11 +13,18 @@ use crate::messaging::server;
 pub struct MsgHost<'a> {
     client: &'a Client,
     table: &'a mut ResourceTable,
+    instance_pre: &'a InstancePre<Ctx>,
 }
 
 impl<'a> MsgHost<'a> {
-    pub const fn new(client: &'a Client, table: &'a mut ResourceTable) -> Self {
-        Self { client, table }
+    pub const fn new(
+        client: &'a Client, table: &'a mut ResourceTable, instance_pre: &'a InstancePre<Ctx>,
+    ) -> Self {
+        Self {
+            client,
+            table,
+            instance_pre,
+        }
     }
 }
 
@@ -77,7 +85,7 @@ impl consumer::Host for MsgHost<'_> {
         // create stream that times out after `t_milliseconds`
         let stream =
             subscriber.by_ref().take_until(sleep(Duration::from_millis(u64::from(t_milliseconds))));
-        let messages = stream.map(server::msg_conv).collect().await;
+        let messages = stream.map(|m| server::msg_conv(&m)).collect().await;
         subscriber.unsubscribe().await?;
 
         Ok(Ok(Some(messages)))
@@ -90,7 +98,7 @@ impl consumer::Host for MsgHost<'_> {
 
         let client = self.table.get(&rep)?;
         let mut subscriber = client.subscribe(ch).await?;
-        let messages = subscriber.by_ref().take(1).map(server::msg_conv).collect().await;
+        let messages = subscriber.by_ref().take(1).map(|m| server::msg_conv(&m)).collect().await;
         subscriber.unsubscribe().await?;
 
         Ok(Ok(messages))
@@ -112,13 +120,7 @@ impl consumer::Host for MsgHost<'_> {
         &mut self, gc: GuestConfiguration,
     ) -> Result<Result<(), Resource<Error>>> {
         tracing::trace!("consumer::Host::update_guest_configuration");
-
-        // let processor = Processor {
-        //     pre: None,
-        //     client: self.client.clone(),
-        // };
-        // processor.subscribe(gc.channels).await?;
-
+        server::subscribe(gc.channels, self.client.clone(), self.instance_pre.clone()).await?;
         Ok(Ok(()))
     }
 }
