@@ -16,6 +16,7 @@ pub struct Resources {
 
 /// Ctx implements messaging host interfaces. In addition, it holds the
 /// host-defined state used by the wasm runtime [`Store`].
+#[allow(clippy::struct_field_names)]
 pub struct Ctx {
     table: ResourceTable,
     wasi_ctx: WasiCtx,
