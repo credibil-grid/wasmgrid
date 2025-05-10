@@ -16,6 +16,8 @@ use wasmtime_wasi_http::WasiHttpCtx;
 
 pub struct Resources {
     pub nats_client: Client,
+    pub http_ctx: WasiHttpCtx,
+    pub instance_pre: InstancePre<Ctx>,
 }
 
 /// Ctx implements messaging host interfaces. In addition, it holds the
