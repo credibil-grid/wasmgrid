@@ -1,0 +1,45 @@
+[package]
+name = "services"
+description = "Wasm services"
+authors.workspace = true
+edition.workspace = true
+version = "0.1.0"
+
+# [lib]
+# crate-type = ["cdylib"]
+
+[lints]
+workspace = true
+
+[features]
+default = ["http", "jsondb", "messaging", "keyvalue", "p2p", "rpc", "vault"]
+http = ["dep:wasmtime-wasi-http"]
+jsondb = ["dep:jmespath", "dep:mongodb"]
+keyvalue = ["dep:async-nats"]
+messaging = ["dep:async-nats"]
+p2p = ["dep:iroh"]
+rpc = ["dep:async-nats"]
+vault = ["dep:azure_identity", "dep:azure_security_keyvault"]
+
+[dependencies]
+anyhow.workspace = true
+async-nats = { workspace = true, optional = true }
+async-trait.workspace = true
+azure_identity = { version = "0.23.0", optional = true, default-features = false }
+azure_security_keyvault = { version = "0.21.0", optional = true, default-features = false }
+bytes = "1.10.1"
+futures = "0.3.31"
+http.workspace = true
+hyper = "1.6.0"
+iroh = { version = "0.29.0", optional = true }
+jmespath = { version = "0.3.0", optional = true }
+mongodb = { version = "3.2.3", optional = true }
+runtime.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+wasmtime.workspace = true
+wasmtime-wasi.workspace = true
+wasmtime-wasi-http = { workspace = true, optional = true }
+
+# ecdsa = "0.16.9"
+# k256 = "0.13.4"

@@ -3,8 +3,8 @@
 use async_nats::ConnectOptions;
 use dotenv::dotenv;
 use runtime::{Cli, Parser};
+use services::{http, keyvalue, rpc};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
-use wasmgrid::{http, keyvalue, rpc};
 
 #[tokio::main]
 pub async fn main() -> wasmtime::Result<()> {
