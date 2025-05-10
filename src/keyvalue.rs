@@ -60,12 +60,12 @@ impl From<anyhow::Error> for Error {
     }
 }
 
-pub struct KvHost<'a> {
+pub struct KeyvalueHost<'a> {
     client: &'a async_nats::Client,
     table: &'a mut ResourceTable,
 }
 
-impl<'a> KvHost<'a> {
+impl<'a> KeyvalueHost<'a> {
     pub const fn new(client: &'a async_nats::Client, table: &'a mut ResourceTable) -> Self {
         Self { client, table }
     }
@@ -76,24 +76,25 @@ pub struct Service;
 impl runtime::Linkable for Service {
     type Ctx = Ctx;
 
+    // Add all the `wasi-keyvalue` world's interfaces to a [`Linker`], and
+    // instantiate the `KeyvalueHost` for the component.
     fn add_to_linker(&self, linker: &mut Linker<Self::Ctx>) -> anyhow::Result<()> {
-        add_to_linker(linker, |c: &mut Ctx| KvHost::new(&c.nats_client, &mut c.table))?;
+        add_to_linker(linker, |c: &mut Self::Ctx| KeyvalueHost::new(&c.nats_client, &mut c.table))?;
         tracing::trace!("added to linker");
         Ok(())
     }
 }
 
-/// Add all the `wasi-keyvalue` world's interfaces to a [`Linker`].
 fn add_to_linker<T: Send>(
-    l: &mut Linker<T>, f: impl Fn(&mut T) -> KvHost<'_> + Send + Sync + Copy + 'static,
+    l: &mut Linker<T>, f: impl Fn(&mut T) -> KeyvalueHost<'_> + Send + Sync + Copy + 'static,
 ) -> Result<()> {
     keyvalue::store::add_to_linker_get_host(l, f)?;
     keyvalue::atomics::add_to_linker_get_host(l, f)?;
     keyvalue::batch::add_to_linker_get_host(l, f)
 }
 
-// Implement the [`wasi_keyvalue::KeyValueView`]` trait for  KvHost<'_>.
-impl keyvalue::store::Host for KvHost<'_> {
+// Implement the [`wasi_keyvalue::KeyValueView`]` trait for  KeyvalueHost<'_>.
+impl keyvalue::store::Host for KeyvalueHost<'_> {
     // Open bucket specified by identifier, save to state and return as a resource.
     async fn open(&mut self, identifier: String) -> Result<Resource<Bucket>, Error> {
         tracing::trace!("store::Host::open {identifier}");
@@ -131,7 +132,7 @@ impl keyvalue::store::Host for KvHost<'_> {
     }
 }
 
-impl keyvalue::store::HostBucket for KvHost<'_> {
+impl keyvalue::store::HostBucket for KeyvalueHost<'_> {
     async fn get(&mut self, rep: Resource<Bucket>, key: String) -> Result<Option<Vec<u8>>, Error> {
         tracing::trace!("store::HostBucket::get {key}");
 
@@ -199,7 +200,7 @@ impl keyvalue::store::HostBucket for KvHost<'_> {
     }
 }
 
-impl keyvalue::atomics::Host for KvHost<'_> {
+impl keyvalue::atomics::Host for KeyvalueHost<'_> {
     async fn increment(
         &mut self, rep: Resource<Bucket>, key: String, delta: u64,
     ) -> Result<u64, Error> {
@@ -230,7 +231,7 @@ impl keyvalue::atomics::Host for KvHost<'_> {
     }
 }
 
-impl keyvalue::batch::Host for KvHost<'_> {
+impl keyvalue::batch::Host for KeyvalueHost<'_> {
     async fn get_many(
         &mut self, rep: Resource<Bucket>, keys: Vec<String>,
     ) -> Result<Vec<Option<(String, Vec<u8>)>>, Error> {
