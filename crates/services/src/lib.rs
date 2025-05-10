@@ -4,7 +4,7 @@ pub mod http;
 pub mod keyvalue;
 pub mod rpc;
 // pub mod jsondb;
-// pub mod messaging;
+pub mod messaging;
 // pub mod vault;
 
 use runtime::{Errout, Stdout};

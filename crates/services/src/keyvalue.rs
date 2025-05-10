@@ -6,13 +6,9 @@
 /// Wrap generation of wit bindings to simplify exports.
 /// See <https://docs.rs/wasmtime/latest/wasmtime/component/macro.bindgen.html>
 mod generated {
-    #![allow(clippy::future_not_send)]
-    #![allow(clippy::trait_duplication_in_bounds)]
-
-    use super::bindgen;
     pub use super::{Bucket, Error};
 
-    bindgen!({
+    wasmtime::component::bindgen!({
         world: "keyvalue",
         path: "../../wit",
         tracing: true,
@@ -32,7 +28,8 @@ use std::time::Duration;
 use anyhow::{Result, anyhow};
 use async_nats::jetstream::{self, kv};
 use futures::TryStreamExt;
-use wasmtime::component::{Linker, Resource, ResourceTableError, bindgen};
+use runtime::Linkable;
+use wasmtime::component::{Linker, Resource, ResourceTableError};
 use wasmtime_wasi::ResourceTable;
 
 use self::generated::wasi::keyvalue;
@@ -73,7 +70,7 @@ impl<'a> KeyvalueHost<'a> {
 
 pub struct Service;
 
-impl runtime::Linkable for Service {
+impl Linkable for Service {
     type Ctx = Ctx;
 
     // Add all the `wasi-keyvalue` world's interfaces to a [`Linker`], and

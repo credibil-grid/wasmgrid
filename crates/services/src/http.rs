@@ -17,6 +17,7 @@ use hyper::header::{
 use hyper::server::conn::http1;
 use hyper::service::service_fn;
 use hyper::{Method, Request, Response, StatusCode};
+use runtime::{Linkable, Runnable};
 use tokio::net::TcpListener;
 use wasmtime::Store;
 use wasmtime::component::{InstancePre, Linker};
@@ -34,7 +35,7 @@ type Resources = <Service as runtime::Runnable>::Resources;
 
 pub struct Service;
 
-impl runtime::Linkable for Service {
+impl Linkable for Service {
     type Ctx = Ctx;
 
     fn add_to_linker(&self, linker: &mut Linker<Self::Ctx>) -> Result<()> {
@@ -44,7 +45,7 @@ impl runtime::Linkable for Service {
     }
 }
 
-impl runtime::Runnable for Service {
+impl Runnable for Service {
     type Resources = async_nats::Client;
 
     /// Provide http proxy service the specified wasm component.

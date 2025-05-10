@@ -7,8 +7,6 @@ mod host;
 mod server;
 
 mod generated {
-    #![allow(clippy::future_not_send)]
-    #![allow(clippy::trait_duplication_in_bounds)]
     pub use anyhow::Error;
 
     wasmtime::component::bindgen!({
@@ -24,6 +22,8 @@ mod generated {
 }
 
 use anyhow::Result;
+use async_nats::Client;
+use runtime::{Linkable, Runnable};
 use wasmtime::component::{InstancePre, Linker};
 
 use self::host::RpcHost;
@@ -31,7 +31,7 @@ use crate::Ctx;
 
 pub struct Service;
 
-impl runtime::Linkable for Service {
+impl Linkable for Service {
     type Ctx = Ctx;
 
     fn add_to_linker(&self, linker: &mut Linker<Self::Ctx>) -> Result<()> {
@@ -43,8 +43,8 @@ impl runtime::Linkable for Service {
     }
 }
 
-impl runtime::Runnable for Service {
-    type Resources = async_nats::Client;
+impl Runnable for Service {
+    type Resources = Client;
 
     async fn run(&self, pre: InstancePre<Self::Ctx>, resources: Self::Resources) -> Result<()> {
         server::run(pre, resources).await
