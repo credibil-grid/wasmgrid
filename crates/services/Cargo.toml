@@ -12,7 +12,8 @@ version = "0.1.0"
 workspace = true
 
 [features]
-default = ["http", "jsondb", "messaging", "keyvalue", "p2p", "rpc", "vault"]
+# default = ["http", "jsondb", "messaging", "keyvalue", "p2p", "rpc", "vault"]
+default=["http"]
 http = ["dep:wasmtime-wasi-http"]
 jsondb = ["dep:jmespath", "dep:mongodb"]
 keyvalue = ["dep:async-nats"]

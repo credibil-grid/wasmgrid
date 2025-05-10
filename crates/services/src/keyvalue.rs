@@ -14,7 +14,7 @@ mod generated {
 
     bindgen!({
         world: "keyvalue",
-        path: "wit",
+        path: "../../wit",
         tracing: true,
         async: true,
         trappable_imports: true,

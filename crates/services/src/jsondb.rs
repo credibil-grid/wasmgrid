@@ -13,7 +13,7 @@ mod generated {
 
     bindgen!({
         world: "jsondb",
-        path: "wit",
+        path: "../../wit",
         tracing: true,
         async: true,
         trappable_imports: true,

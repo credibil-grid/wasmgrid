@@ -13,7 +13,7 @@ mod generated {
 
     bindgen!({
         world: "messaging",
-        path: "wit",
+        path: "../../wit",
         tracing: true,
         async: true,
         trappable_imports: true,

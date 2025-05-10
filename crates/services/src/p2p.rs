@@ -9,7 +9,7 @@ mod generated {
 
     wasmtime::component::bindgen!({
         world: "p2p",
-        path: "wit",
+        path: "../../wit",
         async: true,
         tracing: true,
         trappable_imports: true,

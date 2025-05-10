@@ -13,7 +13,7 @@ mod generated {
 
     wasmtime::component::bindgen!({
         world: "rpc",
-        path: "wit",
+        path: "../../wit",
         tracing: true,
         async: true,
         trappable_imports: true,
