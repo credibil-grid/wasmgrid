@@ -171,7 +171,8 @@ fn prepare_request(mut request: Request<Incoming>) -> Result<(Request<Incoming>,
     let (mut parts, body) = request.into_parts();
     parts.uri = builder.build()?;
 
-    tracing::debug!("calling guest with request: {parts:?}");
+    tracing::debug!("calling guest");
+    tracing::trace!("request headers: {:#?}", parts);
     let request = hyper::Request::from_parts(parts, body);
 
     let scheme = match request.uri().scheme_str() {

@@ -3,7 +3,7 @@
 use async_nats::ConnectOptions;
 use dotenv::dotenv;
 use runtime::{Cli, Parser};
-use services::{http, keyvalue, rpc};
+use services::{http, keyvalue, messaging, rpc};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 #[tokio::main]
@@ -28,13 +28,15 @@ pub async fn main() -> wasmtime::Result<()> {
             rt.link(&http::Service)?;
             rt.link(&rpc::Service)?;
             rt.link(&keyvalue::Service)?;
+            rt.link(&messaging::Service)?;
 
             // TODO: load all required resources (lazy instantiate?)
             let resources = ConnectOptions::new().connect("demo.nats.io").await?;
 
             // start `Runnable` services (servers)
             rt.run(http::Service, resources.clone())?;
-            rt.run(rpc::Service, resources)?;
+            rt.run(rpc::Service, resources.clone())?;
+            rt.run(messaging::Service, resources)?;
 
             rt.shutdown().await
         }

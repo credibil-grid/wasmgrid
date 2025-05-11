@@ -14,8 +14,8 @@ pub async fn run(pre: InstancePre<Ctx>, client: Client) -> Result<()> {
     // bail if server is not required
     let component_type = pre.component().component_type();
     let mut exports = component_type.exports(pre.engine());
-    if !exports.any(|e| e.0.starts_with("wasi:rpc")) {
-        tracing::debug!("rpc server not required");
+    if !exports.any(|e| e.0.starts_with("wasi:messaging")) {
+        tracing::debug!("messaging server not required");
         return Ok(());
     }
 
@@ -34,10 +34,9 @@ pub async fn run(pre: InstancePre<Ctx>, client: Client) -> Result<()> {
 pub async fn subscribe(
     channels: Vec<String>, client: &Client, pre: &InstancePre<Ctx>,
 ) -> Result<()> {
-    tracing::debug!("subscribing to requests");
-
     let mut subscribers = vec![];
     for ch in channels {
+        tracing::debug!("subscribing to {ch}");
         let subscriber = client.subscribe(ch.clone()).await?;
         subscribers.push(subscriber);
     }
