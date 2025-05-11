@@ -12,9 +12,9 @@ pub mod messaging;
 pub mod rpc;
 // pub mod vault;
 
-use std::sync::{LazyLock, OnceLock};
+use std::sync::{Arc, OnceLock};
 
-use async_nats::Client;
+use mongodb::options::ClientOptions;
 use runtime::{Errout, Stdout};
 use wasmtime::StoreLimits;
 use wasmtime::component::InstancePre;
@@ -29,20 +29,14 @@ pub struct Ctx {
     wasi_ctx: WasiCtx,
     limits: StoreLimits,
     http_ctx: WasiHttpCtx,
-    nats_client: Client,
+    resources: Resources,
     instance_pre: InstancePre<Ctx>,
-}
-
-// #[derive(Clone)]
-pub struct Resources {
-    pub nats_client: LazyLock<async_nats::Client>,
-    // pub mgo_client: OnceLock<mongodb::Client>,
 }
 
 impl Ctx {
     /// Create a new Ctx instance.
     #[must_use]
-    pub fn new(nats_client: Client, instance_pre: InstancePre<Self>) -> Self {
+    pub fn new(resources: Resources, instance_pre: InstancePre<Self>) -> Self {
         let mut ctx = WasiCtxBuilder::new();
         ctx.inherit_args();
         ctx.inherit_env();
@@ -55,7 +49,7 @@ impl Ctx {
             wasi_ctx: ctx.build(),
             limits: StoreLimits::default(),
             http_ctx: WasiHttpCtx::new(),
-            nats_client,
+            resources,
             instance_pre,
         }
     }
@@ -71,5 +65,51 @@ impl IoView for Ctx {
 impl WasiView for Ctx {
     fn ctx(&mut self) -> &mut WasiCtx {
         &mut self.wasi_ctx
+    }
+}
+
+#[derive(Clone)]
+pub struct Resources {
+    #[cfg(any(feature = "keyvalue", feature = "messaging", feature = "rpc"))]
+    pub nats_client: Arc<OnceLock<async_nats::Client>>,
+    #[cfg(feature = "jsondb")]
+    pub mgo_client: Arc<OnceLock<mongodb::Client>>,
+}
+
+use async_nats::ConnectOptions;
+
+impl Resources {
+    pub fn new() -> Self {
+        Self {
+            #[cfg(any(feature = "keyvalue", feature = "messaging", feature = "rpc"))]
+            nats_client: Arc::new(OnceLock::new()),
+            #[cfg(feature = "jsondb")]
+            mgo_client: Arc::new(OnceLock::new()),
+        }
+    }
+
+    #[cfg(any(feature = "keyvalue", feature = "messaging", feature = "rpc"))]
+    pub fn with_nats(&self, addr: impl Into<String>, opts: ConnectOptions) {
+        let res = self.clone();
+        let addr = addr.into();
+        tokio::spawn(async move {
+            let client = opts.connect(addr).await.expect("should connect to nats");
+            res.nats_client.set(client).unwrap();
+        });
+    }
+
+    #[cfg(feature = "jsondb")]
+    pub fn with_mongo(&self, opts: ClientOptions) {
+        let res = self.clone();
+        tokio::spawn(async move {
+            let client = mongodb::Client::with_options(opts).expect("should connect to mongodb");
+            res.mgo_client.set(client).unwrap();
+
+            // // redact password from connection string
+            // let mut redacted = url::Url::parse(&self.addr).unwrap();
+            // redacted.set_password(Some("*****")).map_err(|()| anyhow!("issue redacting password"))?;
+            // tracing::info!("connected to: {redacted}");
+            // MONGODB.set(client).map_err(|_| anyhow!("MongoDB already initialized"))
+        });
     }
 }

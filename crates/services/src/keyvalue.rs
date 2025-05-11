@@ -80,7 +80,7 @@ impl Linkable for Service {
     // instantiate the `KeyvalueHost` for the component.
     fn add_to_linker(&self, linker: &mut Linker<Self::Ctx>) -> anyhow::Result<()> {
         add_to_linker(linker, |c: &mut Self::Ctx| {
-            KeyvalueHost::new(&c.nats_client, &mut c.table)
+            KeyvalueHost::new(&c.resources.nats_client.wait(), &mut c.table)
         })?;
         tracing::trace!("added to linker");
         Ok(())

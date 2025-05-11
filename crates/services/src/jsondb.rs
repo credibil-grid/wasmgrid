@@ -62,7 +62,9 @@ impl Linkable for Service {
     // Add all the `wasi-keyvalue` world's interfaces to a [`Linker`], and
     // instantiate the `JsonDbHost` for the component.
     fn add_to_linker(&self, linker: &mut Linker<Self::Ctx>) -> anyhow::Result<()> {
-        // add_to_linker(linker, |c: &mut Self::Ctx| JsonDbHost::new(&c.mgo_client, &mut c.table))?;
+        add_to_linker(linker, |c: &mut Self::Ctx| {
+            JsonDbHost::new(&c.resources.mgo_client.wait(), &mut c.table)
+        })?;
         tracing::trace!("added to linker");
         Ok(())
     }

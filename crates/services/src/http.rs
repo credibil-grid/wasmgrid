@@ -93,7 +93,7 @@ async fn handle(
 
     // prepare wasmtime http request and response
     let mut store =
-        Store::new(proxy_pre.engine(), Ctx::new(&resources.nats_client, proxy_pre.instance_pre().clone()));
+        Store::new(proxy_pre.engine(), Ctx::new(resources, proxy_pre.instance_pre().clone()));
     store.limiter(|t| &mut t.limits);
 
     let (request, scheme) = prepare_request(request)?;
