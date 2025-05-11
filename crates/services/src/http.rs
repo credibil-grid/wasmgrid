@@ -19,6 +19,7 @@ use hyper::service::service_fn;
 use hyper::{Method, Request, Response, StatusCode};
 use runtime::{Linkable, Runnable};
 use tokio::net::TcpListener;
+use tokio::sync::oneshot;
 use wasmtime::Store;
 use wasmtime::component::{InstancePre, Linker};
 use wasmtime_wasi_http::bindings::ProxyPre;
@@ -87,9 +88,9 @@ async fn handle(
     proxy_pre: ProxyPre<Ctx>, resources: Resources, request: Request<Incoming>,
 ) -> Result<Response<HyperOutgoingBody>> {
     // HACK: CORS preflight request for use when testing locally
-    let cors = env::var("WITH_CORS").is_ok_and(|val| val.parse().unwrap_or(false));
+    let cors = env::var("WITH_CORS").is_ok_and(|v| v.parse().unwrap_or(false));
     if cors && request.method() == Method::OPTIONS {
-        return options_response(&request);
+        return handle_options(&request);
     }
 
     // prepare wasmtime http request and response
@@ -97,9 +98,8 @@ async fn handle(
         Store::new(proxy_pre.engine(), Ctx::new(resources, proxy_pre.instance_pre().clone()));
     store.limiter(|t| &mut t.limits);
 
-    let (sender, receiver) = tokio::sync::oneshot::channel();
     let (request, scheme) = prepare_request(request)?;
-
+    let (sender, receiver) = oneshot::channel();
     let incoming = store.data_mut().new_incoming_request(scheme, request)?;
     let outgoing = store.data_mut().new_response_outparam(sender)?;
 
@@ -128,7 +128,7 @@ async fn handle(
     }
 }
 
-fn options_response(_: &Request<Incoming>) -> Result<Response<HyperOutgoingBody>> {
+fn handle_options(_: &Request<Incoming>) -> Result<Response<HyperOutgoingBody>> {
     Response::builder()
         .status(StatusCode::OK)
         .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")

@@ -7,10 +7,6 @@ pub mod rpc;
 pub mod messaging;
 // pub mod vault;
 
-use std::any::Any;
-use std::collections::HashMap;
-
-use anyhow::{Result, anyhow};
 use async_nats::Client;
 use runtime::{Errout, Stdout};
 use wasmtime::StoreLimits;
@@ -25,10 +21,9 @@ pub struct Ctx {
     table: ResourceTable,
     wasi_ctx: WasiCtx,
     limits: StoreLimits,
-    nats_client: Client,
     http_ctx: WasiHttpCtx,
+    nats_client: Client,
     instance_pre: InstancePre<Ctx>,
-    // resources: Resources,
 }
 
 impl Ctx {
@@ -46,10 +41,9 @@ impl Ctx {
             table: ResourceTable::default(),
             wasi_ctx: ctx.build(),
             limits: StoreLimits::default(),
-            nats_client,
             http_ctx: WasiHttpCtx::new(),
+            nats_client,
             instance_pre,
-            // resources: Resources::new(),
         }
     }
 }
@@ -67,40 +61,40 @@ impl WasiView for Ctx {
     }
 }
 
-pub struct Resources {
-    table: HashMap<String, Box<dyn Any + Send + Sync>>,
-}
+// pub struct Resources {
+//     table: HashMap<String, Box<dyn Any + Send + Sync>>,
+// }
 
-impl Default for Resources {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+// impl Default for Resources {
+//     fn default() -> Self {
+//         Self::new()
+//     }
+// }
 
-impl Resources {
-    #[must_use]
-    pub fn new() -> Self {
-        Self {
-            table: HashMap::new(),
-        }
-    }
+// impl Resources {
+//     #[must_use]
+//     pub fn new() -> Self {
+//         Self {
+//             table: HashMap::new(),
+//         }
+//     }
 
-    pub fn push<T: Send + Sync + 'static>(&mut self, key: &str, value: T) {
-        self.table.insert(key.to_string(), Box::new(value));
-    }
+//     pub fn push<T: Send + Sync + 'static>(&mut self, key: &str, value: T) {
+//         self.table.insert(key.to_string(), Box::new(value));
+//     }
 
-    /// Get an immutable reference to a resource of a given type for a
-    /// given key.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the key does not exist or if the value
-    /// cannot be downcast to the requested type.
-    pub fn get<T: Any + Sized>(&self, key: &str) -> Result<&T> {
-        self.table
-            .get(key)
-            .ok_or_else(|| anyhow!("no value for {key}"))?
-            .downcast_ref()
-            .ok_or_else(|| anyhow!("failed to downcast"))
-    }
-}
+//     /// Get an immutable reference to a resource of a given type for a
+//     /// given key.
+//     ///
+//     /// # Errors
+//     ///
+//     /// Returns an error if the key does not exist or if the value
+//     /// cannot be downcast to the requested type.
+//     pub fn get<T: Any + Sized>(&self, key: &str) -> Result<&T> {
+//         self.table
+//             .get(key)
+//             .ok_or_else(|| anyhow!("no value for {key}"))?
+//             .downcast_ref()
+//             .ok_or_else(|| anyhow!("failed to downcast"))
+//     }
+// }

@@ -120,7 +120,7 @@ impl consumer::Host for MsgHost<'_> {
         &mut self, gc: GuestConfiguration,
     ) -> Result<Result<(), Resource<Error>>> {
         tracing::trace!("consumer::Host::update_guest_configuration");
-        server::subscribe(gc.channels, self.client.clone(), self.instance_pre.clone()).await?;
+        server::subscribe(gc.channels, self.client, self.instance_pre).await?;
         Ok(Ok(()))
     }
 }

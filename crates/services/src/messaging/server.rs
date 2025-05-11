@@ -28,10 +28,12 @@ pub async fn run(pre: InstancePre<Ctx>, client: Client) -> Result<()> {
         return Err(anyhow!("failed to configure messaging guest"));
     };
 
-    subscribe(gc.channels, client, pre.clone()).await
+    subscribe(gc.channels, &client, &pre).await
 }
 
-pub async fn subscribe(channels: Vec<String>, client: Client, pre: InstancePre<Ctx>) -> Result<()> {
+pub async fn subscribe(
+    channels: Vec<String>, client: &Client, pre: &InstancePre<Ctx>,
+) -> Result<()> {
     tracing::debug!("subscribing to requests");
 
     let mut subscribers = vec![];
@@ -58,7 +60,7 @@ pub async fn subscribe(channels: Vec<String>, client: Client, pre: InstancePre<C
 // Forward message to the wasm component.
 async fn call_guest(pre: InstancePre<Ctx>, client: Client, msg: async_nats::Message) -> Result<()> {
     let mut store = Store::new(pre.engine(), Ctx::new(client, pre.clone()));
-    let msg_pre = MessagingPre::new(pre.clone())?;
+    let msg_pre = MessagingPre::new(pre)?;
     let messaging = msg_pre.instantiate_async(&mut store).await?;
     let wasi_msg = msg_conv(&msg);
 
