@@ -79,7 +79,7 @@ optimising embedded `wasmtime`builds.
 ### Debugging bindgen! macro
 
 ```bash
-cargo expand --package wasmgrid service::vault::bindings > expanded.rs
+cargo expand --manifest-path crates/services/Cargo.toml keyvalue::generated > expanded.rs
 ```
 
 ## Nex

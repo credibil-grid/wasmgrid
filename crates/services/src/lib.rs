@@ -71,24 +71,36 @@ pub struct Resources {
     table: HashMap<String, Box<dyn Any + Send + Sync>>,
 }
 
+impl Default for Resources {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Resources {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             table: HashMap::new(),
         }
     }
 
-    pub fn insert<T: Send + Sync + 'static>(&mut self, key: &str, value: T) {
+    pub fn push<T: Send + Sync + 'static>(&mut self, key: &str, value: T) {
         self.table.insert(key.to_string(), Box::new(value));
     }
 
     /// Get an immutable reference to a resource of a given type for a
     /// given key.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the key does not exist or if the value
+    /// cannot be downcast to the requested type.
     pub fn get<T: Any + Sized>(&self, key: &str) -> Result<&T> {
         self.table
             .get(key)
-            .ok_or(anyhow!("no value for {key}"))?
+            .ok_or_else(|| anyhow!("no value for {key}"))?
             .downcast_ref()
-            .ok_or(anyhow!("failed to downcast"))
+            .ok_or_else(|| anyhow!("failed to downcast"))
     }
 }
