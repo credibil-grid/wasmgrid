@@ -1,11 +1,18 @@
 //! # WebAssembly Runtime
 
+#[cfg(feature = "http")]
 pub mod http;
+#[cfg(feature = "jsondb")]
+pub mod jsondb;
+#[cfg(feature = "keyvalue")]
 pub mod keyvalue;
-pub mod rpc;
-// pub mod jsondb;
+#[cfg(feature = "messaging")]
 pub mod messaging;
+#[cfg(feature = "rpc")]
+pub mod rpc;
 // pub mod vault;
+
+use std::sync::{LazyLock, OnceLock};
 
 use async_nats::Client;
 use runtime::{Errout, Stdout};
@@ -24,6 +31,12 @@ pub struct Ctx {
     http_ctx: WasiHttpCtx,
     nats_client: Client,
     instance_pre: InstancePre<Ctx>,
+}
+
+// #[derive(Clone)]
+pub struct Resources {
+    pub nats_client: LazyLock<async_nats::Client>,
+    // pub mgo_client: OnceLock<mongodb::Client>,
 }
 
 impl Ctx {
@@ -60,41 +73,3 @@ impl WasiView for Ctx {
         &mut self.wasi_ctx
     }
 }
-
-// pub struct Resources {
-//     table: HashMap<String, Box<dyn Any + Send + Sync>>,
-// }
-
-// impl Default for Resources {
-//     fn default() -> Self {
-//         Self::new()
-//     }
-// }
-
-// impl Resources {
-//     #[must_use]
-//     pub fn new() -> Self {
-//         Self {
-//             table: HashMap::new(),
-//         }
-//     }
-
-//     pub fn push<T: Send + Sync + 'static>(&mut self, key: &str, value: T) {
-//         self.table.insert(key.to_string(), Box::new(value));
-//     }
-
-//     /// Get an immutable reference to a resource of a given type for a
-//     /// given key.
-//     ///
-//     /// # Errors
-//     ///
-//     /// Returns an error if the key does not exist or if the value
-//     /// cannot be downcast to the requested type.
-//     pub fn get<T: Any + Sized>(&self, key: &str) -> Result<&T> {
-//         self.table
-//             .get(key)
-//             .ok_or_else(|| anyhow!("no value for {key}"))?
-//             .downcast_ref()
-//             .ok_or_else(|| anyhow!("failed to downcast"))
-//     }
-// }

@@ -28,11 +28,9 @@ use wasmtime_wasi_http::body::HyperOutgoingBody;
 use wasmtime_wasi_http::io::TokioIo;
 use wasmtime_wasi_http::{WasiHttpCtx, WasiHttpView};
 
-use crate::Ctx;
+use crate::{Ctx, Resources};
 
 const DEF_HTTP_ADDR: &str = "0.0.0.0:8080";
-
-type Resources = <Service as runtime::Runnable>::Resources;
 
 pub struct Service;
 
@@ -47,7 +45,7 @@ impl Linkable for Service {
 }
 
 impl Runnable for Service {
-    type Resources = async_nats::Client;
+    type Resources = Resources;
 
     /// Provide http proxy service the specified wasm component.
     async fn run(&self, pre: InstancePre<Self::Ctx>, resources: Self::Resources) -> Result<()> {
@@ -95,7 +93,7 @@ async fn handle(
 
     // prepare wasmtime http request and response
     let mut store =
-        Store::new(proxy_pre.engine(), Ctx::new(resources, proxy_pre.instance_pre().clone()));
+        Store::new(proxy_pre.engine(), Ctx::new(&resources.nats_client, proxy_pre.instance_pre().clone()));
     store.limiter(|t| &mut t.limits);
 
     let (request, scheme) = prepare_request(request)?;
