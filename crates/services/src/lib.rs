@@ -79,11 +79,11 @@ impl WasiView for Ctx {
 #[derive(Clone)]
 pub struct Resources {
     #[cfg(any(feature = "keyvalue", feature = "messaging", feature = "rpc"))]
-    nats_client: Arc<OnceLock<async_nats::Client>>,
+    nats: Arc<OnceLock<async_nats::Client>>,
     #[cfg(feature = "jsondb")]
-    mgo_client: Arc<OnceLock<mongodb::Client>>,
+    mongo: Arc<OnceLock<mongodb::Client>>,
     #[cfg(feature = "vault")]
-    az_client: Arc<OnceLock<KeyClient>>,
+    azkeyvault: Arc<OnceLock<KeyClient>>,
 }
 
 impl Resources {
@@ -91,11 +91,11 @@ impl Resources {
     pub fn new() -> Self {
         Self {
             #[cfg(any(feature = "keyvalue", feature = "messaging", feature = "rpc"))]
-            nats_client: Arc::new(OnceLock::new()),
+            nats: Arc::new(OnceLock::new()),
             #[cfg(feature = "jsondb")]
-            mgo_client: Arc::new(OnceLock::new()),
+            mongo: Arc::new(OnceLock::new()),
             #[cfg(feature = "vault")]
-            az_client: Arc::new(OnceLock::new()),
+            azkeyvault: Arc::new(OnceLock::new()),
         }
     }
 
@@ -127,7 +127,7 @@ impl Resources {
                 tracing::error!("failed to connect to nats");
                 return Err(anyhow!("failed to connect to nats"));
             };
-            resources.nats_client.set(client).map_err(|_| anyhow!("failed to set nats client"))
+            resources.nats.set(client).map_err(|_| anyhow!("failed to set nats client"))
         })
     }
 
@@ -143,7 +143,7 @@ impl Resources {
                 tracing::error!("failed to connect to mongo");
                 return Err(anyhow!("failed to connect to mongo"));
             };
-            resources.mgo_client.set(client).map_err(|_| anyhow!("failed to set mongo client"))
+            resources.mongo.set(client).map_err(|_| anyhow!("failed to set mongo client"))
         })
     }
 
@@ -168,7 +168,7 @@ impl Resources {
 
             let client =
                 KeyClient::new("https://kv-credibil-demo.vault.azure.net", credential, None)?;
-            resources.az_client.set(client).map_err(|_| anyhow!("failed to set mongo client"))
+            resources.azkeyvault.set(client).map_err(|_| anyhow!("failed to set mongo client"))
         })
     }
 
@@ -183,10 +183,13 @@ impl Resources {
     /// times out.
     #[must_use]
     pub fn nats(&self) -> &async_nats::Client {
-        block_on(async {
-            timeout(Duration::from_millis(100), async { self.nats_client.wait() }).await
-        })
-        .expect("should get nats client")
+        let Ok(client) = block_on(async {
+            timeout(Duration::from_millis(100), async { self.nats.wait() }).await
+        }) else {
+            tracing::error!("failed to get nats client");
+            panic!("should get nats client");
+        };
+        client
     }
 
     /// Get the MongoDB client.
@@ -200,10 +203,13 @@ impl Resources {
     /// times out.
     #[must_use]
     pub fn mongo(&self) -> &mongodb::Client {
-        block_on(async {
-            timeout(Duration::from_millis(100), async { self.mgo_client.wait() }).await
-        })
-        .expect("should get nats client")
+        let Ok(client) = block_on(async {
+            timeout(Duration::from_millis(100), async { self.mongo.wait() }).await
+        }) else {
+            tracing::error!("failed to get mongo client");
+            panic!("should get mongo client");
+        };
+        client
     }
 
     /// Get the Azure Keyvault client.
@@ -217,10 +223,13 @@ impl Resources {
     /// times out.
     #[must_use]
     pub fn azkeyvault(&self) -> &KeyClient {
-        block_on(async {
-            timeout(Duration::from_millis(100), async { self.az_client.wait() }).await
-        })
-        .expect("should get nats client")
+        let Ok(client) = block_on(async {
+            timeout(Duration::from_millis(100), async { self.azkeyvault.wait() }).await
+        }) else {
+            tracing::error!("failed to get az keyvault client");
+            panic!("should get az keyvault client");
+        };
+        client
     }
 }
 
