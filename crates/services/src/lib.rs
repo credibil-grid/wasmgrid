@@ -183,14 +183,7 @@ impl Resources {
     /// times out.
     #[must_use]
     pub fn nats(&self) -> &async_nats::Client {
-        for _ in 0..10 {
-            if let Some(client) = self.nats.get() {
-                return client;
-            }
-            sleep(Duration::from_millis(10));
-        }
-        tracing::error!("failed to get nats client");
-        panic!("failed to get nats client");
+        timeout(&self.nats)
     }
 
     /// Get the MongoDB client.
@@ -204,14 +197,7 @@ impl Resources {
     /// times out.
     #[must_use]
     pub fn mongo(&self) -> &mongodb::Client {
-        for _ in 0..10 {
-            if let Some(client) = self.mongo.get() {
-                return client;
-            }
-            sleep(Duration::from_millis(10));
-        }
-        tracing::error!("failed to get mongo client");
-        panic!("failed to get mongo client");
+        timeout(&self.mongo)
     }
 
     /// Get the Azure Keyvault client.
@@ -225,14 +211,7 @@ impl Resources {
     /// times out.
     #[must_use]
     pub fn azkeyvault(&self) -> &KeyClient {
-        for _ in 0..10 {
-            if let Some(client) = self.azkeyvault.get() {
-                return client;
-            }
-            sleep(Duration::from_millis(10));
-        }
-        tracing::error!("failed to get az keyvault client");
-        panic!("failed to get az keyvault client");
+        timeout(&self.azkeyvault)
     }
 }
 
@@ -240,4 +219,15 @@ impl Default for Resources {
     fn default() -> Self {
         Self::new()
     }
+}
+
+fn timeout<T>(once_lock: &OnceLock<T>) -> &T {
+    for _ in 0..10 {
+        if let Some(client) = once_lock.get() {
+            return client;
+        }
+        sleep(Duration::from_millis(10));
+    }
+    tracing::error!("failed to get resource");
+    panic!("failed to get resource");
 }
