@@ -14,8 +14,10 @@ pub mod rpc;
 
 use std::sync::{Arc, OnceLock};
 
-use async_nats::ConnectOptions;
+use anyhow::{Result, anyhow};
+use async_nats::{AuthError, ConnectOptions};
 use runtime::{Errout, Stdout};
+use tokio::task::JoinHandle;
 use wasmtime::StoreLimits;
 use wasmtime::component::InstancePre;
 use wasmtime_wasi::{IoView, ResourceTable, WasiCtx, WasiCtxBuilder, WasiView};
@@ -88,41 +90,53 @@ impl Resources {
         }
     }
 
-    /// Add a NATS connection.
+    /// Add a NATS connection using the given address and, optionally,
+    /// authenticating using a NATS `nkeys` JWT and seed.
     ///
-    /// # Panics
-    ///
-    /// This function panics if thea NATS connection cannot be created.
+    /// The method will attempt connect on a separate, returning a
+    /// [`tokio::task::JoinHandle`] that can be awaited if desired.
     #[cfg(any(feature = "keyvalue", feature = "messaging", feature = "rpc"))]
-    pub fn with_nats(&self, addr: impl Into<String>, opts: ConnectOptions) {
-        let res = self.clone();
-        let addr = addr.into();
+    pub fn with_nats(
+        &self, addr: impl Into<String> + Send + 'static, jwt: Option<String>, seed: Option<String>,
+    ) -> JoinHandle<Result<()>> {
+        let resources = self.clone();
         tokio::spawn(async move {
-            let client = opts.connect(addr).await.expect("should connect to nats");
-            res.nats_client.set(client).unwrap();
-        });
+            let opts = if let Some(jwt) = jwt {
+                let Ok(key_pair) = nkeys::KeyPair::from_seed(&seed.unwrap_or_default()) else {
+                    tracing::error!("failed to create nats KeyPair");
+                    return Err(anyhow!("failed to create nats KeyPair"));
+                };
+                let key_pair = Arc::new(key_pair);
+                ConnectOptions::with_jwt(jwt, move |nonce| {
+                    let key_pair = key_pair.clone();
+                    async move { key_pair.sign(&nonce).map_err(AuthError::new) }
+                })
+            } else {
+                ConnectOptions::new()
+            };
+
+            let Ok(client) = opts.connect(addr.into()).await else {
+                tracing::error!("failed to connect to nats");
+                return Err(anyhow!("failed to connect to nats"));
+            };
+            resources.nats_client.set(client).map_err(|_| anyhow!("failed to set nats client"))
+        })
     }
 
-    /// Add a MongoDB connection.
+    /// Add a MongoDB connection from a `mongodb` uri.
     ///
-    /// # Panics
-    ///
-    /// This function panics if the MongoDB client cannot be created.
+    /// The method will attempt connect on a separate, returning a
+    /// [`tokio::task::JoinHandle`] that can be awaited if desired.
     #[cfg(feature = "jsondb")]
-    pub fn with_mongo(&self, uri: impl Into<String> + Send + 'static) {
-        //opts: ClientOptions) {
-        let res = self.clone();
+    pub fn with_mongo(&self, uri: impl AsRef<str> + Send + 'static) -> JoinHandle<Result<()>> {
+        let resources = self.clone();
         tokio::spawn(async move {
-            let client = mongodb::Client::with_uri_str(&uri.into())
-                .await
-                .expect("should connect to mongodb");
-            res.mgo_client.set(client).unwrap();
-
-            // // redact password from connection string
-            // let mut redacted = url::Url::parse(&self.addr).unwrap();
-            // redacted.set_password(Some("*****")).map_err(|()| anyhow!("issue redacting password"))?;
-            // tracing::info!("connected to: {redacted}");
-        });
+            let Ok(client) = mongodb::Client::with_uri_str(uri).await else {
+                tracing::error!("failed to connect to mongo");
+                return Err(anyhow!("failed to connect to mongo"));
+            };
+            resources.mgo_client.set(client).map_err(|_| anyhow!("failed to set mongo client"))
+        })
     }
 }
 

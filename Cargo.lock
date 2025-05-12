@@ -5216,6 +5216,7 @@ dependencies = [
  "iroh",
  "jmespath",
  "mongodb",
+ "nkeys",
  "runtime",
  "serde_json",
  "tokio",
@@ -6604,16 +6605,12 @@ name = "wasmgrid"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "async-nats",
  "dotenv",
- "mongodb",
- "nkeys",
  "runtime",
  "services",
  "tokio",
  "tracing",
  "tracing-subscriber",
- "wasmtime",
 ]
 
 [[package]]
