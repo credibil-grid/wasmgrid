@@ -40,13 +40,13 @@ pub async fn main() -> anyhow::Result<()> {
             rt.link(&vault::Service)?;
 
             // load external resources
-            let addr = env::var("NATS_ADDR").unwrap_or_else(|_| DEF_NATS_ADDR.into());
+            let nats_addr = env::var("NATS_ADDR").unwrap_or_else(|_| DEF_NATS_ADDR.into());
             let jwt = env::var("NATS_JWT").ok();
             let seed = env::var("NATS_SEED").ok();
             let mgo_cnn = env::var("MGO_CNN").unwrap_or_else(|_| DEF_MGO_CNN.into());
 
             let resources = Resources::new();
-            resources.with_nats(addr, jwt, seed);
+            resources.with_nats(nats_addr, jwt, seed);
             resources.with_mongo(mgo_cnn);
             resources.with_azkeyvault("<az login>");
 

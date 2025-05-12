@@ -14,15 +14,15 @@ pub mod rpc;
 pub mod vault;
 
 use std::sync::{Arc, OnceLock};
+use std::thread::sleep;
+use std::time::Duration;
 
 use anyhow::{Result, anyhow};
 use async_nats::{AuthError, ConnectOptions};
 use azure_identity::DefaultAzureCredential;
 use azure_security_keyvault_keys::KeyClient;
-use futures::executor::block_on;
 use runtime::{Errout, Stdout};
 use tokio::task::JoinHandle;
-use tokio::time::{Duration, timeout};
 use wasmtime::StoreLimits;
 use wasmtime::component::InstancePre;
 use wasmtime_wasi::{IoView, ResourceTable, WasiCtx, WasiCtxBuilder, WasiView};
@@ -183,13 +183,14 @@ impl Resources {
     /// times out.
     #[must_use]
     pub fn nats(&self) -> &async_nats::Client {
-        let Ok(client) = block_on(async {
-            timeout(Duration::from_millis(100), async { self.nats.wait() }).await
-        }) else {
-            tracing::error!("failed to get nats client");
-            panic!("should get nats client");
-        };
-        client
+        for _ in 0..10 {
+            if let Some(client) = self.nats.get() {
+                return client;
+            }
+            sleep(Duration::from_millis(10));
+        }
+        tracing::error!("failed to get nats client");
+        panic!("failed to get nats client");
     }
 
     /// Get the MongoDB client.
@@ -203,13 +204,14 @@ impl Resources {
     /// times out.
     #[must_use]
     pub fn mongo(&self) -> &mongodb::Client {
-        let Ok(client) = block_on(async {
-            timeout(Duration::from_millis(100), async { self.mongo.wait() }).await
-        }) else {
-            tracing::error!("failed to get mongo client");
-            panic!("should get mongo client");
-        };
-        client
+        for _ in 0..10 {
+            if let Some(client) = self.mongo.get() {
+                return client;
+            }
+            sleep(Duration::from_millis(10));
+        }
+        tracing::error!("failed to get mongo client");
+        panic!("failed to get mongo client");
     }
 
     /// Get the Azure Keyvault client.
@@ -223,13 +225,14 @@ impl Resources {
     /// times out.
     #[must_use]
     pub fn azkeyvault(&self) -> &KeyClient {
-        let Ok(client) = block_on(async {
-            timeout(Duration::from_millis(100), async { self.azkeyvault.wait() }).await
-        }) else {
-            tracing::error!("failed to get az keyvault client");
-            panic!("should get az keyvault client");
-        };
-        client
+        for _ in 0..10 {
+            if let Some(client) = self.azkeyvault.get() {
+                return client;
+            }
+            sleep(Duration::from_millis(10));
+        }
+        tracing::error!("failed to get az keyvault client");
+        panic!("failed to get az keyvault client");
     }
 }
 

@@ -26,8 +26,7 @@ mod generated {
     });
 }
 
-// use anyhow::anyhow;
-use azure_security_keyvault_keys::KeyClient; //ResourceExt
+use azure_security_keyvault_keys::KeyClient;
 use azure_security_keyvault_keys::models::{SignParameters, SignatureAlgorithm};
 use base64ct::{Base64UrlUnpadded, Encoding};
 use runtime::Linkable;
