@@ -4,7 +4,7 @@
 //! (<https://github.com/WebAssembly/wasi-vault>).
 
 mod generated {
-    #![allow(clippy::future_not_send)]
+    #![allow(clippy::trait_duplication_in_bounds)]
 
     pub use wasi::vault::keystore::Error;
 
@@ -23,9 +23,6 @@ mod generated {
         trappable_error_type: {
             "wasi:vault/keystore/error" => Error,
         },
-        // additional_derives: [
-        //     Clone,
-        // ],
     });
 }
 
@@ -74,7 +71,7 @@ impl Linkable for Service {
     // instantiate the `KeyvalueHost` for the component.
     fn add_to_linker(&self, linker: &mut Linker<Self::Ctx>) -> anyhow::Result<()> {
         add_to_linker(linker, |c: &mut Self::Ctx| {
-            VaultHost::new(c.resources.az_client.wait(), &mut c.table)
+            VaultHost::new(c.resources.azkeyvault(), &mut c.table)
         })?;
         tracing::trace!("added to linker");
         Ok(())
@@ -163,7 +160,7 @@ impl vault::keystore::HostKeyPair for VaultHost<'_> {
 
         let sig_res = match self
             .client
-            .sign(&key_pair.name, &SignatureAlgorithm::ES256K.to_string(), params.try_into()?, None)
+            .sign(&key_pair.name, SignatureAlgorithm::ES256K.as_ref(), params.try_into()?, None)
             .await
         {
             Ok(digest) => digest,

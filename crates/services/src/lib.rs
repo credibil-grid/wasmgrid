@@ -19,8 +19,10 @@ use anyhow::{Result, anyhow};
 use async_nats::{AuthError, ConnectOptions};
 use azure_identity::DefaultAzureCredential;
 use azure_security_keyvault_keys::KeyClient;
+use futures::executor::block_on;
 use runtime::{Errout, Stdout};
 use tokio::task::JoinHandle;
+use tokio::time::{Duration, timeout};
 use wasmtime::StoreLimits;
 use wasmtime::component::InstancePre;
 use wasmtime_wasi::{IoView, ResourceTable, WasiCtx, WasiCtxBuilder, WasiView};
@@ -77,11 +79,11 @@ impl WasiView for Ctx {
 #[derive(Clone)]
 pub struct Resources {
     #[cfg(any(feature = "keyvalue", feature = "messaging", feature = "rpc"))]
-    pub nats_client: Arc<OnceLock<async_nats::Client>>,
+    nats_client: Arc<OnceLock<async_nats::Client>>,
     #[cfg(feature = "jsondb")]
-    pub mgo_client: Arc<OnceLock<mongodb::Client>>,
+    mgo_client: Arc<OnceLock<mongodb::Client>>,
     #[cfg(feature = "vault")]
-    pub az_client: Arc<OnceLock<KeyClient>>,
+    az_client: Arc<OnceLock<KeyClient>>,
 }
 
 impl Resources {
@@ -108,19 +110,18 @@ impl Resources {
     ) -> JoinHandle<Result<()>> {
         let resources = self.clone();
         tokio::spawn(async move {
-            let opts = if let Some(jwt) = jwt {
+            let mut opts = ConnectOptions::new();
+            if let Some(jwt) = jwt {
                 let Ok(key_pair) = nkeys::KeyPair::from_seed(&seed.unwrap_or_default()) else {
                     tracing::error!("failed to create nats KeyPair");
                     return Err(anyhow!("failed to create nats KeyPair"));
                 };
                 let key_pair = Arc::new(key_pair);
-                ConnectOptions::with_jwt(jwt, move |nonce| {
+                opts = opts.jwt(jwt, move |nonce| {
                     let key_pair = key_pair.clone();
                     async move { key_pair.sign(&nonce).map_err(AuthError::new) }
-                })
-            } else {
-                ConnectOptions::new()
-            };
+                });
+            }
 
             let Ok(client) = opts.connect(addr.into()).await else {
                 tracing::error!("failed to connect to nats");
@@ -146,7 +147,7 @@ impl Resources {
         })
     }
 
-    /// Add an Azure KeyVault connection.
+    /// Add an `Azure KeyVault` connection.
     ///
     /// The method will attempt connect on a separate, returning a
     /// [`tokio::task::JoinHandle`] that can be awaited if desired.
@@ -165,13 +166,61 @@ impl Resources {
                     .map_err(|e| anyhow!("could not create credential: {e}"))?
             };
 
-            let client = KeyClient::new(
-                "https://kv-credibil-demo.vault.azure.net",
-                credential.clone(),
-                None,
-            )?;
+            let client =
+                KeyClient::new("https://kv-credibil-demo.vault.azure.net", credential, None)?;
             resources.az_client.set(client).map_err(|_| anyhow!("failed to set mongo client"))
         })
+    }
+
+    /// Get the NATS client.
+    ///
+    /// This method will block until the client is available, timing out after
+    /// 100ms.
+    ///
+    /// # Panics
+    ///
+    /// This method panics if the client is not available before the method
+    /// times out.
+    #[must_use]
+    pub fn nats(&self) -> &async_nats::Client {
+        block_on(async {
+            timeout(Duration::from_millis(100), async { self.nats_client.wait() }).await
+        })
+        .expect("should get nats client")
+    }
+
+    /// Get the MongoDB client.
+    ///
+    /// This method will block until the client is available, timing out after
+    /// 100ms.
+    ///
+    /// # Panics
+    ///
+    /// This method panics if the client is not available before the method
+    /// times out.
+    #[must_use]
+    pub fn mongo(&self) -> &mongodb::Client {
+        block_on(async {
+            timeout(Duration::from_millis(100), async { self.mgo_client.wait() }).await
+        })
+        .expect("should get nats client")
+    }
+
+    /// Get the Azure Keyvault client.
+    ///
+    /// This method will block until the client is available, timing out after
+    /// 100ms.
+    ///
+    /// # Panics
+    ///
+    /// This method panics if the client is not available before the method
+    /// times out.
+    #[must_use]
+    pub fn azkeyvault(&self) -> &KeyClient {
+        block_on(async {
+            timeout(Duration::from_millis(100), async { self.az_client.wait() }).await
+        })
+        .expect("should get nats client")
     }
 }
 

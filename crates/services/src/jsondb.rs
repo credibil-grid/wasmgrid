@@ -63,7 +63,7 @@ impl Linkable for Service {
     // instantiate the `JsonDbHost` for the component.
     fn add_to_linker(&self, linker: &mut Linker<Self::Ctx>) -> anyhow::Result<()> {
         add_to_linker(linker, |c: &mut Self::Ctx| {
-            JsonDbHost::new(c.resources.mgo_client.wait(), &mut c.table)
+            JsonDbHost::new(c.resources.mongo(), &mut c.table)
         })?;
         tracing::trace!("added to linker");
         Ok(())
