@@ -1,7 +1,7 @@
 [package]
+name = "http-msg"
 authors.workspace = true
 edition.workspace = true
-name = "http-msg"
 
 [lib]
 crate-type = ["cdylib"]

@@ -1,15 +1,18 @@
-# Key Value Example
+# Vault Example
 
 Build the example guest:
 
 ```bash
-cargo component build -Z build-std=panic_abort,std --package keyvalue --release
+cargo build --package vault --target wasm32-wasip2 --release
 ```
 
 Run the guest using the `wasmgrid` runtime:
 
 ```bash
-cargo run -- ./target/wasm32-wasip1/release/keyvalue.wasm
+cargo run -- compile  ./target/wasm32-wasip2/release/vault.wasm
+cargo run -- run ./vault.bin
+# OR
+cargo run -- run --compile ./target/wasm32-wasip2/release/vault.wasm
 ```
 
 In a separate console, send some messages to the guest:

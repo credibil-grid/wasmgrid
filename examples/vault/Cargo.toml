@@ -1,7 +1,7 @@
 [package]
+name = "vault"
 authors.workspace = true
 edition.workspace = true
-name = "vault"
 
 [lib]
 crate-type = ["cdylib"]
