@@ -9,8 +9,7 @@ mod generated {
     #![allow(clippy::trait_duplication_in_bounds)]
 
     pub use async_nats::jetstream::kv::Store;
-
-    pub use super::Error;
+    pub use wasi::keyvalue::store::Error;
 
     wasmtime::component::bindgen!({
         world: "keyvalue",
@@ -29,7 +28,7 @@ mod generated {
 
 use std::time::Duration;
 
-use anyhow::{Result, anyhow};
+use anyhow::anyhow;
 use async_nats::jetstream::kv::{self, Store};
 use async_nats::{Client, jetstream};
 use futures::TryStreamExt;
@@ -38,27 +37,10 @@ use wasmtime::component::{Linker, Resource, ResourceTableError};
 use wasmtime_wasi::ResourceTable;
 
 use self::generated::wasi::keyvalue;
-use self::generated::wasi::keyvalue::store::KeyResponse;
+use self::generated::wasi::keyvalue::store::{Error, KeyResponse};
 use crate::Ctx;
 
-#[derive(Debug)]
-pub enum Error {
-    NoSuchStore,
-    // AccessDenied,
-    Other(String),
-}
-
-impl From<ResourceTableError> for Error {
-    fn from(err: ResourceTableError) -> Self {
-        Self::Other(err.to_string())
-    }
-}
-
-impl From<anyhow::Error> for Error {
-    fn from(err: anyhow::Error) -> Self {
-        Self::Other(err.to_string())
-    }
-}
+pub type Result<T, E = Error> = anyhow::Result<T, E>;
 
 pub struct KeyvalueHost<'a> {
     client: &'a Client,
@@ -89,7 +71,7 @@ impl Linkable for Service {
 
 fn add_to_linker<T: Send>(
     l: &mut Linker<T>, f: impl Fn(&mut T) -> KeyvalueHost<'_> + Send + Sync + Copy + 'static,
-) -> Result<()> {
+) -> anyhow::Result<()> {
     keyvalue::store::add_to_linker_get_host(l, f)?;
     keyvalue::atomics::add_to_linker_get_host(l, f)?;
     keyvalue::batch::add_to_linker_get_host(l, f)
@@ -98,7 +80,7 @@ fn add_to_linker<T: Send>(
 // Implement the [`wasi_keyvalue::KeyValueView`]` trait for  KeyvalueHost<'_>.
 impl keyvalue::store::Host for KeyvalueHost<'_> {
     // Open bucket specified by identifier, save to state and return as a resource.
-    async fn open(&mut self, identifier: String) -> Result<Resource<Store>, Error> {
+    async fn open(&mut self, identifier: String) -> Result<Resource<Store>> {
         tracing::trace!("store::Host::open {identifier}");
 
         let jetstream = jetstream::new(self.client.clone());
@@ -125,17 +107,13 @@ impl keyvalue::store::Host for KeyvalueHost<'_> {
         Ok(self.table.push(bucket)?)
     }
 
-    fn convert_error(&mut self, err: Error) -> Result<keyvalue::store::Error> {
-        match err {
-            Error::NoSuchStore => Ok(keyvalue::store::Error::NoSuchStore),
-            // Error::AccessDenied => Ok(keyvalue::store::Error::AccessDenied),
-            Error::Other(e) => Ok(keyvalue::store::Error::Other(e)),
-        }
+    fn convert_error(&mut self, err: Error) -> anyhow::Result<Error> {
+        Ok(err)
     }
 }
 
 impl keyvalue::store::HostBucket for KeyvalueHost<'_> {
-    async fn get(&mut self, rep: Resource<Store>, key: String) -> Result<Option<Vec<u8>>, Error> {
+    async fn get(&mut self, rep: Resource<Store>, key: String) -> Result<Option<Vec<u8>>> {
         tracing::trace!("store::HostBucket::get {key}");
 
         let Ok(bucket) = self.table.get_mut(&rep) else {
@@ -156,7 +134,7 @@ impl keyvalue::store::HostBucket for KeyvalueHost<'_> {
         bucket.put(key, value.into()).await.map_or_else(|e| Err(anyhow!(e).into()), |_| Ok(()))
     }
 
-    async fn delete(&mut self, rep: Resource<Store>, key: String) -> Result<(), Error> {
+    async fn delete(&mut self, rep: Resource<Store>, key: String) -> Result<()> {
         tracing::trace!("store::HostBucket::delete {key}");
 
         let Ok(bucket) = self.table.get_mut(&rep) else {
@@ -165,7 +143,7 @@ impl keyvalue::store::HostBucket for KeyvalueHost<'_> {
         bucket.delete(key).await.map_err(|e| anyhow!("issue deleting value: {e}").into())
     }
 
-    async fn exists(&mut self, rep: Resource<Store>, key: String) -> Result<bool, Error> {
+    async fn exists(&mut self, rep: Resource<Store>, key: String) -> Result<bool> {
         tracing::trace!("store::HostBucket::exists {key}");
 
         let Ok(bucket) = self.table.get_mut(&rep) else {
@@ -181,7 +159,7 @@ impl keyvalue::store::HostBucket for KeyvalueHost<'_> {
 
     async fn list_keys(
         &mut self, rep: Resource<Store>, cursor: Option<u64>,
-    ) -> Result<KeyResponse, Error> {
+    ) -> Result<KeyResponse> {
         tracing::trace!("store::HostBucket::list_keys {cursor:?}");
 
         let Ok(bucket) = self.table.get_mut(&rep) else {
@@ -196,16 +174,14 @@ impl keyvalue::store::HostBucket for KeyvalueHost<'_> {
         Ok(KeyResponse { keys, cursor })
     }
 
-    async fn drop(&mut self, rep: Resource<Store>) -> Result<(), anyhow::Error> {
+    async fn drop(&mut self, rep: Resource<Store>) -> anyhow::Result<()> {
         tracing::trace!("store::HostBucket::drop");
-        self.table.delete(rep).map_or_else(|e| Err(anyhow!(e)), |_| Ok(()))
+        self.table.delete(rep).map(|_| Ok(()))?
     }
 }
 
 impl keyvalue::atomics::Host for KeyvalueHost<'_> {
-    async fn increment(
-        &mut self, rep: Resource<Store>, key: String, delta: u64,
-    ) -> Result<u64, Error> {
+    async fn increment(&mut self, rep: Resource<Store>, key: String, delta: u64) -> Result<u64> {
         tracing::trace!("atomics::Host::increment {key}, {delta}");
 
         let Ok(bucket) = self.table.get_mut(&rep) else {
@@ -236,7 +212,7 @@ impl keyvalue::atomics::Host for KeyvalueHost<'_> {
 impl keyvalue::batch::Host for KeyvalueHost<'_> {
     async fn get_many(
         &mut self, rep: Resource<Store>, keys: Vec<String>,
-    ) -> Result<Vec<Option<(String, Vec<u8>)>>, Error> {
+    ) -> Result<Vec<Option<(String, Vec<u8>)>>> {
         tracing::trace!("batch::Host::get_many {keys:?}");
 
         let Ok(bucket) = self.table.get_mut(&rep) else {
@@ -259,7 +235,7 @@ impl keyvalue::batch::Host for KeyvalueHost<'_> {
 
     async fn set_many(
         &mut self, rep: Resource<Store>, key_values: Vec<(String, Vec<u8>)>,
-    ) -> Result<(), Error> {
+    ) -> Result<()> {
         tracing::trace!("batch::Host::set_many {key_values:?}");
 
         let Ok(bucket) = self.table.get_mut(&rep) else {
@@ -275,7 +251,7 @@ impl keyvalue::batch::Host for KeyvalueHost<'_> {
         Ok(())
     }
 
-    async fn delete_many(&mut self, rep: Resource<Store>, keys: Vec<String>) -> Result<(), Error> {
+    async fn delete_many(&mut self, rep: Resource<Store>, keys: Vec<String>) -> Result<()> {
         tracing::trace!("batch::Host::delete_many {keys:?}");
 
         let Ok(bucket) = self.table.get_mut(&rep) else {
@@ -289,5 +265,17 @@ impl keyvalue::batch::Host for KeyvalueHost<'_> {
         }
 
         Ok(())
+    }
+}
+
+impl From<ResourceTableError> for Error {
+    fn from(err: ResourceTableError) -> Self {
+        Self::Other(err.to_string())
+    }
+}
+
+impl From<anyhow::Error> for Error {
+    fn from(err: anyhow::Error) -> Self {
+        Self::Other(err.to_string())
     }
 }

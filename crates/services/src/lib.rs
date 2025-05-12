@@ -10,12 +10,15 @@ pub mod keyvalue;
 pub mod messaging;
 #[cfg(feature = "rpc")]
 pub mod rpc;
-// pub mod vault;
+#[cfg(feature = "vault")]
+pub mod vault;
 
 use std::sync::{Arc, OnceLock};
 
 use anyhow::{Result, anyhow};
 use async_nats::{AuthError, ConnectOptions};
+use azure_identity::DefaultAzureCredential;
+use azure_security_keyvault_keys::KeyClient;
 use runtime::{Errout, Stdout};
 use tokio::task::JoinHandle;
 use wasmtime::StoreLimits;
@@ -77,6 +80,8 @@ pub struct Resources {
     pub nats_client: Arc<OnceLock<async_nats::Client>>,
     #[cfg(feature = "jsondb")]
     pub mgo_client: Arc<OnceLock<mongodb::Client>>,
+    #[cfg(feature = "vault")]
+    pub az_client: Arc<OnceLock<KeyClient>>,
 }
 
 impl Resources {
@@ -87,6 +92,8 @@ impl Resources {
             nats_client: Arc::new(OnceLock::new()),
             #[cfg(feature = "jsondb")]
             mgo_client: Arc::new(OnceLock::new()),
+            #[cfg(feature = "vault")]
+            az_client: Arc::new(OnceLock::new()),
         }
     }
 
@@ -136,6 +143,34 @@ impl Resources {
                 return Err(anyhow!("failed to connect to mongo"));
             };
             resources.mgo_client.set(client).map_err(|_| anyhow!("failed to set mongo client"))
+        })
+    }
+
+    /// Add an Azure KeyVault connection.
+    ///
+    /// The method will attempt connect on a separate, returning a
+    /// [`tokio::task::JoinHandle`] that can be awaited if desired.
+    #[cfg(feature = "jsondb")]
+    pub fn with_azkeyvault(
+        &self, _uri: impl AsRef<str> + Send + 'static,
+    ) -> JoinHandle<Result<()>> {
+        let resources = self.clone();
+        tokio::spawn(async move {
+            let credential = if cfg!(debug_assertions) {
+                DefaultAzureCredential::new()
+                    .map_err(|e| anyhow!("could not create credential: {e}"))?
+            } else {
+                // let credential = ClientSecretCredential::new()?;
+                DefaultAzureCredential::new()
+                    .map_err(|e| anyhow!("could not create credential: {e}"))?
+            };
+
+            let client = KeyClient::new(
+                "https://kv-credibil-demo.vault.azure.net",
+                credential.clone(),
+                None,
+            )?;
+            resources.az_client.set(client).map_err(|_| anyhow!("failed to set mongo client"))
         })
     }
 }
