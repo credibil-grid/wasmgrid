@@ -14,7 +14,7 @@ pub mod rpc;
 
 use std::sync::{Arc, OnceLock};
 
-use mongodb::options::ClientOptions;
+use async_nats::ConnectOptions;
 use runtime::{Errout, Stdout};
 use wasmtime::StoreLimits;
 use wasmtime::component::InstancePre;
@@ -24,6 +24,7 @@ use wasmtime_wasi_http::WasiHttpCtx;
 /// Ctx implements messaging host interfaces. In addition, it holds the
 /// host-defined state used by the wasm runtime [`Store`].
 #[allow(clippy::struct_field_names)]
+#[allow(dead_code)]
 pub struct Ctx {
     table: ResourceTable,
     wasi_ctx: WasiCtx,
@@ -76,9 +77,8 @@ pub struct Resources {
     pub mgo_client: Arc<OnceLock<mongodb::Client>>,
 }
 
-use async_nats::ConnectOptions;
-
 impl Resources {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             #[cfg(any(feature = "keyvalue", feature = "messaging", feature = "rpc"))]
@@ -88,6 +88,11 @@ impl Resources {
         }
     }
 
+    /// Add a NATS connection.
+    ///
+    /// # Panics
+    ///
+    /// This function panics if thea NATS connection cannot be created.
     #[cfg(any(feature = "keyvalue", feature = "messaging", feature = "rpc"))]
     pub fn with_nats(&self, addr: impl Into<String>, opts: ConnectOptions) {
         let res = self.clone();
@@ -98,18 +103,31 @@ impl Resources {
         });
     }
 
+    /// Add a MongoDB connection.
+    ///
+    /// # Panics
+    ///
+    /// This function panics if the MongoDB client cannot be created.
     #[cfg(feature = "jsondb")]
-    pub fn with_mongo(&self, opts: ClientOptions) {
+    pub fn with_mongo(&self, uri: impl Into<String> + Send + 'static) {
+        //opts: ClientOptions) {
         let res = self.clone();
         tokio::spawn(async move {
-            let client = mongodb::Client::with_options(opts).expect("should connect to mongodb");
+            let client = mongodb::Client::with_uri_str(&uri.into())
+                .await
+                .expect("should connect to mongodb");
             res.mgo_client.set(client).unwrap();
 
             // // redact password from connection string
             // let mut redacted = url::Url::parse(&self.addr).unwrap();
             // redacted.set_password(Some("*****")).map_err(|()| anyhow!("issue redacting password"))?;
             // tracing::info!("connected to: {redacted}");
-            // MONGODB.set(client).map_err(|_| anyhow!("MongoDB already initialized"))
         });
+    }
+}
+
+impl Default for Resources {
+    fn default() -> Self {
+        Self::new()
     }
 }

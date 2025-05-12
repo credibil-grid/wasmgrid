@@ -6625,6 +6625,7 @@ dependencies = [
 name = "wasmgrid"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "async-nats",
  "dotenv",
  "mongodb",

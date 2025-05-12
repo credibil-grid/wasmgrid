@@ -3,12 +3,12 @@
 use std::env;
 use std::sync::Arc;
 
+use anyhow::Result;
 use async_nats::{AuthError, ConnectOptions};
 use dotenv::dotenv;
-use mongodb::options::ClientOptions;
 use runtime::{Cli, Parser};
 // use services::{Resources, http, keyvalue, messaging, rpc};
-use services::{Resources, http, keyvalue};
+use services::{Resources, http, jsondb, keyvalue};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 const DEF_MGO_CNN: &str = "mongodb://localhost:27017";
@@ -39,31 +39,16 @@ pub async fn main() -> wasmtime::Result<()> {
             // rt.link(&rpc::Service)?;
             rt.link(&keyvalue::Service)?;
             // rt.link(&messaging::Service)?;
+            rt.link(&jsondb::Service)?;
 
             // TODO: load all required resources (lazy instantiate)
             let resources = Resources::new();
 
-            let nats_addr = env::var("NATS_ADDR").unwrap_or_else(|_| DEF_NATS_ADDR.into());
-            let jwt = env::var("NATS_JWT");
-            let seed = env::var("NATS_SEED");
-            let opts = if jwt.is_ok() && seed.is_ok() {
-                let key_pair =
-                    Arc::new(nkeys::KeyPair::from_seed(&seed.expect("should have seed"))?);
-                ConnectOptions::with_jwt(jwt.expect("should have jwt"), move |nonce| {
-                    let key_pair = key_pair.clone();
-                    async move { key_pair.sign(&nonce).map_err(AuthError::new) }
-                })
-                .name("wasmgrid")
-            } else {
-                ConnectOptions::new()
-            };
-
-            resources.with_nats(nats_addr, opts);
+            let (addr, opts) = nats_cnn()?;
+            resources.with_nats(addr, opts);
 
             let mgo_cnn = env::var("MGO_CNN").unwrap_or_else(|_| DEF_MGO_CNN.into());
-            let mut opts = ClientOptions::parse(mgo_cnn).await?;
-            opts.app_name = Some("Credibil Grid".into());
-            resources.with_mongo(opts);
+            resources.with_mongo(mgo_cnn);
 
             // start `Runnable` services (servers)
             rt.run(http::Service, resources.clone())?;
@@ -73,4 +58,22 @@ pub async fn main() -> wasmtime::Result<()> {
             rt.shutdown().await
         }
     }
+}
+
+fn nats_cnn() -> Result<(String, ConnectOptions)> {
+    let addr = env::var("NATS_ADDR").unwrap_or_else(|_| DEF_NATS_ADDR.into());
+    let jwt = env::var("NATS_JWT");
+    let seed = env::var("NATS_SEED");
+
+    if jwt.is_ok() && seed.is_ok() {
+        let key_pair = Arc::new(nkeys::KeyPair::from_seed(&seed.expect("should have seed"))?);
+        let opts = ConnectOptions::with_jwt(jwt.expect("should have jwt"), move |nonce| {
+            let key_pair = key_pair.clone();
+            async move { key_pair.sign(&nonce).map_err(AuthError::new) }
+        })
+        .name("wasmgrid");
+        return Ok((addr, opts));
+    }
+
+    Ok((addr, ConnectOptions::new()))
 }
