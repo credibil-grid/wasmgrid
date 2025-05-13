@@ -222,8 +222,8 @@ impl From<anyhow::Error> for Error {
     }
 }
 
-impl From<typespec_client_core::error::Error> for Error {
-    fn from(err: typespec_client_core::error::Error) -> Self {
+impl From<azure_core::error::Error> for Error {
+    fn from(err: azure_core::error::Error) -> Self {
         Self::Other(err.to_string())
     }
 }

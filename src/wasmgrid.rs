@@ -4,8 +4,7 @@ use std::env;
 
 use dotenv::dotenv;
 use runtime::{Cli, Parser};
-// use services::{Resources, http, keyvalue, messaging, rpc};
-use services::{Resources, http, jsondb, keyvalue, vault};
+use services::{Resources, http, jsondb, keyvalue, rpc, vault};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 const DEF_MGO_URI: &str = "mongodb://localhost:27017";
@@ -34,9 +33,8 @@ pub async fn main() -> anyhow::Result<()> {
 
             // link services
             rt.link(&http::Service)?;
-            // rt.link(&rpc::Service)?;
+            rt.link(&rpc::Service)?;
             rt.link(&keyvalue::Service)?;
-            // rt.link(&messaging::Service)?;
             rt.link(&jsondb::Service)?;
             rt.link(&vault::Service)?;
 
@@ -48,14 +46,13 @@ pub async fn main() -> anyhow::Result<()> {
             let kv_addr = env::var("KV_ADDR").unwrap_or_else(|_| DEF_KV_ADDR.into());
 
             let resources = Resources::new();
-            resources.with_nats(nats_addr, jwt, seed);
+            resources.with_nats(nats_addr, jwt, seed).await??;
             resources.with_mongo(mgo_uri);
             resources.with_azkeyvault(kv_addr);
 
-            // start `Runnable` services (servers)
+            // start `Runnable` servers
             rt.run(http::Service, resources.clone())?;
-            // rt.run(rpc::Service, resources.clone())?;
-            // rt.run(messaging::Service, resources)?;
+            rt.run(rpc::Service, resources.clone())?;
 
             rt.shutdown().await
         }

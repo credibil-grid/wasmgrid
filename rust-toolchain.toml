@@ -1,5 +1,5 @@
 [toolchain]
-channel = "beta"
+channel = "nightly"
 components = ["clippy", "rust-src", "rustfmt"]
 targets = [
   "aarch64-apple-darwin",

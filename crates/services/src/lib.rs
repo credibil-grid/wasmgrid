@@ -19,7 +19,9 @@ use std::time::Duration;
 
 use anyhow::{Result, anyhow};
 use async_nats::{AuthError, ConnectOptions};
+#[cfg(feature = "vault")]
 use azure_identity::DefaultAzureCredential;
+#[cfg(feature = "vault")]
 use azure_security_keyvault_keys::KeyClient;
 use runtime::{Errout, Stdout};
 use tokio::task::JoinHandle;
@@ -146,7 +148,7 @@ impl Resources {
     ///
     /// The method will attempt connect on a separate, returning a
     /// [`tokio::task::JoinHandle`] that can be awaited if desired.
-    #[cfg(feature = "jsondb")]
+    #[cfg(feature = "vault")]
     pub fn with_azkeyvault(
         &self, addr: impl AsRef<str> + Send + 'static,
     ) -> JoinHandle<Result<()>> {
@@ -183,7 +185,7 @@ impl Resources {
     /// This method panics if the client is not available before the method
     /// times out.
     #[must_use]
-    pub fn nats(&self) -> &async_nats::Client {
+    pub(crate) fn nats(&self) -> &async_nats::Client {
         timeout(&self.nats)
     }
 
@@ -197,7 +199,7 @@ impl Resources {
     /// This method panics if the client is not available before the method
     /// times out.
     #[must_use]
-    pub fn mongo(&self) -> &mongodb::Client {
+    pub(crate) fn mongo(&self) -> &mongodb::Client {
         timeout(&self.mongo)
     }
 
@@ -210,8 +212,9 @@ impl Resources {
     ///
     /// This method panics if the client is not available before the method
     /// times out.
+    #[cfg(feature = "vault")]
     #[must_use]
-    pub fn azkeyvault(&self) -> &KeyClient {
+    pub(crate) fn azkeyvault(&self) -> &KeyClient {
         timeout(&self.azkeyvault)
     }
 }
