@@ -2,10 +2,10 @@
 interface types {
     /// The set of errors that may be raised by functions in this package.
     variant error {
-        /// The service providing the capability cannot be used.
-        capability-unavailable,
-        /// The service providing the capability returned an error.
-        capability-error(string),
+        /// The service providing the service cannot be used.
+        service-unavailable,
+        /// The service providing the service returned an error.
+        service-error(string),
         /// An error occurred while trying to read an entry stream.
         read-error(string),
         /// An error occurred while trying to write an entry stream.

@@ -1,8 +1,8 @@
 [package]
-authors.workspace = true
-description = "Guest bindings for wasmgrid capabilities"
-edition.workspace = true
 name = "wasi-bindings"
+description = "Guest bindings for wasmgrid service"
+authors.workspace = true
+edition.workspace = true
 version = "0.1.0"
 
 # [lib]
@@ -12,5 +12,4 @@ version = "0.1.0"
 workspace = true
 
 [dependencies]
-serde.workspace = true
-wit-bindgen = "0.41.0"
+wit-bindgen = "0.42.1"

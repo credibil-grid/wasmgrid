@@ -56,17 +56,21 @@ docker push acrcredibil.azurecr.io/demo/wasmgrid
 
 ## Troubleshooting
 
-To test/debug build locally:
+### MUSL build
+
+To test the MUSL build locally:
 
 ```bash
 # brew install FiloSottile/musl-cross/musl-cross
 brew tap messense/macos-cross-toolchains
 brew install x86_64-unknown-linux-musl
 brew install aarch64-unknown-linux-musl
+brew install openssl
 ```
 
 ```bash
-cargo build --package wasmgrid --target aarch64-unknown-linux-musl --release
+# cargo build --package wasmgrid --target aarch64-unknown-linux-musl --release
+OPENSSL_DIR=/opt/homebrew/opt/openssl cargo build --package wasmgrid --target aarch64-unknown-linux-musl --release
 ```
 
 See <https://docs.wasmtime.dev/examples-minimal.html/> for more information on 
@@ -75,7 +79,7 @@ optimising embedded `wasmtime`builds.
 ### Debugging bindgen! macro
 
 ```bash
-cargo expand --package wasmgrid capabilities::vault::bindings > expanded.rs
+cargo expand --manifest-path crates/services/Cargo.toml keyvalue::generated > expanded.rs
 ```
 
 ## Nex

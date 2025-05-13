@@ -1,37 +1,21 @@
-//! # WASI JSON Database Capability
+//! # WASI JSON Database Service
 //!
-//! This module implements a runtime capability for `wasi:sql`
+//! This module implements a runtime service for `wasi:sql`
 //! (<https://github.com/WebAssembly/wasi-sql>).
-
-use std::sync::OnceLock;
-
-use anyhow::anyhow;
-use bindings::Jsondb;
-use bindings::wasi::jsondb::readwrite;
-use bindings::wasi::jsondb::types::{self, HostDatabase, HostError, HostStatement};
-use futures::TryStreamExt;
-use jmespath::ast::{Ast, Comparator};
-use mongodb::bson::{self, Document};
-use mongodb::options::ClientOptions;
-use mongodb::{Client, Cursor};
-use wasmtime::component::{Linker, Resource, bindgen};
-use wasmtime_wasi::IoView;
-
-use crate::runtime::{self, Runtime, State};
-
-static MONGODB: OnceLock<mongodb::Client> = OnceLock::new();
 
 /// Wrap generation of wit bindings to simplify exports.
 /// See <https://docs.rs/wasmtime/latest/wasmtime/component/macro.bindgen.html>
-mod bindings {
+mod generated {
     #![allow(clippy::future_not_send)]
     #![allow(clippy::trait_duplication_in_bounds)]
-    use super::bindgen;
-    pub use super::{Database, Error, Statement};
+    pub use anyhow::Error;
+    pub use mongodb::Database;
 
-    bindgen!({
+    pub use super::Statement;
+
+    wasmtime::component::bindgen!({
         world: "jsondb",
-        path: "wit",
+        path: "../../wit",
         tracing: true,
         async: true,
         trappable_imports: true,
@@ -43,69 +27,77 @@ mod bindings {
     });
 }
 
-pub type Database = mongodb::Database;
-pub type Error = anyhow::Error;
+use anyhow::{Error, Result, anyhow};
+use futures::TryStreamExt;
+use jmespath::ast::{Ast, Comparator};
+use mongodb::bson::{self, Document};
+use mongodb::{Client, Cursor, Database};
+use runtime::Linkable;
+use wasmtime::component::{Linker, Resource, ResourceTable};
+
+use self::generated::wasi::jsondb;
+use crate::Ctx;
 
 pub struct Statement {
     collection: String,
     conditions: bson::Document,
 }
 
-pub struct Capability {
-    pub addr: String,
+pub struct JsonDbHost<'a> {
+    client: &'a Client,
+    table: &'a mut ResourceTable,
 }
 
-pub const fn new(addr: String) -> Capability {
-    Capability { addr }
-}
-
-#[async_trait::async_trait]
-impl runtime::Capability for Capability {
-    fn namespace(&self) -> &'static str {
-        "wasi:jsondb"
-    }
-
-    fn add_to_linker(&self, linker: &mut Linker<State>) -> anyhow::Result<()> {
-        Jsondb::add_to_linker(linker, |t| t)
-    }
-
-    /// Provide jsondb capability for the specified wasm component.
-    async fn run(&self, _: Runtime) -> anyhow::Result<()> {
-        let mut opts = ClientOptions::parse(&self.addr).await?;
-        opts.app_name = Some("Credibil Grid".into());
-        let client = Client::with_options(opts)?;
-
-        // redact password from connection string
-        let mut redacted = url::Url::parse(&self.addr).unwrap();
-        redacted.set_password(Some("*****")).map_err(|()| anyhow!("issue redacting password"))?;
-        tracing::info!("connected to: {redacted}");
-
-        MONGODB.set(client).map_err(|_| anyhow!("MongoDB already initialized"))
+impl<'a> JsonDbHost<'a> {
+    pub const fn new(client: &'a Client, table: &'a mut ResourceTable) -> Self {
+        Self { client, table }
     }
 }
 
-// Implement the [`wasi_sql::ReadWriteView`]` trait for State.
-impl readwrite::Host for State {
+pub struct Service;
+
+impl Linkable for Service {
+    type Ctx = Ctx;
+
+    // Add all the `wasi-keyvalue` world's interfaces to a [`Linker`], and
+    // instantiate the `JsonDbHost` for the component.
+    fn add_to_linker(&self, linker: &mut Linker<Self::Ctx>) -> anyhow::Result<()> {
+        add_to_linker(linker, |c: &mut Self::Ctx| {
+            JsonDbHost::new(c.resources.mongo(), &mut c.table)
+        })?;
+        tracing::trace!("added to linker");
+        Ok(())
+    }
+}
+
+fn add_to_linker<T: Send>(
+    l: &mut Linker<T>, f: impl Fn(&mut T) -> JsonDbHost<'_> + Send + Sync + Copy + 'static,
+) -> Result<()> {
+    jsondb::readwrite::add_to_linker_get_host(l, f)?;
+    jsondb::types::add_to_linker_get_host(l, f)
+}
+
+// Implement the [`wasi_sql::ReadWriteView`]` trait for JsonDbHost<'_>.
+impl jsondb::readwrite::Host for JsonDbHost<'_> {
     async fn insert(
         &mut self, db: Resource<Database>, s: Resource<Statement>, d: Vec<u8>,
     ) -> wasmtime::Result<Result<(), Resource<Error>>> {
         tracing::trace!("readwrite::Host::insert");
 
-        let table = self.table();
-        let database = table.get(&db)?;
-        let stmt = table.get(&s)?;
+        let database = self.table.get(&db)?;
+        let stmt = self.table.get(&s)?;
 
         let doc = match serde_json::from_slice::<bson::Document>(&d) {
             Ok(doc) => doc,
             Err(e) => {
                 tracing::error!("issue deserializing document for insert: {e}");
-                return Ok(Err(self.table().push(anyhow!("issue deserializing document: {e}"))?));
+                return Ok(Err(self.table.push(anyhow!("issue deserializing document: {e}"))?));
             }
         };
 
         if let Err(e) = database.collection(&stmt.collection).insert_one(doc).await {
             tracing::error!("issue inserting document: {e}");
-            return Ok(Err(self.table().push(anyhow!("issue inserting document: {e}"))?));
+            return Ok(Err(self.table.push(anyhow!("issue inserting document: {e}"))?));
         }
 
         Ok(Ok(()))
@@ -117,10 +109,8 @@ impl readwrite::Host for State {
     ) -> wasmtime::Result<Result<Vec<Vec<u8>>, Resource<Error>>> {
         tracing::trace!("readwrite::Host::find");
 
-        let table = self.table();
-        let database = table.get(&db)?;
-        let stmt = table.get(&s)?;
-
+        let database = self.table.get(&db)?;
+        let stmt = self.table.get(&s)?;
         tracing::trace!("readwrite::Host::find: {}, {:?}", stmt.collection, stmt.conditions);
 
         let mut results: Vec<Vec<u8>> = Vec::new();
@@ -129,7 +119,7 @@ impl readwrite::Host for State {
                 Ok(cursor) => cursor,
                 Err(e) => {
                     tracing::error!("issue finding documents: {e}");
-                    return Ok(Err(self.table().push(anyhow!("issue finding documents: {e}"))?));
+                    return Ok(Err(self.table.push(anyhow!("issue finding documents: {e}"))?));
                 }
             };
         while let Some(doc) = cursor.try_next().await? {
@@ -137,27 +127,11 @@ impl readwrite::Host for State {
                 Ok(ser) => ser,
                 Err(e) => {
                     tracing::error!("issue serializing result: {e}");
-                    return Ok(Err(self.table().push(anyhow!("issue serializing result: {e}"))?));
+                    return Ok(Err(self.table.push(anyhow!("issue serializing result: {e}"))?));
                 }
             };
             results.push(ser);
         }
-
-        // let ser = if let Some::<bson::Document>(doc) =
-        //     database.collection(&stmt.collection).find_one(stmt.conditions.clone()).await?
-        // {
-        //     tracing::debug!("readwrite::Host::find: document found");
-        //     match serde_json::to_vec(&doc) {
-        //         Ok(ser) => ser,
-        //         Err(e) => {
-        //             tracing::debug!("issue serializing result: {e}");
-        //             return Ok(Err(self.table().push(anyhow!("issue serializing result: {e}"))?));
-        //         }
-        //     }
-        // } else {
-        //     tracing::debug!("readwrite::Host::find: no document found");
-        //     vec![]
-        // };
 
         Ok(Ok(results))
     }
@@ -167,16 +141,15 @@ impl readwrite::Host for State {
     ) -> wasmtime::Result<Result<(), Resource<Error>>> {
         tracing::trace!("readwrite::Host::update");
 
-        let table = self.table();
-        let database = table.get(&db)?;
-        let stmt = table.get(&s)?;
+        let database = self.table.get(&db)?;
+        let stmt = self.table.get(&s)?;
 
         let doc = match serde_json::from_slice::<bson::Document>(&d) {
             Ok(doc) => doc,
             Err(e) => {
                 tracing::error!("issue deserializing replacement document: {e}");
                 return Ok(Err(self
-                    .table()
+                    .table
                     .push(anyhow!("issue deserializing replacement document: {e}"))?));
             }
         };
@@ -185,7 +158,7 @@ impl readwrite::Host for State {
             database.collection(&stmt.collection).replace_one(stmt.conditions.clone(), doc).await
         {
             tracing::error!("issue replacing document: {e}");
-            return Ok(Err(self.table().push(anyhow!("issue replacing document: {e}"))?));
+            return Ok(Err(self.table.push(anyhow!("issue replacing document: {e}"))?));
         }
 
         Ok(Ok(()))
@@ -196,9 +169,8 @@ impl readwrite::Host for State {
     ) -> wasmtime::Result<Result<(), Resource<Error>>> {
         tracing::trace!("readwrite::Host::delete");
 
-        let table = self.table();
-        let database = table.get(&db)?;
-        let stmt = table.get(&s)?;
+        let database = self.table.get(&db)?;
+        let stmt = self.table.get(&s)?;
 
         if let Err(e) = database
             .collection::<bson::Document>(&stmt.collection)
@@ -206,38 +178,33 @@ impl readwrite::Host for State {
             .await
         {
             tracing::error!("issue deleting document: {e}");
-            return Ok(Err(self.table().push(anyhow!("issue deleting document: {e}"))?));
+            return Ok(Err(self.table.push(anyhow!("issue deleting document: {e}"))?));
         }
 
         Ok(Ok(()))
     }
 }
 
-impl types::Host for State {}
+impl jsondb::types::Host for JsonDbHost<'_> {}
 
-// Implement the [`HostDatabase`]` trait for State.
-impl HostDatabase for State {
+impl jsondb::types::HostDatabase for JsonDbHost<'_> {
     async fn connect(
         &mut self, name: String,
     ) -> wasmtime::Result<Result<Resource<Database>, Resource<Error>>> {
         tracing::trace!("HostDatabase::open");
 
-        let Some(client) = MONGODB.get() else {
-            return Ok(Err(self.table().push(anyhow!("MongoDB not connected"))?));
-        };
-        let db = client.database(&name);
-        Ok(Ok(self.table().push(db)?))
+        let db = self.client.database(&name);
+        Ok(Ok(self.table.push(db)?))
     }
 
     async fn drop(&mut self, rep: Resource<Database>) -> wasmtime::Result<()> {
         tracing::trace!("HostDatabase::drop");
-        self.table().delete(rep)?;
+        self.table.delete(rep)?;
         Ok(())
     }
 }
 
-// Implement the [`HostStatement`]` trait for State.
-impl HostStatement for State {
+impl jsondb::types::HostStatement for JsonDbHost<'_> {
     // Prepare a bson query for the specified collection, translating the JMESPath
     // to a bson query. For example,
     // [?credential_issuer=='https://issuance.demo.credibil.io'] will translate
@@ -253,22 +220,22 @@ impl HostStatement for State {
             let expr = jmespath::compile(&jmes_path)?;
 
             // let Ast::Projection { rhs, .. } = expr.as_ast() else {
-            //     return Ok(Err(self.table().push(anyhow!("invalid JMESPath projection"))?));
+            //     return Ok(Err(self.table.push(anyhow!("invalid JMESPath projection"))?));
             // };
             // let Ast::Condition { predicate, .. } = rhs.as_ref() else {
-            //     return Ok(Err(self.table().push(anyhow!("invalid JMESPath condition"))?));
+            //     return Ok(Err(self.table.push(anyhow!("invalid JMESPath condition"))?));
             // };
             // let Ast::Comparison { lhs, rhs, .. } = predicate.as_ref() else {
-            //     return Ok(Err(self.table().push(anyhow!("invalid JMESPath comparison"))?));
+            //     return Ok(Err(self.table.push(anyhow!("invalid JMESPath comparison"))?));
             // };
             // let Ast::Field { name, .. } = lhs.as_ref() else {
-            //     return Ok(Err(self.table().push(anyhow!("invalid JMESPath LHS"))?));
+            //     return Ok(Err(self.table.push(anyhow!("invalid JMESPath LHS"))?));
             // };
             // let Ast::Literal { value, .. } = rhs.as_ref() else {
-            //     return Ok(Err(self.table().push(anyhow!("invalid JMESPath RHS"))?));
+            //     return Ok(Err(self.table.push(anyhow!("invalid JMESPath RHS"))?));
             // };
             // let Some(value) = value.as_string() else {
-            //     return Ok(Err(self.table().push(anyhow!("invalid JMESPath value"))?));
+            //     return Ok(Err(self.table.push(anyhow!("invalid JMESPath value"))?));
             // };
 
             // tracing::debug!("HostFilter::prepare: key {name}: value {value}");
@@ -285,12 +252,26 @@ impl HostStatement for State {
             conditions: doc,
         };
 
-        Ok(Ok(self.table().push(query)?))
+        Ok(Ok(self.table.push(query)?))
     }
 
     async fn drop(&mut self, rep: Resource<Statement>) -> wasmtime::Result<()> {
         tracing::trace!("HostFilter::drop");
-        self.table().delete(rep)?;
+        self.table.delete(rep)?;
+        Ok(())
+    }
+}
+
+impl jsondb::types::HostError for JsonDbHost<'_> {
+    async fn trace(&mut self, rep: Resource<Error>) -> wasmtime::Result<String> {
+        tracing::trace!("HostError::trace");
+        let error = self.table.get(&rep)?;
+        Ok(error.to_string())
+    }
+
+    async fn drop(&mut self, rep: Resource<Error>) -> wasmtime::Result<()> {
+        tracing::trace!("HostError::drop");
+        self.table.delete(rep)?;
         Ok(())
     }
 }
@@ -341,48 +322,19 @@ fn process_string(ast: &Ast) -> anyhow::Result<String> {
     }
 }
 
-// Implement the [`wasi::sql::HostError`]` trait for State.
-impl HostError for State {
-    async fn trace(&mut self, rep: Resource<Error>) -> wasmtime::Result<String> {
-        tracing::trace!("HostError::trace");
-        let error = self.table().get(&rep)?;
-        Ok(error.to_string())
-    }
+// #[cfg(test)]
+// mod tests {
+//     use super::*;
 
-    async fn drop(&mut self, rep: Resource<Error>) -> wasmtime::Result<()> {
-        tracing::trace!("HostError::drop");
-        self.table().delete(rep)?;
-        Ok(())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[tokio::test]
-    async fn prepare() {
-        let mut state = State::default();
-        let _ = state
-            .prepare(
-                "test".into(),
-                Some("[?credential_issuer=='https://issuance.demo.credibil.io']".into()),
-            )
-            .await
-            .unwrap();
-    }
-
-    // #[test]
-    // fn redact() {
-    //     let addr = "mongodb+srv://wasmgrid:A.Passw0rd!@cluster0.uqnlxl8.mongodb.net/";
-    //     // let re = Regex::new(r#"^mongodb(?:\+srv)?:\/\/(?:.+):(?<password>.+)@(?:.+)$"#).unwrap();
-    //     // let Some(caps) = re.captures(addr) else {
-    //     //     println!("no match!");
-    //     //     return;
-    //     // };
-    //     // let redacted = addr.replace(&caps["password"], "*****");
-    //     let mut u = url::Url::parse(addr).unwrap();
-    //     u.set_password(Some("*****"));
-    //     println!("The name is: {}", u.to_string());
-    // }
-}
+//     #[tokio::test]
+//     async fn prepare() {
+//         let mut state = Ctx::default();
+//         let _ = state
+//             .prepare(
+//                 "test".into(),
+//                 Some("[?credential_issuer=='https://issuance.demo.credibil.io']".into()),
+//             )
+//             .await
+//             .unwrap();
+//     }
+// }

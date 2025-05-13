@@ -1,0 +1,22 @@
+[package]
+name = "runtime"
+description = "Wasm runtime"
+authors.workspace = true
+edition.workspace = true
+version = "0.1.0"
+
+# [lib]
+# crate-type = ["cdylib"]
+
+[lints]
+workspace = true
+
+[dependencies]
+anyhow.workspace = true
+async-trait = "0.1.88"
+bytes = "1.10.1"
+clap = { version = "4.5.38", features = ["derive"] }
+tokio.workspace = true
+tracing.workspace = true
+wasmtime.workspace = true
+wasmtime-wasi.workspace = true

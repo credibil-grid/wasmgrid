@@ -1,37 +1,15 @@
 //! # WASI Peer-to-Peer Host
 
-use std::fmt::Debug;
-use std::str::FromStr;
-use std::sync::OnceLock;
-
-use anyhow::{anyhow, Context};
-use bindings::wasi::p2p::container;
-use bindings::wasi::p2p::types::{
-    self, Author, ContainerId, EntryMetadata, Error, Permission, Token,
-};
-use bindings::P2p;
-use futures::{StreamExt, TryStreamExt};
-use iroh::base::node_addr::AddrInfoOptions;
-use iroh::client::docs::{Entry, ShareMode};
-use iroh::client::Doc;
-use iroh::docs::store::Query;
-use iroh::docs::{AuthorId, DocTicket};
-use iroh::node::FsNode;
-use wasmtime::component::{Linker, Resource};
-use wasmtime_wasi::WasiView;
-
-use crate::runtime::{self, Runtime, State};
-
 /// Wrap generation of wit bindings to simplify exports.
 /// See <https://docs.rs/wasmtime/latest/wasmtime/component/macro.bindgen.html>
-mod bindings {
+mod generated {
     #![allow(clippy::future_not_send)]
 
     pub use super::Document;
 
     wasmtime::component::bindgen!({
         world: "p2p",
-        path: "wit",
+        path: "../../wit",
         async: true,
         tracing: true,
         trappable_imports: true,
@@ -44,6 +22,28 @@ mod bindings {
         ]
     });
 }
+
+use std::fmt::Debug;
+use std::str::FromStr;
+use std::sync::OnceLock;
+
+use anyhow::{Context, anyhow};
+use futures::{StreamExt, TryStreamExt};
+use iroh::base::node_addr::AddrInfoOptions;
+use iroh::client::Doc;
+use iroh::client::docs::{Entry, ShareMode};
+use iroh::docs::store::Query;
+use iroh::docs::{AuthorId, DocTicket};
+use iroh::node::FsNode;
+use wasmtime::component::{InstancePre, Linker, Resource};
+use wasmtime_wasi::WasiView;
+
+use self::generated::P2p;
+use self::generated::wasi::p2p::container;
+use self::generated::wasi::p2p::types::{
+    self, Author, ContainerId, EntryMetadata, Error, Permission, Token,
+};
+use crate::Ctx;
 
 // Handle to the local Iroh node.
 static IROH_NODE: OnceLock<FsNode> = OnceLock::new();
@@ -62,7 +62,7 @@ impl Debug for Document {
 
 /// Implementation of the `wasi:p2p/container` interface.
 #[async_trait::async_trait]
-impl container::Host for State {
+impl container::Host for Ctx {
     /// Create a new author.
     async fn create_author(&mut self) -> wasmtime::Result<Result<Author, Error>> {
         tracing::trace!("container::Host::create_owner");
@@ -170,7 +170,7 @@ impl container::Host for State {
 
 /// Implementation of the `wasi:p2p/container/container` interface.
 #[async_trait::async_trait]
-impl container::HostContainer for State {
+impl container::HostContainer for Ctx {
     /// Get the ID of the document as a string.
     async fn id(
         &mut self, container: Resource<Document>,
@@ -455,29 +455,29 @@ async fn get_container_entry(container: &Document, key: &str) -> Result<Option<E
 }
 
 /// Implementation of the `wasi:p2p/types` interface.
-impl types::Host for State {}
+impl types::Host for Ctx {}
 
-/// Capability configuration.
-pub struct Capability;
+/// Service configuration.
+pub struct Service;
 
-/// Create a new capability.
-pub const fn new() -> Capability {
-    Capability
+/// Create a new service.
+pub const fn new() -> Service {
+    Service
 }
 
 /// Implentation required by the `wasmgrid` runtime.
 #[async_trait::async_trait]
-impl runtime::Capability for Capability {
+impl crate::Service for Service {
     fn namespace(&self) -> &'static str {
         "wasi:p2p"
     }
 
-    fn add_to_linker(&self, linker: &mut Linker<State>) -> anyhow::Result<()> {
+    fn add_to_linker(&self, linker: &mut Linker<Ctx>) -> anyhow::Result<()> {
         P2p::add_to_linker(linker, |t| t)
     }
 
     #[allow(clippy::large_futures)]
-    async fn run(&self, _runtime: Runtime) -> anyhow::Result<()> {
+    async fn start(&self, _runtime: Runtime) -> anyhow::Result<()> {
         start_node().await.context("failed to start Iroh")?;
         Ok(())
     }

@@ -1,7 +1,7 @@
 [package]
+name = "http-msg"
 authors.workspace = true
 edition.workspace = true
-name = "http-msg"
 
 [lib]
 crate-type = ["cdylib"]
@@ -11,7 +11,6 @@ workspace = true
 
 [dependencies]
 anyhow.workspace = true
-http.workspace = true
 serde_json.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true

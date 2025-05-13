@@ -1,0 +1,3 @@
+# https://doc.rust-lang.org/stable/clippy/index.html
+
+doc-valid-idents = ["MongoDB", "WebAssembly"]

@@ -1,8 +1,8 @@
 [package]
-authors.workspace = true
-description = "Wrapper for wasi-http bindings"
-edition.workspace = true
 name = "wasi-http"
+description = "Wrapper for wasi-http bindings"
+authors.workspace = true
+edition.workspace = true
 version = "0.1.0"
 
 # [lib]
@@ -12,10 +12,10 @@ version = "0.1.0"
 workspace = true
 
 [dependencies]
-anyhow = "1.0.98"
+anyhow.workspace = true
 http.workspace = true
-serde = "1.0.219"
-serde_json = "1.0.140"
+serde.workspace = true
+serde_json.workspace = true
 serde_urlencoded = "0.7.1"
-tracing = "0.1.41"
-wasi = "0.14.2"
+tracing.workspace = true
+wasi.workspace = true

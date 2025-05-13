@@ -20,10 +20,10 @@ use super::bindings::wasi::p2p::document::Host;
 use super::bindings::wasi::p2p::types::{ContainerToken, Owner};
 use super::iroh_node;
 use super::types::{Blob, BlobValue};
-use crate::capabilities::p2p::find_author;
-use crate::runtime::State;
+use crate::service::p2p::find_author;
+use crate::runtime::Ctx;
 
-impl container::Host for State {}
+impl container::Host for Ctx {}
 
 /// Document is a wrapper for a container that implements Iroh operations.
 pub struct Document {
@@ -32,7 +32,7 @@ pub struct Document {
 }
 
 #[async_trait::async_trait]
-impl Host for State {
+impl Host for Ctx {
     /// Create a new author.
     async fn create_owner(&mut self) -> wasmtime::Result<Result<Owner, Error>> {
         tracing::trace!("Host::create_owner");
@@ -99,7 +99,7 @@ impl Host for State {
 }
 
 #[async_trait::async_trait]
-impl HostContainer for State {
+impl HostContainer for Ctx {
     /// Get the ID of the Iroh document.
     async fn name(
         &mut self, container: Resource<Document>,
@@ -249,7 +249,7 @@ impl HostContainer for State {
 pub type StreamObjectNames = Pin<Box<dyn Stream<Item = anyhow::Result<Entry>> + Send>>;
 
 #[async_trait::async_trait]
-impl HostStreamObjectNames for State {
+impl HostStreamObjectNames for Ctx {
     /// Read the next number of entries from the stream up to len. Returns the keys for the document
     /// entries and a boolean indicating if the end of the stream was reached.
     async fn read_stream_object_names(

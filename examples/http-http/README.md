@@ -7,13 +7,18 @@ This example demonstrates how to make an outgoing http request to a downstream s
 Build the example guest:
 
 ```bash
-cargo component build -Z build-std=panic_abort,std --package http-http --release
+cargo build --package http-http --target wasm32-wasip2 --release --release
 ```
 
 Run a guest using the runtime:
 
 ```bash
-cargo run -- ./target/wasm32-wasip1/release/http_http.wasm
+```bash
+cargo run -- compile  ./target/wasm32-wasip2/release/http_http.wasm
+cargo run -- run ./http_http.bin
+# OR
+cargo run -- run --compile ./target/wasm32-wasip2/release/http_http.wasm
+```
 ```
 
 In a separate console, call the guest which will in turn call the downstream service

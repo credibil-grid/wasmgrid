@@ -9,9 +9,9 @@ use super::bindings::wasi::blobstore::types::{
     IncomingValueSyncBody,
 };
 use super::bindings::wasi::p2p::types;
-use crate::runtime::State;
+use crate::runtime::Ctx;
 
-impl types::Host for State {}
+impl types::Host for Ctx {}
 
 /// A `BlobValue` is a wrapper for a Blob that implements the traits necessary for incoming and
 /// outgoing values.
@@ -99,10 +99,10 @@ impl HostInputStream for Blob {
     }
 }
 
-impl Host for State {}
+impl Host for Ctx {}
 
 #[async_trait::async_trait]
-impl HostOutgoingValue for State {
+impl HostOutgoingValue for Ctx {
     async fn new_outgoing_value(&mut self) -> wasmtime::Result<Resource<BlobValue>> {
         tracing::trace!("HostOutgoingValue::new_outgoing_value");
         Ok(self.table().push(BlobValue::new(Blob::new()))?)
@@ -125,7 +125,7 @@ impl HostOutgoingValue for State {
 }
 
 #[async_trait::async_trait]
-impl HostIncomingValue for State {
+impl HostIncomingValue for Ctx {
     async fn incoming_value_consume_sync(
         &mut self, value: Resource<BlobValue>,
     ) -> wasmtime::Result<Result<IncomingValueSyncBody, Error>> {

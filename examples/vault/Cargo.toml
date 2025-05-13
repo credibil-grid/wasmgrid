@@ -1,7 +1,7 @@
 [package]
+name = "vault"
 authors.workspace = true
 edition.workspace = true
-name = "vault"
 
 [lib]
 crate-type = ["cdylib"]
@@ -11,7 +11,7 @@ workspace = true
 
 [dependencies]
 anyhow.workspace = true
-http.workspace = true
+base64ct = { version = "1.7.3", features = ["std"] }
 serde_json.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
