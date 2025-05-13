@@ -41,7 +41,6 @@ use self::generated::wasi::vault::keystore::{Algorithm, Error, Jwk};
 use crate::Ctx;
 
 pub type Result<T, E = Error> = anyhow::Result<T, E>;
-const ED25519_X: &str = "q6rjRnEH_XK72jvB8FNBJtOl9_gDs6NW49cAz6p2sW4";
 
 #[derive(Clone)]
 pub struct KeySet {
@@ -136,7 +135,7 @@ impl vault::keystore::HostKeySet for VaultHost<'_> {
         if let Err(e) = self.client.get_key(&key_pair.name, "", None).await {
             tracing::error!("key {} cannot be found: {e}", key_pair.name);
             return Err(Error::NoSuchKeyPair);
-        };
+        }
 
         Ok(self.table.push(key_pair)?)
     }
@@ -191,7 +190,7 @@ impl vault::keystore::HostKeyPair for VaultHost<'_> {
         Ok(az_to_jwk(key))
     }
 
-    async fn versions(&mut self, rep: Resource<KeyPair>) -> Result<Vec<Jwk>, Error> {
+    async fn versions(&mut self, _: Resource<KeyPair>) -> Result<Vec<Jwk>, Error> {
         tracing::trace!("keystore::HostKeySet::list_versions");
         todo!("list key versions");
     }

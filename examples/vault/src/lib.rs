@@ -1,5 +1,6 @@
 #![feature(let_chains)]
 
+use base64ct::{Base64UrlUnpadded, Encoding};
 use serde_json::json;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 use wasi::exports::http::incoming_handler::Guest;
@@ -24,36 +25,18 @@ impl Guest for HttpGuest {
 
 fn handler(request: &Request) -> anyhow::Result<Vec<u8>> {
     let body = request.body()?;
-    let _req: serde_json::Value = serde_json::from_slice(&body)?;
+    // let req: serde_json::Value = serde_json::from_slice(&body)?;
 
     let key_set = keystore::open("demo-credibil-io")?;
     tracing::debug!("key_set: {:?}", key_set);
 
     let signer = key_set.get("signing-key")?;
-    let signature = signer.sign(&[1, 2, 3])?;
-    tracing::debug!("signature: {:?}", signature);
-    println!("signature: {:?}", signature);
+    let bytes = signer.sign(&body)?;
+    let encoded = Base64UrlUnpadded::encode_string(&bytes);
 
-    // Ok(SignerImpl {
-    //     signer: key_set.get("signing-key")?,
-    //     verification_method: config.verification_method,
-    // })
-
-    // let bucket = match store::open("credibil_bucket") {
-    //     Ok(bucket) => bucket,
-    //     Err(err) => {
-    //         tracing::debug!("error opening bucket: {:?}", err);
-    //         return Err(err.into());
-    //     }
-    // };
-    // bucket.set("my_key", &body)?;
-
-    // // check for previous value
-    // let res = bucket.get("my_key");
-    // tracing::debug!("found val: {:?}", res);
-
+    tracing::debug!("signature: {:?}", encoded);
     serde_json::to_vec(&json!({
-        "message": "Hello, World!"
+        "signed": encoded
     }))
     .map_err(Into::into)
 }

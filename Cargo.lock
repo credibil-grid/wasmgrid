@@ -3918,6 +3918,7 @@ name = "vault"
 version = "0.0.0"
 dependencies = [
  "anyhow",
+ "base64ct",
  "serde_json",
  "tracing",
  "tracing-subscriber",

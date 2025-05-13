@@ -11,6 +11,7 @@ workspace = true
 
 [dependencies]
 anyhow.workspace = true
+base64ct = { version = "1.7.3", features = ["std"] }
 serde_json.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
