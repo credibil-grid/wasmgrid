@@ -37,8 +37,8 @@ pub struct Ctx {
     wasi_ctx: WasiCtx,
     limits: StoreLimits,
     http_ctx: WasiHttpCtx,
-    resources: Resources,
     instance_pre: InstancePre<Ctx>,
+    resources: Resources,
 }
 
 impl Ctx {
@@ -57,8 +57,8 @@ impl Ctx {
             wasi_ctx: ctx.build(),
             limits: StoreLimits::default(),
             http_ctx: WasiHttpCtx::new(),
-            resources,
             instance_pre,
+            resources,
         }
     }
 }
@@ -110,24 +110,15 @@ impl Resources {
     ) -> JoinHandle<Result<()>> {
         let resources = self.clone();
         tokio::spawn(async move {
-            let mut opts = ConnectOptions::new();
-            if let Some(jwt) = jwt {
-                let Ok(key_pair) = nkeys::KeyPair::from_seed(&seed.unwrap_or_default()) else {
-                    tracing::error!("failed to create nats KeyPair");
-                    return Err(anyhow!("failed to create nats KeyPair"));
-                };
-                let key_pair = Arc::new(key_pair);
-                opts = opts.jwt(jwt, move |nonce| {
-                    let key_pair = key_pair.clone();
-                    async move { key_pair.sign(&nonce).map_err(AuthError::new) }
-                });
-            }
-
-            let Ok(client) = opts.connect(addr.into()).await else {
-                tracing::error!("failed to connect to nats");
-                return Err(anyhow!("failed to connect to nats"));
-            };
-            resources.nats.set(client).map_err(|_| anyhow!("failed to set nats client"))
+            let client = nats_connect(addr.into(), jwt, seed).await.map_err(|e| {
+                tracing::error!("failed to connect to nats: {e}");
+                anyhow!("failed to connect to nats: {e}")
+            })?;
+            tracing::info!("connected to nats");
+            resources.nats.set(client).map_err(|_| {
+                tracing::error!("failed to initialize nats context");
+                anyhow!("failed to initialize nats context")
+            })
         })
     }
 
@@ -139,11 +130,15 @@ impl Resources {
     pub fn with_mongo(&self, uri: impl AsRef<str> + Send + 'static) -> JoinHandle<Result<()>> {
         let resources = self.clone();
         tokio::spawn(async move {
-            let Ok(client) = mongodb::Client::with_uri_str(uri).await else {
-                tracing::error!("failed to connect to mongo");
-                return Err(anyhow!("failed to connect to mongo"));
-            };
-            resources.mongo.set(client).map_err(|_| anyhow!("failed to set mongo client"))
+            let client = mongodb::Client::with_uri_str(uri).await.map_err(|e| {
+                tracing::error!("failed to connect to mongo: {e}");
+                anyhow!("failed to connect to mongo: {e}")
+            })?;
+            tracing::info!("connected to mongo");
+            resources.mongo.set(client).map_err(|_| {
+                tracing::error!("failed to initialize mongo context");
+                anyhow!("failed to initialize mongo context")
+            })
         })
     }
 
@@ -153,7 +148,7 @@ impl Resources {
     /// [`tokio::task::JoinHandle`] that can be awaited if desired.
     #[cfg(feature = "jsondb")]
     pub fn with_azkeyvault(
-        &self, _uri: impl AsRef<str> + Send + 'static,
+        &self, addr: impl AsRef<str> + Send + 'static,
     ) -> JoinHandle<Result<()>> {
         let resources = self.clone();
         tokio::spawn(async move {
@@ -166,9 +161,15 @@ impl Resources {
                     .map_err(|e| anyhow!("could not create credential: {e}"))?
             };
 
-            let client =
-                KeyClient::new("https://kv-credibil-demo.vault.azure.net", credential, None)?;
-            resources.azkeyvault.set(client).map_err(|_| anyhow!("failed to set mongo client"))
+            let client = KeyClient::new(addr.as_ref(), credential, None).map_err(|e| {
+                tracing::error!("failed to connect to azure keyvault: {e}");
+                anyhow!("failed to connect to azure keyvault: {e}")
+            })?;
+            tracing::info!("connected to azure keyvault");
+            resources.azkeyvault.set(client).map_err(|_| {
+                tracing::error!("failed to initialize mongo context");
+                anyhow!("failed to set az keyvault client")
+            })
         })
     }
 
@@ -230,4 +231,20 @@ fn timeout<T>(once_lock: &OnceLock<T>) -> &T {
     }
     tracing::error!("failed to get resource");
     panic!("failed to get resource");
+}
+
+async fn nats_connect(
+    addr: String, jwt: Option<String>, seed: Option<String>,
+) -> Result<async_nats::Client> {
+    let mut opts = ConnectOptions::new();
+    if let Some(jwt) = jwt {
+        let key_pair = nkeys::KeyPair::from_seed(&seed.unwrap_or_default())
+            .map_err(|e| anyhow!("failed to create KeyPair: {e}"))?;
+        let key_pair = Arc::new(key_pair);
+        opts = opts.jwt(jwt, move |nonce| {
+            let key_pair = key_pair.clone();
+            async move { key_pair.sign(&nonce).map_err(AuthError::new) }
+        });
+    }
+    opts.connect(addr).await.map_err(|e| anyhow!("{e}"))
 }

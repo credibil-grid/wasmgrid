@@ -8,8 +8,9 @@ use runtime::{Cli, Parser};
 use services::{Resources, http, jsondb, keyvalue, vault};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
-const DEF_MGO_CNN: &str = "mongodb://localhost:27017";
+const DEF_MGO_URI: &str = "mongodb://localhost:27017";
 const DEF_NATS_ADDR: &str = "demo.nats.io";
+const DEF_KV_ADDR: &str = "https://kv-credibil-demo.vault.azure.net";
 
 #[tokio::main]
 pub async fn main() -> anyhow::Result<()> {
@@ -43,12 +44,13 @@ pub async fn main() -> anyhow::Result<()> {
             let nats_addr = env::var("NATS_ADDR").unwrap_or_else(|_| DEF_NATS_ADDR.into());
             let jwt = env::var("NATS_JWT").ok();
             let seed = env::var("NATS_SEED").ok();
-            let mgo_cnn = env::var("MGO_CNN").unwrap_or_else(|_| DEF_MGO_CNN.into());
+            let mgo_uri = env::var("MGO_URI").unwrap_or_else(|_| DEF_MGO_URI.into());
+            let kv_addr = env::var("KV_ADDR").unwrap_or_else(|_| DEF_KV_ADDR.into());
 
             let resources = Resources::new();
             resources.with_nats(nats_addr, jwt, seed);
-            resources.with_mongo(mgo_cnn);
-            resources.with_azkeyvault("<az login>");
+            resources.with_mongo(mgo_uri);
+            resources.with_azkeyvault(kv_addr);
 
             // start `Runnable` services (servers)
             rt.run(http::Service, resources.clone())?;

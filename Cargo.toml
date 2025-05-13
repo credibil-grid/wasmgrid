@@ -1,10 +1,10 @@
 
 [package]
-authors.workspace = true
-default-run = "wasmgrid"
-description = "WASI Component runtime"
-edition.workspace = true
 name = "wasmgrid"
+description = "WASI Component runtime"
+default-run = "wasmgrid"
+authors.workspace = true
+edition.workspace = true
 rust-version.workspace = true
 version = "0.1.0"
 
