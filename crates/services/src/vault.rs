@@ -27,14 +27,17 @@ mod generated {
 }
 
 use azure_security_keyvault_keys::KeyClient;
-use azure_security_keyvault_keys::models::{SignParameters, SignatureAlgorithm};
+use azure_security_keyvault_keys::models::{
+    CurveName, JsonWebKey, KeyType, SignParameters, SignatureAlgorithm,
+};
 use base64ct::{Base64UrlUnpadded, Encoding};
 use runtime::Linkable;
+use sha2::{Digest, Sha256};
 use wasmtime::component::{Linker, Resource, ResourceTableError};
 use wasmtime_wasi::ResourceTable;
 
 use self::generated::wasi::vault;
-use self::generated::wasi::vault::keystore::{self, Algorithm, Error, Jwk};
+use self::generated::wasi::vault::keystore::{Algorithm, Error, Jwk};
 use crate::Ctx;
 
 pub type Result<T, E = Error> = anyhow::Result<T, E>;
@@ -84,9 +87,9 @@ fn add_to_linker<T: Send>(
 }
 
 impl vault::keystore::Host for VaultHost<'_> {
-    async fn open(&mut self, identifier: String) -> Result<Resource<KeySet>> {
-        tracing::trace!("keystore::Host::open {identifier}");
-        let key_set = KeySet { identifier };
+    async fn open(&mut self, owner: String) -> Result<Resource<KeySet>> {
+        tracing::trace!("keystore::Host::open {owner}");
+        let key_set = KeySet { identifier: owner };
         Ok(self.table.push(key_set)?)
     }
 
@@ -94,46 +97,53 @@ impl vault::keystore::Host for VaultHost<'_> {
         Ok(vec![Algorithm::Eddsa])
     }
 
-    fn convert_error(&mut self, err: Error) -> anyhow::Result<Error> {
-        Ok(err)
+    fn convert_error(&mut self, error: Error) -> anyhow::Result<Error> {
+        // // log the trapped error
+        // let e = match &error {
+        //     Error::NoSuchKeySet => "no_such_key_set",
+        //     Error::NoSuchKeyPair => "no_such_key_pair",
+        //     Error::AccessDenied => "access_denied",
+        //     Error::Other(desc) => desc,
+        // };
+        // tracing::error!("{e}");
+        Ok(error)
     }
 }
 
 impl vault::keystore::HostKeySet for VaultHost<'_> {
     async fn generate(
         &mut self, _rep: Resource<KeySet>, _identifier: String, _alg: Algorithm,
-    ) -> Result<Resource<KeyPair>, keystore::Error> {
+    ) -> Result<Resource<KeyPair>, Error> {
         tracing::trace!("keystore::HostKeySet::generate");
         todo!("generate new key for KeyType")
     }
 
     async fn get(
-        &mut self, rep: Resource<KeySet>, identifier: String,
-    ) -> Result<Resource<KeyPair>, keystore::Error> {
+        &mut self, rep: Resource<KeySet>, purpose: String,
+    ) -> Result<Resource<KeyPair>, Error> {
         tracing::trace!("keystore::HostKeySet::get");
 
         let Ok(key_set) = self.table.get(&rep) else {
-            return Err(keystore::Error::NoSuchKeySet);
+            return Err(Error::NoSuchKeySet);
         };
-        tracing::debug!("key: {}-{identifier}", key_set.identifier);
+        tracing::debug!("key: {owner}-{purpose}", owner = key_set.identifier);
 
         let key_pair = KeyPair {
-            name: format!("{}-{identifier}", key_set.identifier),
+            name: format!("{owner}-{purpose}", owner = key_set.identifier),
         };
 
         // check key exists before saving reference
-        let Ok(_) = self.client.get_key(&key_pair.name, "1", None).await else {
-            return Err(keystore::Error::NoSuchKeyPair);
+        if let Err(e) = self.client.get_key(&key_pair.name, "", None).await {
+            tracing::error!("key {} cannot be found: {e}", key_pair.name);
+            return Err(Error::NoSuchKeyPair);
         };
 
         Ok(self.table.push(key_pair)?)
     }
 
-    async fn delete(
-        &mut self, _rep: Resource<KeySet>, _identifier: String,
-    ) -> Result<(), keystore::Error> {
+    async fn delete(&mut self, _rep: Resource<KeySet>, _owner: String) -> Result<(), Error> {
         tracing::trace!("keystore::HostKeySet::delete");
-        todo!("generate new key for KeyType")
+        todo!("delete key for KeyType")
     }
 
     async fn drop(&mut self, rep: Resource<KeySet>) -> anyhow::Result<()> {
@@ -143,76 +153,62 @@ impl vault::keystore::HostKeySet for VaultHost<'_> {
 }
 
 impl vault::keystore::HostKeyPair for VaultHost<'_> {
-    async fn sign(
-        &mut self, rep: Resource<KeyPair>, data: Vec<u8>,
-    ) -> Result<Vec<u8>, keystore::Error> {
+    async fn sign(&mut self, rep: Resource<KeyPair>, data: Vec<u8>) -> Result<Vec<u8>, Error> {
         tracing::trace!("keystore::HostKeyPair::sign");
 
         let Ok(key_pair) = self.table.get(&rep) else {
-            return Err(keystore::Error::NoSuchKeyPair);
+            return Err(Error::NoSuchKeyPair);
         };
+
+        let digest = &Sha256::digest(&data);
 
         let params: SignParameters = SignParameters {
             algorithm: Some(SignatureAlgorithm::ES256K),
-            value: Some(data),
+            value: Some(digest.to_vec()),
         };
 
-        let sig_res = match self
+        let sig_res = self
             .client
-            .sign(&key_pair.name, SignatureAlgorithm::ES256K.as_ref(), params.try_into()?, None)
+            .sign(&key_pair.name, "", params.try_into()?, None)
             .await
-        {
-            Ok(digest) => digest,
-            Err(e) => {
-                return Err(keystore::Error::Other(format!("issue signing data: {e}")));
-            }
-        };
+            .map_err(|e| Error::Other(format!("issue signing data: {e}")))?;
 
         Ok(sig_res.into_body().await.unwrap().result.unwrap())
     }
 
-    async fn public_key(&mut self, rep: Resource<KeyPair>) -> Result<Jwk, keystore::Error> {
+    async fn public_key(&mut self, rep: Resource<KeyPair>) -> Result<Jwk, Error> {
         tracing::trace!("keystore::HostKeyPair::public_key");
 
+        // retrieve the key from the key vault
         let Ok(key_pair) = self.table.get_mut(&rep) else {
-            return Err(keystore::Error::NoSuchKeyPair);
+            return Err(Error::NoSuchKeyPair);
         };
-        let kv_key = self.client.get_key(&key_pair.name, "1", None).await?.into_body().await?; //else {
-        //     return Ok(Err(keystore::Error::NoSuchKeyPair));
-        // };
-
+        let kv_key = self.client.get_key(&key_pair.name, "", None).await?.into_body().await?;
         let Some(key) = kv_key.key else {
-            return Err(keystore::Error::NoSuchKeyPair);
+            return Err(Error::NoSuchKeyPair);
         };
 
-        Ok(Jwk {
-            kid: key.kid.clone(),
-            kty: "EC".to_string(),
-            crv: "secp256k1".to_string(),
-            x: Base64UrlUnpadded::encode_string(&key.x.unwrap_or_default()),
-            y: Some(Base64UrlUnpadded::encode_string(&key.y.unwrap_or_default())),
-        })
+        Ok(az_to_jwk(key))
     }
 
-    async fn versions(&mut self, rep: Resource<KeyPair>) -> Result<Vec<Jwk>, keystore::Error> {
+    async fn versions(&mut self, rep: Resource<KeyPair>) -> Result<Vec<Jwk>, Error> {
         tracing::trace!("keystore::HostKeySet::list_versions");
-
-        let Ok(_key_set) = self.table.get_mut(&rep) else {
-            return Err(keystore::Error::NoSuchKeySet);
-        };
-
-        Ok(vec![Jwk {
-            kid: None,
-            kty: "OKP".into(),
-            crv: "Ed25519".into(),
-            x: ED25519_X.into(),
-            y: None,
-        }])
+        todo!("list key versions");
     }
 
     async fn drop(&mut self, rep: Resource<KeyPair>) -> anyhow::Result<()> {
         tracing::trace!("keystore::HostKeyPair::drop");
         self.table.delete(rep).map(|_| Ok(()))?
+    }
+}
+
+fn az_to_jwk(key: JsonWebKey) -> Jwk {
+    Jwk {
+        kid: key.kid.clone(),
+        kty: key.kty.unwrap_or(KeyType::EC).to_string(),
+        crv: key.crv.unwrap_or(CurveName::P256K).to_string(),
+        x: Base64UrlUnpadded::encode_string(&key.x.unwrap_or_default()),
+        y: Some(Base64UrlUnpadded::encode_string(&key.y.unwrap_or_default())),
     }
 }
 

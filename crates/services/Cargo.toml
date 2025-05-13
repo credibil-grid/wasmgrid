@@ -38,6 +38,7 @@ mongodb = { workspace = true, optional = true }
 nkeys = "0.4.4"
 runtime.workspace = true
 serde_json.workspace = true
+sha2 = "0.10.9"
 tokio = { workspace = true, features = ["macros", "signal"] }
 tracing.workspace = true
 typespec_client_core = "0.3.0"

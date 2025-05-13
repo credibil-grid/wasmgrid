@@ -4,7 +4,7 @@ use serde_json::json;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 use wasi::exports::http::incoming_handler::Guest;
 use wasi::http::types::{IncomingRequest, ResponseOutparam};
-use wasi_bindings::keyvalue::store;
+use wasi_bindings::vault::keystore;
 use wasi_http::{self, Request, Router, post};
 
 struct HttpGuest;
@@ -24,22 +24,33 @@ impl Guest for HttpGuest {
 
 fn handler(request: &Request) -> anyhow::Result<Vec<u8>> {
     let body = request.body()?;
-    let req: serde_json::Value = serde_json::from_slice(&body)?;
-    tracing::debug!("json: {:?}", req);
+    let _req: serde_json::Value = serde_json::from_slice(&body)?;
 
-    let bucket = match store::open("credibil_bucket") {
-        Ok(bucket) => bucket,
-        Err(err) => {
-            tracing::debug!("error opening bucket: {:?}", err);
-            return Err(err.into());
-        }
-    };
+    let key_set = keystore::open("demo-credibil-io")?;
+    tracing::debug!("key_set: {:?}", key_set);
 
-    bucket.set("my_key", &body)?;
+    let signer = key_set.get("signing-key")?;
+    let signature = signer.sign(&[1, 2, 3])?;
+    tracing::debug!("signature: {:?}", signature);
+    println!("signature: {:?}", signature);
 
-    // check for previous value
-    let res = bucket.get("my_key");
-    tracing::debug!("found val: {:?}", res);
+    // Ok(SignerImpl {
+    //     signer: key_set.get("signing-key")?,
+    //     verification_method: config.verification_method,
+    // })
+
+    // let bucket = match store::open("credibil_bucket") {
+    //     Ok(bucket) => bucket,
+    //     Err(err) => {
+    //         tracing::debug!("error opening bucket: {:?}", err);
+    //         return Err(err.into());
+    //     }
+    // };
+    // bucket.set("my_key", &body)?;
+
+    // // check for previous value
+    // let res = bucket.get("my_key");
+    // tracing::debug!("found val: {:?}", res);
 
     serde_json::to_vec(&json!({
         "message": "Hello, World!"

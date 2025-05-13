@@ -3162,6 +3162,7 @@ dependencies = [
  "nkeys",
  "runtime",
  "serde_json",
+ "sha2",
  "tokio",
  "tracing",
  "typespec_client_core",
