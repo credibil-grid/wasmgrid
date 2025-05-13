@@ -10,15 +10,16 @@ can support components based on the [`wasi-cloud-core`](https://github.com/WebAs
 Add a `.env` file in the root of the project with the following values:
 
 ```bash
-RUST_LOG="wasmgrid=debug" # tracing log level, alternatively use "wasmgrid=debug,async_nats=info,azure_core=info" to filter out async_nats debug logs
+# tracing log level, e.g. "wasmgrid=debug,async_nats=info,azure_core=info"
+RUST_LOG="wasmgrid=debug" 
 HTTP_ADDR="0.0.0.0:8080"
-MGO_CNN="<MongoDB connection string>"
-NATS_CNN="demo.nats.io"
+NATS_ADDR="demo.nats.io"
+MGO_URI="<MongoDB connection string>"
 AZURE_TENANT_ID=<Azure Tenant ID for key vault>
 AZURE_CLIENT_ID=<Azure Client ID for key vault>
 AZURE_CLIENT_SECRET=<Azure Client Secret for key vault>
 # when using Synadia Cloud:
-NATS_CNN="tls://connect.ngs.global"
+NATS_ADDR="tls://connect.ngs.global"
 NATS_JWT="<user JWT>"
 NATS_SEED="<user signing seed>"
 WITH_CORS="true"
@@ -36,11 +37,9 @@ Build and run the Http host and example guest.
 
 See [examples/http/README.md](examples/http/README.md).
 
-## Docker Build
+## Docker Build and Run
 
-In order to use the `scratch` image we need to build a statically linked (elf) binary
-using the `musl` C library.
-
+Build 
 Build the docker image:
 
 ```bash

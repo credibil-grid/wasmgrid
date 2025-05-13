@@ -9,6 +9,7 @@ mod generated {
     #![allow(clippy::trait_duplication_in_bounds)]
 
     pub use async_nats::jetstream::kv::Store;
+
     pub use self::wasi::keyvalue::store::Error;
 
     wasmtime::component::bindgen!({

@@ -3,7 +3,7 @@
 //! This module uses NATS to implement an RPC server.
 
 use anyhow::{Result, anyhow};
-use async_nats::{ HeaderMap, Message};
+use async_nats::{HeaderMap, Message};
 use bytes::Bytes;
 use futures::stream::StreamExt;
 use tracing::Level;

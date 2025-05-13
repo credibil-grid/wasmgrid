@@ -3,6 +3,7 @@
 
 FROM rust:alpine3.21 AS builder
 
+
 RUN apk --update add --no-cache musl-dev ca-certificates pkgconf openssl-dev perl make
 
 RUN adduser --disabled-password --gecos "" --home "/nonexistent" \
@@ -27,4 +28,4 @@ COPY --from=builder --chown=wasm:wasm /target/x86_64-unknown-linux-musl/release/
 
 USER wasm:wasm
 EXPOSE 8080
-CMD ["/app/wasmgrid", "/app.wasm"]
+CMD ["/app/wasmgrid", "run", "/app.wasm"]
