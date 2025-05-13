@@ -69,7 +69,6 @@ brew install openssl
 ```
 
 ```bash
-# cargo build --package wasmgrid --target aarch64-unknown-linux-musl --release
 OPENSSL_DIR=/opt/homebrew/opt/openssl cargo build --package wasmgrid --target aarch64-unknown-linux-musl --release
 ```
 

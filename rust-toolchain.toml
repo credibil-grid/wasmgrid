@@ -1,10 +1,10 @@
 [toolchain]
-channel = "nightly"
+channel = "beta"
 components = ["clippy", "rust-src", "rustfmt"]
 targets = [
   "aarch64-apple-darwin",
-  "x86_64-unknown-linux-musl",
   "aarch64-unknown-linux-musl",
+  "x86_64-unknown-linux-musl",
   "wasm32-wasip2",
 ]
 # profile = "minimal" # "default"

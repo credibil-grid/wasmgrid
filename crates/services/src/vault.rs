@@ -6,8 +6,7 @@
 mod generated {
     #![allow(clippy::trait_duplication_in_bounds)]
 
-    pub use wasi::vault::keystore::Error;
-
+    pub use self::wasi::vault::keystore::Error;
     pub use super::{KeyPair, KeySet};
 
     wasmtime::component::bindgen!({

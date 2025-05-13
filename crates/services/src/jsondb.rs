@@ -6,7 +6,6 @@
 /// Wrap generation of wit bindings to simplify exports.
 /// See <https://docs.rs/wasmtime/latest/wasmtime/component/macro.bindgen.html>
 mod generated {
-    #![allow(clippy::future_not_send)]
     #![allow(clippy::trait_duplication_in_bounds)]
     pub use anyhow::Error;
     pub use mongodb::Database;
