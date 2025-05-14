@@ -4,7 +4,7 @@ services:
   wasm:
     build: .
     image: acrcredibil.azurecr.io/demo/wasmgrid
-    platform: linux/amd64
+    platform: linux/arm64
     environment:
       - RUST_LOG=runtime=trace,wasmgrid=trace,services=trace
     ports:
@@ -12,7 +12,7 @@ services:
     # volumes:
     #   # serialized wasmtime component (pre-compiled wasm)
     #   - ./keyvalue.bin:/app.wasm
-    #   command: ["/app/wasmgrid", "run", "/app.wasm"]
+    # command: ["/app/wasmgrid", "run", "/app.wasm"]
     volumes:
       # standard wasm file
       - ./target/wasm32-wasip2/release/keyvalue.wasm:/app.wasm

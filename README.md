@@ -43,7 +43,7 @@ Build
 Build the docker image:
 
 ```bash
-docker build --platform=linux/amd64 -t acrcredibil.azurecr.io/demo/wasmgrid .
+docker build --platform=linux/arm64 -t acrcredibil.azurecr.io/demo/wasmgrid .
 ```
 
 Push to Azure:

@@ -25,13 +25,17 @@ impl<T: WasiView + 'static> Runtime<T> {
     ///
     /// Returns an error if the component cannot be loaded, the linker cannot
     /// be created, or the service cannot be started.
-    pub fn from_file(file: PathBuf, compiled: bool) -> Result<Self> {
-        tracing::trace!("initializing from serialized component");
+    pub fn from_file(file: PathBuf, #[cfg(feature = "compile")] compiled: bool) -> Result<Self> {
+        tracing::trace!("initializing from file");
 
         let mut config = Config::new();
         config.async_support(true);
         let engine = Engine::new(&config)?;
 
+        #[cfg(not(feature = "compile"))]
+        let component = unsafe { Component::deserialize_file(&engine, file)? };
+
+        #[cfg(feature = "compile")]
         let component = if compiled {
             unsafe { Component::deserialize_file(&engine, file)? }
         } else {
@@ -53,6 +57,7 @@ impl<T: WasiView + 'static> Runtime<T> {
     ///
     /// Returns an error if the component cannot be loaded, the linker cannot
     /// be created, or the service cannot be started.
+    #[cfg(feature = "compile")]
     pub fn from_wasm(wasm: PathBuf) -> Result<Self> {
         tracing::trace!("initializing from wasm file");
         Self::from_file(wasm, false)
@@ -67,7 +72,11 @@ impl<T: WasiView + 'static> Runtime<T> {
     /// be created, or the service cannot be started.
     pub fn from_compiled(file: PathBuf) -> Result<Self> {
         tracing::trace!("initializing from serialized component");
-        Self::from_file(file, true)
+        Self::from_file(
+            file,
+            #[cfg(feature = "compile")]
+            true,
+        )
     }
 
     /// Add each service's dependency linker.

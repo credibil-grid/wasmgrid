@@ -19,10 +19,15 @@ doc = false
 [lints]
 workspace = true
 
+[features]
+default = ["compile"]
+compile = ["runtime/compile"]
+# default = ["http", "jsondb", "keyvalue", "rpc", "vault"]
+
 [dependencies]
 anyhow.workspace = true
 dotenv = "0.15.0"
-runtime.workspace = true
+runtime = { workspace = true }
 services = { path = "crates/services", features = ["http", "jsondb", "keyvalue", "rpc", "vault"] }
 tokio.workspace = true
 tracing.workspace = true
@@ -79,5 +84,5 @@ tracing-subscriber = { version = "0.3.19", features = ["env-filter", "fmt"] }
 wasi = "0.14.2"
 wasi-bindings = { path = "crates/wasi-bindings" }
 wasi-http = { path = "crates/wasi-http" }
-wasmtime = { version = "32.0.0", default-features = false, features = ["component-model", "cranelift", "runtime"] }
+wasmtime = { version = "32.0.0", default-features = false, features = ["component-model"] }
 wasmtime-wasi = "32.0.0"
