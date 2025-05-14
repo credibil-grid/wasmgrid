@@ -47,9 +47,12 @@ pub struct JsonDbHost<'a> {
     table: &'a mut ResourceTable,
 }
 
-impl<'a> JsonDbHost<'a> {
-    pub const fn new(client: &'a Client, table: &'a mut ResourceTable) -> Self {
-        Self { client, table }
+impl JsonDbHost<'_> {
+    fn new(c: &mut Ctx) -> JsonDbHost<'_> {
+        JsonDbHost {
+            client: c.resources.mongo(),
+            table: &mut c.table,
+        }
     }
 }
 
@@ -61,19 +64,11 @@ impl Linkable for Service {
     // Add all the `wasi-keyvalue` world's interfaces to a [`Linker`], and
     // instantiate the `JsonDbHost` for the component.
     fn add_to_linker(&self, linker: &mut Linker<Self::Ctx>) -> anyhow::Result<()> {
-        add_to_linker(linker, |c: &mut Self::Ctx| {
-            JsonDbHost::new(c.resources.mongo(), &mut c.table)
-        })?;
+        jsondb::readwrite::add_to_linker_get_host(linker, JsonDbHost::new)?;
+        jsondb::types::add_to_linker_get_host(linker, JsonDbHost::new)?;
         tracing::trace!("added to linker");
         Ok(())
     }
-}
-
-fn add_to_linker<T: Send>(
-    l: &mut Linker<T>, f: impl Fn(&mut T) -> JsonDbHost<'_> + Send + Sync + Copy + 'static,
-) -> Result<()> {
-    jsondb::readwrite::add_to_linker_get_host(l, f)?;
-    jsondb::types::add_to_linker_get_host(l, f)
 }
 
 // Implement the [`wasi_sql::ReadWriteView`]` trait for JsonDbHost<'_>.

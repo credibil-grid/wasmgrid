@@ -22,7 +22,7 @@ pub async fn main() -> anyhow::Result<()> {
 
     match Cli::parse().command {
         runtime::Command::Compile { wasm, output } => {
-            runtime::compile(wasm, output)?;
+            runtime::compile(&wasm, output)?;
             return Ok(());
         }
         runtime::Command::Run { wasm, compile } => {

@@ -48,9 +48,12 @@ pub struct KeyvalueHost<'a> {
     table: &'a mut ResourceTable,
 }
 
-impl<'a> KeyvalueHost<'a> {
-    pub const fn new(client: &'a Client, table: &'a mut ResourceTable) -> Self {
-        Self { client, table }
+impl KeyvalueHost<'_> {
+    fn new(c: &mut Ctx) -> KeyvalueHost<'_> {
+        KeyvalueHost {
+            client: c.resources.nats(),
+            table: &mut c.table,
+        }
     }
 }
 
@@ -62,21 +65,22 @@ impl Linkable for Service {
     // Add all the `wasi-keyvalue` world's interfaces to a [`Linker`], and
     // instantiate the `KeyvalueHost` for the component.
     fn add_to_linker(&self, linker: &mut Linker<Self::Ctx>) -> anyhow::Result<()> {
-        add_to_linker(linker, |c: &mut Self::Ctx| {
-            KeyvalueHost::new(c.resources.nats(), &mut c.table)
-        })?;
+        // add_to_linker(linker, link)?;
+        keyvalue::store::add_to_linker_get_host(linker, KeyvalueHost::new)?;
+        keyvalue::atomics::add_to_linker_get_host(linker, KeyvalueHost::new)?;
+        keyvalue::batch::add_to_linker_get_host(linker, KeyvalueHost::new)?;
         tracing::trace!("added to linker");
         Ok(())
     }
 }
 
-fn add_to_linker<T: Send>(
-    l: &mut Linker<T>, f: impl Fn(&mut T) -> KeyvalueHost<'_> + Send + Sync + Copy + 'static,
-) -> anyhow::Result<()> {
-    keyvalue::store::add_to_linker_get_host(l, f)?;
-    keyvalue::atomics::add_to_linker_get_host(l, f)?;
-    keyvalue::batch::add_to_linker_get_host(l, f)
-}
+// fn add_to_linker<T: Send>(
+//     l: &mut Linker<T>, f: impl Fn(&mut T) -> KeyvalueHost<'_> + Send + Sync + Copy + 'static,
+// ) -> anyhow::Result<()> {
+//     keyvalue::store::add_to_linker_get_host(l, f)?;
+//     keyvalue::atomics::add_to_linker_get_host(l, f)?;
+//     keyvalue::batch::add_to_linker_get_host(l, f)
+// }
 
 // Implement the [`wasi_keyvalue::KeyValueView`]` trait for  KeyvalueHost<'_>.
 impl keyvalue::store::Host for KeyvalueHost<'_> {

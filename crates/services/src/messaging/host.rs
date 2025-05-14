@@ -16,25 +16,21 @@ pub struct MsgHost<'a> {
     instance_pre: &'a InstancePre<Ctx>,
 }
 
-impl<'a> MsgHost<'a> {
-    pub const fn new(
-        client: &'a Client, table: &'a mut ResourceTable, instance_pre: &'a InstancePre<Ctx>,
-    ) -> Self {
-        Self {
-            client,
-            table,
-            instance_pre,
+impl MsgHost<'_> {
+    fn new(c: &mut Ctx) -> MsgHost<'_> {
+        MsgHost {
+            client: c.resources.nats(),
+            table: &mut c.table,
+            instance_pre: &c.instance_pre,
         }
     }
 }
 
 /// Add all the `wasi-keyvalue` world's interfaces to a [`Linker`].
-pub fn add_to_linker<T: Send>(
-    l: &mut Linker<T>, f: impl Fn(&mut T) -> MsgHost<'_> + Send + Sync + Copy + 'static,
-) -> Result<()> {
-    consumer::add_to_linker_get_host(l, f)?;
-    producer::add_to_linker_get_host(l, f)?;
-    messaging_types::add_to_linker_get_host(l, f)
+pub fn add_to_linker<T: Send>(l: &mut Linker<T>) -> Result<()> {
+    consumer::add_to_linker_get_host(l, MsgHost::new)?;
+    producer::add_to_linker_get_host(l, MsgHost::new)?;
+    messaging_types::add_to_linker_get_host(l, MsgHost::new)
 }
 
 impl messaging_types::Host for MsgHost<'_> {}

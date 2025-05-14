@@ -35,9 +35,7 @@ impl Linkable for Service {
     type Ctx = Ctx;
 
     fn add_to_linker(&self, linker: &mut Linker<Self::Ctx>) -> Result<()> {
-        self::host::add_to_linker(linker, |c: &mut Self::Ctx| {
-            RpcHost::new(c.resources.nats(), &mut c.table)
-        })?;
+        self::host::add_to_linker(linker, RpcHost::new)?;
         tracing::trace!("added to linker");
         Ok(())
     }

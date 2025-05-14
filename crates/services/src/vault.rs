@@ -56,9 +56,12 @@ pub struct VaultHost<'a> {
     table: &'a mut ResourceTable,
 }
 
-impl<'a> VaultHost<'a> {
-    pub const fn new(client: &'a KeyClient, table: &'a mut ResourceTable) -> Self {
-        Self { client, table }
+impl VaultHost<'_> {
+    fn new(c: &mut Ctx) -> VaultHost<'_> {
+        VaultHost {
+            client: c.resources.azkeyvault(),
+            table: &mut c.table,
+        }
     }
 }
 
@@ -68,20 +71,12 @@ impl Linkable for Service {
     type Ctx = Ctx;
 
     // Add all the `wasi-keyvalue` world's interfaces to a [`Linker`], and
-    // instantiate the `KeyvalueHost` for the component.
+    // instantiate the `VaultHost` for the component.
     fn add_to_linker(&self, linker: &mut Linker<Self::Ctx>) -> anyhow::Result<()> {
-        add_to_linker(linker, |c: &mut Self::Ctx| {
-            VaultHost::new(c.resources.azkeyvault(), &mut c.table)
-        })?;
+        vault::keystore::add_to_linker_get_host(linker, VaultHost::new)?;
         tracing::trace!("added to linker");
         Ok(())
     }
-}
-
-fn add_to_linker<T: Send>(
-    l: &mut Linker<T>, f: impl Fn(&mut T) -> VaultHost<'_> + Send + Sync + Copy + 'static,
-) -> anyhow::Result<()> {
-    vault::keystore::add_to_linker_get_host(l, f)
 }
 
 impl vault::keystore::Host for VaultHost<'_> {

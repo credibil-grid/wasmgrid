@@ -2,8 +2,7 @@
 # https://docs.rs/openssl/latest/openssl
 
 FROM rust:alpine3.21 AS builder
-ARG TARGETARCH TARGETARCH=${TARGETARCH/amd64/x86_64}
-ARG ARCH=${TARGETARCH/arm64/aarch64}
+ARG TARGETARCH TARGETARCH=${TARGETARCH/amd64/x86_64} TARGETARCH=${TARGETARCH/arm64/aarch64}
 
 RUN apk --update add musl-dev ca-certificates pkgconf openssl-dev perl make
 RUN adduser --disabled-password --gecos "" --home "/nonexistent" \
@@ -17,16 +16,15 @@ COPY /crates /crates
 COPY /examples /examples
 COPY /rust-toolchain.toml /rust-toolchain.toml
 
-RUN cargo build --target ${ARCH}-unknown-linux-musl --release
+RUN cargo build --target ${TARGETARCH}-unknown-linux-musl --release
 
 FROM scratch
-ARG TARGETARCH TARGETARCH=${TARGETARCH/amd64/x86_64}
-ARG ARCH=${TARGETARCH/arm64/aarch64}
+ARG TARGETARCH TARGETARCH=${TARGETARCH/amd64/x86_64} TARGETARCH=${TARGETARCH/arm64/aarch64}
 
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY --from=builder /etc/passwd /etc/passwd
 COPY --from=builder /etc/group /etc/group
-COPY --from=builder --chown=wasm:wasm /target/${ARCH}-unknown-linux-musl/release/wasmgrid /app/wasmgrid
+COPY --from=builder --chown=wasm:wasm /target/${TARGETARCH}-unknown-linux-musl/release/wasmgrid /app/wasmgrid
 
 USER wasm:wasm
 EXPOSE 8080

@@ -6,6 +6,7 @@ use tracing::Level;
 use wasmtime::component::{Linker, Resource};
 use wasmtime_wasi::ResourceTable;
 
+use crate::Ctx;
 use crate::rpc::generated::wasi::rpc::client::HostError;
 use crate::rpc::generated::wasi::rpc::{self, client, types};
 
@@ -14,9 +15,12 @@ pub struct RpcHost<'a> {
     table: &'a mut ResourceTable,
 }
 
-impl<'a> RpcHost<'a> {
-    pub const fn new(client: &'a Client, table: &'a mut ResourceTable) -> Self {
-        Self { client, table }
+impl RpcHost<'_> {
+    pub fn new(c: &mut Ctx) -> RpcHost<'_> {
+        RpcHost {
+            client: c.resources.nats(),
+            table: &mut c.table,
+        }
     }
 }
 
