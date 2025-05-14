@@ -3,8 +3,7 @@
 
 FROM rust:alpine3.21 AS builder
 
-
-RUN apk --update add --no-cache musl-dev ca-certificates pkgconf openssl-dev perl make
+RUN apk --update add musl-dev ca-certificates pkgconf openssl-dev perl make
 
 RUN adduser --disabled-password --gecos "" --home "/nonexistent" \
     --shell "/sbin/nologin" --no-create-home --uid 10001 "wasm"

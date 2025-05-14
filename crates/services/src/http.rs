@@ -97,6 +97,8 @@ async fn handle(
     store.limiter(|t| &mut t.limits);
 
     let (request, scheme) = prepare_request(request)?;
+    tracing::trace!("sending request: {:#?}", request);
+
     let (sender, receiver) = oneshot::channel();
     let incoming = store.data_mut().new_incoming_request(scheme, request)?;
     let outgoing = store.data_mut().new_response_outparam(sender)?;
@@ -107,6 +109,7 @@ async fn handle(
 
     match receiver.await {
         Ok(Ok(mut resp)) => {
+            tracing::trace!("request successful: {:#?}", resp);
             if cors {
                 resp.headers_mut()
                     .insert(ACCESS_CONTROL_ALLOW_ORIGIN, HeaderValue::from_static("*"));
@@ -115,12 +118,11 @@ async fn handle(
         }
         Ok(Err(e)) => Err(e.into()),
         Err(_) => {
-            // retrieve the inner task error
             let e = match task {
                 Err(e) => e,
                 Ok(()) => anyhow!("task failed without error"),
-                // Err(e) => e.into(),
             };
+            tracing::trace!("error: {:#?}", e);
             Err(anyhow!("guest did not invoke `response-outparam::set`: {e}"))
         }
     }

@@ -171,7 +171,7 @@ impl vault::keystore::HostKeyPair for VaultHost<'_> {
             .await
             .map_err(|e| Error::Other(format!("issue signing data: {e}")))?;
 
-        Ok(sig_res.into_body().await.unwrap().result.unwrap())
+        Ok(sig_res.into_body().await?.result.unwrap_or(vec![]))
     }
 
     async fn public_key(&mut self, rep: Resource<KeyPair>) -> Result<Jwk, Error> {

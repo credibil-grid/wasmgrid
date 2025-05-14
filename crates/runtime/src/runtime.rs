@@ -16,15 +16,39 @@ pub struct Runtime<T> {
 }
 
 impl<T: WasiView + 'static> Runtime<T> {
-    /// Create a new Runtime instance for the specified (pre-compiled)
-    /// wasm component.
+    /// Create a new Runtime instance from a pre-compiled wasm component
+    /// serialized as bytes.
     ///
     /// # Errors
     ///
     /// Returns an error if the component cannot be loaded, the linker cannot
     /// be created, or the service cannot be started.
-    pub fn new(wasm: PathBuf) -> Result<Self> {
-        tracing::trace!("initializing");
+    pub fn from_bytes(wasm: &[u8]) -> Result<Self> {
+        tracing::trace!("initializing from bytes");
+
+        // load compiled component
+        let mut config = Config::new();
+        config.async_support(true);
+        let engine = Engine::new(&config)?;
+        let component = unsafe { Component::deserialize(&engine, wasm)? };
+
+        // resolve dependencies
+        let mut linker: Linker<T> = Linker::new(&engine);
+        wasmtime_wasi::add_to_linker_async(&mut linker)?;
+
+        tracing::trace!("initialized");
+        Ok(Self { component, linker })
+    }
+
+    /// Create a new Runtime instance from a pre-compiled wasm component 
+    /// serialized as a file.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the component cannot be loaded, the linker cannot
+    /// be created, or the service cannot be started.
+    pub fn from_file(wasm: PathBuf) -> Result<Self> {
+        tracing::trace!("initializing from file");
 
         // load compiled component
         let mut config = Config::new();

@@ -28,8 +28,12 @@ pub async fn main() -> anyhow::Result<()> {
         runtime::Command::Run { wasm, compile } => {
             tracing::info!("initialising runtime");
 
-            let compiled = if compile { runtime::compile(&wasm, None)? } else { wasm };
-            let mut rt = runtime::Runtime::new(compiled)?;
+            let mut rt = if compile {
+                let serialized = runtime::serialize(&wasm)?;
+                runtime::Runtime::from_bytes(&serialized)?
+            } else {
+                runtime::Runtime::from_file(wasm)?
+            };
 
             // link services
             rt.link(&http::Service)?;
@@ -46,7 +50,7 @@ pub async fn main() -> anyhow::Result<()> {
             let kv_addr = env::var("KV_ADDR").unwrap_or_else(|_| DEF_KV_ADDR.into());
 
             let resources = Resources::new();
-            resources.with_nats(nats_addr, jwt, seed).await??;
+            resources.with_nats(nats_addr, jwt, seed);
             resources.with_mongo(mgo_uri);
             resources.with_azkeyvault(kv_addr);
 
