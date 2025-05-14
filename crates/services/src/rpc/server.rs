@@ -34,7 +34,7 @@ pub async fn run(pre: InstancePre<Ctx>, resources: Resources) -> Result<()> {
 }
 
 async fn subscribe(sc: ServerConfiguration, resources: &Resources, pre: RpcPre<Ctx>) -> Result<()> {
-    let client = resources.nats();
+    let client = resources.nats()?;
 
     // subscribe to rpc requests for 'server' endpoints
     tracing::debug!("subscribing to rpc requests on rpc:{}.>", sc.identifier);

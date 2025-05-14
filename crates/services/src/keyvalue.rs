@@ -30,8 +30,8 @@ mod generated {
 use std::time::Duration;
 
 use anyhow::anyhow;
+use async_nats::jetstream;
 use async_nats::jetstream::kv::{self, Store};
-use async_nats::{Client, jetstream};
 use futures::TryStreamExt;
 use runtime::Linkable;
 use wasmtime::component::{Linker, Resource, ResourceTableError};
@@ -39,19 +39,19 @@ use wasmtime_wasi::ResourceTable;
 
 use self::generated::wasi::keyvalue;
 use self::generated::wasi::keyvalue::store::{Error, KeyResponse};
-use crate::Ctx;
+use crate::{Ctx, Resources};
 
 pub type Result<T, E = Error> = anyhow::Result<T, E>;
 
 pub struct KeyvalueHost<'a> {
-    client: &'a Client,
+    resources: &'a Resources,
     table: &'a mut ResourceTable,
 }
 
 impl KeyvalueHost<'_> {
-    fn new(c: &mut Ctx) -> KeyvalueHost<'_> {
+    const fn new(c: &mut Ctx) -> KeyvalueHost<'_> {
         KeyvalueHost {
-            client: c.resources.nats(),
+            resources: &c.resources,
             table: &mut c.table,
         }
     }
@@ -88,8 +88,7 @@ impl keyvalue::store::Host for KeyvalueHost<'_> {
     async fn open(&mut self, identifier: String) -> Result<Resource<Store>> {
         tracing::trace!("store::Host::open {identifier}");
 
-        let jetstream = jetstream::new(self.client.clone());
-
+        let jetstream = jetstream::new(self.resources.nats()?.clone());
         let bucket = if let Ok(bucket) = jetstream.get_key_value(&identifier).await {
             bucket
         } else {

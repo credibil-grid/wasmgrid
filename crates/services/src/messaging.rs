@@ -29,11 +29,10 @@ mod generated {
 }
 
 use anyhow::Result;
-use async_nats::Client;
 use runtime::{Linkable, Runnable};
 use wasmtime::component::{InstancePre, Linker};
 
-use crate::Ctx;
+use crate::{Ctx, Resources};
 
 pub struct Service;
 
@@ -48,7 +47,7 @@ impl Linkable for Service {
 }
 
 impl Runnable for Service {
-    type Resources = Client;
+    type Resources = Resources;
 
     async fn run(&self, pre: InstancePre<Self::Ctx>, resources: Self::Resources) -> Result<()> {
         server::run(pre, resources).await

@@ -30,12 +30,12 @@ use anyhow::{Error, Result, anyhow};
 use futures::TryStreamExt;
 use jmespath::ast::{Ast, Comparator};
 use mongodb::bson::{self, Document};
-use mongodb::{Client, Cursor, Database};
+use mongodb::{Cursor, Database};
 use runtime::Linkable;
 use wasmtime::component::{Linker, Resource, ResourceTable};
 
 use self::generated::wasi::jsondb;
-use crate::Ctx;
+use crate::{Ctx, Resources};
 
 pub struct Statement {
     collection: String,
@@ -43,14 +43,14 @@ pub struct Statement {
 }
 
 pub struct JsonDbHost<'a> {
-    client: &'a Client,
+    resources: &'a Resources,
     table: &'a mut ResourceTable,
 }
 
 impl JsonDbHost<'_> {
-    fn new(c: &mut Ctx) -> JsonDbHost<'_> {
+    const fn new(c: &mut Ctx) -> JsonDbHost<'_> {
         JsonDbHost {
-            client: c.resources.mongo(),
+            resources: &c.resources,
             table: &mut c.table,
         }
     }
@@ -187,7 +187,7 @@ impl jsondb::types::HostDatabase for JsonDbHost<'_> {
     ) -> wasmtime::Result<Result<Resource<Database>, Resource<Error>>> {
         tracing::trace!("HostDatabase::open");
 
-        let db = self.client.database(&name);
+        let db = self.resources.mongo()?.database(&name);
         Ok(Ok(self.table.push(db)?))
     }
 

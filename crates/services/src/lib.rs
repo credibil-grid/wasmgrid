@@ -184,8 +184,7 @@ impl Resources {
     ///
     /// This method panics if the client is not available before the method
     /// times out.
-    #[must_use]
-    pub(crate) fn nats(&self) -> &async_nats::Client {
+    pub(crate) fn nats(&self) -> Result<&async_nats::Client> {
         timeout(&self.nats)
     }
 
@@ -198,8 +197,7 @@ impl Resources {
     ///
     /// This method panics if the client is not available before the method
     /// times out.
-    #[must_use]
-    pub(crate) fn mongo(&self) -> &mongodb::Client {
+    pub(crate) fn mongo(&self) -> Result<&mongodb::Client> {
         timeout(&self.mongo)
     }
 
@@ -213,8 +211,7 @@ impl Resources {
     /// This method panics if the client is not available before the method
     /// times out.
     #[cfg(feature = "vault")]
-    #[must_use]
-    pub(crate) fn azkeyvault(&self) -> &KeyClient {
+    pub(crate) fn azkeyvault(&self) -> Result<&KeyClient> {
         timeout(&self.azkeyvault)
     }
 }
@@ -225,15 +222,15 @@ impl Default for Resources {
     }
 }
 
-fn timeout<T>(once_lock: &OnceLock<T>) -> &T {
+fn timeout<T>(once_lock: &OnceLock<T>) -> Result<&T> {
     for _ in 0..10 {
         if let Some(client) = once_lock.get() {
-            return client;
+            return Ok(client);
         }
         sleep(Duration::from_millis(10));
     }
     tracing::error!("failed to get resource");
-    panic!("failed to get resource");
+    Err(anyhow!("failed to get resource"))
 }
 
 async fn nats_connect(

@@ -1,35 +1,32 @@
 //! # RPC Host
 
 use anyhow::{Error, Result, anyhow};
-use async_nats::Client;
 use tracing::Level;
 use wasmtime::component::{Linker, Resource};
 use wasmtime_wasi::ResourceTable;
 
-use crate::Ctx;
 use crate::rpc::generated::wasi::rpc::client::HostError;
 use crate::rpc::generated::wasi::rpc::{self, client, types};
+use crate::{Ctx, Resources};
 
 pub struct RpcHost<'a> {
-    client: &'a Client,
+    resources: &'a Resources,
     table: &'a mut ResourceTable,
 }
 
 impl RpcHost<'_> {
-    pub fn new(c: &mut Ctx) -> RpcHost<'_> {
+    const fn new(c: &mut Ctx) -> RpcHost<'_> {
         RpcHost {
-            client: c.resources.nats(),
+            resources: &c.resources,
             table: &mut c.table,
         }
     }
 }
 
 /// Add all the `wasi-keyvalue` world's interfaces to a [`Linker`].
-pub fn add_to_linker<T: Send>(
-    l: &mut Linker<T>, f: impl Fn(&mut T) -> RpcHost<'_> + Send + Sync + Copy + 'static,
-) -> Result<()> {
-    rpc::client::add_to_linker_get_host(l, f)?;
-    rpc::types::add_to_linker_get_host(l, f)
+pub fn add_to_linker(l: &mut Linker<Ctx>) -> Result<()> {
+    rpc::client::add_to_linker_get_host(l, RpcHost::new)?;
+    rpc::types::add_to_linker_get_host(l, RpcHost::new)
 }
 
 impl types::Host for RpcHost<'_> {}
@@ -46,7 +43,7 @@ impl client::Host for RpcHost<'_> {
         let subject = format!("rpc:{}", endpoint.replacen('/', ".", 1));
 
         // forward request to RPC server
-        let msg = self.client.request(subject, request.into()).await?;
+        let msg = self.resources.nats()?.request(subject, request.into()).await?;
 
         // check RPC server's reponse for error
         if let Some(headers) = &msg.headers

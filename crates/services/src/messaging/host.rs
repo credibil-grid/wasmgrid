@@ -5,29 +5,29 @@ use tokio::time::{Duration, sleep};
 use wasmtime::component::{InstancePre, Linker, Resource};
 use wasmtime_wasi::ResourceTable;
 
-use crate::Ctx;
 use crate::messaging::generated::wasi::messaging::messaging_types::{GuestConfiguration, Message};
 use crate::messaging::generated::wasi::messaging::{consumer, messaging_types, producer};
 use crate::messaging::server;
+use crate::{Ctx, Resources};
 
 pub struct MsgHost<'a> {
-    client: &'a Client,
     table: &'a mut ResourceTable,
     instance_pre: &'a InstancePre<Ctx>,
+    resources: &'a Resources,
 }
 
 impl MsgHost<'_> {
-    fn new(c: &mut Ctx) -> MsgHost<'_> {
+    const fn new(c: &mut Ctx) -> MsgHost<'_> {
         MsgHost {
-            client: c.resources.nats(),
             table: &mut c.table,
             instance_pre: &c.instance_pre,
+            resources: &c.resources,
         }
     }
 }
 
 /// Add all the `wasi-keyvalue` world's interfaces to a [`Linker`].
-pub fn add_to_linker<T: Send>(l: &mut Linker<T>) -> Result<()> {
+pub fn add_to_linker(l: &mut Linker<Ctx>) -> Result<()> {
     consumer::add_to_linker_get_host(l, MsgHost::new)?;
     producer::add_to_linker_get_host(l, MsgHost::new)?;
     messaging_types::add_to_linker_get_host(l, MsgHost::new)
@@ -38,7 +38,7 @@ impl messaging_types::Host for MsgHost<'_> {}
 impl messaging_types::HostClient for MsgHost<'_> {
     async fn connect(&mut self, name: String) -> Result<Result<Resource<Client>, Resource<Error>>> {
         tracing::trace!("HostClient::connect {name}");
-        let client = self.client;
+        let client = self.resources.nats()?;
         let resource = self.table.push(client.clone())?;
         Ok(Ok(resource))
     }
@@ -116,7 +116,7 @@ impl consumer::Host for MsgHost<'_> {
         &mut self, gc: GuestConfiguration,
     ) -> Result<Result<(), Resource<Error>>> {
         tracing::trace!("consumer::Host::update_guest_configuration");
-        server::subscribe(gc.channels, self.client, self.instance_pre).await?;
+        server::subscribe(gc.channels, self.resources, self.instance_pre).await?;
         Ok(Ok(()))
     }
 }

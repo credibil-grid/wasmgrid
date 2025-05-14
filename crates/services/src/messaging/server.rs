@@ -4,13 +4,11 @@ use wasmtime::Store;
 use wasmtime::component::InstancePre;
 use wasmtime_wasi::IoView;
 
-use crate::Ctx;
 use crate::messaging::generated::MessagingPre;
 use crate::messaging::generated::wasi::messaging::messaging_types::{FormatSpec, Message};
+use crate::{Ctx, Resources};
 
-pub type Client = async_nats::Client;
-
-pub async fn run(pre: InstancePre<Ctx>, client: Client) -> Result<()> {
+pub async fn run(pre: InstancePre<Ctx>, resources: Resources) -> Result<()> {
     // bail if server is not required
     let component_type = pre.component().component_type();
     let mut exports = component_type.exports(pre.engine());
@@ -20,7 +18,7 @@ pub async fn run(pre: InstancePre<Ctx>, client: Client) -> Result<()> {
     }
 
     // get guest configuration
-    let mut store = Store::new(pre.engine(), Ctx::new(client.clone(), pre.clone()));
+    let mut store = Store::new(pre.engine(), Ctx::new(resources.clone(), pre.clone()));
     let msg_pre = MessagingPre::new(pre.clone())?;
     let messaging = msg_pre.instantiate_async(&mut store).await?;
     let Ok(gc) = messaging.wasi_messaging_messaging_guest().call_configure(&mut store).await?
@@ -28,13 +26,15 @@ pub async fn run(pre: InstancePre<Ctx>, client: Client) -> Result<()> {
         return Err(anyhow!("failed to configure messaging guest"));
     };
 
-    subscribe(gc.channels, &client, &pre).await
+    subscribe(gc.channels, &resources, &pre).await
 }
 
 pub async fn subscribe(
-    channels: Vec<String>, client: &Client, pre: &InstancePre<Ctx>,
+    channels: Vec<String>, resources: &Resources, pre: &InstancePre<Ctx>,
 ) -> Result<()> {
     let mut subscribers = vec![];
+    let client = resources.nats()?;
+
     for ch in channels {
         tracing::debug!("subscribing to {ch}");
         let subscriber = client.subscribe(ch.clone()).await?;
@@ -45,9 +45,9 @@ pub async fn subscribe(
     let mut messages = stream::select_all(subscribers);
     while let Some(msg) = messages.next().await {
         let pre = pre.clone();
-        let cli = client.clone();
+        let res = resources.clone();
         tokio::spawn(async move {
-            if let Err(e) = call_guest(pre, cli, msg).await {
+            if let Err(e) = call_guest(pre, res, msg).await {
                 tracing::error!("error processing message {e}");
             }
         });
@@ -57,8 +57,10 @@ pub async fn subscribe(
 }
 
 // Forward message to the wasm component.
-async fn call_guest(pre: InstancePre<Ctx>, client: Client, msg: async_nats::Message) -> Result<()> {
-    let mut store = Store::new(pre.engine(), Ctx::new(client, pre.clone()));
+async fn call_guest(
+    pre: InstancePre<Ctx>, resources: Resources, msg: async_nats::Message,
+) -> Result<()> {
+    let mut store = Store::new(pre.engine(), Ctx::new(resources, pre.clone()));
     let msg_pre = MessagingPre::new(pre)?;
     let messaging = msg_pre.instantiate_async(&mut store).await?;
     let wasi_msg = msg_conv(&msg);

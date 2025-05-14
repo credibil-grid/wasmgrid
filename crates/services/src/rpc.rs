@@ -26,7 +26,6 @@ use anyhow::Result;
 use runtime::{Linkable, Runnable};
 use wasmtime::component::{InstancePre, Linker};
 
-use self::host::RpcHost;
 use crate::{Ctx, Resources};
 
 pub struct Service;
@@ -35,7 +34,7 @@ impl Linkable for Service {
     type Ctx = Ctx;
 
     fn add_to_linker(&self, linker: &mut Linker<Self::Ctx>) -> Result<()> {
-        self::host::add_to_linker(linker, RpcHost::new)?;
+        self::host::add_to_linker(linker)?;
         tracing::trace!("added to linker");
         Ok(())
     }

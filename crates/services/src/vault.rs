@@ -25,7 +25,6 @@ mod generated {
     });
 }
 
-use azure_security_keyvault_keys::KeyClient;
 use azure_security_keyvault_keys::models::{
     CurveName, JsonWebKey, KeyType, SignParameters, SignatureAlgorithm,
 };
@@ -37,7 +36,7 @@ use wasmtime_wasi::ResourceTable;
 
 use self::generated::wasi::vault;
 use self::generated::wasi::vault::keystore::{Algorithm, Error, Jwk};
-use crate::Ctx;
+use crate::{Ctx, Resources};
 
 pub type Result<T, E = Error> = anyhow::Result<T, E>;
 
@@ -52,14 +51,14 @@ pub struct KeyPair {
 }
 
 pub struct VaultHost<'a> {
-    client: &'a KeyClient,
+    resources: &'a Resources,
     table: &'a mut ResourceTable,
 }
 
 impl VaultHost<'_> {
-    fn new(c: &mut Ctx) -> VaultHost<'_> {
+    const fn new(c: &mut Ctx) -> VaultHost<'_> {
         VaultHost {
-            client: c.resources.azkeyvault(),
+            resources: &c.resources,
             table: &mut c.table,
         }
     }
@@ -126,7 +125,7 @@ impl vault::keystore::HostKeySet for VaultHost<'_> {
         };
 
         // check key exists before saving reference
-        if let Err(e) = self.client.get_key(&key_pair.name, "", None).await {
+        if let Err(e) = self.resources.azkeyvault()?.get_key(&key_pair.name, "", None).await {
             tracing::error!("key {} cannot be found: {e}", key_pair.name);
             return Err(Error::NoSuchKeyPair);
         }
@@ -160,11 +159,8 @@ impl vault::keystore::HostKeyPair for VaultHost<'_> {
             value: Some(digest.to_vec()),
         };
 
-        let sig_res = self
-            .client
-            .sign(&key_pair.name, "", params.try_into()?, None)
-            .await
-            .map_err(|e| Error::Other(format!("issue signing data: {e}")))?;
+        let client = self.resources.azkeyvault()?;
+        let sig_res = client.sign(&key_pair.name, "", params.try_into()?, None).await?;
 
         Ok(sig_res.into_body().await?.result.unwrap_or(vec![]))
     }
@@ -176,7 +172,8 @@ impl vault::keystore::HostKeyPair for VaultHost<'_> {
         let Ok(key_pair) = self.table.get_mut(&rep) else {
             return Err(Error::NoSuchKeyPair);
         };
-        let kv_key = self.client.get_key(&key_pair.name, "", None).await?.into_body().await?;
+        let client = self.resources.azkeyvault()?;
+        let kv_key = client.get_key(&key_pair.name, "", None).await?.into_body().await?;
         let Some(key) = kv_key.key else {
             return Err(Error::NoSuchKeyPair);
         };
