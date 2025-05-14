@@ -22,17 +22,16 @@ pub async fn main() -> anyhow::Result<()> {
 
     match Cli::parse().command {
         runtime::Command::Compile { wasm, output } => {
-            runtime::compile(&wasm, output)?;
+            runtime::compile(wasm, output)?;
             return Ok(());
         }
         runtime::Command::Run { wasm, compile } => {
             tracing::info!("initialising runtime");
 
             let mut rt = if compile {
-                let serialized = runtime::serialize(&wasm)?;
-                runtime::Runtime::from_bytes(&serialized)?
+                runtime::Runtime::from_wasm(wasm)?
             } else {
-                runtime::Runtime::from_file(wasm)?
+                runtime::Runtime::from_compiled(wasm)?
             };
 
             // link services

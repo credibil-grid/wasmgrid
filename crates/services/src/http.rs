@@ -97,7 +97,7 @@ async fn handle(
     store.limiter(|t| &mut t.limits);
 
     let (request, scheme) = prepare_request(request)?;
-    tracing::trace!("sending request: {:#?}", request);
+    tracing::trace!("sending request: {request:#?}");
 
     let (sender, receiver) = oneshot::channel();
     let incoming = store.data_mut().new_incoming_request(scheme, request)?;
@@ -109,20 +109,23 @@ async fn handle(
 
     match receiver.await {
         Ok(Ok(mut resp)) => {
-            tracing::trace!("request successful: {:#?}", resp);
+            tracing::trace!("request success: {resp:?}");
             if cors {
                 resp.headers_mut()
                     .insert(ACCESS_CONTROL_ALLOW_ORIGIN, HeaderValue::from_static("*"));
             }
             Ok(resp)
         }
-        Ok(Err(e)) => Err(e.into()),
+        Ok(Err(e)) => {
+            tracing::trace!("request error: {e:?}");
+            Err(e.into())
+        }
         Err(_) => {
             let e = match task {
                 Err(e) => e,
                 Ok(()) => anyhow!("task failed without error"),
             };
-            tracing::trace!("error: {:#?}", e);
+            tracing::trace!("request error: {e:?}");
             Err(anyhow!("guest did not invoke `response-outparam::set`: {e}"))
         }
     }
@@ -146,16 +149,16 @@ fn prepare_request(mut request: Request<Incoming>) -> Result<(Request<Incoming>,
     // rebuild Uri with scheme and authority explicitly set so they are passed to the Guest
     let uri = request.uri_mut();
     let p_and_q = uri.path_and_query().map_or_else(|| PathAndQuery::from_static("/"), Clone::clone);
-    let mut builder = Uri::builder().path_and_query(p_and_q);
+    let mut uri_builder = Uri::builder().path_and_query(p_and_q);
 
     if let Some(forwarded) = request.headers().get(FORWARDED) {
         // running behind a proxy (that we have configured)
         for tuple in forwarded.to_str()?.split(';') {
             let tuple = tuple.trim();
             if let Some(host) = tuple.strip_prefix("host=") {
-                builder = builder.authority(host);
+                uri_builder = uri_builder.authority(host);
             } else if let Some(proto) = tuple.strip_prefix("proto=") {
-                builder = builder.scheme(proto);
+                uri_builder = uri_builder.scheme(proto);
             }
         }
     } else {
@@ -163,16 +166,13 @@ fn prepare_request(mut request: Request<Incoming>) -> Result<(Request<Incoming>,
         let Some(host) = request.headers().get(HOST) else {
             return Err(anyhow!("missing host header"));
         };
-        builder = builder.authority(host.to_str()?);
-        builder = builder.scheme("http");
+        uri_builder = uri_builder.authority(host.to_str()?);
+        uri_builder = uri_builder.scheme("http");
     }
 
     // update the uri with the new scheme and authority
     let (mut parts, body) = request.into_parts();
-    parts.uri = builder.build()?;
-
-    tracing::debug!("calling guest");
-    tracing::trace!("request headers: {:#?}", parts);
+    parts.uri = uri_builder.build()?;
     let request = hyper::Request::from_parts(parts, body);
 
     let scheme = match request.uri().scheme_str() {
