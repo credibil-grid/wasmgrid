@@ -18,6 +18,7 @@ MGO_URI="<MongoDB connection string>"
 AZURE_TENANT_ID=<Azure Tenant ID for key vault>
 AZURE_CLIENT_ID=<Azure Client ID for key vault>
 AZURE_CLIENT_SECRET=<Azure Client Secret for key vault>
+
 # when using Synadia Cloud:
 NATS_ADDR="tls://connect.ngs.global"
 NATS_JWT="<user JWT>"
@@ -39,18 +40,9 @@ See [examples/http/README.md](examples/http/README.md).
 
 ## Docker Build and Run
 
-Build 
-Build the docker image:
-
 ```bash
 docker build --platform=linux/arm64 -t acrcredibil.azurecr.io/demo/wasmgrid .
-```
-
-Push to Azure:
-
-```bash
-az acr login --name acrcredibil
-docker push acrcredibil.azurecr.io/demo/wasmgrid
+docker compose up
 ```
 
 ## Troubleshooting
@@ -62,14 +54,12 @@ To test the MUSL build locally:
 ```bash
 # brew install FiloSottile/musl-cross/musl-cross
 brew tap messense/macos-cross-toolchains
-brew install x86_64-unknown-linux-musl
 brew install aarch64-unknown-linux-musl
 brew install openssl
 ```
 
 ```bash
 cargo build --package wasmgrid --target aarch64-unknown-linux-musl --release
-# OPENSSL_DIR=/opt/homebrew/opt/openssl 
 ```
 
 See <https://docs.wasmtime.dev/examples-minimal.html/> for more information on 

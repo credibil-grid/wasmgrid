@@ -9,11 +9,7 @@ services:
       - RUST_LOG=runtime=trace,wasmgrid=trace,services=trace
     ports:
       - 8080:8080
-    # volumes:
-    #   # serialized wasmtime component (pre-compiled wasm)
-    #   - ./keyvalue.bin:/app.wasm
-    # command: ["/app/wasmgrid", "run", "/app.wasm"]
     volumes:
-      # standard wasm file
       - ./target/wasm32-wasip2/release/keyvalue.wasm:/app.wasm
-    command: ["/app/wasmgrid", "run", "--compile", "/app.wasm"]
+    #   - ./keyvalue.bin:/app.wasm
+    command: ["/app/wasmgrid", "run", "/app.wasm"]
