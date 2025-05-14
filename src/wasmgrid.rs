@@ -25,14 +25,9 @@ pub async fn main() -> anyhow::Result<()> {
             runtime::compile(&wasm, output)?;
             return Ok(());
         }
-        runtime::Command::Run { wasm, compile } => {
+        runtime::Command::Run { wasm } => {
             tracing::info!("initialising runtime");
-
-            let mut rt = if compile {
-                runtime::Runtime::from_wasm(wasm)?
-            } else {
-                runtime::Runtime::from_compiled(wasm)?
-            };
+            let mut rt = runtime::Runtime::from_file(&wasm)?;
 
             // link services
             rt.link(&http::Service)?;

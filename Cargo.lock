@@ -4173,6 +4173,7 @@ name = "wasmgrid"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "cfg-if",
  "dotenv",
  "runtime",
  "services",

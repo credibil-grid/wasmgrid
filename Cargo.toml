@@ -8,9 +8,6 @@ edition.workspace = true
 rust-version.workspace = true
 version = "0.1.0"
 
-# [lib]
-# doctest = false
-
 [[bin]]
 name = "wasmgrid"
 path = "src/wasmgrid.rs"
@@ -19,15 +16,11 @@ doc = false
 [lints]
 workspace = true
 
-[features]
-default = ["compile"]
-compile = ["runtime/compile"]
-# default = ["http", "jsondb", "keyvalue", "rpc", "vault"]
-
 [dependencies]
 anyhow.workspace = true
+cfg-if.workspace = true
 dotenv = "0.15.0"
-runtime = { workspace = true }
+runtime = { workspace = true, features = ["compile"] }
 services = { path = "crates/services", features = ["http", "jsondb", "keyvalue", "messaging", "rpc", "vault"] }
 tokio.workspace = true
 tracing.workspace = true

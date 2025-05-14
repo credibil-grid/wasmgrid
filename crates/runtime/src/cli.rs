@@ -26,12 +26,9 @@ pub enum Command {
 
     /// Run the specified wasm guest.
     Run {
-        /// The path to the wasm file to run.
+        /// The path to the wasm file to run. The file can either be a
+        /// serialized (pre-compiled) wasmtime `Component` or a standard
+        /// `wasm32-wasip2` wasm file.
         wasm: PathBuf,
-
-        /// The wasm file requires compiling (leave unset if the file is
-        /// pre-compiled).
-        #[arg(short, long, default_value_t = false)]
-        compile: bool,
     },
 }

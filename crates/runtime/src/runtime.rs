@@ -26,24 +26,26 @@ impl<T: WasiView + 'static> Runtime<T> {
     ///
     /// Returns an error if the component cannot be loaded, the linker cannot
     /// be created, or the service cannot be started.
-    pub fn from_file(file: PathBuf, #[cfg(feature = "compile")] compiled: bool) -> Result<Self> {
+    pub fn from_file(file: &PathBuf) -> Result<Self> {
         tracing::trace!("initializing from file");
 
         let mut config = Config::new();
         config.async_support(true);
         let engine = Engine::new(&config)?;
 
+        // file can be a serialized component or a wasm file
         cfg_if! {
             if #[cfg(feature = "compile")] {
-                let component = if compiled {
-                    unsafe { Component::deserialize_file(&engine, file)? }
-                } else {
-                    Component::from_file(&engine, file)?
+                // attempt to load as a serialized component with fallback to wasm
+                let component = match unsafe { Component::deserialize_file(&engine, file) } {
+                    Ok(component) => component,
+                    Err(_) => Component::from_file(&engine, file)?,
                 };
             } else {
-                let component = unsafe { Component::deserialize_file(&engine, file)? }
+                // load as a serialized component with no fallback (cranelift is unavailable)
+                let component = unsafe { Component::deserialize_file(&engine, file)? };
             }
-        };
+        }
 
         // resolve dependencies
         let mut linker: Linker<T> = Linker::new(&engine);
@@ -61,9 +63,9 @@ impl<T: WasiView + 'static> Runtime<T> {
     /// Returns an error if the component cannot be loaded, the linker cannot
     /// be created, or the service cannot be started.
     #[cfg(feature = "compile")]
-    pub fn from_wasm(wasm: PathBuf) -> Result<Self> {
+    pub fn from_wasm(wasm: &PathBuf) -> Result<Self> {
         tracing::trace!("initializing from wasm file");
-        Self::from_file(wasm, false)
+        Self::from_file(wasm)
     }
 
     /// Create a new Runtime instance from a pre-compiled wasm component
@@ -73,13 +75,9 @@ impl<T: WasiView + 'static> Runtime<T> {
     ///
     /// Returns an error if the component cannot be loaded, the linker cannot
     /// be created, or the service cannot be started.
-    pub fn from_compiled(file: PathBuf) -> Result<Self> {
+    pub fn from_binary(binary: &PathBuf) -> Result<Self> {
         tracing::trace!("initializing from serialized component");
-        Self::from_file(
-            file,
-            #[cfg(feature = "compile")]
-            true,
-        )
+        Self::from_file(binary)
     }
 
     /// Add each service's dependency linker.
