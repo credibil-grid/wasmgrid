@@ -21,10 +21,6 @@ pub async fn main() -> anyhow::Result<()> {
     tracing::subscriber::set_global_default(subscriber)?;
 
     match Cli::parse().command {
-        runtime::Command::Compile { wasm, output } => {
-            runtime::compile(&wasm, output)?;
-            return Ok(());
-        }
         runtime::Command::Run { wasm } => {
             tracing::info!("initialising runtime");
             let mut rt = runtime::Runtime::from_file(&wasm)?;
@@ -53,6 +49,12 @@ pub async fn main() -> anyhow::Result<()> {
             rt.run(rpc::Service, resources.clone())?;
 
             rt.shutdown().await
+        }
+
+        #[cfg(feature = "compile")]
+        runtime::Command::Compile { wasm, output } => {
+            runtime::compile(&wasm, output)?;
+            return Ok(());
         }
     }
 }

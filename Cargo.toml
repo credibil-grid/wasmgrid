@@ -16,11 +16,15 @@ doc = false
 [lints]
 workspace = true
 
+[features]
+default = ["compile"]
+compile = ["runtime/compile"] # adds cranelift (+ ~4Mb)
+
 [dependencies]
 anyhow.workspace = true
 cfg-if.workspace = true
 dotenv = "0.15.0"
-runtime = { workspace = true, features = ["compile"] }
+runtime.workspace = true
 services = { path = "crates/services", features = ["http", "jsondb", "keyvalue", "messaging", "rpc", "vault"] }
 tokio.workspace = true
 tracing.workspace = true
