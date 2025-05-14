@@ -23,7 +23,7 @@ workspace = true
 anyhow.workspace = true
 dotenv = "0.15.0"
 runtime.workspace = true
-services = { path = "crates/services", features = ["http", "jsondb", "keyvalue", "vault"] }
+services = { path = "crates/services", features = ["http", "jsondb", "keyvalue", "rpc", "vault"] }
 tokio.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true

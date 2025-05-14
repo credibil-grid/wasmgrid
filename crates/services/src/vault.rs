@@ -6,8 +6,7 @@
 mod generated {
     #![allow(clippy::trait_duplication_in_bounds)]
 
-    pub use wasi::vault::keystore::Error;
-
+    pub use self::wasi::vault::keystore::Error;
     pub use super::{KeyPair, KeySet};
 
     wasmtime::component::bindgen!({
@@ -172,7 +171,7 @@ impl vault::keystore::HostKeyPair for VaultHost<'_> {
             .await
             .map_err(|e| Error::Other(format!("issue signing data: {e}")))?;
 
-        Ok(sig_res.into_body().await.unwrap().result.unwrap())
+        Ok(sig_res.into_body().await?.result.unwrap_or(vec![]))
     }
 
     async fn public_key(&mut self, rep: Resource<KeyPair>) -> Result<Jwk, Error> {
@@ -223,8 +222,8 @@ impl From<anyhow::Error> for Error {
     }
 }
 
-impl From<typespec_client_core::error::Error> for Error {
-    fn from(err: typespec_client_core::error::Error) -> Self {
+impl From<azure_core::error::Error> for Error {
+    fn from(err: azure_core::error::Error) -> Self {
         Self::Other(err.to_string())
     }
 }

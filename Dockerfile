@@ -1,10 +1,10 @@
 # See https://shaneutt.com/blog/rust-fast-small-docker-image-builds
+# https://docs.rs/openssl/latest/openssl
 
-FROM rust:alpine3.19 AS builder
+FROM rust:alpine3.21 AS builder
 
-# RUN rustup update && rustup target add x86_64-unknown-linux-musl
-RUN apk --update add --no-cache musl-dev ca-certificates
-# pkgconf openssl-dev
+RUN apk --update add musl-dev ca-certificates pkgconf openssl-dev perl make
+
 RUN adduser --disabled-password --gecos "" --home "/nonexistent" \
     --shell "/sbin/nologin" --no-create-home --uid 10001 "wasm"
 
@@ -27,4 +27,4 @@ COPY --from=builder --chown=wasm:wasm /target/x86_64-unknown-linux-musl/release/
 
 USER wasm:wasm
 EXPOSE 8080
-CMD ["/app/wasmgrid", "/app.wasm"]
+CMD ["/app/wasmgrid", "run", "/app.wasm"]

@@ -4,8 +4,7 @@ use std::env;
 
 use dotenv::dotenv;
 use runtime::{Cli, Parser};
-// use services::{Resources, http, keyvalue, messaging, rpc};
-use services::{Resources, http, jsondb, keyvalue, vault};
+use services::{Resources, http, jsondb, keyvalue, rpc, vault};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 const DEF_MGO_URI: &str = "mongodb://localhost:27017";
@@ -23,20 +22,22 @@ pub async fn main() -> anyhow::Result<()> {
 
     match Cli::parse().command {
         runtime::Command::Compile { wasm, output } => {
-            runtime::compile(&wasm, output)?;
+            runtime::compile(wasm, output)?;
             return Ok(());
         }
         runtime::Command::Run { wasm, compile } => {
             tracing::info!("initialising runtime");
 
-            let compiled = if compile { runtime::compile(&wasm, None)? } else { wasm };
-            let mut rt = runtime::Runtime::new(compiled)?;
+            let mut rt = if compile {
+                runtime::Runtime::from_wasm(wasm)?
+            } else {
+                runtime::Runtime::from_compiled(wasm)?
+            };
 
             // link services
             rt.link(&http::Service)?;
-            // rt.link(&rpc::Service)?;
+            rt.link(&rpc::Service)?;
             rt.link(&keyvalue::Service)?;
-            // rt.link(&messaging::Service)?;
             rt.link(&jsondb::Service)?;
             rt.link(&vault::Service)?;
 
@@ -52,10 +53,9 @@ pub async fn main() -> anyhow::Result<()> {
             resources.with_mongo(mgo_uri);
             resources.with_azkeyvault(kv_addr);
 
-            // start `Runnable` services (servers)
+            // start `Runnable` servers
             rt.run(http::Service, resources.clone())?;
-            // rt.run(rpc::Service, resources.clone())?;
-            // rt.run(messaging::Service, resources)?;
+            rt.run(rpc::Service, resources.clone())?;
 
             rt.shutdown().await
         }

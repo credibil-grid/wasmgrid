@@ -23,12 +23,11 @@ mod generated {
 }
 
 use anyhow::Result;
-use async_nats::Client;
 use runtime::{Linkable, Runnable};
 use wasmtime::component::{InstancePre, Linker};
 
 use self::host::RpcHost;
-use crate::Ctx;
+use crate::{Ctx, Resources};
 
 pub struct Service;
 
@@ -37,7 +36,7 @@ impl Linkable for Service {
 
     fn add_to_linker(&self, linker: &mut Linker<Self::Ctx>) -> Result<()> {
         self::host::add_to_linker(linker, |c: &mut Self::Ctx| {
-            RpcHost::new(&c.resources.nats(), &mut c.table)
+            RpcHost::new(c.resources.nats(), &mut c.table)
         })?;
         tracing::trace!("added to linker");
         Ok(())
@@ -45,7 +44,7 @@ impl Linkable for Service {
 }
 
 impl Runnable for Service {
-    type Resources = Client;
+    type Resources = Resources;
 
     async fn run(&self, pre: InstancePre<Self::Ctx>, resources: Self::Resources) -> Result<()> {
         server::run(pre, resources).await
