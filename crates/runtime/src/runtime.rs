@@ -3,6 +3,7 @@
 use std::path::PathBuf;
 
 use anyhow::Result;
+use cfg_if::cfg_if;
 use wasmtime::component::{Component, Linker};
 use wasmtime::{Config, Engine};
 use wasmtime_wasi::WasiView;
@@ -32,14 +33,16 @@ impl<T: WasiView + 'static> Runtime<T> {
         config.async_support(true);
         let engine = Engine::new(&config)?;
 
-        #[cfg(not(feature = "compile"))]
-        let component = unsafe { Component::deserialize_file(&engine, file)? };
-
-        #[cfg(feature = "compile")]
-        let component = if compiled {
-            unsafe { Component::deserialize_file(&engine, file)? }
-        } else {
-            Component::from_file(&engine, file)?
+        cfg_if! {
+            if #[cfg(feature = "compile")] {
+                let component = if compiled {
+                    unsafe { Component::deserialize_file(&engine, file)? }
+                } else {
+                    Component::from_file(&engine, file)?
+                };
+            } else {
+                let component = unsafe { Component::deserialize_file(&engine, file)? }
+            }
         };
 
         // resolve dependencies

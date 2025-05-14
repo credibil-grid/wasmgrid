@@ -18,6 +18,7 @@ compile = ["wasmtime/cranelift"]
 anyhow.workspace = true
 async-trait = "0.1.88"
 bytes = "1.10.1"
+cfg-if.workspace = true
 clap = { version = "4.5.38", features = ["derive"] }
 tokio.workspace = true
 tracing.workspace = true
