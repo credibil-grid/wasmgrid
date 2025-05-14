@@ -53,8 +53,7 @@ pub async fn main() -> anyhow::Result<()> {
 
         #[cfg(feature = "compile")]
         runtime::Command::Compile { wasm, output } => {
-            runtime::compile(&wasm, output)?;
-            return Ok(());
+            runtime::compile(&wasm, output)
         }
     }
 }
