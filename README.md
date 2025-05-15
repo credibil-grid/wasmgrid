@@ -38,11 +38,22 @@ Build and run the Http host and example guest.
 
 See [examples/http/README.md](examples/http/README.md).
 
-## Docker Build and Run
+## Docker
+
+### Build and Run
 
 ```bash
 docker build --platform=linux/arm64 -t acrcredibil.azurecr.io/demo/wasmgrid .
 docker compose up
+```
+
+### Compiling a WASM component
+
+```bash
+docker run \
+	-v ./target/wasm32-wasip2/release/keyvalue.wasm:/app.wasm \
+	acrcredibil.azurecr.io/demo/wasmgrid \
+	/app/wasmgrid compile /app.wasm
 ```
 
 ## Troubleshooting
