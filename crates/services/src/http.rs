@@ -61,19 +61,21 @@ impl Runnable for Service {
         let listener = TcpListener::bind(&addr).await?;
         tracing::info!("http server listening on: {}", listener.local_addr()?);
 
+        let svc = Svc {
+            proxy_pre: ProxyPre::new(pre.clone())?,
+            resources: resources.clone(),
+        };
+
         // listen for requests until terminated
         loop {
             let (stream, _) = listener.accept().await?;
             let io = TokioIo::new(stream);
-            let proxy_pre = ProxyPre::new(pre.clone())?;
-            let res = resources.clone();
+            let svc = svc.clone();
 
             tokio::spawn(async move {
-                if let Err(e) = http1::Builder::new()
-                    .keep_alive(true)
-                    .serve_connection(io, service_fn(|r| handle(proxy_pre.clone(), res.clone(), r)))
-                    .await
-                {
+                let mut http1 = http1::Builder::new();
+                http1.keep_alive(true);
+                if let Err(e) = http1.serve_connection(io, service_fn(|r| svc.handle(r))).await {
                     tracing::error!("connection error: {e:?}");
                 }
             });
@@ -81,65 +83,63 @@ impl Runnable for Service {
     }
 }
 
-// Forward request to the wasm Guest.
-async fn handle(
-    proxy_pre: ProxyPre<Ctx>, resources: Resources, request: Request<Incoming>,
-) -> Result<Response<HyperOutgoingBody>> {
-    // HACK: CORS preflight request for use when testing locally
-    let cors = env::var("WITH_CORS").is_ok_and(|v| v.parse().unwrap_or(false));
-    if cors && request.method() == Method::OPTIONS {
-        return handle_options(&request);
-    }
-
-    // prepare wasmtime http request and response
-    let mut store =
-        Store::new(proxy_pre.engine(), Ctx::new(resources, proxy_pre.instance_pre().clone()));
-    store.limiter(|t| &mut t.limits);
-
-    let (request, scheme) = prepare_request(request)?;
-    tracing::trace!("sending request: {request:#?}");
-
-    let (sender, receiver) = oneshot::channel();
-    let incoming = store.data_mut().new_incoming_request(scheme, request)?;
-    let outgoing = store.data_mut().new_response_outparam(sender)?;
-
-    // call guest with request
-    let proxy = proxy_pre.instantiate_async(&mut store).await?;
-    let task = proxy.wasi_http_incoming_handler().call_handle(&mut store, incoming, outgoing).await;
-
-    match receiver.await {
-        Ok(Ok(mut resp)) => {
-            tracing::trace!("request success: {resp:?}");
-            if cors {
-                resp.headers_mut()
-                    .insert(ACCESS_CONTROL_ALLOW_ORIGIN, HeaderValue::from_static("*"));
-            }
-            Ok(resp)
-        }
-        Ok(Err(e)) => {
-            tracing::trace!("request error: {e:?}");
-            Err(e.into())
-        }
-        Err(_) => {
-            let e = match task {
-                Err(e) => e,
-                Ok(()) => anyhow!("task failed without error"),
-            };
-            tracing::trace!("request error: {e:?}");
-            Err(anyhow!("guest did not invoke `response-outparam::set`: {e}"))
-        }
-    }
+#[derive(Clone)]
+struct Svc {
+    proxy_pre: ProxyPre<Ctx>,
+    resources: Resources,
 }
 
-fn handle_options(_: &Request<Incoming>) -> Result<Response<HyperOutgoingBody>> {
-    Response::builder()
-        .status(StatusCode::OK)
-        .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
-        .header(ACCESS_CONTROL_ALLOW_HEADERS, "*")
-        .header(ACCESS_CONTROL_ALLOW_METHODS, "DELETE, GET, OPTIONS, PATCH, POST, PUT")
-        // .header(CONTENT_TYPE, "application/json")
-        .body(HyperOutgoingBody::default())
-        .map_err(|e| anyhow!("failed to build response: {e}"))
+impl Svc {
+    // Forward request to the wasm Guest.
+    async fn handle(&self, request: Request<Incoming>) -> Result<Response<HyperOutgoingBody>> {
+        // HACK: CORS preflight request for use when testing locally
+        let cors = env::var("WITH_CORS").is_ok_and(|v| v.parse().unwrap_or(false));
+        if cors && request.method() == Method::OPTIONS {
+            return handle_options();
+        }
+
+        // prepare wasmtime http request and response
+        let mut store = Store::new(
+            self.proxy_pre.engine(),
+            Ctx::new(self.resources.clone(), self.proxy_pre.instance_pre().clone()),
+        );
+        store.limiter(|t| &mut t.limits);
+
+        let (request, scheme) = prepare_request(request)?;
+        tracing::trace!("sending request: {request:#?}");
+
+        let (sender, receiver) = oneshot::channel();
+        let incoming = store.data_mut().new_incoming_request(scheme, request)?;
+        let outgoing = store.data_mut().new_response_outparam(sender)?;
+
+        // call guest with request
+        let proxy = self.proxy_pre.instantiate_async(&mut store).await?;
+        let task =
+            proxy.wasi_http_incoming_handler().call_handle(&mut store, incoming, outgoing).await;
+
+        match receiver.await {
+            Ok(Ok(mut resp)) => {
+                tracing::trace!("request success: {resp:?}");
+                if cors {
+                    resp.headers_mut()
+                        .insert(ACCESS_CONTROL_ALLOW_ORIGIN, HeaderValue::from_static("*"));
+                }
+                Ok(resp)
+            }
+            Ok(Err(e)) => {
+                tracing::trace!("request error: {e:?}");
+                Err(e.into())
+            }
+            Err(_) => {
+                let e = match task {
+                    Err(e) => e,
+                    Ok(()) => anyhow!("task failed without error"),
+                };
+                tracing::trace!("request error: {e:?}");
+                Err(anyhow!("guest did not invoke `response-outparam::set`: {e}"))
+            }
+        }
+    }
 }
 
 // Prepare the request for the guest.
@@ -182,6 +182,17 @@ fn prepare_request(mut request: Request<Incoming>) -> Result<(Request<Incoming>,
     };
 
     Ok((request, scheme))
+}
+
+fn handle_options() -> Result<Response<HyperOutgoingBody>> {
+    Response::builder()
+        .status(StatusCode::OK)
+        .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+        .header(ACCESS_CONTROL_ALLOW_HEADERS, "*")
+        .header(ACCESS_CONTROL_ALLOW_METHODS, "DELETE, GET, OPTIONS, PATCH, POST, PUT")
+        // .header(CONTENT_TYPE, "application/json")
+        .body(HyperOutgoingBody::default())
+        .map_err(|e| anyhow!("failed to build response: {e}"))
 }
 
 impl WasiHttpView for Ctx {
