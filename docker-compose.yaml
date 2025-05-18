@@ -10,6 +10,6 @@ services:
     ports:
       - 8080:8080
     volumes:
-      - ./target/wasm32-wasip2/release/keyvalue.wasm:/app.wasm
-    #   - ./keyvalue.bin:/app.wasm
+      # - ./target/wasm32-wasip2/release/keyvalue.wasm:/app.wasm
+      - ./kv.bin:/app.wasm
     command: ["/app/wasmgrid", "run", "/app.wasm"]
