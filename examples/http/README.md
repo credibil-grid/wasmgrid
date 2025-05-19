@@ -9,10 +9,8 @@ cargo build --package http@0.1.0 --target wasm32-wasip2 --release
 Run a guest using the runtime:
 
 ```bash
-cargo run -- compile  ./target/wasm32-wasip2/release/http.wasm
+cargo run -- compile  ./target/wasm32-wasip2/release/http.wasm --output ./http.bin
 cargo run -- run ./http.bin
-# OR
-cargo run -- run --compile ./target/wasm32-wasip2/release/http.wasm
 ```
 
 In a separate console, call the guest:

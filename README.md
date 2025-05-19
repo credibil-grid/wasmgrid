@@ -15,15 +15,19 @@ RUST_LOG="wasmgrid=debug"
 HTTP_ADDR="0.0.0.0:8080"
 NATS_ADDR="demo.nats.io"
 MGO_URI="<MongoDB connection string>"
-AZURE_TENANT_ID=<Azure Tenant ID for key vault>
-AZURE_CLIENT_ID=<Azure Client ID for key vault>
-AZURE_CLIENT_SECRET=<Azure Client Secret for key vault>
+KV_ADDR="<Azure Key Vault URI>"
 
 # when using Synadia Cloud:
 NATS_ADDR="tls://connect.ngs.global"
 NATS_JWT="<user JWT>"
 NATS_SEED="<user signing seed>"
 WITH_CORS="true"
+```
+
+In order for a connection to Azure Key Vault to be made use the Azure CLI to authenticate before running examples:
+
+```shell
+az login
 ```
 
 ### Messaging Example
