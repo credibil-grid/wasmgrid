@@ -44,6 +44,12 @@ impl Linkable for Service {
     }
 }
 
+impl std::fmt::Debug for Service {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("http").finish()
+    }
+}
+
 impl Runnable for Service {
     type Resources = Resources;
 

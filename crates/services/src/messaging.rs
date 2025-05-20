@@ -36,6 +36,12 @@ use crate::{Ctx, Resources};
 
 pub struct Service;
 
+impl std::fmt::Debug for Service {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("messaging").finish()
+    }
+}
+
 impl Linkable for Service {
     type Ctx = Ctx;
 

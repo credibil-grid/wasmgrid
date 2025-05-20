@@ -95,12 +95,14 @@ impl<T: WasiView + 'static> Runtime<T> {
     ///
     /// TODO: document errors
     pub fn run<R: Send + 'static>(
-        &mut self, service: impl Runnable<Ctx = T, Resources = R> + 'static, resources: R,
+        &mut self, service: impl Runnable<Ctx = T, Resources = R> + 'static + std::fmt::Debug,
+        resources: R,
     ) -> Result<()> {
         let instance_pre = self.linker.instantiate_pre(&self.component)?;
         tokio::spawn(async move {
+            tracing::debug!("starting {service:?} service");
             if let Err(e) = service.run(instance_pre, resources).await {
-                tracing::error!("error running service: {e}");
+                tracing::error!("error running {service:?} service: {e}");
             }
         });
         Ok(())
