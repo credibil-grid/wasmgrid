@@ -22,9 +22,9 @@ mod generated {
             "wasi:messaging/messaging-types/client": Client,
             "wasi:messaging/messaging-types/error": Error,
         },
-        // trappable_error_type: {
-        //     "wasi:messaging/messaging-types/error" => Error,
-        // },
+        trappable_error_type: {
+            "wasi:messaging/messaging-types/error" => Error,
+        },
     });
 }
 

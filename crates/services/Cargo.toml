@@ -50,5 +50,6 @@ wasmtime-wasi-http = { version = "32.0.0", optional = true }
 openssl = { version = "0.10", optional = true, features = ["vendored"] }
 
 [dev-dependencies]
+async-nats = "0.40.0"
 ecdsa = "0.16.9"
 k256 = "0.13.4"

@@ -33,7 +33,11 @@ pub fn add_to_linker(l: &mut Linker<Ctx>) -> Result<()> {
     messaging_types::add_to_linker_get_host(l, MsgHost::new)
 }
 
-impl messaging_types::Host for MsgHost<'_> {}
+impl messaging_types::Host for MsgHost<'_> {
+    fn convert_error(&mut self, err: Error) -> anyhow::Result<Error> {
+        Ok(err)
+    }
+}
 
 impl messaging_types::HostClient for MsgHost<'_> {
     async fn connect(&mut self, name: String) -> Result<Result<Resource<Client>, Resource<Error>>> {
