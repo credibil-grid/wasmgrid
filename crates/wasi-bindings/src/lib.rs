@@ -55,10 +55,9 @@ mod messaging_bindings {
         path: "../../wit",
         world: "messaging",
         with: {
+            "wasi:messaging/incoming-handler@0.2.0-draft": generate,
             "wasi:messaging/producer@0.2.0-draft": generate,
-            "wasi:messaging/consumer@0.2.0-draft": generate,
-            "wasi:messaging/messaging-types@0.2.0-draft": generate,
-            "wasi:messaging/messaging-guest@0.2.0-draft": generate,
+            "wasi:messaging/types@0.2.0-draft": generate,
         },
         pub_export_macro: true
     });
