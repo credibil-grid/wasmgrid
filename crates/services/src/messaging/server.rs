@@ -31,8 +31,16 @@ pub async fn run(pre: InstancePre<Ctx>, resources: Resources) -> anyhow::Result<
 pub async fn subscribe(
     channels: Vec<String>, resources: &Resources, pre: MessagingPre<Ctx>,
 ) -> anyhow::Result<()> {
+    tracing::trace!("subscribing to messaging channels: {channels:?}");
+
     let mut subscribers = vec![];
-    let client = resources.nats()?;
+    let client = match resources.nats() {
+        Ok(client) => client,
+        Err(e) => {
+            tracing::error!("failed to get nats client for subscribing: {e}");
+            return Err(e);
+        }
+    };
 
     for ch in channels {
         tracing::debug!("subscribing to {ch}");

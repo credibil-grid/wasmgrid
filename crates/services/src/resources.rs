@@ -43,12 +43,12 @@ impl Default for Resources {
     }
 }
 
-fn timeout<T>(once_lock: &OnceLock<T>) -> Result<&T> {
+fn timeout<T>(once_lock: &OnceLock<T>) -> Result<&T>{
     for _ in 0..10 {
         if let Some(client) = once_lock.get() {
             return Ok(client);
         }
-        sleep(Duration::from_millis(10));
+        sleep(Duration::from_millis(100));
     }
     tracing::error!("failed to get resource");
     Err(anyhow!("failed to get resource"))
