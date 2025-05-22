@@ -29,10 +29,10 @@ mod keyvalue_bindings {
         path: "../../wit",
         world: "keyvalue",
         with: {
-            "wasi:keyvalue/store@0.2.0-draft": generate,
-            "wasi:keyvalue/atomics@0.2.0-draft": generate,
-            "wasi:keyvalue/batch@0.2.0-draft": generate,
-            "wasi:keyvalue/watcher@0.2.0-draft": generate
+            "wasi:keyvalue/store@0.2.0-draft2": generate,
+            "wasi:keyvalue/atomics@0.2.0-draft2": generate,
+            "wasi:keyvalue/batch@0.2.0-draft2": generate,
+            "wasi:keyvalue/watcher@0.2.0-draft2": generate
         },
         pub_export_macro: true
     });

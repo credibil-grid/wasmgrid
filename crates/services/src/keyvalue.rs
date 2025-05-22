@@ -11,6 +11,7 @@ mod generated {
     pub use async_nats::jetstream::kv::Store;
 
     pub use self::wasi::keyvalue::store::Error;
+    pub use super::Cas;
 
     wasmtime::component::bindgen!({
         world: "keyvalue",
@@ -20,6 +21,7 @@ mod generated {
         trappable_imports: true,
         with: {
             "wasi:keyvalue/store/bucket": Store,
+            "wasi:keyvalue/atomics/cas": Cas,
         },
         trappable_error_type: {
             "wasi:keyvalue/store/error" => Error,
@@ -33,6 +35,7 @@ use anyhow::anyhow;
 use async_nats::jetstream;
 use async_nats::jetstream::kv::{self, Store};
 use futures::TryStreamExt;
+use generated::wasi::keyvalue::atomics::CasError;
 use runtime::Linkable;
 use wasmtime::component::{Linker, Resource, ResourceTableError};
 use wasmtime_wasi::ResourceTable;
@@ -73,14 +76,6 @@ impl Linkable for Service {
         Ok(())
     }
 }
-
-// fn add_to_linker<T: Send>(
-//     l: &mut Linker<T>, f: impl Fn(&mut T) -> KeyvalueHost<'_> + Send + Sync + Copy + 'static,
-// ) -> anyhow::Result<()> {
-//     keyvalue::store::add_to_linker_get_host(l, f)?;
-//     keyvalue::atomics::add_to_linker_get_host(l, f)?;
-//     keyvalue::batch::add_to_linker_get_host(l, f)
-// }
 
 // Implement the [`wasi_keyvalue::KeyValueView`]` trait for  KeyvalueHost<'_>.
 impl keyvalue::store::Host for KeyvalueHost<'_> {
@@ -162,7 +157,7 @@ impl keyvalue::store::HostBucket for KeyvalueHost<'_> {
     }
 
     async fn list_keys(
-        &mut self, rep: Resource<Store>, cursor: Option<u64>,
+        &mut self, rep: Resource<Store>, cursor: Option<String>,
     ) -> Result<KeyResponse> {
         tracing::trace!("store::HostBucket::list_keys {cursor:?}");
 
@@ -184,8 +179,60 @@ impl keyvalue::store::HostBucket for KeyvalueHost<'_> {
     }
 }
 
+/// Compare and Swap (CAS) handle.
+pub struct Cas {
+    /// Key of the stored value.
+    pub key: String,
+
+    /// Current value.
+    pub current: Option<Vec<u8>>,
+}
+
+impl keyvalue::atomics::HostCas for KeyvalueHost<'_> {
+    /// Construct a new CAS operation. Implementors can map the underlying functionality
+    /// (transactions, versions, etc) as desired.
+    async fn new(&mut self, bucket_res: Resource<Store>, key: String) -> Result<Resource<Cas>> {
+        tracing::trace!("atomics::HostCas::new {key}");
+
+        let Ok(bucket) = self.table.get_mut(&bucket_res) else {
+            return Err(Error::NoSuchStore);
+        };
+        let value = bucket.get(key.clone()).await.map_err(|e| anyhow!("issue getting key: {e}"))?;
+        let cas = Cas {
+            key: key.clone(),
+            current: value.map(|v| v.to_vec()),
+        };
+
+        Ok(self.table.push(cas)?)
+    }
+
+    /// Get the current value of the CAS handle.
+    async fn current(&mut self, cas_res: Resource<Cas>) -> Result<Option<Vec<u8>>> {
+        tracing::trace!("atomics::HostCas::current");
+
+        let Ok(cas) = self.table.get_mut(&cas_res) else {
+            return Err(Error::NoSuchStore);
+        };
+        let value = cas.current.clone();
+        Ok(value)
+    }
+
+    /// Drop the CAS handle.
+    async fn drop(&mut self, cas_res: Resource<Cas>) -> anyhow::Result<()> {
+        tracing::trace!("atomics::HostCas::drop");
+        self.table.delete(cas_res).map(|_| Ok(()))?
+    }
+}
+
 impl keyvalue::atomics::Host for KeyvalueHost<'_> {
-    async fn increment(&mut self, rep: Resource<Store>, key: String, delta: u64) -> Result<u64> {
+    /// Atomically increment the value associated with the key in the store by
+    /// the given delta. It returns the new value.
+    ///
+    /// If the key does not exist in the store, it creates a new key-value pair
+    /// with the value set to the given delta.
+    ///
+    /// If any other error occurs, it returns an `Err(error)`.
+    async fn increment(&mut self, rep: Resource<Store>, key: String, delta: i64) -> Result<i64> {
         tracing::trace!("atomics::Host::increment {key}, {delta}");
 
         let Ok(bucket) = self.table.get_mut(&rep) else {
@@ -201,7 +248,7 @@ impl keyvalue::atomics::Host for KeyvalueHost<'_> {
         let mut buf = [0u8; 8];
         let len = 8.min(slice.len());
         buf[..len].copy_from_slice(&slice[..len]);
-        let inc = u64::from_be_bytes(buf) + delta;
+        let inc = i64::from_be_bytes(buf) + delta;
 
         // update value in bucket
         if let Err(e) = bucket.put(key, inc.to_be_bytes().to_vec().into()).await {
@@ -210,6 +257,16 @@ impl keyvalue::atomics::Host for KeyvalueHost<'_> {
         }
 
         Ok(inc)
+    }
+
+    /// Perform the swap on a CAS operation. This consumes the CAS handle and
+    /// returns an error if the CAS operation failed.
+    async fn swap(
+        &mut self, _cas_res: Resource<Cas>, _value: Vec<u8>,
+    ) -> anyhow::Result<Result<(), CasError>> {
+        tracing::trace!("atomics::Host::swap");
+
+        return Err(anyhow!("not implemented").into());
     }
 }
 
