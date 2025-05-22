@@ -2,8 +2,8 @@ use serde_json::json;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 use wasi::exports::http::incoming_handler::Guest;
 use wasi::http::types::{IncomingRequest, ResponseOutparam};
-use wasi_bindings::messaging::messaging_types::{Client, FormatSpec, Message};
-use wasi_bindings::messaging::producer;
+use wasi_bindings::messaging::types::Client;
+use wasi_bindings::messaging::producer::{self, Message};
 use wasi_http::{self, Request, Router, post};
 
 pub struct Http;
@@ -25,12 +25,8 @@ fn handler(request: &Request) -> anyhow::Result<Vec<u8>> {
     tracing::debug!("request.uri: {}", request.uri());
 
     let client = Client::connect("demo.nats.io").unwrap();
-    let message = Message {
-        data: b"Hello World".to_vec(),
-        format: FormatSpec::Raw,
-        metadata: None,
-    };
-    producer::send(client, "b", &[message]).expect("should send");
+    let message = Message::new(b"Hello");
+    producer::send(&client, "b", message).expect("should send");
 
     let req: serde_json::Value = serde_json::from_slice(&request.body()?)?;
     tracing::debug!("json: {:?}", req);

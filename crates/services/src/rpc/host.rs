@@ -23,7 +23,7 @@ impl RpcHost<'_> {
     }
 }
 
-/// Add all the `wasi-keyvalue` world's interfaces to a [`Linker`].
+/// Add all the `rpc` world's interfaces to a [`Linker`].
 pub fn add_to_linker(l: &mut Linker<Ctx>) -> Result<()> {
     rpc::client::add_to_linker_get_host(l, RpcHost::new)?;
     rpc::types::add_to_linker_get_host(l, RpcHost::new)

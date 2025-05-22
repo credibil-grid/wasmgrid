@@ -39,6 +39,7 @@ impl Resources {
     /// This method panics if the client is not available before the method
     /// times out.
     pub(crate) fn nats(&self) -> Result<&async_nats::Client> {
+        tracing::debug!("getting nats client");
         timeout(&self.nats)
     }
 }

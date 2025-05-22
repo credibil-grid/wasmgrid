@@ -42,6 +42,7 @@ impl Resources {
     /// This method panics if the client is not available before the method
     /// times out.
     pub(crate) fn azkeyvault(&self) -> Result<&KeyClient> {
+        tracing::debug!("getting azkeyvault client");
         timeout(&self.azkeyvault)
     }
 }

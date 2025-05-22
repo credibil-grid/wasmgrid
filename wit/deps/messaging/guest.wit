@@ -1,10 +1,22 @@
-interface messaging-guest {
-    use messaging-types.{message, guest-configuration, error};
+interface incoming-handler {
+    use types.{message, error, topic};
 
-    /// Returns the list of channels (and extension metadata within guest-configuration) that 
-    /// this component should subscribe to and be handled by the subsequent handler within guest-configuration
-    configure: func() -> result<guest-configuration, error>;
+    /// Whenever this guest receives a message in one of the subscribed topics, the message is
+    /// sent to this handler. The guest is responsible for matching on the topic and handling the
+    /// message accordingly. Implementors (such as hosts) calling this interface should make their
+    /// own decisions on how to handle errors returned from this function.
+    handle: func(message: message) -> result<_, error>;
 
-    /// Whenever this guest receives a message in one of the subscribed channels, the message is sent to this handler
-    handler: func(ms: list<message>) -> result<_, error>;
+    /// Server configuration.
+    /// 
+    /// This can be extended to include other configuration options in the
+    /// future.
+    record server-configuration {
+        /// Subscription topics
+        topics: list<topic>,
+    }
+
+    /// Configure is called by the runtime to get the server's runtime
+    /// configuration.
+    configure: func() -> result<server-configuration, error>;
 }

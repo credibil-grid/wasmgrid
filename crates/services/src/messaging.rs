@@ -9,8 +9,8 @@ mod server;
 mod generated {
     #![allow(clippy::trait_duplication_in_bounds)]
 
-    pub use anyhow::Error;
-    pub use async_nats::Client;
+    pub use wasi::messaging::types::Error;
+    pub use async_nats::{Client, Message};
 
     wasmtime::component::bindgen!({
         world: "messaging",
@@ -19,12 +19,12 @@ mod generated {
         async: true,
         trappable_imports: true,
         with: {
-            "wasi:messaging/messaging-types/client": Client,
-            "wasi:messaging/messaging-types/error": Error,
+            "wasi:messaging/types/client": Client,
+            "wasi:messaging/types/message": Message,
         },
-        // trappable_error_type: {
-        //     "wasi:messaging/messaging-types/error" => Error,
-        // },
+        trappable_error_type: {
+            "wasi:messaging/types/error" => Error,
+        },
     });
 }
 
@@ -35,6 +35,12 @@ use wasmtime::component::{InstancePre, Linker};
 use crate::{Ctx, Resources};
 
 pub struct Service;
+
+impl std::fmt::Debug for Service {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("messaging").finish()
+    }
+}
 
 impl Linkable for Service {
     type Ctx = Ctx;

@@ -11,7 +11,7 @@ world keyvalue {
 
 world messaging {
 	include wasi:messaging/imports@0.2.0-draft;
-	export wasi:messaging/messaging-guest@0.2.0-draft;
+	export wasi:messaging/incoming-handler@0.2.0-draft;
 }
 
 world vault {

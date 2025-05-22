@@ -33,6 +33,7 @@ impl Resources {
     /// This method panics if the client is not available before the method
     /// times out.
     pub(crate) fn mongo(&self) -> Result<&mongodb::Client> {
+        tracing::debug!("getting mongodb client");
         timeout(&self.mongo)
     }
 }

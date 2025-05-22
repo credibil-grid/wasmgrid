@@ -16,5 +16,5 @@ cargo run -- run ./messaging.bin
 In a separate console, send some messages to the guest:
 
 ```bash
-cargo test --test messaging
+cargo test -p services --test messaging
 ```
