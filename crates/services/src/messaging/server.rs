@@ -1,14 +1,15 @@
-use anyhow::{Result, anyhow};
+use async_nats::Message;
 use futures::stream::{self, StreamExt};
 use wasmtime::Store;
 use wasmtime::component::InstancePre;
-use wasmtime_wasi::IoView;
 
 use crate::messaging::generated::MessagingPre;
-use crate::messaging::generated::wasi::messaging::messaging_types::{FormatSpec, Message};
+use crate::messaging::generated::exports::wasi::messaging::incoming_handler::Error;
 use crate::{Ctx, Resources};
 
-pub async fn run(pre: InstancePre<Ctx>, resources: Resources) -> Result<()> {
+pub type Result<T, E = Error> = anyhow::Result<T, E>;
+
+pub async fn run(pre: InstancePre<Ctx>, resources: Resources) -> anyhow::Result<()> {
     // bail if server is not required
     let component_type = pre.component().component_type();
     let mut exports = component_type.exports(pre.engine());
@@ -20,18 +21,16 @@ pub async fn run(pre: InstancePre<Ctx>, resources: Resources) -> Result<()> {
     // get guest configuration
     let mut store = Store::new(pre.engine(), Ctx::new(resources.clone(), pre.clone()));
     let msg_pre = MessagingPre::new(pre.clone())?;
-    let messaging = msg_pre.instantiate_async(&mut store).await?;
-    let Ok(gc) = messaging.wasi_messaging_messaging_guest().call_configure(&mut store).await?
-    else {
-        return Err(anyhow!("failed to configure messaging guest"));
-    };
+    let msg = msg_pre.instantiate_async(&mut store).await?;
+    let config = msg.wasi_messaging_incoming_handler().call_configure(&mut store).await??; 
 
-    subscribe(gc.channels, &resources, &pre).await
+    // process requests
+    subscribe(config.topics, &resources, msg_pre).await
 }
 
 pub async fn subscribe(
-    channels: Vec<String>, resources: &Resources, pre: &InstancePre<Ctx>,
-) -> Result<()> {
+    channels: Vec<String>, resources: &Resources, pre: MessagingPre<Ctx>,
+) -> anyhow::Result<()> {
     let mut subscribers = vec![];
     let client = resources.nats()?;
 
@@ -58,27 +57,11 @@ pub async fn subscribe(
 
 // Forward message to the wasm component.
 async fn call_guest(
-    pre: InstancePre<Ctx>, resources: Resources, msg: async_nats::Message,
+    pre: MessagingPre<Ctx>, resources: Resources, message: Message,
 ) -> Result<()> {
-    let mut store = Store::new(pre.engine(), Ctx::new(resources, pre.clone()));
-    let msg_pre = MessagingPre::new(pre)?;
-    let messaging = msg_pre.instantiate_async(&mut store).await?;
-    let wasi_msg = msg_conv(&msg);
-
-    if let Err(e) =
-        messaging.wasi_messaging_messaging_guest().call_handler(&mut store, &[wasi_msg]).await?
-    {
-        let err = store.data_mut().table().get(&e)?;
-        return Err(anyhow!("{err}"));
-    }
-
-    Ok(())
-}
-
-pub fn msg_conv(msg: &async_nats::Message) -> Message {
-    Message {
-        data: msg.payload.to_vec(),
-        metadata: Some(vec![(String::from("channel"), msg.subject.to_string())]),
-        format: FormatSpec::Raw,
-    }
+    let mut ctx = Ctx::new(resources, pre.instance_pre().clone());
+    let res_msg = ctx.table.push(message)?;
+    let mut store = Store::new(pre.engine(), ctx);
+    let messaging = pre.instantiate_async(&mut store).await?;
+    messaging.wasi_messaging_incoming_handler().call_handle(&mut store, res_msg).await?
 }

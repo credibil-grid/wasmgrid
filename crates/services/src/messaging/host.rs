@@ -1,3 +1,4 @@
+use anyhow::anyhow;
 use async_nats::{Client, HeaderMap, Subject};
 use wasmtime::component::{Linker, Resource};
 use wasmtime_wasi::{ResourceTable, ResourceTableError};
@@ -66,16 +67,13 @@ impl HostMessage for MsgHost<'_> {
         tracing::trace!("HostMessage::content_type");
         let msg = self.table.get(&res_msg)?;
         let content_type = msg.headers.as_ref().and_then(|h| h.get("content-type"));
-        if let Some(content_type) = content_type {
-            Ok(Some(content_type.to_string()))
-        } else {
-            let content_type = msg.headers.as_ref().and_then(|h| h.get("Content-Type"));
-            if let Some(content_type) = content_type {
-                Ok(Some(content_type.to_string()))
-            } else {
-                Ok(None)
-            }
-        }
+        content_type.map_or_else(
+            || {
+                let content_type = msg.headers.as_ref().and_then(|h| h.get("Content-Type"));
+                content_type.map_or_else(|| Ok(None), |ct| Ok(Some(ct.to_string())))
+            },
+            |ct| Ok(Some(ct.to_string())),
+        )
     }
 
     /// Set the content-type describing the format of the data in the message.
@@ -83,7 +81,7 @@ impl HostMessage for MsgHost<'_> {
     async fn set_content_type(
         &mut self, res_msg: Resource<Message>, content_type: String,
     ) -> anyhow::Result<()> {
-        tracing::trace!("HostMessage::set_content_type");
+        tracing::trace!("HostMessage::set_content_type {content_type}");
         let msg = self.table.get_mut(&res_msg)?;
         let mut headers = msg.headers.take().unwrap_or_default();
         headers.insert("content-type".to_string(), content_type);
@@ -125,29 +123,33 @@ impl HostMessage for MsgHost<'_> {
                 .map(|(k, v)| {
                     (
                         k.to_string(),
-                        v.iter().map(|x| x.to_string()).collect::<Vec<String>>().join(","),
+                        v.iter()
+                            .map(std::string::ToString::to_string)
+                            .collect::<Vec<String>>()
+                            .join(","),
                     )
                 })
                 .collect::<Vec<_>>()
         });
-        if let Some(metadata) = metadata { Ok(Some(metadata.into())) } else { Ok(None) }
+        metadata.map_or_else(|| Ok(None), |m| Ok(Some(m)))
     }
 
     /// Add a new key-value pair to the metadata, overwriting any existing value
     /// for the same key.
     ///
     /// For NATS the value at a metadata key is a vector of strings. To populate
-    /// a multi-valued metadata key, the caller should use a comma-separated list
-    /// of values. This function will split the string on commas and store each
-    /// value as a separate entry in the vector.
+    /// a multi-valued metadata key, the caller should use a comma-separated
+    /// list of values. This function will split the string on commas and store
+    /// each value as a separate entry in the vector.
     /// TODO: Test this assumption with real world scenarios.
     async fn add_metadata(
         &mut self, res_msg: Resource<Message>, key: String, value: String,
     ) -> anyhow::Result<()> {
-        tracing::trace!("HostMessage::add_metadata");
+        tracing::trace!("HostMessage::add_metadata {key}={value}");
         let msg = self.table.get_mut(&res_msg)?;
         let mut headers = msg.headers.take().unwrap_or_default();
-        let values = value.split(',').map(|x| x.to_string()).collect::<Vec<String>>();
+        let values =
+            value.split(',').map(std::string::ToString::to_string).collect::<Vec<String>>();
         headers.insert(key.clone(), values[0].clone());
         for v in values.iter().skip(1) {
             headers.append(key.clone(), v.clone());
@@ -158,9 +160,9 @@ impl HostMessage for MsgHost<'_> {
     /// Set the metadata as a whole, overwriting any existing metadata.
     ///
     /// For NATS the value at a metadata key is a vector of strings. To populate
-    /// a multi-valued metadata key, the caller should use a comma-separated list
-    /// of values. This function will split the string on commas and store each
-    /// value as a separate entry in the vector.
+    /// a multi-valued metadata key, the caller should use a comma-separated
+    /// list of values. This function will split the string on commas and store
+    /// each value as a separate entry in the vector.
     /// TODO: Test this assumption with real world scenarios.
     async fn set_metadata(
         &mut self, res_msg: Resource<Message>, meta: Metadata,
@@ -168,8 +170,9 @@ impl HostMessage for MsgHost<'_> {
         tracing::trace!("HostMessage::set_metadata");
         let msg = self.table.get_mut(&res_msg)?;
         let mut headers = HeaderMap::new();
-        for (k, v) in meta.iter() {
-            let values = v.split(',').map(|x| x.to_string()).collect::<Vec<String>>();
+        for (k, v) in &meta {
+            let values =
+                v.split(',').map(std::string::ToString::to_string).collect::<Vec<String>>();
             headers.insert(k.clone(), values[0].clone());
             for v in values.iter().skip(1) {
                 headers.append(k.clone(), v.clone());
@@ -180,14 +183,14 @@ impl HostMessage for MsgHost<'_> {
     }
 
     /// Remove a key-value pair from the metadata.
-    /// 
+    ///
     /// The NATS header API does not support removing a single key from the
     /// set of headers. So this function will copy the existing headers,
     /// skipping the key to be removed.
     async fn remove_metadata(
         &mut self, msg_res: Resource<Message>, key: String,
     ) -> anyhow::Result<()> {
-        tracing::trace!("HostMessage::remove_metadata");
+        tracing::trace!("HostMessage::remove_metadata {key}");
         let msg = self.table.get_mut(&msg_res)?;
         let existing_headers = msg.headers.take().unwrap_or_default();
         let mut new_headers = HeaderMap::new();
@@ -204,9 +207,7 @@ impl HostMessage for MsgHost<'_> {
     }
 
     /// Remove a message from the resource table.
-    async fn drop(
-        &mut self, res_msg: Resource<Message>,
-    ) -> anyhow::Result<()> {
+    async fn drop(&mut self, res_msg: Resource<Message>) -> anyhow::Result<()> {
         tracing::trace!("HostMessage::drop");
         self.table.delete(res_msg)?;
         Ok(())
@@ -234,20 +235,28 @@ impl types::HostClient for MsgHost<'_> {
     }
 }
 
-// Host produces messages.
+/// The producer interface is used to send messages to a channel/topic.
 impl producer::Host for MsgHost<'_> {
+    /// Sends the message using the given client.
     async fn send(
-        &mut self, client: Resource<Client>, ch: String, messages: Vec<Message>,
-    ) -> Result<Result<(), Resource<Error>>> {
-        tracing::trace!("producer::Host::send: {:?}", ch);
+        &mut self, res_client: Resource<Client>, topic: Topic, res_msg: Resource<Message>,
+    ) -> Result<()> {
+        tracing::trace!("producer::Host::send: topic {:?}", topic);
 
-        let client = self.table.get(&client)?;
-        for m in messages {
-            let data = m.data.clone().into();
-            client.publish(ch.clone(), data).await?;
-        }
-
-        Ok(Ok(()))
+        let client = self.table.get(&res_client)?;
+        let msg = self.table.get(&res_msg)?;
+        let Some(headers) = msg.headers.clone() else {
+            client
+                .publish(topic.clone(), msg.payload.clone())
+                .await
+                .map_err(|e| anyhow!("failed to publish: {e}"))?;
+            return Ok(());
+        };
+        client
+            .publish_with_headers(topic.clone(), headers, msg.payload.clone())
+            .await
+            .map_err(|e| anyhow!("failed to publish: {e}"))?;
+        Ok(())
     }
 }
 
