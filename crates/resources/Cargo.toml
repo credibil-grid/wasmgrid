@@ -1,0 +1,19 @@
+[package]
+name = "resources"
+description = "Shared traits and types for WASM runtime environment resources"
+authors.workspace = true
+edition.workspace = true
+version = "0.1.0"
+
+[lints]
+workspace = true
+
+[dependencies]
+anyhow.workspace = true
+async-nats = "0.40.0"
+tokio.workspace = true
+azure_identity = { version = "0.24.0", default-features = false }
+azure_security_keyvault_keys = { version = "0.3.0", default-features = false }
+mongodb = "3.2.3"
+nkeys = "0.4.4"
+tracing.workspace = true

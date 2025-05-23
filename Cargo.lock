@@ -344,9 +344,9 @@ dependencies = [
 
 [[package]]
 name = "bson"
-version = "2.14.0"
+version = "2.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "af8113ff51309e2779e8785a246c10fb783e8c2452f134d6257fd71cc03ccd6c"
+checksum = "7969a9ba84b0ff843813e7249eed1678d9b6607ce5a3b8f0a47af3fcf7978e6e"
 dependencies = [
  "ahash",
  "base64 0.22.1",
@@ -2743,6 +2743,20 @@ name = "resolv-conf"
 version = "0.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "95325155c684b1c89f7765e30bc1c42e4a6da51ca513615660cb8a62ef9a88e3"
+
+[[package]]
+name = "resources"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-nats",
+ "azure_identity",
+ "azure_security_keyvault_keys",
+ "mongodb",
+ "nkeys",
+ "tokio",
+ "tracing",
+]
 
 [[package]]
 name = "rfc6979"
