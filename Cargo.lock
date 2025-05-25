@@ -3244,6 +3244,7 @@ dependencies = [
  "mongodb",
  "nkeys",
  "openssl",
+ "resources",
  "runtime",
  "serde_json",
  "sha2",

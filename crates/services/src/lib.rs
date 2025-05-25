@@ -13,8 +13,7 @@ pub mod rpc;
 #[cfg(feature = "vault")]
 pub mod vault;
 
-mod resources;
-
+use resources;
 use runtime::{Errout, Stdout};
 use wasmtime::StoreLimits;
 use wasmtime::component::InstancePre;

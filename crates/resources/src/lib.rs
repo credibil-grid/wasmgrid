@@ -1,5 +1,8 @@
+#[cfg(feature = "azkeyvault")]
 mod azkeyvault;
+#[cfg(feature = "mongodb")]
 mod mongo;
+#[cfg(feature = "nats")]
 mod nats;
 
 use std::sync::{Arc, OnceLock};
@@ -10,18 +13,24 @@ use anyhow::{Result, anyhow};
 
 #[derive(Clone)]
 pub struct Resources {
-    nats: Arc<OnceLock<async_nats::Client>>,
-    mongo: Arc<OnceLock<mongodb::Client>>,
+    #[cfg(feature = "azkeyvault")]
     azkeyvault: Arc<OnceLock<azure_security_keyvault_keys::KeyClient>>,
+    #[cfg(feature = "mongodb")]
+    mongo: Arc<OnceLock<mongodb::Client>>,
+    #[cfg(feature = "nats")]
+    nats: Arc<OnceLock<async_nats::Client>>,
 }
 
 impl Resources {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            nats: Arc::new(OnceLock::new()),
-            mongo: Arc::new(OnceLock::new()),
+            #[cfg(feature = "azkeyvault")]
             azkeyvault: Arc::new(OnceLock::new()),
+            #[cfg(feature = "mongodb")]
+            mongo: Arc::new(OnceLock::new()),
+            #[cfg(feature = "nats")]
+            nats: Arc::new(OnceLock::new()),
         }
     }
 }
