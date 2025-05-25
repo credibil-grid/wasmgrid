@@ -6,7 +6,7 @@ use tokio::task::JoinHandle;
 
 use super::{Resources, timeout};
 
-const CONNECTION_TIMEOUT: u64 = 100; // milliseconds
+const CONNECTION_TIMEOUT: u64 = 600; // milliseconds
 
 impl Resources {
     /// Add a NATS connection using the given address and, optionally,

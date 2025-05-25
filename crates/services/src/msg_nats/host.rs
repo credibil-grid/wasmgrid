@@ -3,10 +3,10 @@ use async_nats::{Client, HeaderMap, Subject};
 use wasmtime::component::{Linker, Resource};
 use wasmtime_wasi::{ResourceTable, ResourceTableError};
 
-use crate::messaging::generated::wasi::messaging::types::{
+use crate::msg_nats::generated::wasi::messaging::types::{
     Error, HostMessage, Message, Metadata, Topic,
 };
-use crate::messaging::generated::wasi::messaging::{producer, types};
+use crate::msg_nats::generated::wasi::messaging::{producer, types};
 use crate::{Ctx, Resources};
 
 pub type Result<T, E = Error> = anyhow::Result<T, E>;

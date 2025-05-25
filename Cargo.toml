@@ -25,7 +25,7 @@ anyhow.workspace = true
 cfg-if.workspace = true
 dotenv = "0.15.0"
 runtime.workspace = true
-services = { path = "crates/services", features = ["http", "jsondb", "keyvalue", "messaging", "rpc", "vault"] }
+services = { path = "crates/services", features = ["http", "jsondb-mongodb", "kv-nats", "msg-nats", "rpc-nats", "keyvault-azure"] }
 tokio.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true

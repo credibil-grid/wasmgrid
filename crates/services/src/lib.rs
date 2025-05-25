@@ -2,16 +2,16 @@
 
 #[cfg(feature = "http")]
 pub mod http;
-#[cfg(feature = "jsondb")]
-pub mod jsondb;
-#[cfg(feature = "keyvalue")]
-pub mod keyvalue;
-#[cfg(feature = "messaging")]
-pub mod messaging;
-#[cfg(feature = "rpc")]
-pub mod rpc;
-#[cfg(feature = "vault")]
-pub mod vault;
+#[cfg(feature = "jsondb-mongodb")]
+pub mod jsondb_mongodb;
+#[cfg(feature = "kv-nats")]
+pub mod kv_nats;
+#[cfg(feature = "msg-nats")]
+pub mod msg_nats;
+#[cfg(feature = "rpc-nats")]
+pub mod rpc_nats;
+#[cfg(feature = "keyvault-azure")]
+pub mod keyvault_azure;
 
 use resources;
 use runtime::{Errout, Stdout};
