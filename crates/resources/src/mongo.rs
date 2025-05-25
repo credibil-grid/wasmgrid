@@ -1,7 +1,9 @@
 use anyhow::{Result, anyhow};
 use tokio::task::JoinHandle;
 
-use crate::resources::{Resources, timeout};
+use super::{Resources, timeout};
+
+const CONNECTION_TIMEOUT: u64 = 100; // milliseconds
 
 impl Resources {
     /// Add a MongoDB connection from a `mongodb` uri.
@@ -26,14 +28,14 @@ impl Resources {
     /// Get the MongoDB client.
     ///
     /// This method will block until the client is available, timing out after
-    /// 100ms.
+    /// `CONNECTION_TIMEOUT` ms.
     ///
     /// # Panics
     ///
     /// This method panics if the client is not available before the method
     /// times out.
-    pub(crate) fn mongo(&self) -> Result<&mongodb::Client> {
+    pub fn mongo(&self) -> Result<&mongodb::Client> {
         tracing::debug!("getting mongodb client");
-        timeout(&self.mongo)
+        timeout(&self.mongo, CONNECTION_TIMEOUT)
     }
 }

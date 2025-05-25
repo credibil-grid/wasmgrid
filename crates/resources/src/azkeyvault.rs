@@ -3,7 +3,9 @@ use azure_identity::DefaultAzureCredential;
 use azure_security_keyvault_keys::KeyClient;
 use tokio::task::JoinHandle;
 
-use crate::resources::{Resources, timeout};
+use super::{Resources, timeout};
+
+const CONNECTION_TIMEOUT: u64 = 100; // milliseconds
 
 impl Resources {
     pub fn with_azkeyvault(
@@ -35,14 +37,14 @@ impl Resources {
     /// Get the Azure Keyvault client.
     ///
     /// This method will block until the client is available, timing out after
-    /// 100ms.
+    /// `CONNECTION_TIMEOUT` ms.
     ///
     /// # Panics
     ///
     /// This method panics if the client is not available before the method
     /// times out.
-    pub(crate) fn azkeyvault(&self) -> Result<&KeyClient> {
+    pub fn azkeyvault(&self) -> Result<&KeyClient> {
         tracing::debug!("getting azkeyvault client");
-        timeout(&self.azkeyvault)
+        timeout(&self.azkeyvault, CONNECTION_TIMEOUT)
     }
 }

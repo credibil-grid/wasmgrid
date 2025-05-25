@@ -10,8 +10,8 @@ use tracing::Level;
 use wasmtime::Store;
 use wasmtime::component::InstancePre;
 
-use crate::rpc::generated::RpcPre;
-use crate::rpc::generated::exports::wasi::rpc::server::ServerConfiguration;
+use crate::rpc_nats::generated::RpcPre;
+use crate::rpc_nats::generated::exports::wasi::rpc::server::ServerConfiguration;
 use crate::{Ctx, Resources};
 
 pub async fn run(pre: InstancePre<Ctx>, resources: Resources) -> Result<()> {

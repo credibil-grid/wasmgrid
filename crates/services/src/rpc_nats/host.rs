@@ -5,8 +5,8 @@ use tracing::Level;
 use wasmtime::component::{Linker, Resource};
 use wasmtime_wasi::ResourceTable;
 
-use crate::rpc::generated::wasi::rpc::client::HostError;
-use crate::rpc::generated::wasi::rpc::{self, client, types};
+use crate::rpc_nats::generated::wasi::rpc::client::HostError;
+use crate::rpc_nats::generated::wasi::rpc::{self, client, types};
 use crate::{Ctx, Resources};
 
 pub struct RpcHost<'a> {

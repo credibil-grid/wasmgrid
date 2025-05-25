@@ -4,7 +4,9 @@ use anyhow::{Result, anyhow};
 use async_nats::{AuthError, ConnectOptions};
 use tokio::task::JoinHandle;
 
-use crate::resources::{Resources, timeout};
+use super::{Resources, timeout};
+
+const CONNECTION_TIMEOUT: u64 = 600; // milliseconds
 
 impl Resources {
     /// Add a NATS connection using the given address and, optionally,
@@ -32,15 +34,15 @@ impl Resources {
     /// Get the NATS client.
     ///
     /// This method will block until the client is available, timing out after
-    /// 100ms.
+    /// `CONNECTION_TIMEOUT` ms.
     ///
     /// # Panics
     ///
     /// This method panics if the client is not available before the method
     /// times out.
-    pub(crate) fn nats(&self) -> Result<&async_nats::Client> {
+    pub fn nats(&self) -> Result<&async_nats::Client> {
         tracing::debug!("getting nats client");
-        timeout(&self.nats)
+        timeout(&self.nats, CONNECTION_TIMEOUT)
     }
 }
 
