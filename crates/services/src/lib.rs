@@ -13,14 +13,13 @@ pub mod rpc_nats;
 #[cfg(feature = "keyvault-azure")]
 pub mod keyvault_azure;
 
-use resources;
+pub use resources::Resources;
 use runtime::{Errout, Stdout};
 use wasmtime::StoreLimits;
 use wasmtime::component::InstancePre;
 use wasmtime_wasi::{IoView, ResourceTable, WasiCtx, WasiCtxBuilder, WasiView};
 use wasmtime_wasi_http::WasiHttpCtx;
 
-pub use self::resources::Resources;
 
 /// Ctx implements messaging host interfaces. In addition, it holds the
 /// host-defined state used by the wasm runtime [`Store`].

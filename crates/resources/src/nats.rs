@@ -36,10 +36,10 @@ impl Resources {
     /// This method will block until the client is available, timing out after
     /// `CONNECTION_TIMEOUT` ms.
     ///
-    /// # Panics
+    /// # Errors
     ///
-    /// This method panics if the client is not available before the method
-    /// times out.
+    /// This method returns an error if the client is not available before the
+    /// method times out.
     pub fn nats(&self) -> Result<&async_nats::Client> {
         tracing::debug!("getting nats client");
         timeout(&self.nats, CONNECTION_TIMEOUT)

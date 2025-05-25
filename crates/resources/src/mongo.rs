@@ -6,7 +6,7 @@ use super::{Resources, timeout};
 const CONNECTION_TIMEOUT: u64 = 100; // milliseconds
 
 impl Resources {
-    /// Add a MongoDB connection from a `mongodb` uri.
+    /// Add a `MongoDB` connection from a `mongodb` uri.
     ///
     /// The method will attempt connect on a separate, returning a
     /// [`tokio::task::JoinHandle`] that can be awaited if desired.
@@ -25,15 +25,15 @@ impl Resources {
         })
     }
 
-    /// Get the MongoDB client.
+    /// Get the `MongoDB` client.
     ///
     /// This method will block until the client is available, timing out after
     /// `CONNECTION_TIMEOUT` ms.
     ///
-    /// # Panics
+    /// # Errors
     ///
-    /// This method panics if the client is not available before the method
-    /// times out.
+    /// This method returns an error if the client is not available before the
+    /// method times out.
     pub fn mongo(&self) -> Result<&mongodb::Client> {
         tracing::debug!("getting mongodb client");
         timeout(&self.mongo, CONNECTION_TIMEOUT)

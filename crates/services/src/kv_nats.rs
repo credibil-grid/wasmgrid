@@ -266,7 +266,7 @@ impl keyvalue::atomics::Host for KeyvalueHost<'_> {
     ) -> anyhow::Result<Result<(), CasError>> {
         tracing::trace!("atomics::Host::swap");
 
-        return Err(anyhow!("not implemented").into());
+        Err(anyhow!("not implemented"))
     }
 }
 

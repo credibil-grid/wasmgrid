@@ -39,10 +39,10 @@ impl Resources {
     /// This method will block until the client is available, timing out after
     /// `CONNECTION_TIMEOUT` ms.
     ///
-    /// # Panics
+    /// # Errors
     ///
-    /// This method panics if the client is not available before the method
-    /// times out.
+    /// This method returns an error if the client is not available before the
+    /// method times out.
     pub fn azkeyvault(&self) -> Result<&KeyClient> {
         tracing::debug!("getting azkeyvault client");
         timeout(&self.azkeyvault, CONNECTION_TIMEOUT)
