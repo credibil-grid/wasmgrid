@@ -1,0 +1,71 @@
+interface types {
+    /// The set of errors which may be raised by functions in this package.
+    variant error {
+        /// The request failed authorization from the underlying key store.
+        access-denied,
+        /// The host does not recognize the key pair identifier and/or version
+        /// requested.
+        no-such-key,
+        /// A request to add a key fails because the given key identifier is
+        /// already in use.
+        key-already-exists,
+        /// An error occurred in the underlying key store when attempting the
+        /// requested operation.
+        store-error(string),
+        /// A service implementation error occurred.
+        other(string),
+    }
+
+    /// The cryptographic algorithms supported by the keystore.
+    resource curve {
+        /// The display name of the curve.
+        name: func() -> string;
+    }
+
+    /// A representation of a key-pair used for cryptographic operations.
+    resource key-pair {
+        /// The public key expressed as bytes.
+        public-key: func() -> result<list<u8>, error>;
+
+        /// Full key identifier which may include version, depending on the
+        /// implementation.
+        identifier: func() -> string;
+
+        /// Curve used for the key pair.
+        curve: func() -> curve;
+
+        /// Implementation-dependent metadata associated with the key-pair.
+        metadata: func() -> key-metadata;
+    }
+
+    type datetime = u64; // Unix timestamp in seconds
+
+    /// Implementation-dependent metadata associated with a key-pair.
+    resource key-metadata {
+        /// The name of the key pair.
+        name: func() -> option<string>;
+
+        /// Full key identifier which may include version, depending on the
+        /// implementation.
+        identifier: func() -> option<string>;
+
+        /// The version of the key pair.
+        version: func() -> option<string>;
+
+        /// The creation time of the key pair.
+        created: func() -> option<datetime>;
+
+        /// The last updated time of the key pair.
+        updated: func() -> option<datetime>;
+
+        /// The first moment the key can be used.
+        not-before: func() -> option<datetime>;
+
+        /// The last moment the key can be used.
+        expires: func() -> option<datetime>;
+
+        /// Flag indicating if the key pair is enabled. (The meaning of
+        /// "enabled" is implementation-specific).
+        enabled: func() -> option<bool>;
+    };
+}
