@@ -1,0 +1,18 @@
+/// Store provides an interface for secure storage of bytes. While not confined
+/// to this use case, the intent is for it to be used for the storage of
+/// cryptographic private keys.
+interface store {
+    use types.{block, error, location, metadata};
+
+    /// Add a block to the store.
+    /// 
+    /// Will return a system-generated version for the stored block.
+    /// 
+    /// Will return an error if a block with the same owner+partition+key
+    /// already exists.
+    put: func(owner: string, partition: string, key: string, value: list<u8>, content-type: option<string>) -> result<string, error>;
+
+    /// Remove a block from the store.
+    ///
+    /// 
+}

@@ -1,0 +1,9 @@
+package wasi:block@0.1.0;
+
+world imports {
+    import store;
+}
+
+world block {
+    include imports;
+}
