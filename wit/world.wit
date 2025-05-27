@@ -27,6 +27,6 @@ world rpc {
 	export wasi:rpc/server@0.1.0-draft;
 }
 
-world block {
-	include wasi:block/imports@0.1.0;
+world blockstore {
+	include wasi:blockstore/imports@0.1.0;
 }

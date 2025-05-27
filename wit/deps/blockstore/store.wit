@@ -56,7 +56,8 @@ interface store {
     /// be returned.
     versions: func(location: location) -> result<list<identifier>, error>;
 
-    /// The response to a `list` operation.
+    
+    /// The response to a `get-list` operation.
     record list-response {
         /// The list of blocks returned by the query.
         blocks: list<identifier>,
@@ -69,5 +70,5 @@ interface store {
     /// owner and optional partition.
     /// 
     /// NOTE: For most implementations, this could be a very expensive call.
-    list: func(owner: string, partition: option<string>, cursor: option<string>) -> result<list-response, error>;
+    get-list: func(owner: string, partition: option<string>, cursor: option<string>) -> result<list-response, error>;
 }

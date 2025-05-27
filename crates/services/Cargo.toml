@@ -20,6 +20,7 @@ msg-nats = ["dep:async-nats", "resources/nats"]
 # p2p-iroh = ["dep:iroh"]
 rpc-nats = ["dep:async-nats"]
 keyvault-azure = ["dep:azure_core", "dep:azure_identity", "dep:azure_security_keyvault_keys", "dep:openssl", "resources/azkeyvault"]
+block-azkeyvault = ["dep:azure_core", "dep:azure_identity", "dep:azure_security_keyvault_keys", "dep:openssl", "resources/azkeyvault"]
 
 [dependencies]
 anyhow.workspace = true

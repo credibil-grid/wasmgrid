@@ -1,9 +1,9 @@
-package wasi:block@0.1.0;
+package wasi:blockstore@0.1.0;
 
 world imports {
     import store;
 }
 
-world block {
+world blockstore {
     include imports;
 }

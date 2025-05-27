@@ -140,14 +140,14 @@ pub mod vault {
 mod block_bindings {
     wit_bindgen::generate!({
         path: "../../wit",
-        world: "secret",
+        world: "blockstore",
         with: {
-            "wasi:block/types@0.1.0": generate,
-            "wasi:block/store@0.1.0": generate,
+            "wasi:blockstore/types@0.1.0": generate,
+            "wasi:blockstore/store@0.1.0": generate,
         }
     });
 }
 
-pub mod block {
-    pub use crate::block_bindings::wasi::block::*;
+pub mod blockstore {
+    pub use crate::block_bindings::wasi::blockstore::*;
 }

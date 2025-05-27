@@ -32,40 +32,40 @@ interface types {
     /// Implementation-dependent metadata associated with a stored block.
     record metadata {
         /// The creation time of the key pair.
-        created: func() -> option<datetime>,
+        created: option<datetime>,
 
         /// The last updated time of the key pair.
-        updated: func() -> option<datetime>,
+        updated: option<datetime>,
 
         /// The first moment the key can be used.
-        not-before: func() -> option<datetime>,
+        not-before: option<datetime>,
 
         /// The last moment the key can be used.
-        expires: func() -> option<datetime>,
+        expires: option<datetime>,
 
         /// Flag indicating if the key pair is enabled. (The meaning of
         /// "enabled" is implementation-specific).
-        enabled: func() -> option<bool>,
+        enabled: option<bool>,
 
         /// Hint for deserialization of the block data.
-        content-type: func() -> option<string>,
-    };
+        content-type: option<string>,
+    }
 
     /// A block identifier is the identifying attributes of a stored item and
     /// its metadata. Used to get information about stored items without
     /// retrieving the value at that location.
     resource identifier {
         /// The location of the stored item.
-        location: location,
+        location: func() -> location;
 
         /// The version of the stored item. This is implementation specific, but
         /// it is intended that the underlying block store will generate an
         /// unpredictable version identifier that is unique for a given
         /// location.
-        version: string,
+        version: func() -> string;
 
         /// The metadata associated with the stored item.
-        metadata: option<metadata>,
+        metadata: func() -> option<metadata>;
     }
 
     /// A representation of a stored block.
