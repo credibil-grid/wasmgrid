@@ -4,10 +4,10 @@ interface types {
         /// The request failed authorization from the underlying key store.
         access-denied,
         /// The host does not recognize the key requested.
-        no-such-key,
+        not-found,
         /// A request to add a block fails because the given key identifier is
         /// already in use.
-        key-already-exists,
+        already-exists,
         /// An error occurred in the underlying block store when attempting the
         /// requested operation.
         store-error(string),
