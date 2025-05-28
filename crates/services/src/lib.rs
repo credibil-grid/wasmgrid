@@ -20,7 +20,6 @@ use wasmtime::component::InstancePre;
 use wasmtime_wasi::{IoView, ResourceTable, WasiCtx, WasiCtxBuilder, WasiView};
 use wasmtime_wasi_http::WasiHttpCtx;
 
-
 /// Ctx implements messaging host interfaces. In addition, it holds the
 /// host-defined state used by the wasm runtime [`Store`].
 #[allow(clippy::struct_field_names)]

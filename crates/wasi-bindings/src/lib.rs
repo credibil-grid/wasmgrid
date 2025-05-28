@@ -135,3 +135,19 @@ mod vault_bindings {
 pub mod vault {
     pub use crate::vault_bindings::wasi::vault::*;
 }
+
+/// Bindings for storage of blocks.
+mod block_bindings {
+    wit_bindgen::generate!({
+        path: "../../wit",
+        world: "blockstore",
+        with: {
+            "wasi:blockstore/types@0.1.0": generate,
+            "wasi:blockstore/store@0.1.0": generate,
+        }
+    });
+}
+
+pub mod blockstore {
+    pub use crate::block_bindings::wasi::blockstore::*;
+}

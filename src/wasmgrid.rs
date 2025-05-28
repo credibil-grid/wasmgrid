@@ -4,7 +4,9 @@ use std::env;
 
 use dotenv::dotenv;
 use runtime::{Cli, Parser};
-use services::{Resources, http, jsondb_mongodb, kv_nats, msg_nats, rpc_nats, keyvault_azure};
+use services::{
+    Resources, http, jsondb_mongodb, keyvault_azure, kv_nats, msg_nats, rpc_nats,
+};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 const DEF_MGO_URI: &str = "mongodb://localhost:27017";
@@ -43,7 +45,7 @@ pub async fn main() -> anyhow::Result<()> {
             let resources = Resources::new();
             resources.with_nats(nats_addr, jwt, seed);
             resources.with_mongo(mgo_uri);
-            resources.with_azkeyvault(kv_addr);
+            resources.with_azkeyvault(kv_addr.clone());
 
             // start `Runnable` servers
             rt.run(http::Service, resources.clone())?;
@@ -54,8 +56,6 @@ pub async fn main() -> anyhow::Result<()> {
         }
 
         #[cfg(feature = "compile")]
-        runtime::Command::Compile { wasm, output } => {
-            runtime::compile(&wasm, output)
-        }
+        runtime::Command::Compile { wasm, output } => runtime::compile(&wasm, output),
     }
 }

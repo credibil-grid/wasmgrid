@@ -34,7 +34,7 @@ impl Resources {
         })
     }
 
-    /// Get the Azure Keyvault client.
+    /// Get the Azure Keyvault client for keys.
     ///
     /// This method will block until the client is available, timing out after
     /// `CONNECTION_TIMEOUT` ms.
