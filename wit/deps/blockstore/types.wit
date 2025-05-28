@@ -77,7 +77,7 @@ interface types {
         version: func() -> string;
         
         /// The stored value expressed as bytes.
-        value: func() -> result<list<u8>, error>;
+        value: func() -> list<u8>;
 
         /// Implementation-dependent metadata associated with the block.
         metadata: func() -> option<metadata>;

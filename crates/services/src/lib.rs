@@ -12,8 +12,6 @@ pub mod msg_nats;
 pub mod rpc_nats;
 #[cfg(feature = "keyvault-azure")]
 pub mod keyvault_azure;
-#[cfg(feature = "block-azkeyvault")]
-pub mod block_azkeyvault;
 
 pub use resources::Resources;
 use runtime::{Errout, Stdout};

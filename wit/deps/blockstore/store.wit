@@ -11,7 +11,7 @@ interface store {
     /// 
     /// If a block already exists at that location, an `already-exists`
     /// error will be returned.
-    put: func(location: location, value: block, metadata: option<metadata>) -> result<identifier, error>;
+    put: func(location: location, value: list<u8>, metadata: option<metadata>) -> result<identifier, error>;
 
     /// Create a new version of an existing block in the store, optionally
     /// deleting any previous versions of the block. This will not overwrite
@@ -22,7 +22,7 @@ interface store {
     /// 
     /// If a block does not exist at that location, a `not-found` error will
     /// be returned.
-    new-version: func(location: location, value: block, metadata: option<metadata>, delete-previous: bool) -> result<identifier, error>;
+    new-version: func(location: location, value: list<u8>, metadata: option<metadata>, delete-previous: bool) -> result<identifier, error>;
 
     /// Update the metadata of an existing block in the store.
     /// 
