@@ -1,4 +1,4 @@
-use anyhow::anyhow;
+use anyhow::{Result, anyhow};
 use http::Uri;
 use http::header::{AUTHORIZATION, CONTENT_TYPE};
 use serde::Serialize;
@@ -13,93 +13,169 @@ impl Client {
         Self {}
     }
 
-    pub fn get(&self, url: impl Into<String>) -> RequestBuilder {
-        RequestBuilder::new(Method::Get, url.into())
+    pub fn get(&self, url: impl Into<String>) -> RequestBuilder<NoBody, NoJson, NoForm> {
+        RequestBuilder::new(url)
     }
 
-    pub fn post(&self, url: impl Into<String>) -> RequestBuilder {
-        RequestBuilder::new(Method::Post, url.into())
+    pub fn post(&self, url: impl Into<String>) -> RequestBuilder<NoBody, NoJson, NoForm> {
+        RequestBuilder::new(url).method(Method::Post)
     }
 }
 
 #[derive(Debug)]
-pub struct RequestBuilder {
+pub struct RequestBuilder<B, J, F> {
     method: Method,
     url: String,
-    headers: Headers,
+    headers: Vec<(String, String)>,
     query: Option<String>,
-    body: Option<Vec<u8>>,
-    errors: Vec<String>,
+    body: B,
+    json: J,
+    form: F,
 }
 
-impl RequestBuilder {
-    fn new(method: Method, url: String) -> Self {
+/// Builder has no body.
+#[doc(hidden)]
+pub struct NoBody;
+/// Builder has a body.
+#[doc(hidden)]
+pub struct HasBody(Vec<u8>);
+
+/// Builder has no json.
+#[doc(hidden)]
+pub struct NoJson;
+/// Builder has a body.
+#[doc(hidden)]
+pub struct HasJson<T: Serialize>(T);
+
+/// Builder has no json.
+#[doc(hidden)]
+pub struct NoForm;
+/// Builder has a body.
+#[doc(hidden)]
+pub struct HasForm<T: Serialize>(T);
+
+impl RequestBuilder<NoBody, NoJson, NoForm> {
+    fn new(url: impl Into<String>) -> Self {
         Self {
-            method,
-            url,
-            headers: Headers::new(),
+            method: Method::Get,
+            url: url.into(),
+            headers: vec![],
             query: None,
-            body: None,
-            errors: Vec::new(),
+            body: NoBody,
+            json: NoJson,
+            form: NoForm,
         }
     }
 
-    pub fn header(&mut self, name: &str, value: &str) -> &mut Self {
-        let _ = self.headers.append(&name.to_string(), &value.as_bytes().to_vec()).map_err(|e| {
-            self.errors.push(format!("issue setting header: {e}"));
-        });
-        self
+    pub fn body(self, body: &[u8]) -> RequestBuilder<HasBody, NoJson, NoForm> {
+        RequestBuilder {
+            method: self.method.clone(),
+            url: self.url.clone(),
+            headers: self.headers.clone(),
+            query: self.query.clone(),
+            body: HasBody(body.to_vec()),
+            json: NoJson,
+            form: NoForm,
+        }
     }
 
-    pub fn json(&mut self, json: impl Serialize) -> &mut Self {
-        self.body = match serde_json::to_vec(&json) {
-            Ok(bytes) => Some(bytes),
-            Err(e) => {
-                self.errors.push(format!("issue serializing body: {e}"));
-                return self;
-            }
-        };
-        self.header(CONTENT_TYPE.as_str(), "application/json");
-        self
+    pub fn json<T: Serialize>(self, json: T) -> RequestBuilder<NoBody, HasJson<T>, NoForm> {
+        let mut headers = self.headers.clone();
+        headers.push((CONTENT_TYPE.to_string(), "application/json".to_string()));
+
+        RequestBuilder {
+            method: self.method.clone(),
+            url: self.url.clone(),
+            headers,
+            query: self.query.clone(),
+            body: NoBody,
+            json: HasJson(json),
+            form: NoForm,
+        }
     }
 
-    pub fn query(&mut self, query: &str) -> &mut Self {
-        self.query = match query.parse::<Uri>() {
-            Ok(url) => url.query().map(|s| s.to_string()),
-            Err(e) => {
-                self.errors.push(format!("issue serializing body: {e}"));
-                return self;
-            }
-        };
-        self
-    }
+    pub fn form<T: Serialize>(self, form: T) -> RequestBuilder<NoBody, NoJson, HasForm<T>> {
+        let mut headers = self.headers.clone();
+        headers.push((CONTENT_TYPE.to_string(), "application/x-www-form-urlencoded".to_string()));
 
-    pub fn bearer_auth(&mut self, token: &str) -> &mut Self {
-        self.header(AUTHORIZATION.as_str(), format!("Bearer {token}").as_str());
-        self
+        RequestBuilder {
+            method: self.method.clone(),
+            url: self.url.clone(),
+            headers,
+            query: self.query.clone(),
+            body: NoBody,
+            json: NoJson,
+            form: HasForm(form),
+        }
     }
-
-    // pub fn body(&mut self, body: impl Into<Body>) -> &mut Self {
-    //     self
-    // }
 }
 
-impl RequestBuilder {
-    pub fn send(&self) -> anyhow::Result<Response> {
-        // builder errors
-        if !self.errors.is_empty() {
-            return Err(anyhow!("issue(s) building request: {}", self.errors.join("\n")));
-        }
+impl<B, J, F> RequestBuilder<B, J, F> {
+    pub fn method(mut self, method: Method) -> Self {
+        self.method = method;
+        self
+    }
 
+    pub fn header(mut self, name: impl Into<String>, value: impl Into<String>) -> Self {
+        self.headers.push((name.into(), value.into()));
+        self
+    }
+
+    pub fn query(&mut self, query: impl Into<String>) -> &mut Self {
+        self.query = Some(query.into());
+        self
+    }
+
+    pub fn bearer_auth(mut self, token: &str) -> Self {
+        self.headers.push((AUTHORIZATION.to_string(), format!("Bearer {token}")));
+        self
+    }
+}
+
+impl RequestBuilder<NoBody, NoJson, NoForm> {
+    pub fn send(&self) -> Result<Response> {
+        self.inner_send(None)
+    }
+}
+
+impl RequestBuilder<HasBody, NoJson, NoForm> {
+    pub fn send(&self) -> Result<Response> {
+        self.inner_send(Some(&self.body.0))
+    }
+}
+
+impl<T: Serialize> RequestBuilder<NoBody, HasJson<T>, NoForm> {
+    pub fn send(&self) -> Result<Response> {
+        let body =
+            serde_json::to_vec(&self.json.0).map_err(|e| anyhow!("issue serializing json: {e}"))?;
+        self.inner_send(Some(&body))
+    }
+}
+
+impl<T: Serialize> RequestBuilder<NoBody, NoJson, HasForm<T>> {
+    pub fn send(&self) -> Result<Response> {
+        let body = serde_urlencoded::to_string(&self.form.0)
+            .map_err(|e| anyhow!("issue serializing form: {e}"))?;
+        self.inner_send(Some(body.as_bytes()))
+    }
+}
+
+impl<B, J, F> RequestBuilder<B, J, F> {
+    pub fn inner_send(&self, body: Option<&[u8]>) -> Result<Response> {
         // --------------------------------------------------------------------
         // Create request
         // --------------------------------------------------------------------
+        let headers = Headers::new();
+        for (key, value) in self.headers.iter() {
+            headers
+                .append(&key, value.as_bytes())
+                .map_err(|e| anyhow!("issue setting header: {e}"))?;
+        }
+        let request = OutgoingRequest::new(headers);
+        request.set_method(&self.method).map_err(|_| anyhow!("issue setting method"))?;
+
+        // url
         let url = &self.url.parse::<Uri>().map_err(|e| anyhow!("issue parsing url: {e}"))?;
-        let request = OutgoingRequest::new(self.headers.clone());
-
-        // method, scheme, authority
-        request.set_method(&self.method).map_err(|()| anyhow!("issue setting method"))?;
-
         let Some(scheme) = url.scheme() else {
             return Err(anyhow!("missing scheme"));
         };
@@ -120,17 +196,17 @@ impl RequestBuilder {
             .set_path_with_query(Some(&path_and_query))
             .map_err(|()| anyhow!("Failed to set path_with_query"))?;
 
-        // body, if provided
-        if let Some(bytes) = &self.body {
-            let body = request.body().map_err(|()| anyhow!("issue getting body"))?;
-            let stream = body.write().map_err(|()| anyhow!("issue getting stream"))?;
+        // body
+        if let Some(body) = body {
+            let out_body = request.body().map_err(|_| anyhow!("issue getting outgoing body"))?;
+            let stream = out_body.write().map_err(|_| anyhow!("issue getting stream"))?;
             stream
-                .blocking_write_and_flush(bytes)
+                .blocking_write_and_flush(body)
                 .map_err(|e| anyhow!("issue writing body: {e}"))?;
-
             drop(stream);
-            OutgoingBody::finish(body, None).map_err(|e| anyhow!("issue finishing body: {e}"))?;
-        };
+            OutgoingBody::finish(out_body, None)
+                .map_err(|e| anyhow!("issue finishing body: {e}"))?;
+        }
 
         // send
         let fut_resp = outgoing_handler::handle(request, None)

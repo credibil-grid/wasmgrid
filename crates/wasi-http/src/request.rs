@@ -95,7 +95,6 @@ impl<'a> Request<'a> {
     /// Parse the request body from form-urlencoded.
     ///
     /// # Errors
-    #[allow(dead_code)]
     pub fn form<T: DeserializeOwned>(&self) -> Result<T> {
         Ok(serde_urlencoded::from_bytes::<T>(&self.body()?)?)
     }
