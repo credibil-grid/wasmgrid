@@ -10,7 +10,7 @@ world keyvalue {
 }
 
 world messaging {
-	include wasi:messaging/imports@0.2.0-draft;
+	include wasi:messaging/imports-request-reply@0.2.0-draft;
 	export wasi:messaging/incoming-handler@0.2.0-draft;
 }
 
