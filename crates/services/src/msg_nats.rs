@@ -12,6 +12,8 @@ mod generated {
     pub use wasi::messaging::types::Error;
     pub use async_nats::{Client, Message};
 
+    pub use super::RequestOptions;
+
     wasmtime::component::bindgen!({
         world: "messaging",
         path: "../../wit",
@@ -19,6 +21,7 @@ mod generated {
         async: true,
         trappable_imports: true,
         with: {
+            "wasi:messaging/request-reply/request-options": RequestOptions,
             "wasi:messaging/types/client": Client,
             "wasi:messaging/types/message": Message,
         },
@@ -58,4 +61,9 @@ impl Runnable for Service {
     async fn run(&self, pre: InstancePre<Self::Ctx>, resources: Self::Resources) -> Result<()> {
         server::run(pre, resources).await
     }
+}
+
+#[derive(Default)]
+pub struct RequestOptions {
+    pub timeout: Option<std::time::Duration>,
 }

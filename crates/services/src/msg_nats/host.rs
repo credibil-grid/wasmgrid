@@ -1,12 +1,15 @@
+use std::time::Duration;
+
 use anyhow::anyhow;
 use async_nats::{Client, HeaderMap, Subject};
 use wasmtime::component::{Linker, Resource};
 use wasmtime_wasi::{ResourceTable, ResourceTableError};
 
+use super::generated::wasi::messaging::request_reply::RequestOptions;
 use crate::msg_nats::generated::wasi::messaging::types::{
     Error, HostMessage, Message, Metadata, Topic,
 };
-use crate::msg_nats::generated::wasi::messaging::{producer, types};
+use crate::msg_nats::generated::wasi::messaging::{producer, request_reply, types};
 use crate::{Ctx, Resources};
 
 pub type Result<T, E = Error> = anyhow::Result<T, E>;
@@ -28,6 +31,7 @@ impl MsgHost<'_> {
 /// Add all the `messaging` world's interfaces to a [`Linker`].
 pub fn add_to_linker(l: &mut Linker<Ctx>) -> anyhow::Result<()> {
     producer::add_to_linker_get_host(l, MsgHost::new)?;
+    request_reply::add_to_linker_get_host(l, MsgHost::new)?;
     types::add_to_linker_get_host(l, MsgHost::new)
 }
 
@@ -260,72 +264,99 @@ impl producer::Host for MsgHost<'_> {
     }
 }
 
-// Host consumes messages.
-// impl consumer::Host for MsgHost<'_> {
-//     async fn subscribe_try_receive(
-//         &mut self, rep: Resource<Client>, ch: String, t_milliseconds: u32,
-//     ) -> Result<Result<Option<Vec<Message>>, Resource<Error>>> {
-//         tracing::debug!("consumer::Host::subscribe_try_receive {ch}, {t_milliseconds}");
+/// The request-reply interface is used to send a request and receive a reply.
+impl request_reply::Host for MsgHost<'_> {
+    /// Performs a request-reply operation using the given client and options
+    /// (if any).
+    async fn request(
+        &mut self, res_client: Resource<Client>, topic: Topic, res_msg: Resource<Message>,
+        res_opts: Option<Resource<RequestOptions>>,
+    ) -> Result<Vec<Resource<Message>>> {
+        tracing::trace!("request_reply::Host::request: topic {:?}", topic);
 
-//         // subscribe to channel
-//         let client = self.table.get(&rep)?;
-//         let mut subscriber = client.subscribe(ch).await?;
+        let client = self.table.get(&res_client)?;
+        let msg = self.table.get(&res_msg)?;
 
-//         // create stream that times out after `t_milliseconds`
-//         let stream =
-//             subscriber.by_ref().take_until(sleep(Duration::from_millis(u64::from(t_milliseconds))));
-//         let messages = stream.map(|m| server::msg_conv(&m)).collect().await;
-//         subscriber.unsubscribe().await?;
+        let payload = msg.payload.clone();
+        let headers = msg.headers.clone().unwrap_or_default();
+        let timeout = match res_opts {
+            Some(opts) => {
+                let options = self.table.get(&opts)?;
+                options.timeout
+            }
+            None => None,
+        };
+        let request = async_nats::Request::new().payload(payload).headers(headers).timeout(timeout);
 
-//         Ok(Ok(Some(messages)))
-//     }
+        // Send and get reply.
+        let msg = client
+            .send_request(topic.clone(), request)
+            .await
+            .map_err(|e| anyhow!("failed to send request: {e}"))?;
 
-//     async fn subscribe_receive(
-//         &mut self, rep: Resource<Client>, ch: String,
-//     ) -> Result<Result<Vec<Message>, Resource<Error>>> {
-//         tracing::trace!("consumer::Host::subscribe_receive {ch}");
+        Ok(vec![self.table.push(msg)?])
+    }
 
-//         let client = self.table.get(&rep)?;
-//         let mut subscriber = client.subscribe(ch).await?;
-//         let messages = subscriber.by_ref().take(1).map(|m| server::msg_conv(&m)).collect().await;
-//         subscriber.unsubscribe().await?;
+    /// Replies to the given message with the given response message.
+    async fn reply(
+        &mut self, reply_to: Resource<Message>, response: Resource<Message>,
+    ) -> Result<()> {
+        tracing::trace!("request_reply::Host::reply");
 
-//         Ok(Ok(messages))
-//     }
+        let reply_to_msg = self.table.get(&reply_to)?;
 
-//     // TODO: implement `complete_message` using JetStream
-//     async fn complete_message(&mut self, msg: Message) -> Result<Result<(), Resource<Error>>> {
-//         tracing::warn!("TODO: consumer::Host::complete_message: {:?}", msg.metadata);
-//         Ok(Ok(()))
-//     }
+        if let Some(reply_subject) = &reply_to_msg.reply {
+            let response_msg = self.table.get(&response)?;
+            let client = self.resources.nats()?;
+            client
+                .publish_with_headers(
+                    reply_subject.clone(),
+                    response_msg.headers.clone().unwrap_or_default(),
+                    response_msg.payload.clone(),
+                )
+                .await
+                .map_err(|e| anyhow!("failed to reply: {e}"))?;
+        }
 
-//     // TODO: implement `abandon_message` using JetStream
-//     async fn abandon_message(&mut self, msg: Message) -> Result<Result<(), Resource<Error>>> {
-//         tracing::warn!("TODO: consumer::Host::abandon_message: {:?}", msg.metadata);
-//         Ok(Ok(()))
-//     }
+        todo!()
+    }
+}
 
-//     async fn update_guest_configuration(
-//         &mut self, gc: GuestConfiguration,
-//     ) -> Result<Result<(), Resource<Error>>> {
-//         tracing::trace!("consumer::Host::update_guest_configuration");
-//         server::subscribe(gc.channels, self.resources, self.instance_pre).await?;
-//         Ok(Ok(()))
-//     }
-// }
+impl request_reply::HostRequestOptions for MsgHost<'_> {
+    /// Creates a new request options resource with no options set.
+    async fn new(&mut self) -> anyhow::Result<Resource<RequestOptions>> {
+        tracing::trace!("request_reply::HostRequestOptions::new");
+        let options = RequestOptions::default();
+        Ok(self.table.push(options)?)
+    }
 
-// impl messaging_types::HostError for MsgHost<'_> {
-//     async fn trace(&mut self) -> Result<String> {
-//         tracing::trace!("HostError::trace");
-//         Ok("error".to_string())
-//     }
+    /// The maximum amount of time to wait for a response. If the timeout value
+    /// is not set, then the request/reply operation will block until a message
+    /// is received in response.
+    async fn set_timeout_ms(
+        &mut self, opt_res: Resource<RequestOptions>, timeout_ms: u32,
+    ) -> anyhow::Result<()> {
+        tracing::trace!("request_reply::HostRequestOptions::set_timeout_ms {timeout_ms}");
+        let options = self.table.get_mut(&opt_res)?;
+        options.timeout = Some(Duration::from_millis(u64::from(timeout_ms)));
+        Ok(())
+    }
 
-//     async fn drop(&mut self, rep: Resource<Error>) -> Result<()> {
-//         tracing::trace!("HostError::drop");
-//         self.table.delete(rep)?;
-//         Ok(())
-//     }
-// }
+    /// The maximum number of replies to expect before returning.
+    ///
+    /// For NATS, this is not configurable so this function does nothing.
+    async fn set_expected_replies(
+        &mut self, _opt_res: Resource<RequestOptions>, _expected_replies: u32,
+    ) -> anyhow::Result<()> {
+        Ok(())
+    }
+
+    /// Removes the resource from the resource table.
+    async fn drop(&mut self, opt_res: Resource<RequestOptions>) -> anyhow::Result<()> {
+        tracing::trace!("request_reply::HostRequestOptions::drop");
+        self.table.delete(opt_res).map(|_| Ok(()))?
+    }
+}
 
 impl From<ResourceTableError> for Error {
     fn from(err: ResourceTableError) -> Self {
