@@ -58,6 +58,7 @@ mod messaging_bindings {
             "wasi:messaging/incoming-handler@0.2.0-draft": generate,
             "wasi:messaging/producer@0.2.0-draft": generate,
             "wasi:messaging/types@0.2.0-draft": generate,
+            "wasi:messaging/request-reply@0.2.0-draft": generate,
         },
         pub_export_macro: true
     });
