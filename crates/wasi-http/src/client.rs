@@ -147,17 +147,20 @@ impl RequestBuilder<HasBody, NoJson, NoForm> {
 }
 
 impl<T: Serialize> RequestBuilder<NoBody, HasJson<T>, NoForm> {
-    pub fn send(&self) -> Result<Response> {
+    pub fn send(&mut self) -> Result<Response> {
         let body =
             serde_json::to_vec(&self.json.0).map_err(|e| anyhow!("issue serializing json: {e}"))?;
+        self.headers.push(("Content-type".to_string(), "application/json".to_string()));
         self.send_any(Some(&body))
     }
 }
 
 impl<T: Serialize> RequestBuilder<NoBody, NoJson, HasForm<T>> {
-    pub fn send(&self) -> Result<Response> {
+    pub fn send(&mut self) -> Result<Response> {
         let body = serde_urlencoded::to_string(&self.form.0)
             .map_err(|e| anyhow!("issue serializing form: {e}"))?;
+        self.headers
+            .push(("Content-type".to_string(), "application/x-www-form-urlencoded".to_string()));
         self.send_any(Some(body.as_bytes()))
     }
 }
@@ -210,17 +213,35 @@ impl<B, J, F> RequestBuilder<B, J, F> {
             .set_path_with_query(Some(&path_and_query))
             .map_err(|()| anyhow!("Failed to set path_with_query"))?;
 
-        // body
-        if let Some(body) = body {
-            let out_body = request.body().map_err(|_| anyhow!("issue getting outgoing body"))?;
-            let stream = out_body.write().map_err(|_| anyhow!("issue getting stream"))?;
-            stream
-                .blocking_write_and_flush(body)
-                .map_err(|e| anyhow!("issue writing body: {e}"))?;
-            drop(stream);
-            OutgoingBody::finish(out_body, None)
-                .map_err(|e| anyhow!("issue finishing body: {e}"))?;
+        let out_body = request.body().map_err(|_| anyhow!("issue getting outgoing body"))?;
+        if let Some(mut buf) = body {
+            let out_stream =
+                out_body.write().map_err(|_| anyhow!("issue getting output stream"))?;
+
+            let pollable = out_stream.subscribe();
+            while !buf.is_empty() {
+                pollable.block();
+                let Ok(permit) = out_stream.check_write() else {
+                    return Err(anyhow!("output stream is not writable"));
+                };
+                let len = buf.len().min(permit as usize);
+                let (chunk, rest) = buf.split_at(len);
+                if out_stream.write(chunk).is_err() {
+                    return Err(anyhow!("issue writing to output stream"));
+                }
+                buf = rest;
+            }
+
+            if out_stream.flush().is_err() {
+                return Err(anyhow!("issue flushing output stream"));
+            }
+
+            pollable.block();
+            if out_stream.check_write().is_err() {
+                return Err(anyhow!("output stream error"));
+            }
         }
+        OutgoingBody::finish(out_body, None)?;
 
         Ok(request)
     }
