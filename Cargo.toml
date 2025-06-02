@@ -22,10 +22,9 @@ compile = ["runtime/compile"] # adds cranelift (+ ~4Mb)
 
 [dependencies]
 anyhow.workspace = true
-cfg-if.workspace = true
 dotenv = "0.15.0"
 runtime.workspace = true
-services = { path = "crates/services", features = ["http", "jsondb-mongodb", "kv-nats", "msg-nats", "rpc-nats", "keyvault-azure"] }
+services = { path = "crates/services", features = ["http", "jsondb-mongodb", "keyvault-azure", "kv-nats", "msg-nats", "rpc-nats"] }
 tokio.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true

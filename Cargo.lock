@@ -3231,7 +3231,6 @@ dependencies = [
  "async-nats",
  "async-trait",
  "azure_core",
- "azure_identity",
  "azure_security_keyvault_keys",
  "base64ct",
  "bytes",
@@ -3242,7 +3241,6 @@ dependencies = [
  "jmespath",
  "k256",
  "mongodb",
- "nkeys",
  "openssl",
  "resources",
  "runtime",
@@ -4188,7 +4186,6 @@ name = "wasmgrid"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "cfg-if",
  "dotenv",
  "runtime",
  "services",
