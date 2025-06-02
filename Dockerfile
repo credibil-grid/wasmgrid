@@ -1,7 +1,7 @@
 # See https://shaneutt.com/blog/rust-fast-small-docker-image-builds
 # https://docs.rs/openssl/latest/openssl
 
-FROM rust:alpine3.21 AS builder
+FROM rust:alpine3.22 AS builder
 ARG TARGETARCH TARGETARCH=${TARGETARCH/amd64/x86_64} TARGETARCH=${TARGETARCH/arm64/aarch64}
 
 RUN apk --update add musl-dev ca-certificates pkgconf openssl-dev perl make

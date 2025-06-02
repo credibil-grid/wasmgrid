@@ -4,7 +4,9 @@ use http::header::{AUTHORIZATION, CONTENT_TYPE};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use wasi::http::outgoing_handler;
-use wasi::http::types::{Headers, Method, OutgoingBody, OutgoingRequest, Scheme};
+use wasi::http::types::{
+    FutureIncomingResponse, Headers, Method, OutgoingBody, OutgoingRequest, Scheme,
+};
 
 pub struct Client {}
 
@@ -134,13 +136,13 @@ impl<B, J, F> RequestBuilder<B, J, F> {
 
 impl RequestBuilder<NoBody, NoJson, NoForm> {
     pub fn send(&self) -> Result<Response> {
-        self.inner_send(None)
+        self.send_any(None)
     }
 }
 
 impl RequestBuilder<HasBody, NoJson, NoForm> {
     pub fn send(&self) -> Result<Response> {
-        self.inner_send(Some(&self.body.0))
+        self.send_any(Some(&self.body.0))
     }
 }
 
@@ -148,7 +150,7 @@ impl<T: Serialize> RequestBuilder<NoBody, HasJson<T>, NoForm> {
     pub fn send(&self) -> Result<Response> {
         let body =
             serde_json::to_vec(&self.json.0).map_err(|e| anyhow!("issue serializing json: {e}"))?;
-        self.inner_send(Some(&body))
+        self.send_any(Some(&body))
     }
 }
 
@@ -156,15 +158,19 @@ impl<T: Serialize> RequestBuilder<NoBody, NoJson, HasForm<T>> {
     pub fn send(&self) -> Result<Response> {
         let body = serde_urlencoded::to_string(&self.form.0)
             .map_err(|e| anyhow!("issue serializing form: {e}"))?;
-        self.inner_send(Some(body.as_bytes()))
+        self.send_any(Some(body.as_bytes()))
     }
 }
 
 impl<B, J, F> RequestBuilder<B, J, F> {
-    pub fn inner_send(&self, body: Option<&[u8]>) -> Result<Response> {
-        // --------------------------------------------------------------------
-        // Create request
-        // --------------------------------------------------------------------
+    pub fn send_any(&self, body: Option<&[u8]>) -> Result<Response> {
+        let request = self.prepare_request(body)?;
+        let fut_resp = outgoing_handler::handle(request, None)
+            .map_err(|e| anyhow!("issue making request: {e}"))?;
+        Self::process_response(fut_resp)
+    }
+
+    fn prepare_request(&self, body: Option<&[u8]>) -> Result<OutgoingRequest> {
         let headers = Headers::new();
         for (key, value) in self.headers.iter() {
             headers
@@ -185,7 +191,15 @@ impl<B, J, F> RequestBuilder<B, J, F> {
             _ => return Err(anyhow!("unsupported scheme: {}", scheme.as_str())),
         };
         request.set_scheme(Some(&scheme)).map_err(|()| anyhow!("issue setting scheme"))?;
-        request.set_authority(url.host()).map_err(|()| anyhow!("issue setting authority"))?;
+        request
+            .set_authority(url.authority().map(|a| a.as_str()))
+            .map_err(|()| anyhow!("issue setting authority"))?;
+
+        // // build authority from host and port
+        // let host = url.host().unwrap_or_default();
+        // let authority =
+        //     if let Some(port) = url.port() { format!("{host}:{port}") } else { host.to_string() };
+        // request.set_authority(Some(&authority)).map_err(|()| anyhow!("issue setting authority"))?;
 
         // path + query
         let mut path_and_query = url.path().to_string();
@@ -208,13 +222,10 @@ impl<B, J, F> RequestBuilder<B, J, F> {
                 .map_err(|e| anyhow!("issue finishing body: {e}"))?;
         }
 
-        // send
-        let fut_resp = outgoing_handler::handle(request, None)
-            .map_err(|e| anyhow!("issue making request: {e}"))?;
+        Ok(request)
+    }
 
-        // --------------------------------------------------------------------
-        // Process response
-        // --------------------------------------------------------------------
+    fn process_response(fut_resp: FutureIncomingResponse) -> Result<Response> {
         fut_resp.subscribe().block();
         let Some(result) = fut_resp.get() else {
             return Err(anyhow!("missing response"));
@@ -241,7 +252,7 @@ impl<B, J, F> RequestBuilder<B, J, F> {
         drop(stream);
         drop(response);
 
-        return Ok(resp);
+        Ok(resp)
     }
 }
 
