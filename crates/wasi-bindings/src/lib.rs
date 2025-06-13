@@ -93,17 +93,17 @@ pub mod vault {
 }
 
 /// Bindings for storage of blocks.
-mod block_bindings {
+mod datastore_bindings {
     wit_bindgen::generate!({
         path: "../../wit",
-        world: "blockstore",
+        world: "datastore",
         with: {
-            "wasi:blockstore/types@0.1.0": generate,
-            "wasi:blockstore/store@0.1.0": generate,
+            "wasi:datastore/types@0.1.0": generate,
+            "wasi:datastore/store@0.1.0": generate,
         }
     });
 }
 
-pub mod blockstore {
-    pub use crate::block_bindings::wasi::blockstore::*;
+pub mod datastore {
+    pub use crate::datastore_bindings::wasi::datastore::*;
 }

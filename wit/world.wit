@@ -18,6 +18,6 @@ world vault {
 	include wasi:vault/imports@0.1.0-draft;
 }
 
-world blockstore {
-	include wasi:blockstore/imports@0.1.0;
+world datastore {
+	include wasi:datastore/imports@0.1.0;
 }
