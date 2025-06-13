@@ -18,15 +18,6 @@ world vault {
 	include wasi:vault/imports@0.1.0-draft;
 }
 
-// world p2p {
-// 	include wasi:p2p/imports@0.1.0-draft;
-// }
-
-world rpc {
-	include wasi:rpc/imports@0.1.0-draft;
-	export wasi:rpc/server@0.1.0-draft;
-}
-
 world blockstore {
 	include wasi:blockstore/imports@0.1.0;
 }

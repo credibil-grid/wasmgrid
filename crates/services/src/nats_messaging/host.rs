@@ -6,10 +6,10 @@ use wasmtime::component::{Linker, Resource};
 use wasmtime_wasi::{ResourceTable, ResourceTableError};
 
 use super::generated::wasi::messaging::request_reply::RequestOptions;
-use crate::msg_nats::generated::wasi::messaging::types::{
+use crate::nats_messaging::generated::wasi::messaging::types::{
     Error, HostMessage, Message, Metadata, Topic,
 };
-use crate::msg_nats::generated::wasi::messaging::{producer, request_reply, types};
+use crate::nats_messaging::generated::wasi::messaging::{producer, request_reply, types};
 use crate::{Ctx, Resources};
 
 pub type Result<T, E = Error> = anyhow::Result<T, E>;

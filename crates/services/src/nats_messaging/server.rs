@@ -3,8 +3,8 @@ use futures::stream::{self, StreamExt};
 use wasmtime::Store;
 use wasmtime::component::InstancePre;
 
-use crate::msg_nats::generated::MessagingPre;
-use crate::msg_nats::generated::exports::wasi::messaging::incoming_handler::Error;
+use crate::nats_messaging::generated::MessagingPre;
+use crate::nats_messaging::generated::exports::wasi::messaging::incoming_handler::Error;
 use crate::{Ctx, Resources};
 
 pub type Result<T, E = Error> = anyhow::Result<T, E>;
@@ -22,7 +22,7 @@ pub async fn run(pre: InstancePre<Ctx>, resources: Resources) -> anyhow::Result<
     let mut store = Store::new(pre.engine(), Ctx::new(resources.clone(), pre.clone()));
     let msg_pre = MessagingPre::new(pre.clone())?;
     let msg = msg_pre.instantiate_async(&mut store).await?;
-    let config = msg.wasi_messaging_incoming_handler().call_configure(&mut store).await??; 
+    let config = msg.wasi_messaging_incoming_handler().call_configure(&mut store).await??;
 
     // process requests
     subscribe(config.topics, &resources, msg_pre).await
@@ -64,9 +64,7 @@ pub async fn subscribe(
 }
 
 // Forward message to the wasm component.
-async fn call_guest(
-    pre: MessagingPre<Ctx>, resources: Resources, message: Message,
-) -> Result<()> {
+async fn call_guest(pre: MessagingPre<Ctx>, resources: Resources, message: Message) -> Result<()> {
     let mut ctx = Ctx::new(resources, pre.instance_pre().clone());
     let res_msg = ctx.table.push(message)?;
     let mut store = Store::new(pre.engine(), ctx);

@@ -2783,31 +2783,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rpc-client"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "serde",
- "serde_json",
- "tracing",
- "tracing-subscriber",
- "wasi 0.14.2+wasi-0.2.4",
- "wasi-bindings",
- "wasi-http",
-]
-
-[[package]]
-name = "rpc-server"
-version = "0.0.0"
-dependencies = [
- "serde",
- "serde_json",
- "tracing",
- "tracing-subscriber",
- "wasi-bindings",
-]
-
-[[package]]
 name = "runtime"
 version = "0.1.0"
 dependencies = [

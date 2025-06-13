@@ -1,5 +1,3 @@
-#![allow(clippy::missing_safety_doc)]
-
 //! # WASI Bindings
 //!
 //! This module generates and exports WASI Guest bindings for local wit worlds.
@@ -73,49 +71,6 @@ pub mod messaging {
     pub mod exports {
         pub use crate::messaging_bindings::exports::wasi;
         pub use crate::messaging_bindings::exports::wasi::messaging::*;
-    }
-}
-
-// /// Bindings for the `wasi:p2p` world.
-// mod p2p_bindings {
-//     wit_bindgen::generate!({
-//         path: "../../wit",
-//         world: "p2p",
-//         with: {
-//             "wasi:p2p/types@0.1.0-draft": generate,
-//             "wasi:p2p/container@0.1.0-draft": generate,
-//         },
-//         additional_derives: [
-//             serde::Serialize,
-//             serde::Deserialize,
-//         ]
-//     });
-// }
-
-// pub mod p2p {
-//     pub use crate::p2p_bindings::wasi::p2p::*;
-// }
-
-/// Bindings for the `wasi:wrpc` world.
-mod rpc_bindings {
-    wit_bindgen::generate!({
-        path: "../../wit",
-        world: "rpc",
-        with: {
-            "wasi:rpc/types@0.1.0-draft": generate,
-            "wasi:rpc/client@0.1.0-draft": generate,
-            "wasi:rpc/server@0.1.0-draft": generate,
-        },
-        pub_export_macro: true,
-    });
-}
-
-pub mod rpc {
-    pub use crate::rpc_bindings::export;
-    pub use crate::rpc_bindings::wasi::rpc::*;
-    pub mod exports {
-        pub use crate::rpc_bindings::exports::wasi;
-        pub use crate::rpc_bindings::exports::wasi::rpc::server::*;
     }
 }
 

@@ -1,17 +1,15 @@
 //! # WebAssembly Runtime
 
+#[cfg(feature = "az-vault")]
+pub mod az_vault;
 #[cfg(feature = "http")]
 pub mod http;
-#[cfg(feature = "jsondb-mongodb")]
-pub mod jsondb_mongodb;
-#[cfg(feature = "kv-nats")]
-pub mod kv_nats;
-#[cfg(feature = "msg-nats")]
-pub mod msg_nats;
-#[cfg(feature = "rpc-nats")]
-pub mod rpc_nats;
-#[cfg(feature = "keyvault-azure")]
-pub mod keyvault_azure;
+#[cfg(feature = "mgo-jsondb")]
+pub mod mgo_jsondb;
+#[cfg(feature = "nats-keyvalue")]
+pub mod nats_keyvalue;
+#[cfg(feature = "nats-messaging")]
+pub mod nats_messaging;
 
 pub use resources::Resources;
 use runtime::{Errout, Stdout};

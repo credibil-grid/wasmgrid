@@ -24,7 +24,7 @@ compile = ["runtime/compile"] # adds cranelift (+ ~4Mb)
 anyhow.workspace = true
 dotenv = "0.15.0"
 runtime.workspace = true
-services = { path = "crates/services", features = ["http", "jsondb-mongodb", "keyvault-azure", "kv-nats", "msg-nats", "rpc-nats"] }
+services = { path = "crates/services", features = ["az-vault", "http", "mgo-jsondb", "nats-keyvalue", "nats-messaging"] }
 tokio.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
@@ -44,9 +44,6 @@ members = [
   "examples/jsondb",
   "examples/keyvalue",
   "examples/messaging",
-  # "examples/p2p",
-  "examples/rpc/client",
-  "examples/rpc/server",
   "examples/vault",
 ]
 resolver = "3"

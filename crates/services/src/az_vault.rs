@@ -90,14 +90,6 @@ impl vault::keystore::Host for VaultHost<'_> {
     }
 
     fn convert_error(&mut self, error: Error) -> anyhow::Result<Error> {
-        // // log the trapped error
-        // let e = match &error {
-        //     Error::NoSuchKeySet => "no_such_key_set",
-        //     Error::NoSuchKeyPair => "no_such_key_pair",
-        //     Error::AccessDenied => "access_denied",
-        //     Error::Other(desc) => desc,
-        // };
-        // tracing::error!("{e}");
         Ok(error)
     }
 }

@@ -12,13 +12,12 @@ version = "0.1.0"
 workspace = true
 
 [features]
-default = ["http", "keyvault-azure"]
+default = ["http", "az-vault"]
 http = ["dep:wasmtime-wasi-http"]
-jsondb-mongodb = ["dep:jmespath", "dep:mongodb", "resources/mongodb"]
-kv-nats = ["dep:async-nats", "resources/nats"]
-msg-nats = ["dep:async-nats", "resources/nats"]
-rpc-nats = ["dep:async-nats"]
-keyvault-azure = ["dep:azure_core", "dep:azure_security_keyvault_keys", "dep:openssl", "resources/azkeyvault"]
+mgo-jsondb = ["dep:jmespath", "dep:mongodb", "resources/mongodb"]
+nats-keyvalue = ["dep:async-nats", "resources/nats"]
+nats-messaging = ["dep:async-nats", "resources/nats"]
+az-vault = ["dep:azure_core", "dep:azure_security_keyvault_keys", "dep:openssl", "resources/azkeyvault"]
 
 [dependencies]
 anyhow.workspace = true
