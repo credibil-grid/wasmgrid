@@ -6,10 +6,10 @@ use wasmtime::component::{Linker, Resource};
 use wasmtime_wasi::{ResourceTable, ResourceTableError};
 
 use super::generated::wasi::messaging::request_reply::RequestOptions;
-use crate::nats_messaging::generated::wasi::messaging::types::{
+use crate::messaging::generated::wasi::messaging::types::{
     Error, HostMessage, Message, Metadata, Topic,
 };
-use crate::nats_messaging::generated::wasi::messaging::{producer, request_reply, types};
+use crate::messaging::generated::wasi::messaging::{producer, request_reply, types};
 use crate::{Ctx, Resources};
 
 pub type Result<T, E = Error> = anyhow::Result<T, E>;
@@ -58,18 +58,18 @@ impl HostMessage for MsgHost<'_> {
     }
 
     /// The topic/subject/channel this message was received on, if any.
-    async fn topic(&mut self, res_msg: Resource<Message>) -> anyhow::Result<Option<Topic>> {
+    async fn topic(&mut self, this: Resource<Message>) -> anyhow::Result<Option<Topic>> {
         tracing::trace!("HostMessage::topic");
-        let msg = self.table.get(&res_msg)?;
+        let msg = self.table.get(&this)?;
         let topic = msg.subject.to_string();
         if topic.is_empty() { Ok(None) } else { Ok(Some(topic)) }
     }
 
     /// An optional content-type describing the format of the data in the
     /// message. This is sometimes described as the "format" type".
-    async fn content_type(&mut self, res_msg: Resource<Message>) -> anyhow::Result<Option<String>> {
+    async fn content_type(&mut self, this: Resource<Message>) -> anyhow::Result<Option<String>> {
         tracing::trace!("HostMessage::content_type");
-        let msg = self.table.get(&res_msg)?;
+        let msg = self.table.get(&this)?;
         let content_type = msg.headers.as_ref().and_then(|h| h.get("content-type"));
         content_type.map_or_else(
             || {
@@ -83,10 +83,10 @@ impl HostMessage for MsgHost<'_> {
     /// Set the content-type describing the format of the data in the message.
     /// This is sometimes described as the "format" type.
     async fn set_content_type(
-        &mut self, res_msg: Resource<Message>, content_type: String,
+        &mut self, this: Resource<Message>, content_type: String,
     ) -> anyhow::Result<()> {
         tracing::trace!("HostMessage::set_content_type {content_type}");
-        let msg = self.table.get_mut(&res_msg)?;
+        let msg = self.table.get_mut(&this)?;
         let mut headers = msg.headers.take().unwrap_or_default();
         headers.insert("content-type".to_string(), content_type);
         msg.headers = Some(headers);
@@ -94,16 +94,16 @@ impl HostMessage for MsgHost<'_> {
     }
 
     /// An opaque blob of data.
-    async fn data(&mut self, res_msg: Resource<Message>) -> anyhow::Result<Vec<u8>> {
+    async fn data(&mut self, this: Resource<Message>) -> anyhow::Result<Vec<u8>> {
         tracing::trace!("HostMessage::data");
-        let msg = self.table.get(&res_msg)?;
+        let msg = self.table.get(&this)?;
         Ok(msg.payload.clone().into())
     }
 
     /// Set the opaque blob of data for this message, discarding the old value".
-    async fn set_data(&mut self, res_msg: Resource<Message>, data: Vec<u8>) -> anyhow::Result<()> {
+    async fn set_data(&mut self, this: Resource<Message>, data: Vec<u8>) -> anyhow::Result<()> {
         tracing::trace!("HostMessage::set_data");
-        let msg = self.table.get_mut(&res_msg)?;
+        let msg = self.table.get_mut(&this)?;
         msg.payload = data.clone().into();
         msg.length = data.len();
         Ok(())
@@ -118,9 +118,9 @@ impl HostMessage for MsgHost<'_> {
     /// function will return those values concatenated into a single string
     /// with a comma separating each value.
     /// TODO: Test this assumption with real world scenarios.
-    async fn metadata(&mut self, res_msg: Resource<Message>) -> anyhow::Result<Option<Metadata>> {
+    async fn metadata(&mut self, this: Resource<Message>) -> anyhow::Result<Option<Metadata>> {
         tracing::trace!("HostMessage::metadata");
-        let msg = self.table.get(&res_msg)?;
+        let msg = self.table.get(&this)?;
 
         let metadata = msg.headers.as_ref().map(|h| {
             h.iter()
@@ -147,10 +147,10 @@ impl HostMessage for MsgHost<'_> {
     /// each value as a separate entry in the vector.
     /// TODO: Test this assumption with real world scenarios.
     async fn add_metadata(
-        &mut self, res_msg: Resource<Message>, key: String, value: String,
+        &mut self, this: Resource<Message>, key: String, value: String,
     ) -> anyhow::Result<()> {
         tracing::trace!("HostMessage::add_metadata {key}={value}");
-        let msg = self.table.get_mut(&res_msg)?;
+        let msg = self.table.get_mut(&this)?;
         let mut headers = msg.headers.take().unwrap_or_default();
         let values =
             value.split(',').map(std::string::ToString::to_string).collect::<Vec<String>>();
@@ -169,10 +169,10 @@ impl HostMessage for MsgHost<'_> {
     /// each value as a separate entry in the vector.
     /// TODO: Test this assumption with real world scenarios.
     async fn set_metadata(
-        &mut self, res_msg: Resource<Message>, meta: Metadata,
+        &mut self, this: Resource<Message>, meta: Metadata,
     ) -> anyhow::Result<()> {
         tracing::trace!("HostMessage::set_metadata");
-        let msg = self.table.get_mut(&res_msg)?;
+        let msg = self.table.get_mut(&this)?;
         let mut headers = HeaderMap::new();
         for (k, v) in &meta {
             let values =
@@ -211,9 +211,9 @@ impl HostMessage for MsgHost<'_> {
     }
 
     /// Remove a message from the resource table.
-    async fn drop(&mut self, res_msg: Resource<Message>) -> anyhow::Result<()> {
+    async fn drop(&mut self, this: Resource<Message>) -> anyhow::Result<()> {
         tracing::trace!("HostMessage::drop");
-        self.table.delete(res_msg)?;
+        self.table.delete(this)?;
         Ok(())
     }
 }
@@ -232,9 +232,9 @@ impl types::HostClient for MsgHost<'_> {
         Ok(())
     }
 
-    async fn drop(&mut self, rep: Resource<Client>) -> anyhow::Result<()> {
+    async fn drop(&mut self, this: Resource<Client>) -> anyhow::Result<()> {
         tracing::trace!("HostClient::drop");
-        self.table.delete(rep)?;
+        self.table.delete(this)?;
         Ok(())
     }
 }
@@ -243,12 +243,12 @@ impl types::HostClient for MsgHost<'_> {
 impl producer::Host for MsgHost<'_> {
     /// Sends the message using the given client.
     async fn send(
-        &mut self, res_client: Resource<Client>, topic: Topic, res_msg: Resource<Message>,
+        &mut self, res_client: Resource<Client>, topic: Topic, this: Resource<Message>,
     ) -> Result<()> {
         tracing::trace!("producer::Host::send: topic {:?}", topic);
 
         let client = self.table.get(&res_client)?;
-        let msg = self.table.get(&res_msg)?;
+        let msg = self.table.get(&this)?;
         let Some(headers) = msg.headers.clone() else {
             client
                 .publish(topic.clone(), msg.payload.clone())
@@ -269,13 +269,13 @@ impl request_reply::Host for MsgHost<'_> {
     /// Performs a request-reply operation using the given client and options
     /// (if any).
     async fn request(
-        &mut self, res_client: Resource<Client>, topic: Topic, res_msg: Resource<Message>,
+        &mut self, res_client: Resource<Client>, topic: Topic, this: Resource<Message>,
         res_opts: Option<Resource<RequestOptions>>,
     ) -> Result<Vec<Resource<Message>>> {
         tracing::trace!("request_reply::Host::request: topic {:?}", topic);
 
         let client = self.table.get(&res_client)?;
-        let msg = self.table.get(&res_msg)?;
+        let msg = self.table.get(&this)?;
 
         let payload = msg.payload.clone();
         let headers = msg.headers.clone().unwrap_or_default();

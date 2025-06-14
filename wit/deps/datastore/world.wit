@@ -1,9 +1,0 @@
-package wasi:datastore@0.1.0;
-
-world imports {
-    import store;
-}
-
-world datastore {
-    include imports;
-}

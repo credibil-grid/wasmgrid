@@ -6,26 +6,14 @@
 //!
 //! [wasi]: https://github.com/bytecodealliance/wasi
 
-mod jsondb_bindings {
-    wit_bindgen::generate!({
-        path: "../../wit",
-        world: "jsondb",
-        with: {
-            "wasi:jsondb/readwrite@0.1.0-draft": generate,
-            "wasi:jsondb/types@0.1.0-draft": generate
-        }
-    });
-}
+/// Bindings for the `wasi:keyvalue` world.
+/// See (<https://github.com/WebAssembly/wasi-keyvalue/>)
+pub mod keyvalue {
+    pub use self::wasi::keyvalue::*;
 
-/// Bindings for the `wasi:vault` world.
-pub mod jsondb {
-    pub use crate::jsondb_bindings::wasi::jsondb::*;
-}
-
-mod keyvalue_bindings {
     wit_bindgen::generate!({
-        path: "../../wit",
         world: "keyvalue",
+        path: "../../wit",
         with: {
             "wasi:keyvalue/store@0.2.0-draft2": generate,
             "wasi:keyvalue/atomics@0.2.0-draft2": generate,
@@ -36,22 +24,15 @@ mod keyvalue_bindings {
     });
 }
 
-/// Bindings for the `wasi:keyvalue` world.
-/// See (<https://github.com/WebAssembly/wasi-keyvalue/>)
-pub mod keyvalue {
-    pub use crate::keyvalue_bindings::export;
-    pub use crate::keyvalue_bindings::wasi::keyvalue::*;
+/// Bindings for the `wasi:messaging` world.
+/// See (<https://github.com/WebAssembly/wasi-messaging/>)
+pub mod messaging {
+    pub use self::exports::wasi::messaging::*;
+    pub use self::wasi::messaging::*;
 
-    pub mod exports {
-        pub use crate::keyvalue_bindings::exports::wasi;
-        pub use crate::keyvalue_bindings::exports::wasi::keyvalue::*;
-    }
-}
-
-mod messaging_bindings {
     wit_bindgen::generate!({
-        path: "../../wit",
         world: "messaging",
+        path: "../../wit",
         with: {
             "wasi:messaging/incoming-handler@0.2.0-draft": generate,
             "wasi:messaging/producer@0.2.0-draft": generate,
@@ -60,50 +41,4 @@ mod messaging_bindings {
         },
         pub_export_macro: true
     });
-}
-
-/// Bindings for the `wasi:messaging` world.
-/// See (<https://github.com/WebAssembly/wasi-messaging/>)
-pub mod messaging {
-    pub use crate::messaging_bindings::export;
-    pub use crate::messaging_bindings::wasi::messaging::*;
-
-    pub mod exports {
-        pub use crate::messaging_bindings::exports::wasi;
-        pub use crate::messaging_bindings::exports::wasi::messaging::*;
-    }
-}
-
-mod vault_bindings {
-    wit_bindgen::generate!({
-        path: "../../wit",
-        world: "vault",
-        with: {
-            "wasi:vault/keystore@0.1.0-draft": generate,
-        },
-        additional_derives: [
-            Clone,
-        ],
-    });
-}
-
-/// Bindings for the `wasi:vault` world.
-pub mod vault {
-    pub use crate::vault_bindings::wasi::vault::*;
-}
-
-/// Bindings for storage of blocks.
-mod datastore_bindings {
-    wit_bindgen::generate!({
-        path: "../../wit",
-        world: "datastore",
-        with: {
-            "wasi:datastore/types@0.1.0": generate,
-            "wasi:datastore/store@0.1.0": generate,
-        }
-    });
-}
-
-pub mod datastore {
-    pub use crate::datastore_bindings::wasi::datastore::*;
 }

@@ -6,8 +6,6 @@
 /// Wrap generation of wit bindings to simplify exports.
 /// See <https://docs.rs/wasmtime/latest/wasmtime/component/macro.bindgen.html>
 mod generated {
-    #![allow(clippy::trait_duplication_in_bounds)]
-
     pub use async_nats::jetstream::kv::Store;
 
     pub use self::wasi::keyvalue::store::Error;
@@ -33,15 +31,15 @@ use std::time::Duration;
 
 use anyhow::anyhow;
 use async_nats::jetstream;
-use async_nats::jetstream::kv::{self, Store};
+use async_nats::jetstream::kv::{Config, Store};
 use futures::TryStreamExt;
 use generated::wasi::keyvalue::atomics::CasError;
 use runtime::Linkable;
 use wasmtime::component::{Linker, Resource, ResourceTableError};
 use wasmtime_wasi::ResourceTable;
 
-use self::generated::wasi::keyvalue;
 use self::generated::wasi::keyvalue::store::{Error, KeyResponse};
+use self::generated::wasi::keyvalue::{atomics, batch, store};
 use crate::{Ctx, Resources};
 
 pub type Result<T, E = Error> = anyhow::Result<T, E>;
@@ -60,6 +58,15 @@ impl KeyvalueHost<'_> {
     }
 }
 
+/// Compare and Swap (CAS) handle.
+pub struct Cas {
+    /// Key of the stored value.
+    pub key: String,
+
+    /// Current value.
+    pub current: Option<Vec<u8>>,
+}
+
 pub struct Service;
 
 impl Linkable for Service {
@@ -69,16 +76,16 @@ impl Linkable for Service {
     // instantiate the `KeyvalueHost` for the component.
     fn add_to_linker(&self, linker: &mut Linker<Self::Ctx>) -> anyhow::Result<()> {
         // add_to_linker(linker, link)?;
-        keyvalue::store::add_to_linker_get_host(linker, KeyvalueHost::new)?;
-        keyvalue::atomics::add_to_linker_get_host(linker, KeyvalueHost::new)?;
-        keyvalue::batch::add_to_linker_get_host(linker, KeyvalueHost::new)?;
+        store::add_to_linker_get_host(linker, KeyvalueHost::new)?;
+        atomics::add_to_linker_get_host(linker, KeyvalueHost::new)?;
+        batch::add_to_linker_get_host(linker, KeyvalueHost::new)?;
         tracing::trace!("added to linker");
         Ok(())
     }
 }
 
 // Implement the [`wasi_keyvalue::KeyValueView`]` trait for  KeyvalueHost<'_>.
-impl keyvalue::store::Host for KeyvalueHost<'_> {
+impl store::Host for KeyvalueHost<'_> {
     // Open bucket specified by identifier, save to state and return as a resource.
     async fn open(&mut self, identifier: String) -> Result<Resource<Store>> {
         tracing::trace!("store::Host::open {identifier}");
@@ -88,12 +95,12 @@ impl keyvalue::store::Host for KeyvalueHost<'_> {
             bucket
         } else {
             let result = jetstream
-                .create_key_value(kv::Config {
+                .create_key_value(Config {
                     bucket: identifier.clone(),
                     history: 1,
                     max_age: Duration::from_secs(10 * 60),
                     max_bytes: 100 * 1024 * 1024, // 100 MiB
-                    ..kv::Config::default()
+                    ..Config::default()
                 })
                 .await;
 
@@ -107,15 +114,16 @@ impl keyvalue::store::Host for KeyvalueHost<'_> {
     }
 
     fn convert_error(&mut self, err: Error) -> anyhow::Result<Error> {
+        tracing::error!("{err}");
         Ok(err)
     }
 }
 
-impl keyvalue::store::HostBucket for KeyvalueHost<'_> {
-    async fn get(&mut self, rep: Resource<Store>, key: String) -> Result<Option<Vec<u8>>> {
+impl store::HostBucket for KeyvalueHost<'_> {
+    async fn get(&mut self, store_ref: Resource<Store>, key: String) -> Result<Option<Vec<u8>>> {
         tracing::trace!("store::HostBucket::get {key}");
 
-        let Ok(bucket) = self.table.get_mut(&rep) else {
+        let Ok(bucket) = self.table.get(&store_ref) else {
             return Err(Error::NoSuchStore);
         };
         let value = bucket.get(key).await.map_err(|e| anyhow!("issue getting key: {e}"))?;
@@ -123,29 +131,29 @@ impl keyvalue::store::HostBucket for KeyvalueHost<'_> {
     }
 
     async fn set(
-        &mut self, rep: Resource<Store>, key: String, value: Vec<u8>,
+        &mut self, store_ref: Resource<Store>, key: String, value: Vec<u8>,
     ) -> Result<(), Error> {
         tracing::trace!("store::HostBucket::set {key}");
 
-        let Ok(bucket) = self.table.get_mut(&rep) else {
+        let Ok(bucket) = self.table.get_mut(&store_ref) else {
             return Err(Error::NoSuchStore);
         };
         bucket.put(key, value.into()).await.map_or_else(|e| Err(anyhow!(e).into()), |_| Ok(()))
     }
 
-    async fn delete(&mut self, rep: Resource<Store>, key: String) -> Result<()> {
+    async fn delete(&mut self, store_ref: Resource<Store>, key: String) -> Result<()> {
         tracing::trace!("store::HostBucket::delete {key}");
 
-        let Ok(bucket) = self.table.get_mut(&rep) else {
+        let Ok(bucket) = self.table.get_mut(&store_ref) else {
             return Err(Error::NoSuchStore);
         };
         bucket.delete(key).await.map_err(|e| anyhow!("issue deleting value: {e}").into())
     }
 
-    async fn exists(&mut self, rep: Resource<Store>, key: String) -> Result<bool> {
+    async fn exists(&mut self, store_ref: Resource<Store>, key: String) -> Result<bool> {
         tracing::trace!("store::HostBucket::exists {key}");
 
-        let Ok(bucket) = self.table.get_mut(&rep) else {
+        let Ok(bucket) = self.table.get(&store_ref) else {
             return Err(Error::NoSuchStore);
         };
         let value = bucket.get(&key).await.map_err(|e| {
@@ -157,11 +165,11 @@ impl keyvalue::store::HostBucket for KeyvalueHost<'_> {
     }
 
     async fn list_keys(
-        &mut self, rep: Resource<Store>, cursor: Option<String>,
+        &mut self, store_ref: Resource<Store>, cursor: Option<String>,
     ) -> Result<KeyResponse> {
         tracing::trace!("store::HostBucket::list_keys {cursor:?}");
 
-        let Ok(bucket) = self.table.get_mut(&rep) else {
+        let Ok(bucket) = self.table.get(&store_ref) else {
             return Err(Error::NoSuchStore);
         };
         let Ok(key_stream) = bucket.keys().await else {
@@ -173,28 +181,19 @@ impl keyvalue::store::HostBucket for KeyvalueHost<'_> {
         Ok(KeyResponse { keys, cursor })
     }
 
-    async fn drop(&mut self, rep: Resource<Store>) -> anyhow::Result<()> {
+    async fn drop(&mut self, store_ref: Resource<Store>) -> anyhow::Result<()> {
         tracing::trace!("store::HostBucket::drop");
-        self.table.delete(rep).map(|_| Ok(()))?
+        self.table.delete(store_ref).map(|_| Ok(()))?
     }
 }
 
-/// Compare and Swap (CAS) handle.
-pub struct Cas {
-    /// Key of the stored value.
-    pub key: String,
-
-    /// Current value.
-    pub current: Option<Vec<u8>>,
-}
-
-impl keyvalue::atomics::HostCas for KeyvalueHost<'_> {
+impl atomics::HostCas for KeyvalueHost<'_> {
     /// Construct a new CAS operation. Implementors can map the underlying functionality
     /// (transactions, versions, etc) as desired.
-    async fn new(&mut self, bucket_res: Resource<Store>, key: String) -> Result<Resource<Cas>> {
+    async fn new(&mut self, store_ref: Resource<Store>, key: String) -> Result<Resource<Cas>> {
         tracing::trace!("atomics::HostCas::new {key}");
 
-        let Ok(bucket) = self.table.get_mut(&bucket_res) else {
+        let Ok(bucket) = self.table.get(&store_ref) else {
             return Err(Error::NoSuchStore);
         };
         let value = bucket.get(key.clone()).await.map_err(|e| anyhow!("issue getting key: {e}"))?;
@@ -207,10 +206,10 @@ impl keyvalue::atomics::HostCas for KeyvalueHost<'_> {
     }
 
     /// Get the current value of the CAS handle.
-    async fn current(&mut self, cas_res: Resource<Cas>) -> Result<Option<Vec<u8>>> {
+    async fn current(&mut self, cas_ref: Resource<Cas>) -> Result<Option<Vec<u8>>> {
         tracing::trace!("atomics::HostCas::current");
 
-        let Ok(cas) = self.table.get_mut(&cas_res) else {
+        let Ok(cas) = self.table.get(&cas_ref) else {
             return Err(Error::NoSuchStore);
         };
         let value = cas.current.clone();
@@ -218,13 +217,13 @@ impl keyvalue::atomics::HostCas for KeyvalueHost<'_> {
     }
 
     /// Drop the CAS handle.
-    async fn drop(&mut self, cas_res: Resource<Cas>) -> anyhow::Result<()> {
+    async fn drop(&mut self, cas_ref: Resource<Cas>) -> anyhow::Result<()> {
         tracing::trace!("atomics::HostCas::drop");
-        self.table.delete(cas_res).map(|_| Ok(()))?
+        self.table.delete(cas_ref).map(|_| Ok(()))?
     }
 }
 
-impl keyvalue::atomics::Host for KeyvalueHost<'_> {
+impl atomics::Host for KeyvalueHost<'_> {
     /// Atomically increment the value associated with the key in the store by
     /// the given delta. It returns the new value.
     ///
@@ -232,10 +231,10 @@ impl keyvalue::atomics::Host for KeyvalueHost<'_> {
     /// with the value set to the given delta.
     ///
     /// If any other error occurs, it returns an `Err(error)`.
-    async fn increment(&mut self, rep: Resource<Store>, key: String, delta: i64) -> Result<i64> {
+    async fn increment(&mut self, store_ref: Resource<Store>, key: String, delta: i64) -> Result<i64> {
         tracing::trace!("atomics::Host::increment {key}, {delta}");
 
-        let Ok(bucket) = self.table.get_mut(&rep) else {
+        let Ok(bucket) = self.table.get_mut(&store_ref) else {
             return Err(Error::NoSuchStore);
         };
         let Ok(Some(value)) = bucket.get(key.clone()).await else {
@@ -262,21 +261,20 @@ impl keyvalue::atomics::Host for KeyvalueHost<'_> {
     /// Perform the swap on a CAS operation. This consumes the CAS handle and
     /// returns an error if the CAS operation failed.
     async fn swap(
-        &mut self, _cas_res: Resource<Cas>, _value: Vec<u8>,
+        &mut self, _cas_ref: Resource<Cas>, _value: Vec<u8>,
     ) -> anyhow::Result<Result<(), CasError>> {
         tracing::trace!("atomics::Host::swap");
-
         Err(anyhow!("not implemented"))
     }
 }
 
-impl keyvalue::batch::Host for KeyvalueHost<'_> {
+impl batch::Host for KeyvalueHost<'_> {
     async fn get_many(
-        &mut self, rep: Resource<Store>, keys: Vec<String>,
+        &mut self, store_ref: Resource<Store>, keys: Vec<String>,
     ) -> Result<Vec<Option<(String, Vec<u8>)>>> {
         tracing::trace!("batch::Host::get_many {keys:?}");
 
-        let Ok(bucket) = self.table.get_mut(&rep) else {
+        let Ok(bucket) = self.table.get(&store_ref) else {
             return Err(Error::NoSuchStore);
         };
 
@@ -295,11 +293,11 @@ impl keyvalue::batch::Host for KeyvalueHost<'_> {
     }
 
     async fn set_many(
-        &mut self, rep: Resource<Store>, key_values: Vec<(String, Vec<u8>)>,
+        &mut self, store_ref: Resource<Store>, key_values: Vec<(String, Vec<u8>)>,
     ) -> Result<()> {
         tracing::trace!("batch::Host::set_many {key_values:?}");
 
-        let Ok(bucket) = self.table.get_mut(&rep) else {
+        let Ok(bucket) = self.table.get_mut(&store_ref) else {
             return Err(Error::NoSuchStore);
         };
         for (key, value) in key_values {
@@ -312,10 +310,10 @@ impl keyvalue::batch::Host for KeyvalueHost<'_> {
         Ok(())
     }
 
-    async fn delete_many(&mut self, rep: Resource<Store>, keys: Vec<String>) -> Result<()> {
+    async fn delete_many(&mut self, store_ref: Resource<Store>, keys: Vec<String>) -> Result<()> {
         tracing::trace!("batch::Host::delete_many {keys:?}");
 
-        let Ok(bucket) = self.table.get_mut(&rep) else {
+        let Ok(bucket) = self.table.get_mut(&store_ref) else {
             return Err(Error::NoSuchStore);
         };
         for key in keys {

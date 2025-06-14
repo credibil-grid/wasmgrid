@@ -1,21 +1,20 @@
 //! # WebAssembly Runtime
 
-#[cfg(feature = "az-vault")]
-pub mod az_vault;
+#[cfg(feature = "blobstore")]
+pub mod blobstore;
 #[cfg(feature = "http")]
 pub mod http;
-#[cfg(feature = "mgo-jsondb")]
-pub mod mgo_jsondb;
-#[cfg(feature = "nats-keyvalue")]
-pub mod nats_keyvalue;
-#[cfg(feature = "nats-messaging")]
-pub mod nats_messaging;
+#[cfg(feature = "keyvalue")]
+pub mod keyvalue;
+#[cfg(feature = "messaging")]
+pub mod messaging;
 
 pub use resources::Resources;
 use runtime::{Errout, Stdout};
 use wasmtime::StoreLimits;
 use wasmtime::component::InstancePre;
-use wasmtime_wasi::{IoView, ResourceTable, WasiCtx, WasiCtxBuilder, WasiView};
+use wasmtime_wasi::ResourceTable;
+use wasmtime_wasi::p2::{IoView, WasiCtx, WasiCtxBuilder, WasiView};
 use wasmtime_wasi_http::WasiHttpCtx;
 
 /// Ctx implements messaging host interfaces. In addition, it holds the

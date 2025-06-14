@@ -1,23 +1,13 @@
 package wasmgrid:service;
 
-world jsondb {
-	include wasi:jsondb/imports@0.1.0-draft;
-}
-
 world keyvalue {
-	include wasi:keyvalue/imports@0.2.0-draft2;
-	export wasi:keyvalue/watcher@0.2.0-draft2;
+	include wasi:keyvalue/watch-service@0.2.0-draft2;
 }
 
 world messaging {
-	include wasi:messaging/imports-request-reply@0.2.0-draft;
-	export wasi:messaging/incoming-handler@0.2.0-draft;
+	include wasi:messaging/messaging-request-reply@0.2.0-draft;
 }
 
-world vault {
-	include wasi:vault/imports@0.1.0-draft;
-}
-
-world datastore {
-	include wasi:datastore/imports@0.1.0;
+world blobstore {
+	include wasi:blobstore/imports@0.2.0-draft;
 }

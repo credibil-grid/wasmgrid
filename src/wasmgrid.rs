@@ -4,7 +4,7 @@ use std::env;
 
 use dotenv::dotenv;
 use runtime::{Cli, Parser};
-use services::{Resources, az_vault, http, mgo_jsondb, nats_keyvalue, nats_messaging};
+use services::{Resources, http, messaging, keyvalue};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 const DEF_MGO_URI: &str = "mongodb://localhost:27017";
@@ -27,10 +27,10 @@ pub async fn main() -> anyhow::Result<()> {
 
             // link services
             rt.link(&http::Service)?;
-            rt.link(&nats_keyvalue::Service)?;
-            rt.link(&mgo_jsondb::Service)?;
-            rt.link(&az_vault::Service)?;
-            rt.link(&nats_messaging::Service)?;
+            rt.link(&keyvalue::Service)?;
+            // rt.link(&datastore::Service)?;
+            // rt.link(&vault::Service)?;
+            rt.link(&messaging::Service)?;
 
             // load external resources
             let nats_addr = env::var("NATS_ADDR").unwrap_or_else(|_| DEF_NATS_ADDR.into());
@@ -46,7 +46,7 @@ pub async fn main() -> anyhow::Result<()> {
 
             // start `Runnable` servers
             rt.run(http::Service, resources.clone())?;
-            rt.run(nats_messaging::Service, resources.clone())?;
+            rt.run(messaging::Service, resources.clone())?;
 
             rt.shutdown().await
         }

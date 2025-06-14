@@ -12,12 +12,12 @@ version = "0.1.0"
 workspace = true
 
 [features]
-default = ["http", "az-vault"]
+default = ["blobstore", "http", "keyvalue", "vault", "messaging"]
 http = ["dep:wasmtime-wasi-http"]
-mgo-jsondb = ["dep:jmespath", "dep:mongodb", "resources/mongodb"]
-nats-keyvalue = ["dep:async-nats", "resources/nats"]
-nats-messaging = ["dep:async-nats", "resources/nats"]
-az-vault = ["dep:azure_core", "dep:azure_security_keyvault_keys", "dep:openssl", "resources/azkeyvault"]
+blobstore = ["dep:mongodb", "resources/mongodb"]
+keyvalue = ["dep:async-nats", "resources/nats"]
+messaging = ["dep:async-nats", "resources/nats"]
+vault = ["dep:azure_core", "dep:azure_security_keyvault_keys", "dep:openssl", "resources/azkeyvault"]
 
 [dependencies]
 anyhow.workspace = true
@@ -25,12 +25,11 @@ async-nats = { version = "0.41.0", optional = true }
 async-trait = "0.1.88"
 azure_core = { version = "0.24.0", optional = true, default-features = false, features = ["reqwest_rustls"] }
 azure_security_keyvault_keys = { version = "0.3.0", optional = true, default-features = false }
-base64ct = { version = "1.7.3", features = ["std"] }
+base64ct = { version = "1.8.0", features = ["std"] }
 bytes = "1.10.1"
 futures = "0.3.31"
 http.workspace = true
 hyper = "1.6.0"
-jmespath = { version = "0.3.0", optional = true }
 mongodb = { version = "3.2.3", optional = true }
 resources = { path = "../resources", default-features = false }
 runtime.workspace = true
@@ -40,7 +39,7 @@ tokio = { workspace = true, features = ["macros", "signal"] }
 tracing.workspace = true
 wasmtime.workspace = true
 wasmtime-wasi.workspace = true
-wasmtime-wasi-http = { version = "32.0.0", optional = true }
+wasmtime-wasi-http = { workspace = true, optional = true }
 
 # required for azure_identity, etc.
 openssl = { version = "0.10", optional = true, features = ["vendored"] }
