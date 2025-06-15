@@ -3,8 +3,8 @@ use futures::stream::{self, StreamExt};
 use wasmtime::Store;
 use wasmtime::component::InstancePre;
 
-use crate::messaging::generated::MessagingPre;
-use crate::messaging::generated::exports::wasi::messaging::incoming_handler::Error;
+use super::generated::MessagingPre;
+use super::generated::exports::wasi::messaging::incoming_handler::Error;
 use crate::{Ctx, Resources};
 
 pub type Result<T, E = Error> = anyhow::Result<T, E>;

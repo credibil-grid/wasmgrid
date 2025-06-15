@@ -4,7 +4,7 @@ use std::env;
 
 use dotenv::dotenv;
 use runtime::{Cli, Parser};
-use services::{Resources, http, keyvalue, messaging};
+use services::{Resources, http, keyvalue_nats as keyvalue, messaging_nats as messaging};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 // const DEF_MGO_URI: &str = "mongodb://localhost:27017";

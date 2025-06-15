@@ -6,7 +6,7 @@ Build the example guest:
 cargo build --package http@0.1.0 --target wasm32-wasip2 --release
 ```
 
-Run a guest using the runtime:
+Run the example guest:
 
 ```bash
 # compile and run
