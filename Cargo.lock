@@ -3161,11 +3161,13 @@ dependencies = [
  "runtime",
  "serde_json",
  "sha2",
+ "time",
  "tokio",
  "tracing",
  "wasmtime",
  "wasmtime-wasi",
  "wasmtime-wasi-http",
+ "wasmtime-wasi-io",
 ]
 
 [[package]]

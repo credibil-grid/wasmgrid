@@ -6,6 +6,8 @@
 /// Wrap generation of wit bindings to simplify exports.
 /// See <https://docs.rs/wasmtime/latest/wasmtime/component/macro.bindgen.html>
 mod generated {
+    #![allow(clippy::trait_duplication_in_bounds)]
+
     pub use async_nats::jetstream::kv::Store;
 
     pub use self::wasi::keyvalue::store::Error;
@@ -231,7 +233,9 @@ impl atomics::Host for KeyvalueHost<'_> {
     /// with the value set to the given delta.
     ///
     /// If any other error occurs, it returns an `Err(error)`.
-    async fn increment(&mut self, store_ref: Resource<Store>, key: String, delta: i64) -> Result<i64> {
+    async fn increment(
+        &mut self, store_ref: Resource<Store>, key: String, delta: i64,
+    ) -> Result<i64> {
         tracing::trace!("atomics::Host::increment {key}, {delta}");
 
         let Ok(bucket) = self.table.get_mut(&store_ref) else {

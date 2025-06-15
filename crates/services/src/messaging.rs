@@ -7,6 +7,7 @@ mod host;
 mod server;
 
 mod generated {
+    #![allow(clippy::trait_duplication_in_bounds)]
 
     pub use async_nats::{Client, Message};
     pub use wasi::messaging::types::Error;
