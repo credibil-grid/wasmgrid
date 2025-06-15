@@ -8,18 +8,26 @@
 
 /// Bindings for the `wasi:keyvalue` world.
 /// See (<https://github.com/WebAssembly/wasi-keyvalue/>)
+pub mod blobstore {
+    pub use self::wasi::blobstore::*;
+
+    wit_bindgen::generate!({
+        world: "blobstore",
+        path: "../../wit",
+        generate_all,
+        pub_export_macro: true
+    });
+}
+
+/// Bindings for the `wasi:keyvalue` world.
+/// See (<https://github.com/WebAssembly/wasi-keyvalue/>)
 pub mod keyvalue {
     pub use self::wasi::keyvalue::*;
 
     wit_bindgen::generate!({
         world: "keyvalue",
         path: "../../wit",
-        with: {
-            "wasi:keyvalue/store@0.2.0-draft2": generate,
-            "wasi:keyvalue/atomics@0.2.0-draft2": generate,
-            "wasi:keyvalue/batch@0.2.0-draft2": generate,
-            "wasi:keyvalue/watcher@0.2.0-draft2": generate
-        },
+        generate_all,
         pub_export_macro: true
     });
 }
@@ -33,12 +41,7 @@ pub mod messaging {
     wit_bindgen::generate!({
         world: "messaging",
         path: "../../wit",
-        with: {
-            "wasi:messaging/incoming-handler@0.2.0-draft": generate,
-            "wasi:messaging/producer@0.2.0-draft": generate,
-            "wasi:messaging/types@0.2.0-draft": generate,
-            "wasi:messaging/request-reply@0.2.0-draft": generate,
-        },
+        generate_all,
         pub_export_macro: true
     });
 }
