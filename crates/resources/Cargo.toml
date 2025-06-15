@@ -16,9 +16,9 @@ nats = ["dep:async-nats", "dep:nkeys"]
 [dependencies]
 anyhow.workspace = true
 async-nats = { version = "0.41.0", optional = true }
-tokio.workspace = true
 azure_identity = { version = "0.24.0", default-features = false, optional = true }
 azure_security_keyvault_keys = { version = "0.3.0", default-features = false, optional = true }
 mongodb = { version = "3.2.3", optional = true }
 nkeys = { version = "0.4.4", optional = true }
+tokio.workspace = true
 tracing.workspace = true

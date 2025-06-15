@@ -6,13 +6,15 @@ Build the example guest:
 cargo build --package http-msg --target wasm32-wasip2 --release
 ```
 
-Run a guest using the runtime:
+Run the example guest:
 
 ```bash
-cargo run -- compile  ./target/wasm32-wasip2/release/http_msg.wasm
-cargo run -- run ./http_msg.bin
-# OR
-cargo run -- run --compile ./target/wasm32-wasip2/release/http_msg.wasm
+# compile and run
+cargo run -- run ./target/wasm32-wasip2/release/http_msg.wasm
+
+# pre-compile
+cargo run -- compile  ./target/wasm32-wasip2/release/http-msg.wasm --output ./http_msg.bin
+cargo run -- run ./http.bin
 ```
 
 In a separate console, call the guest:

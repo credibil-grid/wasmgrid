@@ -1,18 +1,20 @@
-# Messaging Example
+# Blobstore Example
 
 Build the example guest:
 
 ```bash
-cargo build --package jsondb --target wasm32-wasip2 --release
+cargo build --package blobstore --target wasm32-wasip2 --release
 ```
 
-Run the guest using the `wasmgrid` runtime:
+Run the example guest:
 
 ```bash
-cargo run -- compile  ./target/wasm32-wasip2/release/jsondb.wasm
-cargo run -- run ./jsondb.bin
-# OR
-cargo run -- run --compile ./target/wasm32-wasip2/release/jsondb.wasm
+# compile and run
+cargo run -- run ./target/wasm32-wasip2/release/blobstore.wasm
+
+# pre-compile
+cargo run -- compile  ./target/wasm32-wasip2/release/blobstore.wasm --output ./blobstore.bin
+cargo run -- run ./blobstore.bin
 ```
 
 In a separate console, send some messages to the guest:

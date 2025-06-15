@@ -334,6 +334,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "blobstore"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "serde_json",
+ "tracing",
+ "tracing-subscriber",
+ "wasi 0.14.2+wasi-0.2.4",
+ "wasi-bindings",
+ "wasi-http",
+]
+
+[[package]]
 name = "block-buffer"
 version = "0.10.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1825,19 +1838,6 @@ checksum = "1cfaf33c695fc6e08064efbc1f72ec937429614f25eef83af942d0e227c3a28f"
 dependencies = [
  "once_cell",
  "wasm-bindgen",
-]
-
-[[package]]
-name = "jsondb"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "serde_json",
- "tracing",
- "tracing-subscriber",
- "wasi 0.14.2+wasi-0.2.4",
- "wasi-bindings",
- "wasi-http",
 ]
 
 [[package]]

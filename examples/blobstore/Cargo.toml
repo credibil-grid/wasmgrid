@@ -1,5 +1,5 @@
 [package]
-name = "jsondb"
+name = "blobstore"
 authors.workspace = true
 edition.workspace = true
 

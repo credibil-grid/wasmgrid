@@ -79,7 +79,6 @@ impl Linkable for Service {
         blobstore::add_to_linker_get_host(linker, Blobstore::new)?;
         container::add_to_linker_get_host(linker, Blobstore::new)?;
         types::add_to_linker_get_host(linker, Blobstore::new)?;
-        wasmtime_wasi_io::add_to_linker_async(linker)?;
         tracing::trace!("added to linker");
         Ok(())
     }
@@ -385,7 +384,9 @@ impl types::HostIncomingValue for Blobstore<'_> {
 impl types::HostOutgoingValue for Blobstore<'_> {
     async fn new_outgoing_value(&mut self) -> Result<Resource<OutgoingValue>> {
         tracing::trace!("types::HostOutgoingValue::new_outgoing_value");
-        todo!()
+
+        let v = OutgoingValue::new();
+        Ok(self.table.push(v)?)
     }
 
     async fn outgoing_value_write_body(
@@ -393,12 +394,16 @@ impl types::HostOutgoingValue for Blobstore<'_> {
     ) -> Result<Result<Resource<OutputStream>, ()>> {
         tracing::trace!("types::HostOutgoingValue::outgoing_value_write_body");
 
-        let value = self.table.get(&value_ref)?;
+        let value = self.table.get_mut(&value_ref)?;
         let cursor = Cursor::new(value.clone());
         let ws = AsyncWriteStream::new(value.len(), cursor);
         let stream: OutputStream = Box::new(ws);
 
-        Ok(Ok(self.table.push(stream)?))
+        let stream_ref = self.table.push(stream)?;
+        tracing::trace!("outgoing value stream ref: {stream_ref:?}");
+        Ok(Ok(stream_ref))
+
+        // Ok(Ok(self.table.push(stream)?))
     }
 
     async fn finish(&mut self, _value_ref: Resource<OutgoingValue>) -> Result<()> {
