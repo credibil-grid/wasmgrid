@@ -1,13 +1,13 @@
 //! # WebAssembly Runtime
 
 #[cfg(feature = "blobstore")]
-pub mod blobstore;
+pub mod blobstore_nats;
 #[cfg(feature = "http")]
 pub mod http;
 #[cfg(feature = "keyvalue")]
-pub mod keyvalue;
+pub mod keyvalue_nats;
 #[cfg(feature = "messaging")]
-pub mod messaging;
+pub mod messaging_nats;
 
 pub use resources::Resources;
 use runtime::{Errout, Stdout};

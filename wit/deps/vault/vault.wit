@@ -1,0 +1,61 @@
+/// https://component-model.bytecodealliance.org/design/wit.html
+
+/// Keystore provides an interface for secure storage and use of cryptographic 
+/// keys.
+interface keystore {
+    variant error {
+        no-such-key-set,
+        no-such-key-pair,
+        access-denied,
+        other(string)
+    }
+
+    /// [IANA_JOSE] Keystore algorithms.
+    /// [IANA_JOSE]: https://www.iana.org/assignments/jose/jose.xhtml
+    variant algorithm {
+        /// ECDSA using `secp256k1` curve and SHA-256. 
+        es256k,
+
+        /// EdDSA vault algorithms using `ed22519` curve and SHA-256.
+        eddsa,
+    }
+
+    /// JSON Web Key format public key.
+    /// See <https://www.rfc-editor.org/rfc/rfc7517.html>.
+    record jwk {
+        kid: option<string>,
+        kty: string,
+        crv: string,
+        x: string,
+        y: option<string>,
+    }
+
+    /// List algorithms supported by the keystore.
+    supported-algorithms: func() -> list<algorithm>;
+
+    /// Open the key set identified by `identifier`.
+    open: func(identifier: string) -> result<key-set, error>;
+
+    resource key-set {
+        /// Generate a new key pair for the set. Will create a new version if the
+        /// key pair identified by `identifier` already exists.
+        generate: func(identifier: string, alg: algorithm) -> result<key-pair, error>;
+
+        /// Get the current key pair for `identifier`.
+        get: func(identifier: string) -> result<key-pair, error>;
+
+        /// Delete the key pair identified by `identifier`.
+        delete: func(identifier: string) -> result<_, error>;
+    }
+
+    resource key-pair {
+        /// Sign data with the private key.
+        sign: func(data: list<u8>) -> result<list<u8>, error>;
+
+        /// Returns the public key.
+        public-key: func() -> result<jwk, error>;
+
+        /// Returns all versions of the public key.
+        versions: func() -> result<list<jwk>, error>;
+    }
+}

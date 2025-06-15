@@ -1,0 +1,9 @@
+package wasi:vault@0.1.0-draft;
+
+world imports {
+	import keystore;
+}
+
+world vault {
+	include imports;
+}
