@@ -62,7 +62,7 @@ interface types {
     /// Returns success on the first call: the `output-stream` resource for
     /// this `outgoing-value` may be retrieved at most once. Subsequent calls
     /// will return error.
-    outgoing-value-write-body: func() -> result<output-stream>;
+    outgoing-value-write-body: func() -> result<output-stream, error>;
 
     /// Finalize an outgoing value. This must be
     /// called to signal that the outgoing value is complete. If the `outgoing-value`

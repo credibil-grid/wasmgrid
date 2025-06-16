@@ -6,7 +6,7 @@ use tracing_subscriber::{EnvFilter, FmtSubscriber};
 use wasi::exports::http::incoming_handler::Guest;
 use wasi::http::types::{IncomingRequest, ResponseOutparam};
 use wasi_bindings::blobstore::blobstore;
-use wasi_bindings::blobstore::types::{IncomingValue, OutgoingValue};
+use wasi_bindings::blobstore::types::OutgoingValue;
 use wasi_http::{self, Request, Router, post};
 
 struct HttpGuest;
@@ -32,30 +32,25 @@ fn handler(request: &Request) -> Result<Vec<u8>> {
     // write to blobstore
     let data = serde_json::to_vec(&body)?;
     let value = OutgoingValue::new_outgoing_value();
-    tracing::debug!("created outgoing value");
-
     let stream = value.outgoing_value_write_body().map_err(|_| anyhow!("failed to write body"))?;
-    tracing::debug!("got outgoing value stream");
-
     stream.blocking_write_and_flush(&data)?;
-    tracing::debug!("written to stream");
 
     let container = blobstore::create_container("credibil_bucket")
         .map_err(|e| anyhow!("failed to create container: {e}"))?;
     container.write_data("request", &value).map_err(|e| anyhow!("failed to write data: {e}"))?;
 
-    tracing::debug!("written to container");
+    OutgoingValue::finish(value).map_err(|e| anyhow!("issue finishing: {e}"))?;
 
-    // read from blobstore
-    let read_value =
-        container.get_data("request", 0, 0).map_err(|e| anyhow!("failed to read data: {e}"))?;
-    let data = IncomingValue::incoming_value_consume_sync(read_value)
-        .map_err(|_| anyhow!("failed to create incoming value"))?;
+    // // read from blobstore
+    // let read_value =
+    //     container.get_data("request", 0, 0).map_err(|e| anyhow!("failed to read data: {e}"))?;
+    // let data = IncomingValue::incoming_value_consume_sync(read_value)
+    //     .map_err(|_| anyhow!("failed to create incoming value"))?;
 
-    tracing::debug!("read from container");
+    // tracing::debug!("read from container");
 
-    let request = serde_json::from_slice::<serde_json::Value>(&data)?;
-    tracing::debug!("request: {request:?}");
+    // let request = serde_json::from_slice::<serde_json::Value>(&data)?;
+    // tracing::debug!("request: {request:?}");
 
     serde_json::to_vec(&json!({
         "message": "Hello, World!"
