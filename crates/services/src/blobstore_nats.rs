@@ -8,10 +8,7 @@
 mod generated {
     #![allow(clippy::trait_duplication_in_bounds)]
 
-    pub use async_nats::jetstream::object_store::ObjectStore;
-    pub use wasmtime_wasi::p2::pipe::MemoryOutputPipe;
-
-    pub use super::{IncomingValue, StreamObjectNames};
+    pub use super::{Container, IncomingValue, OutgoingValue, StreamObjectNames};
 
     wasmtime::component::bindgen!({
         world: "blobstore",
@@ -23,8 +20,8 @@ mod generated {
             "wasi:io": wasmtime_wasi::p2::bindings::io,
 
             "wasi:blobstore/types/incoming-value": IncomingValue,
-            "wasi:blobstore/types/outgoing-value": MemoryOutputPipe,
-            "wasi:blobstore/container/container": ObjectStore,
+            "wasi:blobstore/types/outgoing-value": OutgoingValue,
+            "wasi:blobstore/container/container": Container,
             "wasi:blobstore/container/stream-object-names": StreamObjectNames,
         },
         trappable_error_type: {
@@ -50,8 +47,9 @@ use self::generated::wasi::blobstore::container::{self, ContainerMetadata, Objec
 use self::generated::wasi::blobstore::types::{self, IncomingValueSyncBody};
 use crate::{Ctx, Resources};
 
+pub type Container = ObjectStore;
 pub type IncomingValue = Bytes;
-pub type OutgoingValue = Bytes;
+pub type OutgoingValue = MemoryOutputPipe;
 pub type StreamObjectNames = Vec<String>;
 
 pub struct Blobstore<'a> {
@@ -85,7 +83,7 @@ impl Linkable for Service {
 
 // Implement the [`wasi_sql::ReadWriteView`]` trait for Blobstore<'_>.
 impl blobstore::Host for Blobstore<'_> {
-    async fn create_container(&mut self, name: String) -> Result<Resource<ObjectStore>> {
+    async fn create_container(&mut self, name: String) -> Result<Resource<Container>> {
         let jetstream = jetstream::new(self.resources.nats()?.clone());
         let store = jetstream
             .create_object_store(Config {
@@ -97,7 +95,7 @@ impl blobstore::Host for Blobstore<'_> {
         Ok(self.table.push(store)?)
     }
 
-    async fn get_container(&mut self, name: String) -> Result<Resource<ObjectStore>> {
+    async fn get_container(&mut self, name: String) -> Result<Resource<Container>> {
         let jetstream = jetstream::new(self.resources.nats()?.clone());
         let store = jetstream
             .get_object_store(&name)
@@ -136,9 +134,9 @@ impl blobstore::Host for Blobstore<'_> {
 impl container::Host for Blobstore<'_> {}
 
 impl container::HostContainer for Blobstore<'_> {
-    async fn name(&mut self, store_ref: Resource<ObjectStore>) -> Result<String> {
+    async fn name(&mut self, store_ref: Resource<Container>) -> Result<String> {
         let Ok(store) = self.table.get(&store_ref) else {
-            return Err(anyhow!("ObjectStore not found"));
+            return Err(anyhow!("Container not found"));
         };
 
         // HACK: get the store name from the first object in the store
@@ -151,15 +149,15 @@ impl container::HostContainer for Blobstore<'_> {
         Ok(n.bucket)
     }
 
-    async fn info(&mut self, _store_ref: Resource<ObjectStore>) -> Result<ContainerMetadata> {
+    async fn info(&mut self, _store_ref: Resource<Container>) -> Result<ContainerMetadata> {
         todo!()
     }
 
     async fn get_data(
-        &mut self, store_ref: Resource<ObjectStore>, name: String, _start: u64, _end: u64,
+        &mut self, store_ref: Resource<Container>, name: String, _start: u64, _end: u64,
     ) -> Result<Resource<IncomingValue>> {
         let Ok(store) = self.table.get(&store_ref) else {
-            return Err(anyhow!("ObjectStore not found"));
+            return Err(anyhow!("Container not found"));
         };
 
         // read the object data from the store
@@ -171,8 +169,8 @@ impl container::HostContainer for Blobstore<'_> {
     }
 
     async fn write_data(
-        &mut self, store_ref: Resource<ObjectStore>, name: String,
-        value_ref: Resource<MemoryOutputPipe>,
+        &mut self, store_ref: Resource<Container>, name: String,
+        value_ref: Resource<OutgoingValue>,
     ) -> Result<()> {
         let Ok(value) = self.table.get(&value_ref) else {
             return Err(anyhow!("OutgoingValue not found"));
@@ -180,7 +178,7 @@ impl container::HostContainer for Blobstore<'_> {
         let bytes = value.contents();
 
         let Ok(store) = self.table.get_mut(&store_ref) else {
-            return Err(anyhow!("ObjectStore not found"));
+            return Err(anyhow!("Container not found"));
         };
 
         // write the data to the store
@@ -193,10 +191,10 @@ impl container::HostContainer for Blobstore<'_> {
     }
 
     async fn list_objects(
-        &mut self, store_ref: Resource<ObjectStore>,
+        &mut self, store_ref: Resource<Container>,
     ) -> Result<Resource<StreamObjectNames>> {
         let Ok(store) = self.table.get(&store_ref) else {
-            return Err(anyhow!("ObjectStore not found"));
+            return Err(anyhow!("Container not found"));
         };
         let mut list = store.list().await.map_err(|e| anyhow!("issue listing objects: {e}"))?;
 
@@ -212,10 +210,10 @@ impl container::HostContainer for Blobstore<'_> {
     }
 
     async fn delete_object(
-        &mut self, store_ref: Resource<ObjectStore>, name: String,
+        &mut self, store_ref: Resource<Container>, name: String,
     ) -> Result<()> {
         let Ok(store) = self.table.get_mut(&store_ref) else {
-            return Err(anyhow!("ObjectStore not found"));
+            return Err(anyhow!("Container not found"));
         };
         store.delete(&name).await.map_err(|e| anyhow!("issue deleting: {e}"))?;
 
@@ -223,10 +221,10 @@ impl container::HostContainer for Blobstore<'_> {
     }
 
     async fn delete_objects(
-        &mut self, store_ref: Resource<ObjectStore>, names: Vec<String>,
+        &mut self, store_ref: Resource<Container>, names: Vec<String>,
     ) -> Result<()> {
         let Ok(store) = self.table.get_mut(&store_ref) else {
-            return Err(anyhow!("ObjectStore not found"));
+            return Err(anyhow!("Container not found"));
         };
         for name in names {
             store.delete(&name).await.map_err(|e| anyhow!("issue deleting '{name}': {e}"))?;
@@ -235,18 +233,18 @@ impl container::HostContainer for Blobstore<'_> {
         Ok(())
     }
 
-    async fn has_object(&mut self, store_ref: Resource<ObjectStore>, name: String) -> Result<bool> {
+    async fn has_object(&mut self, store_ref: Resource<Container>, name: String) -> Result<bool> {
         let Ok(store) = self.table.get(&store_ref) else {
-            return Err(anyhow!("ObjectStore not found"));
+            return Err(anyhow!("Container not found"));
         };
         Ok(store.info(&name).await.is_ok())
     }
 
     async fn object_info(
-        &mut self, store_ref: Resource<ObjectStore>, name: String,
+        &mut self, store_ref: Resource<Container>, name: String,
     ) -> Result<ObjectMetadata> {
         let Ok(store) = self.table.get(&store_ref) else {
-            return Err(anyhow!("ObjectStore not found"));
+            return Err(anyhow!("Container not found"));
         };
         let info = store.info(&name).await?;
 
@@ -263,9 +261,9 @@ impl container::HostContainer for Blobstore<'_> {
         Ok(metadata)
     }
 
-    async fn clear(&mut self, store_ref: Resource<ObjectStore>) -> Result<()> {
+    async fn clear(&mut self, store_ref: Resource<Container>) -> Result<()> {
         let Ok(store) = self.table.get(&store_ref) else {
-            return Err(anyhow!("ObjectStore not found"));
+            return Err(anyhow!("Container not found"));
         };
         let mut list = store.list().await.map_err(|e| anyhow!("issue listing objects: {e}"))?;
 
@@ -279,7 +277,7 @@ impl container::HostContainer for Blobstore<'_> {
         Ok(())
     }
 
-    async fn drop(&mut self, store_ref: Resource<ObjectStore>) -> Result<()> {
+    async fn drop(&mut self, store_ref: Resource<Container>) -> Result<()> {
         self.table.delete(store_ref)?;
         Ok(())
     }
@@ -339,23 +337,101 @@ impl types::HostIncomingValue for Blobstore<'_> {
 }
 
 impl types::HostOutgoingValue for Blobstore<'_> {
-    async fn new_outgoing_value(&mut self) -> Result<Resource<MemoryOutputPipe>> {
-        Ok(self.table.push(MemoryOutputPipe::new(1024))?)
+    async fn new_outgoing_value(&mut self) -> Result<Resource<OutgoingValue>> {
+        Ok(self.table.push(OutgoingValue::new(1024))?)
     }
 
     async fn outgoing_value_write_body(
-        &mut self, value_ref: Resource<MemoryOutputPipe>,
+        &mut self, value_ref: Resource<OutgoingValue>,
     ) -> Result<Resource<OutputStream>> {
         let value = self.table.get(&value_ref)?;
         let stream: OutputStream = Box::new(value.clone());
         Ok(self.table.push(stream)?)
     }
 
-    async fn finish(&mut self, _: Resource<MemoryOutputPipe>) -> Result<()> {
+    async fn finish(&mut self, _: Resource<OutgoingValue>) -> Result<()> {
+        // self.table.delete(value_ref)?;
         Ok(())
     }
 
-    async fn drop(&mut self, value_ref: Resource<MemoryOutputPipe>) -> Result<()> {
+    async fn drop(&mut self, value_ref: Resource<OutgoingValue>) -> Result<()> {
         Ok(self.table.delete(value_ref).map(|_| ())?)
     }
 }
+
+// use wasmtime_wasi::p2::Pollable;
+
+// /// Provides a [`OutputStream`] impl from a [`tokio::io::AsyncWrite`] impl
+// pub struct AsyncWriteStream {
+//     worker: Arc<Worker>,
+//     join_handle: Option<crate::runtime::AbortOnDropJoinHandle<()>>,
+// }
+
+// impl AsyncWriteStream {
+//     /// Create a [`AsyncWriteStream`]. In order to use the [`OutputStream`] impl
+//     /// provided by this struct, the argument must impl [`tokio::io::AsyncWrite`].
+//     pub fn new<T: tokio::io::AsyncWrite + Send + Unpin + 'static>(
+//         write_budget: usize,
+//         writer: T,
+//     ) -> Self {
+//         let worker = Arc::new(Worker::new(write_budget));
+
+//         let w = Arc::clone(&worker);
+//         let join_handle = crate::runtime::spawn(async move { w.work(writer).await });
+
+//         AsyncWriteStream {
+//             worker,
+//             join_handle: Some(join_handle),
+//         }
+//     }
+// }
+
+// #[async_trait::async_trait]
+// impl OutputStream for AsyncWriteStream {
+//     fn write(&mut self, bytes: Bytes) -> Result<(), StreamError> {
+//         let mut state = self.worker.state();
+//         state.check_error()?;
+//         if state.flush_pending {
+//             return Err(StreamError::Trap(anyhow!(
+//                 "write not permitted while flush pending"
+//             )));
+//         }
+//         match state.write_budget.checked_sub(bytes.len()) {
+//             Some(remaining_budget) => {
+//                 state.write_budget = remaining_budget;
+//                 state.items.push_back(bytes);
+//             }
+//             None => return Err(StreamError::Trap(anyhow!("write exceeded budget"))),
+//         }
+//         drop(state);
+//         self.worker.new_work.notify_one();
+//         Ok(())
+//     }
+//     fn flush(&mut self) -> Result<(), StreamError> {
+//         let mut state = self.worker.state();
+//         state.check_error()?;
+
+//         state.flush_pending = true;
+//         self.worker.new_work.notify_one();
+
+//         Ok(())
+//     }
+
+//     fn check_write(&mut self) -> Result<usize, StreamError> {
+//         self.worker.check_write()
+//     }
+
+//     async fn cancel(&mut self) {
+//         match self.join_handle.take() {
+//             Some(task) => _ = task.cancel().await,
+//             None => {}
+//         }
+//     }
+// }
+
+// #[async_trait::async_trait]
+// impl Pollable for AsyncWriteStream {
+//     async fn ready(&mut self) {
+//         self.worker.ready().await;
+//     }
+// }
