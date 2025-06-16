@@ -36,6 +36,7 @@ mod generated {
 use anyhow::{Result, anyhow};
 use async_nats::jetstream;
 use async_nats::jetstream::object_store::{Config, ObjectStore};
+use bytes::{Bytes, BytesMut};
 use futures::StreamExt;
 use runtime::Linkable;
 use time::OffsetDateTime;
@@ -49,8 +50,8 @@ use self::generated::wasi::blobstore::container::{self, ContainerMetadata, Objec
 use self::generated::wasi::blobstore::types::{self, IncomingValueSyncBody};
 use crate::{Ctx, Resources};
 
-pub type IncomingValue = Vec<u8>;
-pub type OutgoingValue = Vec<u8>;
+pub type IncomingValue = Bytes;
+pub type OutgoingValue = Bytes;
 pub type StreamObjectNames = Vec<String>;
 
 pub struct Blobstore<'a> {
@@ -163,10 +164,10 @@ impl container::HostContainer for Blobstore<'_> {
 
         // read the object data from the store
         let mut data = store.get(&name).await.map_err(|e| anyhow!("issue getting object: {e}"))?;
-        let mut buf = Vec::with_capacity(data.info().size);
+        let mut buf = BytesMut::new();
         data.read_buf(&mut buf).await?;
 
-        Ok(self.table.push(buf)?)
+        Ok(self.table.push(buf.into())?)
     }
 
     async fn write_data(
@@ -314,7 +315,7 @@ impl types::HostIncomingValue for Blobstore<'_> {
         &mut self, value_ref: Resource<IncomingValue>,
     ) -> Result<IncomingValueSyncBody> {
         let value = self.table.get(&value_ref)?;
-        Ok(value.clone())
+        Ok(value.to_vec())
     }
 
     async fn incoming_value_consume_async(
