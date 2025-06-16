@@ -163,18 +163,8 @@ impl container::HostContainer for Blobstore<'_> {
 
         // read the object data from the store
         let mut data = store.get(&name).await.map_err(|e| anyhow!("issue getting object: {e}"))?;
-
-        println!("got data for {name}: {:?}", data.info());
-
         let mut buf = Vec::with_capacity(data.info().size);
-        match data.read_exact(&mut buf).await {
-            Ok(size) => {
-                println!("read {size} bytes for {name}");
-            }
-            Err(e) => {
-                return Err(anyhow!("issue reading object data: {e}"));
-            }
-        }
+        data.read_buf(&mut buf).await?;
 
         Ok(self.table.push(buf)?)
     }
@@ -357,7 +347,6 @@ impl types::HostOutgoingValue for Blobstore<'_> {
     ) -> Result<Resource<OutputStream>> {
         let value = self.table.get(&value_ref)?;
         let stream: OutputStream = Box::new(value.clone());
-
         Ok(self.table.push(stream)?)
     }
 

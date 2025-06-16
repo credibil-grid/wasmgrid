@@ -1,12 +1,12 @@
 #![feature(let_chains)]
 
 use anyhow::{Result, anyhow};
-use serde_json::json;
+use serde_json::{Value, json};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 use wasi::exports::http::incoming_handler::Guest;
 use wasi::http::types::{IncomingRequest, ResponseOutparam};
 use wasi_bindings::blobstore::blobstore;
-use wasi_bindings::blobstore::types::OutgoingValue;
+use wasi_bindings::blobstore::types::{IncomingValue, OutgoingValue};
 use wasi_http::{self, Request, Router, post};
 
 struct HttpGuest;
@@ -26,37 +26,30 @@ impl Guest for HttpGuest {
 
 fn handler(request: &Request) -> Result<Vec<u8>> {
     let body = request.body()?;
-    let req: serde_json::Value = serde_json::from_slice(&body)?;
-    tracing::debug!("json: {:?}", req);
+    let request: Value = serde_json::from_slice(&body)?;
+    tracing::debug!("received request: {request:?}");
 
     // write to blobstore
-    let data = serde_json::to_vec(&body)?;
-
     let value = OutgoingValue::new_outgoing_value();
     let stream = value.outgoing_value_write_body().map_err(|_| anyhow!("failed to write body"))?;
-    stream.blocking_write_and_flush(&data)?;
+    stream.blocking_write_and_flush(&body)?;
 
     let container = blobstore::create_container("credibil_bucket")
         .map_err(|e| anyhow!("failed to create container: {e}"))?;
     container.write_data("request", &value).map_err(|e| anyhow!("failed to write data: {e}"))?;
-
     OutgoingValue::finish(value).map_err(|e| anyhow!("issue finishing: {e}"))?;
 
-    // // read from blobstore
-    // let read_value =
-    //     container.get_data("request", 0, 0).map_err(|e| anyhow!("failed to read data: {e}"))?;
-    // let data = IncomingValue::incoming_value_consume_sync(read_value)
-    //     .map_err(|_| anyhow!("failed to create incoming value"))?;
+    // read from blobstore
+    let read_value =
+        container.get_data("request", 0, 0).map_err(|e| anyhow!("failed to read data: {e}"))?;
+    let data = IncomingValue::incoming_value_consume_sync(read_value)
+        .map_err(|_| anyhow!("failed to create incoming value"))?;
 
-    // tracing::debug!("read from container");
+    assert_eq!(data, body);
 
-    // let request = serde_json::from_slice::<serde_json::Value>(&data)?;
-    // tracing::debug!("request: {request:?}");
-
-    serde_json::to_vec(&json!({
-        "message": "Hello, World!"
-    }))
-    .map_err(Into::into)
+    let response = serde_json::from_slice::<Value>(&data)?;
+    tracing::debug!("sending response: {:?}", json!(response));
+    serde_json::to_vec(&response).map_err(Into::into)
 }
 
 wasi::http::proxy::export!(HttpGuest);
