@@ -30,19 +30,20 @@ fn handler(request: &Request) -> Result<Vec<u8>> {
     tracing::debug!("received request: {request:?}");
 
     // write to blobstore
-    let value = OutgoingValue::new_outgoing_value();
-    let stream = value.outgoing_value_write_body().map_err(|_| anyhow!("failed to write body"))?;
+    let outgoing = OutgoingValue::new_outgoing_value();
+    let stream =
+        outgoing.outgoing_value_write_body().map_err(|_| anyhow!("failed create stream"))?;
     stream.blocking_write_and_flush(&body)?;
 
     let container = blobstore::create_container("credibil_bucket")
         .map_err(|e| anyhow!("failed to create container: {e}"))?;
-    container.write_data("request", &value).map_err(|e| anyhow!("failed to write data: {e}"))?;
-    OutgoingValue::finish(value).map_err(|e| anyhow!("issue finishing: {e}"))?;
+    container.write_data("request", &outgoing).map_err(|e| anyhow!("failed to write data: {e}"))?;
+    OutgoingValue::finish(outgoing).map_err(|e| anyhow!("issue finishing: {e}"))?;
 
     // read from blobstore
-    let read_value =
+    let incoming =
         container.get_data("request", 0, 0).map_err(|e| anyhow!("failed to read data: {e}"))?;
-    let data = IncomingValue::incoming_value_consume_sync(read_value)
+    let data = IncomingValue::incoming_value_consume_sync(incoming)
         .map_err(|_| anyhow!("failed to create incoming value"))?;
 
     assert_eq!(data, body);
