@@ -1,5 +1,9 @@
 package wasmgrid:service;
 
+world blobstore {
+	include wasi:blobstore/imports@0.2.0-draft;
+}
+
 world keyvalue {
 	include wasi:keyvalue/watch-service@0.2.0-draft2;
 }
@@ -8,6 +12,6 @@ world messaging {
 	include wasi:messaging/messaging-request-reply@0.2.0-draft;
 }
 
-world blobstore {
-	include wasi:blobstore/imports@0.2.0-draft;
+world vault {
+	include wasi:vault/imports@0.1.0-draft;
 }

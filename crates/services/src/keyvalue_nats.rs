@@ -77,7 +77,6 @@ impl Linkable for Service {
     // Add all the `wasi-keyvalue` world's interfaces to a [`Linker`], and
     // instantiate the `KeyvalueHost` for the component.
     fn add_to_linker(&self, linker: &mut Linker<Self::Ctx>) -> anyhow::Result<()> {
-        // add_to_linker(linker, link)?;
         store::add_to_linker_get_host(linker, KeyvalueHost::new)?;
         atomics::add_to_linker_get_host(linker, KeyvalueHost::new)?;
         batch::add_to_linker_get_host(linker, KeyvalueHost::new)?;

@@ -8,6 +8,8 @@ pub mod http;
 pub mod keyvalue_nats;
 #[cfg(feature = "messaging")]
 pub mod messaging_nats;
+#[cfg(feature = "vault")]
+pub mod vault_az;
 
 pub use resources::Resources;
 use runtime::{Errout, Stdout};

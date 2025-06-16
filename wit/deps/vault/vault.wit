@@ -1,61 +1,42 @@
-/// https://component-model.bytecodealliance.org/design/wit.html
-
-/// Keystore provides an interface for secure storage and use of cryptographic 
-/// keys.
-interface keystore {
+interface vault {
+    /// An error type that encapsulates the different errors that can occur fetching secrets
     variant error {
-        no-such-key-set,
-        no-such-key-pair,
+        /// The host does not recognize the store identifier requested.
+        no-such-store,
+
+        /// The requesting component does not have access to the specified store
+        /// (which may or may not exist).
         access-denied,
+
+        /// Some implementation-specific error has occurred (e.g. I/O)
         other(string)
     }
 
-    /// [IANA_JOSE] Keystore algorithms.
-    /// [IANA_JOSE]: https://www.iana.org/assignments/jose/jose.xhtml
-    variant algorithm {
-        /// ECDSA using `secp256k1` curve and SHA-256. 
-        es256k,
+    /// Open the specified locker.
+    /// 
+    /// `error::no-such-store` will be raised if the `identifier` is not recognized.
+    open: func(locker-id: string) -> result<locker, error>;
 
-        /// EdDSA vault algorithms using `ed22519` curve and SHA-256.
-        eddsa,
-    }
+    /// A locker contains collection of related secrets.
+    resource locker {
+        /// Get the specified secret.
+        ///
+        /// Returns `none` if the specified secret does not exist.
+        get: func(secret-id: string) -> result<option<list<u8>>, error>;
 
-    /// JSON Web Key format public key.
-    /// See <https://www.rfc-editor.org/rfc/rfc7517.html>.
-    record jwk {
-        kid: option<string>,
-        kty: string,
-        crv: string,
-        x: string,
-        y: option<string>,
-    }
+        /// Store a secret in the vault. If the `id` already exists, the
+        /// secret will be overwritten.
+        set: func(secret-id: string, value: list<u8>) -> result<_, error>;
 
-    /// List algorithms supported by the keystore.
-    supported-algorithms: func() -> list<algorithm>;
+        /// Delete the specified secret.
+        /// 
+        /// Will do nothing if the secret does not exist.
+        delete: func(secret-id: string) -> result<_, error>;
 
-    /// Open the key set identified by `identifier`.
-    open: func(identifier: string) -> result<key-set, error>;
+        /// Check if the specified secret exists.
+        exists: func(secret-id: string) -> result<bool, error>;
 
-    resource key-set {
-        /// Generate a new key pair for the set. Will create a new version if the
-        /// key pair identified by `identifier` already exists.
-        generate: func(identifier: string, alg: algorithm) -> result<key-pair, error>;
-
-        /// Get the current key pair for `identifier`.
-        get: func(identifier: string) -> result<key-pair, error>;
-
-        /// Delete the key pair identified by `identifier`.
-        delete: func(identifier: string) -> result<_, error>;
-    }
-
-    resource key-pair {
-        /// Sign data with the private key.
-        sign: func(data: list<u8>) -> result<list<u8>, error>;
-
-        /// Returns the public key.
-        public-key: func() -> result<jwk, error>;
-
-        /// Returns all versions of the public key.
-        versions: func() -> result<list<jwk>, error>;
+        /// List all `secret-id`s in the locker.
+        list-ids: func() -> result<list<string>, error>;
     }
 }

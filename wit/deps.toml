@@ -2,6 +2,6 @@
 # 2. Update this file (deps.toml) with dependencies to import
 # 3. Run `wit-deps update` to import dependencies specified in deps.toml
 
+blobstore = "https://github.com/WebAssembly/wasi-blobstore/archive/main.tar.gz"
 keyvalue = "https://github.com/WebAssembly/wasi-keyvalue/archive/main.tar.gz"
 messaging = "https://github.com/WebAssembly/wasi-messaging/archive/main.tar.gz"
-blobstore = "https://github.com/WebAssembly/wasi-blobstore/archive/main.tar.gz"
