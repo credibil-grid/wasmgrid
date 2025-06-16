@@ -31,6 +31,7 @@ fn handler(request: &Request) -> Result<Vec<u8>> {
 
     // write to blobstore
     let data = serde_json::to_vec(&body)?;
+
     let value = OutgoingValue::new_outgoing_value();
     let stream = value.outgoing_value_write_body().map_err(|_| anyhow!("failed to write body"))?;
     stream.blocking_write_and_flush(&data)?;

@@ -78,7 +78,6 @@ impl Linkable for Service {
         blobstore::add_to_linker_get_host(linker, Blobstore::new)?;
         container::add_to_linker_get_host(linker, Blobstore::new)?;
         types::add_to_linker_get_host(linker, Blobstore::new)?;
-        tracing::trace!("added to linker");
         Ok(())
     }
 }
@@ -86,8 +85,6 @@ impl Linkable for Service {
 // Implement the [`wasi_sql::ReadWriteView`]` trait for Blobstore<'_>.
 impl blobstore::Host for Blobstore<'_> {
     async fn create_container(&mut self, name: String) -> Result<Resource<ObjectStore>> {
-        tracing::trace!("blobstore::Host::create_container");
-
         let jetstream = jetstream::new(self.resources.nats()?.clone());
         let store = jetstream
             .create_object_store(Config {
@@ -100,8 +97,6 @@ impl blobstore::Host for Blobstore<'_> {
     }
 
     async fn get_container(&mut self, name: String) -> Result<Resource<ObjectStore>> {
-        tracing::trace!("blobstore::Host::get_container");
-
         let jetstream = jetstream::new(self.resources.nats()?.clone());
         let store = jetstream
             .get_object_store(&name)
@@ -112,8 +107,6 @@ impl blobstore::Host for Blobstore<'_> {
     }
 
     async fn delete_container(&mut self, name: String) -> Result<()> {
-        tracing::trace!("blobstore::Host::delete_container");
-
         let jetstream = jetstream::new(self.resources.nats()?.clone());
         jetstream
             .delete_object_store(&name)
@@ -124,8 +117,6 @@ impl blobstore::Host for Blobstore<'_> {
     }
 
     async fn container_exists(&mut self, name: String) -> Result<bool> {
-        tracing::trace!("blobstore::Host::container_exists");
-
         let jetstream = jetstream::new(self.resources.nats()?.clone());
         let exists = jetstream.get_object_store(&name).await.is_ok();
 
@@ -133,12 +124,10 @@ impl blobstore::Host for Blobstore<'_> {
     }
 
     async fn copy_object(&mut self, _src: ObjectId, _dest: ObjectId) -> Result<()> {
-        tracing::trace!("blobstore::Host::copy_object");
         todo!()
     }
 
     async fn move_object(&mut self, _src: ObjectId, _dest: ObjectId) -> Result<()> {
-        tracing::trace!("blobstore::Host::move_object");
         todo!()
     }
 }
@@ -147,8 +136,6 @@ impl container::Host for Blobstore<'_> {}
 
 impl container::HostContainer for Blobstore<'_> {
     async fn name(&mut self, store_ref: Resource<ObjectStore>) -> Result<String> {
-        tracing::trace!("container::HostContainer::name");
-
         let Ok(store) = self.table.get(&store_ref) else {
             return Err(anyhow!("ObjectStore not found"));
         };
@@ -164,20 +151,15 @@ impl container::HostContainer for Blobstore<'_> {
     }
 
     async fn info(&mut self, _store_ref: Resource<ObjectStore>) -> Result<ContainerMetadata> {
-        tracing::trace!("container::HostContainer::info");
         todo!()
     }
 
     async fn get_data(
         &mut self, store_ref: Resource<ObjectStore>, name: String, _start: u64, _end: u64,
     ) -> Result<Resource<IncomingValue>> {
-        tracing::trace!("container::HostContainer::get_data");
-
         let Ok(store) = self.table.get(&store_ref) else {
             return Err(anyhow!("ObjectStore not found"));
         };
-
-        println!("got store for {name}");
 
         // read the object data from the store
         let mut data = store.get(&name).await.map_err(|e| anyhow!("issue getting object: {e}"))?;
@@ -194,7 +176,6 @@ impl container::HostContainer for Blobstore<'_> {
             }
         }
 
-        // return a reference to the data
         Ok(self.table.push(buf)?)
     }
 
@@ -202,8 +183,6 @@ impl container::HostContainer for Blobstore<'_> {
         &mut self, store_ref: Resource<ObjectStore>, name: String,
         value_ref: Resource<MemoryOutputPipe>,
     ) -> Result<()> {
-        tracing::trace!("container::HostContainer::write_data");
-
         let Ok(value) = self.table.get(&value_ref) else {
             return Err(anyhow!("OutgoingValue not found"));
         };
@@ -225,8 +204,6 @@ impl container::HostContainer for Blobstore<'_> {
     async fn list_objects(
         &mut self, store_ref: Resource<ObjectStore>,
     ) -> Result<Resource<StreamObjectNames>> {
-        tracing::trace!("container::HostContainer::list_objects");
-
         let Ok(store) = self.table.get(&store_ref) else {
             return Err(anyhow!("ObjectStore not found"));
         };
@@ -246,8 +223,6 @@ impl container::HostContainer for Blobstore<'_> {
     async fn delete_object(
         &mut self, store_ref: Resource<ObjectStore>, name: String,
     ) -> Result<()> {
-        tracing::trace!("container::HostContainer::delete_object");
-
         let Ok(store) = self.table.get_mut(&store_ref) else {
             return Err(anyhow!("ObjectStore not found"));
         };
@@ -259,8 +234,6 @@ impl container::HostContainer for Blobstore<'_> {
     async fn delete_objects(
         &mut self, store_ref: Resource<ObjectStore>, names: Vec<String>,
     ) -> Result<()> {
-        tracing::trace!("container::HostContainer::delete_objects");
-
         let Ok(store) = self.table.get_mut(&store_ref) else {
             return Err(anyhow!("ObjectStore not found"));
         };
@@ -272,8 +245,6 @@ impl container::HostContainer for Blobstore<'_> {
     }
 
     async fn has_object(&mut self, store_ref: Resource<ObjectStore>, name: String) -> Result<bool> {
-        tracing::trace!("container::HostContainer::has_object");
-
         let Ok(store) = self.table.get(&store_ref) else {
             return Err(anyhow!("ObjectStore not found"));
         };
@@ -283,7 +254,6 @@ impl container::HostContainer for Blobstore<'_> {
     async fn object_info(
         &mut self, store_ref: Resource<ObjectStore>, name: String,
     ) -> Result<ObjectMetadata> {
-        tracing::trace!("container::HostContainer::object_info");
         let Ok(store) = self.table.get(&store_ref) else {
             return Err(anyhow!("ObjectStore not found"));
         };
@@ -303,8 +273,6 @@ impl container::HostContainer for Blobstore<'_> {
     }
 
     async fn clear(&mut self, store_ref: Resource<ObjectStore>) -> Result<()> {
-        tracing::trace!("container::HostContainer::clear");
-
         let Ok(store) = self.table.get(&store_ref) else {
             return Err(anyhow!("ObjectStore not found"));
         };
@@ -321,7 +289,6 @@ impl container::HostContainer for Blobstore<'_> {
     }
 
     async fn drop(&mut self, store_ref: Resource<ObjectStore>) -> Result<()> {
-        tracing::trace!("container::HostContainer::drop");
         self.table.delete(store_ref)?;
         Ok(())
     }
@@ -331,19 +298,16 @@ impl container::HostStreamObjectNames for Blobstore<'_> {
     async fn read_stream_object_names(
         &mut self, _names_ref: Resource<StreamObjectNames>, _len: u64,
     ) -> Result<(Vec<String>, bool)> {
-        tracing::trace!("container::HostStreamObjectNames::read_stream_object_names");
         todo!()
     }
 
     async fn skip_stream_object_names(
         &mut self, _names_ref: Resource<StreamObjectNames>, _num: u64,
     ) -> Result<(u64, bool)> {
-        tracing::trace!("container::HostStreamObjectNames::skip_stream_object_names");
         todo!()
     }
 
     async fn drop(&mut self, names_ref: Resource<StreamObjectNames>) -> Result<()> {
-        tracing::trace!("container::HostStreamObjectNames::drop");
         Ok(self.table.delete(names_ref).map(|_| ())?)
     }
 }
@@ -359,7 +323,6 @@ impl types::HostIncomingValue for Blobstore<'_> {
     async fn incoming_value_consume_sync(
         &mut self, value_ref: Resource<IncomingValue>,
     ) -> Result<IncomingValueSyncBody> {
-        tracing::trace!("HostIncomingValue::incoming_value_consume_sync");
         let incoming_value = self.table.get(&value_ref)?;
         Ok(incoming_value.clone())
     }
@@ -367,8 +330,6 @@ impl types::HostIncomingValue for Blobstore<'_> {
     async fn incoming_value_consume_async(
         &mut self, value_ref: Resource<IncomingValue>,
     ) -> Result<Resource<InputStream>> {
-        tracing::trace!("HostIncomingValue::incoming_value_consume_async");
-
         let value = self.table.get(&value_ref)?;
         let rs = MemoryInputPipe::new(value.clone());
         let stream: InputStream = Box::new(rs);
@@ -377,28 +338,23 @@ impl types::HostIncomingValue for Blobstore<'_> {
     }
 
     async fn size(&mut self, value_ref: Resource<IncomingValue>) -> Result<u64> {
-        tracing::trace!("HostIncomingValue::size");
         let incoming_value = self.table.get(&value_ref)?;
         Ok(incoming_value.len() as u64)
     }
 
     async fn drop(&mut self, value_ref: Resource<IncomingValue>) -> Result<()> {
-        tracing::trace!("HostIncomingValue::drop");
         Ok(self.table.delete(value_ref).map(|_| ())?)
     }
 }
 
 impl types::HostOutgoingValue for Blobstore<'_> {
     async fn new_outgoing_value(&mut self) -> Result<Resource<MemoryOutputPipe>> {
-        tracing::trace!("HostOutgoingValue::new_outgoing_value");
         Ok(self.table.push(MemoryOutputPipe::new(1024))?)
     }
 
     async fn outgoing_value_write_body(
         &mut self, value_ref: Resource<MemoryOutputPipe>,
     ) -> Result<Resource<OutputStream>> {
-        tracing::trace!("HostOutgoingValue::outgoing_value_write_body");
-
         let value = self.table.get(&value_ref)?;
         let stream: OutputStream = Box::new(value.clone());
 
@@ -406,12 +362,10 @@ impl types::HostOutgoingValue for Blobstore<'_> {
     }
 
     async fn finish(&mut self, _: Resource<MemoryOutputPipe>) -> Result<()> {
-        tracing::trace!("HostOutgoingValue::finish");
         Ok(())
     }
 
     async fn drop(&mut self, value_ref: Resource<MemoryOutputPipe>) -> Result<()> {
-        tracing::trace!("HostOutgoingValue::drop");
         Ok(self.table.delete(value_ref).map(|_| ())?)
     }
 }
