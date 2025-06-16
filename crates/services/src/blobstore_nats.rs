@@ -313,8 +313,8 @@ impl types::HostIncomingValue for Blobstore<'_> {
     async fn incoming_value_consume_sync(
         &mut self, value_ref: Resource<IncomingValue>,
     ) -> Result<IncomingValueSyncBody> {
-        let incoming_value = self.table.get(&value_ref)?;
-        Ok(incoming_value.clone())
+        let value = self.table.get(&value_ref)?;
+        Ok(value.clone())
     }
 
     async fn incoming_value_consume_async(
@@ -328,8 +328,8 @@ impl types::HostIncomingValue for Blobstore<'_> {
     }
 
     async fn size(&mut self, value_ref: Resource<IncomingValue>) -> Result<u64> {
-        let incoming_value = self.table.get(&value_ref)?;
-        Ok(incoming_value.len() as u64)
+        let value = self.table.get(&value_ref)?;
+        Ok(value.len() as u64)
     }
 
     async fn drop(&mut self, value_ref: Resource<IncomingValue>) -> Result<()> {
