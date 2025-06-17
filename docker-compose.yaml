@@ -3,10 +3,11 @@ services:
     build: .
     image: acrcredibil.azurecr.io/demo/wasmgrid
     platform: linux/arm64
-    environment:
-      - RUST_LOG=runtime=trace,wasmgrid=trace,services=trace
+    env_file: .env
+    # environment:
+    #   - RUST_LOG=runtime=trace,wasmgrid=trace,services=trace
     ports:
       - 8080:8080
     volumes:
-      - ./target/wasm32-wasip2/release/http.wasm:/app.wasm
+      - ./target/wasm32-wasip2/release/vault.wasm:/app.wasm
     command: ["/app/wasmgrid", "run", "/app.wasm"]

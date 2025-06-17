@@ -1,5 +1,9 @@
+use std::env;
+use std::sync::Arc;
+
 use anyhow::{Result, anyhow};
-use azure_identity::DefaultAzureCredential;
+use azure_core::credentials::{Secret, TokenCredential};
+use azure_identity::{ClientSecretCredential, DefaultAzureCredential};
 use azure_security_keyvault_secrets::SecretClient;
 use tokio::task::JoinHandle;
 
@@ -13,13 +17,15 @@ impl Resources {
     ) -> JoinHandle<Result<()>> {
         let resources = self.clone();
         tokio::spawn(async move {
-            let credential = if cfg!(debug_assertions) {
+            let credential: Arc<dyn TokenCredential> = if cfg!(debug_assertions) {
                 DefaultAzureCredential::new()
                     .map_err(|e| anyhow!("could not create credential: {e}"))?
             } else {
-                // let credential = ClientSecretCredential::new()?;
-                DefaultAzureCredential::new()
-                    .map_err(|e| anyhow!("could not create credential: {e}"))?
+                let tenant_id = env::var("AZURE_TENANT_ID")?;
+                let client_id = env::var("AZURE_CLIENT_ID")?;
+                let client_secret = env::var("AZURE_CLIENT_SECRET")?;
+                let secret = Secret::new(client_secret);
+                ClientSecretCredential::new(&tenant_id, client_id, secret, None)?
             };
 
             let client = SecretClient::new(addr.as_ref(), credential, None)
