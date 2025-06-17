@@ -14,7 +14,7 @@ use anyhow::{Result, anyhow};
 #[derive(Clone)]
 pub struct Resources {
     #[cfg(feature = "azkeyvault")]
-    azkeyvault: Arc<OnceLock<azure_security_keyvault_keys::KeyClient>>,
+    azkeyvault: Arc<OnceLock<azure_security_keyvault_secrets::SecretClient>>,
     #[cfg(feature = "mongodb")]
     mongo: Arc<OnceLock<mongodb::Client>>,
     #[cfg(feature = "nats")]

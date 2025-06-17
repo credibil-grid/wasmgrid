@@ -17,14 +17,14 @@ http = ["dep:wasmtime-wasi-http"]
 blobstore = ["dep:wasmtime-wasi-io", "dep:async-nats", "resources/nats"]
 keyvalue = ["dep:async-nats", "resources/nats"]
 messaging = ["dep:async-nats", "resources/nats"]
-vault = ["dep:azure_core", "dep:azure_security_keyvault_keys", "dep:openssl", "resources/azkeyvault"]
+vault = ["dep:azure_core", "dep:azure_security_keyvault_secrets", "dep:openssl", "resources/azkeyvault"]
 
 [dependencies]
 anyhow.workspace = true
 async-nats = { version = "0.41.0", optional = true }
 async-trait = "0.1.88"
-azure_core = { version = "0.24.0", optional = true, default-features = false, features = ["reqwest_rustls"] }
-azure_security_keyvault_keys = { version = "0.3.0", optional = true, default-features = false }
+azure_core = { workspace = true, optional = true }
+azure_security_keyvault_secrets = { workspace = true, optional = true }
 base64ct = { version = "1.8.0", features = ["std"] }
 bytes = "1.10.1"
 futures = "0.3.31"

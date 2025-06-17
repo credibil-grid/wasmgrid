@@ -1,5 +1,3 @@
-#![feature(let_chains)]
-
 use serde_json::json;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 use wasi::exports::http::incoming_handler::Guest;

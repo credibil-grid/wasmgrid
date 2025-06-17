@@ -7,7 +7,7 @@ use dotenv::dotenv;
 use runtime::{Cli, Parser};
 use services::{
     Resources, blobstore_nats as blobstore, http, keyvalue_nats as keyvalue,
-    messaging_nats as messaging,
+    messaging_nats as messaging, vault_az as vault,
 };
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
@@ -33,7 +33,7 @@ pub async fn main() -> Result<()> {
             rt.link(&blobstore::Service)?;
             rt.link(&keyvalue::Service)?;
             rt.link(&messaging::Service)?;
-            // rt.link(&vault::Service)?;
+            rt.link(&vault::Service)?;
 
             // load external resources
             let nats_addr = env::var("NATS_ADDR").unwrap_or_else(|_| DEF_NATS_ADDR.into());

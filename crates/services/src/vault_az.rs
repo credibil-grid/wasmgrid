@@ -8,9 +8,8 @@
 mod generated {
     #![allow(clippy::trait_duplication_in_bounds)]
 
-    pub use async_nats::jetstream::kv::Store;
-
     pub use self::wasi::vault::vault::Error;
+    pub use super::Locker;
 
     wasmtime::component::bindgen!({
         world: "vault",
@@ -19,7 +18,7 @@ mod generated {
         async: true,
         trappable_imports: true,
         with: {
-            "wasi:vault/vault/locker": Store,
+            "wasi:vault/vault/locker": Locker,
         },
         trappable_error_type: {
             "wasi:vault/vault/error" => Error,
@@ -27,11 +26,9 @@ mod generated {
     });
 }
 
-use std::time::Duration;
-
 use anyhow::anyhow;
-use async_nats::jetstream;
-use async_nats::jetstream::kv::{Config, Store};
+use azure_security_keyvault_secrets::models::{Secret, SetSecretParameters};
+use base64ct::{Base64UrlUnpadded, Encoding};
 use futures::TryStreamExt;
 use runtime::Linkable;
 use wasmtime::component::{Linker, Resource, ResourceTableError};
@@ -71,33 +68,18 @@ impl Linkable for Service {
     }
 }
 
-// Implement the [`wasi_keyvalue::KeyValueView`]` trait for  VaultHost<'_>.
+pub struct Locker {
+    identitfier: String,
+}
+
+// Implement the [`wasi_vault::Host`]` trait for  VaultHost<'_>.
 impl vault::Host for VaultHost<'_> {
-    // Open bucket specified by identifier, save to state and return as a resource.
-    async fn open(&mut self, identifier: String) -> Result<Resource<Store>> {
-        tracing::trace!("vault::Host::open {identifier}");
-
-        let jetstream = jetstream::new(self.resources.nats()?.clone());
-        let bucket = if let Ok(bucket) = jetstream.get_key_value(&identifier).await {
-            bucket
-        } else {
-            let result = jetstream
-                .create_key_value(Config {
-                    bucket: identifier.clone(),
-                    history: 1,
-                    max_age: Duration::from_secs(10 * 60),
-                    max_bytes: 100 * 1024 * 1024, // 100 MiB
-                    ..Config::default()
-                })
-                .await;
-
-            result.map_err(|e| {
-                tracing::error!("Failed to create {identifier} bucket: {e}");
-                anyhow!("Failed to create {identifier} bucket: {e}")
-            })?
+    // Open locker specified by identifier, save to state and return as a resource.
+    async fn open(&mut self, identifier: String) -> Result<Resource<Locker>> {
+        let locker = Locker {
+            identitfier: identifier.clone(),
         };
-
-        Ok(self.table.push(bucket)?)
+        Ok(self.table.push(locker)?)
     }
 
     fn convert_error(&mut self, err: Error) -> anyhow::Result<Error> {
@@ -108,72 +90,115 @@ impl vault::Host for VaultHost<'_> {
 
 impl vault::HostLocker for VaultHost<'_> {
     async fn get(
-        &mut self, store_ref: Resource<Store>, secret_id: String,
+        &mut self, locker_ref: Resource<Locker>, secret_id: String,
     ) -> Result<Option<Vec<u8>>> {
-        tracing::trace!("vault::HostLocker::get {secret_id}");
-
-        let Ok(bucket) = self.table.get(&store_ref) else {
+        let Ok(locker) = self.table.get(&locker_ref) else {
             return Err(Error::NoSuchStore);
         };
-        let value =
-            bucket.get(secret_id).await.map_err(|e| anyhow!("issue getting secret_id: {e}"))?;
-        Ok(value.map(|v| v.to_vec()))
+        let secret_name = format!("{}-{secret_id}", locker.identitfier);
+        tracing::debug!("getting secret named: {secret_name}");
+
+        let response = self.resources.azkeyvault()?.get_secret(&secret_name, "", None).await;
+        let response = match response {
+            Ok(resp) => resp,
+            Err(e) => {
+                if let Some(code) = e.http_status()
+                    && code == 400
+                {
+                    return Ok(None);
+                }
+                return Err(Error::Other(e.to_string()));
+            }
+        };
+
+        let secret: Secret =
+            response.into_body().await.map_err(|e| anyhow!("issue deserializing secret: {e}"))?;
+        let Some(value) = secret.value else {
+            return Ok(None);
+        };
+        let decoded = Base64UrlUnpadded::decode_vec(&value)
+            .map_err(|e| anyhow!("issue decoding secret: {e}"))?;
+
+        Ok(Some(decoded))
     }
 
     async fn set(
-        &mut self, store_ref: Resource<Store>, secret_id: String, value: Vec<u8>,
+        &mut self, locker_ref: Resource<Locker>, secret_id: String, value: Vec<u8>,
     ) -> Result<(), Error> {
-        tracing::trace!("vault::HostLocker::set {secret_id}");
-
-        let Ok(bucket) = self.table.get_mut(&store_ref) else {
+        let Ok(locker) = self.table.get(&locker_ref) else {
             return Err(Error::NoSuchStore);
         };
-        bucket
-            .put(secret_id, value.into())
+        let secret_name = format!("{}-{secret_id}", locker.identitfier);
+        tracing::debug!("setting secret named: {secret_name}");
+
+        let params = SetSecretParameters {
+            value: Some(Base64UrlUnpadded::encode_string(&value)),
+            ..SetSecretParameters::default()
+        };
+        let content =
+            params.try_into().map_err(|e| anyhow!("issue converting params to content: {e}"))?;
+
+        self.resources
+            .azkeyvault()?
+            .set_secret(&secret_name, content, None)
             .await
-            .map_or_else(|e| Err(anyhow!(e).into()), |_| Ok(()))
+            .map_err(|e| anyhow!("issue setting secret: {e}"))?;
+
+        Ok(())
     }
 
-    async fn delete(&mut self, store_ref: Resource<Store>, secret_id: String) -> Result<()> {
-        tracing::trace!("vault::HostLocker::delete {secret_id}");
-
-        let Ok(bucket) = self.table.get_mut(&store_ref) else {
+    async fn delete(&mut self, locker_ref: Resource<Locker>, secret_id: String) -> Result<()> {
+        let Ok(locker) = self.table.get(&locker_ref) else {
             return Err(Error::NoSuchStore);
         };
-        bucket.delete(secret_id).await.map_err(|e| anyhow!("issue deleting value: {e}").into())
+        let secret_name = format!("{}-{secret_id}", locker.identitfier);
+        tracing::debug!("deleting secret named: {secret_name}");
+
+        self.resources
+            .azkeyvault()?
+            .delete_secret(&secret_name, None)
+            .await
+            .map_err(|e| anyhow!("issue deleting secret: {e}"))?;
+
+        Ok(())
     }
 
-    async fn exists(&mut self, store_ref: Resource<Store>, secret_id: String) -> Result<bool> {
-        tracing::trace!("vault::HostLocker::exists {secret_id}");
+    async fn exists(&mut self, locker_ref: Resource<Locker>, secret_id: String) -> Result<bool> {
+        vault::HostLocker::get(self, locker_ref, secret_id).await.map(|opt| opt.is_some())
+    }
 
-        let Ok(bucket) = self.table.get(&store_ref) else {
+    async fn list_ids(&mut self, locker_ref: Resource<Locker>) -> Result<Vec<String>> {
+        let Ok(locker) = self.table.get(&locker_ref) else {
             return Err(Error::NoSuchStore);
         };
-        let value =
-            bucket.get(&secret_id).await.map_err(|e| anyhow!("issue getting secret: {e}"))?;
+        let identifier = &locker.identitfier;
+        tracing::debug!("listing secrets for: {identifier}");
 
-        Ok(value.is_some())
+        // get all secret properties from Azure KeyVault
+        let iter = self
+            .resources
+            .azkeyvault()?
+            .list_secret_properties(None)
+            .map_err(|e| anyhow!("issue listing secrets: {e}"))?;
+
+        // filter and collect secret IDs for this 'locker'
+        let secret_ids: Vec<String> = iter
+            .try_filter_map(|props| async move {
+                let Some(id) = props.id else {
+                    return Ok(None);
+                };
+                Ok(id.strip_prefix(&format!("{identifier}-")).map(|s| s.to_string()))
+            })
+            .try_collect()
+            .await
+            .map_err(|e| anyhow!("issue collecting secrets: {e}"))?;
+
+        Ok(secret_ids)
     }
 
-    async fn list_ids(&mut self, store_ref: Resource<Store>) -> Result<Vec<String>> {
-        tracing::trace!("vault::HostLocker::list_keys");
-
-        let Ok(bucket) = self.table.get(&store_ref) else {
-            return Err(Error::NoSuchStore);
-        };
-        let Ok(key_stream) = bucket.keys().await else {
-            return Err(anyhow!("Failed to list keys").into());
-        };
-        let Ok(keys) = key_stream.try_collect().await else {
-            return Err(anyhow!("Failed to collect keys").into());
-        };
-
-        Ok(keys)
-    }
-
-    async fn drop(&mut self, store_ref: Resource<Store>) -> anyhow::Result<()> {
+    async fn drop(&mut self, locker_ref: Resource<Locker>) -> anyhow::Result<()> {
         tracing::trace!("vault::HostLocker::drop");
-        self.table.delete(store_ref).map(|_| Ok(()))?
+        self.table.delete(locker_ref).map(|_| Ok(()))?
     }
 }
 
