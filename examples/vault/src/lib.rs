@@ -34,10 +34,7 @@ fn handler(request: &Request) -> Result<Vec<u8>> {
 
     // read secret from vault
     let secret = locker.get("secret-id").map_err(|e| anyhow!("issue retriving secret: {e}"))?;
-
-    println!("secret_id: {secret:?}");
-
-    // assert_eq!(data, body);
+    assert_eq!(secret.unwrap(), body);
 
     let response = serde_json::from_slice::<Value>(&body)?;
     tracing::debug!("sending response: {:?}", json!(response));
