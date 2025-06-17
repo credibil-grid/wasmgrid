@@ -1,4 +1,4 @@
-# Vault Example
+# Blobstore Example
 
 Build the example guest:
 
@@ -6,13 +6,15 @@ Build the example guest:
 cargo build --package vault --target wasm32-wasip2 --release
 ```
 
-Run the guest using the `wasmgrid` runtime:
+Run the example guest:
 
 ```bash
-cargo run -- compile  ./target/wasm32-wasip2/release/vault.wasm
+# compile and run
+cargo run -- run ./target/wasm32-wasip2/release/vault.wasm
+
+# pre-compile
+cargo run -- compile  ./target/wasm32-wasip2/release/vault.wasm --output ./vault.bin
 cargo run -- run ./vault.bin
-# OR
-cargo run -- run --compile ./target/wasm32-wasip2/release/vault.wasm
 ```
 
 In a separate console, send some messages to the guest:

@@ -24,7 +24,7 @@ compile = ["runtime/compile"] # adds cranelift (+ ~4Mb)
 anyhow.workspace = true
 dotenv = "0.15.0"
 runtime.workspace = true
-services = { path = "crates/services", features = ["http", "jsondb-mongodb", "keyvault-azure", "kv-nats", "msg-nats", "rpc-nats"] }
+services = { path = "crates/services", features = ["blobstore", "http", "keyvalue"] }
 tokio.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
@@ -35,20 +35,7 @@ opt-level = "s"
 strip = true
 
 [workspace]
-members = [
-  ".",
-  "crates/*",
-  "examples/http",
-  "examples/http-http",
-  "examples/http-msg",
-  "examples/jsondb",
-  "examples/keyvalue",
-  "examples/messaging",
-  # "examples/p2p",
-  "examples/rpc/client",
-  "examples/rpc/server",
-  "examples/vault",
-]
+members = ["crates/*", "examples/*"]
 resolver = "3"
 
 [workspace.package]
@@ -69,16 +56,21 @@ pedantic = "warn"
 
 [workspace.dependencies]
 anyhow = "1.0.98"
-cfg-if = "1.0.0"
+azure_core = { version = "0.25.0", default-features = false, features = ["reqwest_rustls"] }
+azure_identity = { version = "0.25.0", default-features = false }
+azure_security_keyvault_secrets = { version = "0.4.0", default-features = false }
+cfg-if = "1.0.1"
 http = "1.3.1"
 runtime = { path = "crates/runtime" }
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.140"
-tokio = "1.45.0"
+tokio = "1.45.1"
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["env-filter", "fmt"] }
 wasi = "0.14.2"
 wasi-bindings = { path = "crates/wasi-bindings" }
 wasi-http = { path = "crates/wasi-http" }
-wasmtime = { version = "32.0.0", default-features = false, features = ["component-model"] }
-wasmtime-wasi = "32.0.0"
+wasmtime = { version = "33.0.0", default-features = false, features = ["component-model"] }
+wasmtime-wasi = "33.0.0"
+wasmtime-wasi-http = "33.0.0"
+wasmtime-wasi-io = "33.0.0"

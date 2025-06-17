@@ -1,5 +1,5 @@
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
-use wasi_bindings::messaging::exports::incoming_handler::{Guest, ServerConfiguration};
+use wasi_bindings::messaging::incoming_handler::{Configuration, Guest};
 use wasi_bindings::messaging::producer;
 use wasi_bindings::messaging::types::{Client, Error, Message};
 
@@ -71,8 +71,8 @@ impl Guest for MessagingGuest {
     }
 
     /// Set subscription topics.
-    fn configure() -> Result<ServerConfiguration, Error> {
-        Ok(ServerConfiguration {
+    fn configure() -> Result<Configuration, Error> {
+        Ok(Configuration {
             topics: vec!["a", "b", "c", "d"].into_iter().map(|s| s.to_string()).collect(),
         })
     }

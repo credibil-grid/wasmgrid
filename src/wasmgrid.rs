@@ -2,19 +2,20 @@
 
 use std::env;
 
+use anyhow::Result;
 use dotenv::dotenv;
 use runtime::{Cli, Parser};
 use services::{
-    Resources, http, jsondb_mongodb, keyvault_azure, kv_nats, msg_nats, rpc_nats,
+    Resources, blobstore_nats as blobstore, http, keyvalue_nats as keyvalue,
+    messaging_nats as messaging, vault_az as vault,
 };
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
-const DEF_MGO_URI: &str = "mongodb://localhost:27017";
 const DEF_NATS_ADDR: &str = "demo.nats.io";
 const DEF_KV_ADDR: &str = "https://kv-credibil-demo.vault.azure.net";
 
 #[tokio::main]
-pub async fn main() -> anyhow::Result<()> {
+pub async fn main() -> Result<()> {
     if cfg!(debug_assertions) {
         dotenv().ok();
     }
@@ -29,28 +30,24 @@ pub async fn main() -> anyhow::Result<()> {
 
             // link services
             rt.link(&http::Service)?;
-            rt.link(&rpc_nats::Service)?;
-            rt.link(&kv_nats::Service)?;
-            rt.link(&jsondb_mongodb::Service)?;
-            rt.link(&keyvault_azure::Service)?;
-            rt.link(&msg_nats::Service)?;
+            rt.link(&blobstore::Service)?;
+            rt.link(&keyvalue::Service)?;
+            rt.link(&messaging::Service)?;
+            rt.link(&vault::Service)?;
 
             // load external resources
             let nats_addr = env::var("NATS_ADDR").unwrap_or_else(|_| DEF_NATS_ADDR.into());
             let jwt = env::var("NATS_JWT").ok();
             let seed = env::var("NATS_SEED").ok();
-            let mgo_uri = env::var("MGO_URI").unwrap_or_else(|_| DEF_MGO_URI.into());
             let kv_addr = env::var("KV_ADDR").unwrap_or_else(|_| DEF_KV_ADDR.into());
 
             let resources = Resources::new();
             resources.with_nats(nats_addr, jwt, seed);
-            resources.with_mongo(mgo_uri);
             resources.with_azkeyvault(kv_addr.clone());
 
             // start `Runnable` servers
             rt.run(http::Service, resources.clone())?;
-            rt.run(rpc_nats::Service, resources.clone())?;
-            rt.run(msg_nats::Service, resources.clone())?;
+            rt.run(messaging::Service, resources.clone())?;
 
             rt.shutdown().await
         }

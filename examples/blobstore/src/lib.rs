@@ -1,9 +1,12 @@
+
+
 use anyhow::{Result, anyhow};
 use serde_json::{Value, json};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 use wasi::exports::http::incoming_handler::Guest;
 use wasi::http::types::{IncomingRequest, ResponseOutparam};
-use wasi_bindings::vault::vault;
+use wasi_bindings::blobstore::blobstore;
+use wasi_bindings::blobstore::types::{IncomingValue, OutgoingValue};
 use wasi_http::{self, Request, Router, post};
 
 struct HttpGuest;
@@ -26,17 +29,26 @@ fn handler(request: &Request) -> Result<Vec<u8>> {
     let request: Value = serde_json::from_slice(&body)?;
     tracing::debug!("received request: {request:?}");
 
-    let locker =
-        vault::open("credibil-locker").map_err(|e| anyhow!("failed to open vault locker: {e}"))?;
+    // write to blobstore
+    let outgoing = OutgoingValue::new_outgoing_value();
+    let stream =
+        outgoing.outgoing_value_write_body().map_err(|_| anyhow!("failed create stream"))?;
+    stream.blocking_write_and_flush(&body)?;
 
-    // write secret to vault
-    locker.set("secret-id", &body).map_err(|e| anyhow!("issue setting secret: {e}"))?;
+    let container = blobstore::create_container("credibil_bucket")
+        .map_err(|e| anyhow!("failed to create container: {e}"))?;
+    container.write_data("request", &outgoing).map_err(|e| anyhow!("failed to write data: {e}"))?;
+    OutgoingValue::finish(outgoing).map_err(|e| anyhow!("issue finishing: {e}"))?;
 
-    // read secret from vault
-    let secret = locker.get("secret-id").map_err(|e| anyhow!("issue retriving secret: {e}"))?;
-    assert_eq!(secret.unwrap(), body);
+    // read from blobstore
+    let incoming =
+        container.get_data("request", 0, 0).map_err(|e| anyhow!("failed to read data: {e}"))?;
+    let data = IncomingValue::incoming_value_consume_sync(incoming)
+        .map_err(|_| anyhow!("failed to create incoming value"))?;
 
-    let response = serde_json::from_slice::<Value>(&body)?;
+    assert_eq!(data, body);
+
+    let response = serde_json::from_slice::<Value>(&data)?;
     tracing::debug!("sending response: {:?}", json!(response));
     serde_json::to_vec(&response).map_err(Into::into)
 }

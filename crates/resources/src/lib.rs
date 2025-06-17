@@ -14,7 +14,7 @@ use anyhow::{Result, anyhow};
 #[derive(Clone)]
 pub struct Resources {
     #[cfg(feature = "azkeyvault")]
-    azkeyvault: Arc<OnceLock<azure_security_keyvault_keys::KeyClient>>,
+    azkeyvault: Arc<OnceLock<azure_security_keyvault_secrets::SecretClient>>,
     #[cfg(feature = "mongodb")]
     mongo: Arc<OnceLock<mongodb::Client>>,
     #[cfg(feature = "nats")]
@@ -41,7 +41,7 @@ impl Default for Resources {
     }
 }
 
-fn timeout<T>(once_lock: &OnceLock<T>, limit: u64) -> Result<&T>{
+fn timeout<T>(once_lock: &OnceLock<T>, limit: u64) -> Result<&T> {
     let duration = Duration::from_millis(limit / 10);
     for _ in 0..10 {
         if let Some(client) = once_lock.get() {

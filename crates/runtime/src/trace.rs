@@ -7,14 +7,14 @@
 
 use anyhow::anyhow;
 use bytes::Bytes;
-use wasmtime_wasi::{OutputStream, Pollable, StreamError, StreamResult};
+use wasmtime_wasi::p2::{OutputStream, Pollable, StdoutStream, StreamError, StreamResult};
 
 // Capture wasm guest stdout.
 pub struct Stdout;
 
-impl wasmtime_wasi::StdoutStream for Stdout {
+impl StdoutStream for Stdout {
     fn stream(&self) -> Box<dyn OutputStream> {
-        Box::new(StdoutStream {})
+        Box::new(OutStream {})
     }
 
     fn isatty(&self) -> bool {
@@ -22,14 +22,14 @@ impl wasmtime_wasi::StdoutStream for Stdout {
     }
 }
 
-struct StdoutStream;
+struct OutStream;
 
 #[async_trait::async_trait]
-impl Pollable for StdoutStream {
+impl Pollable for OutStream {
     async fn ready(&mut self) {}
 }
 
-impl OutputStream for StdoutStream {
+impl OutputStream for OutStream {
     fn write(&mut self, bytes: Bytes) -> StreamResult<()> {
         let out = String::from_utf8(bytes.to_vec())
             .map_err(|e| StreamError::LastOperationFailed(anyhow!(e)))?;
@@ -49,7 +49,7 @@ impl OutputStream for StdoutStream {
 // Implement error tracing for Guests by capturing stderr.
 pub struct Errout;
 
-impl wasmtime_wasi::StdoutStream for Errout {
+impl StdoutStream for Errout {
     fn stream(&self) -> Box<dyn OutputStream> {
         Box::new(ErroutStream {})
     }
@@ -62,11 +62,11 @@ impl wasmtime_wasi::StdoutStream for Errout {
 struct ErroutStream;
 
 #[async_trait::async_trait]
-impl wasmtime_wasi::Pollable for ErroutStream {
+impl Pollable for ErroutStream {
     async fn ready(&mut self) {}
 }
 
-impl wasmtime_wasi::OutputStream for ErroutStream {
+impl OutputStream for ErroutStream {
     fn write(&mut self, bytes: Bytes) -> StreamResult<()> {
         let out = String::from_utf8(bytes.to_vec())
             .map_err(|e| StreamError::LastOperationFailed(anyhow!(e)))?;

@@ -7,7 +7,7 @@
 
 use anyhow::Result;
 use wasmtime::component::{InstancePre, Linker};
-use wasmtime_wasi::{IoView, WasiView};
+use wasmtime_wasi::p2::{IoView, WasiView};
 
 /// The `Linkable` trait is implemented by every service so that the runtime
 /// can link the service's dependencies prior to instantiation of a component.

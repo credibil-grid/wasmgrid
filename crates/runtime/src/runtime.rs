@@ -6,7 +6,7 @@ use anyhow::Result;
 use cfg_if::cfg_if;
 use wasmtime::component::{Component, Linker};
 use wasmtime::{Config, Engine};
-use wasmtime_wasi::WasiView;
+use wasmtime_wasi::p2::WasiView;
 
 use crate::service::{Linkable, Runnable};
 
@@ -49,7 +49,7 @@ impl<T: WasiView + 'static> Runtime<T> {
 
         // resolve dependencies
         let mut linker: Linker<T> = Linker::new(&engine);
-        wasmtime_wasi::add_to_linker_async(&mut linker)?;
+        wasmtime_wasi::p2::add_to_linker_async(&mut linker)?;
 
         tracing::trace!("initialized");
         Ok(Self { component, linker })
@@ -114,8 +114,6 @@ impl<T: WasiView + 'static> Runtime<T> {
     ///
     /// Returns an error if there is an issue processing the shutdown signal.
     pub async fn shutdown(&self) -> Result<()> {
-        tokio::select! {
-            _ = tokio::signal::ctrl_c() => Ok(()),
-        }
+        Ok(tokio::signal::ctrl_c().await?)
     }
 }
