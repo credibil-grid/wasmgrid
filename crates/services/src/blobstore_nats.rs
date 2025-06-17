@@ -169,8 +169,7 @@ impl container::HostContainer for Blobstore<'_> {
     }
 
     async fn write_data(
-        &mut self, store_ref: Resource<Container>, name: String,
-        value_ref: Resource<OutgoingValue>,
+        &mut self, store_ref: Resource<Container>, name: String, value_ref: Resource<OutgoingValue>,
     ) -> Result<()> {
         let Ok(value) = self.table.get(&value_ref) else {
             return Err(anyhow!("OutgoingValue not found"));
@@ -209,9 +208,7 @@ impl container::HostContainer for Blobstore<'_> {
         Ok(self.table.push(names)?)
     }
 
-    async fn delete_object(
-        &mut self, store_ref: Resource<Container>, name: String,
-    ) -> Result<()> {
+    async fn delete_object(&mut self, store_ref: Resource<Container>, name: String) -> Result<()> {
         let Ok(store) = self.table.get_mut(&store_ref) else {
             return Err(anyhow!("Container not found"));
         };

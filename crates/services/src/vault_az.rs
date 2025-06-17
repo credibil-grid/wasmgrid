@@ -69,16 +69,14 @@ impl Linkable for Service {
 }
 
 pub struct Locker {
-    identitfier: String,
+    identifier: String,
 }
 
 // Implement the [`wasi_vault::Host`]` trait for  VaultHost<'_>.
 impl vault::Host for VaultHost<'_> {
     // Open locker specified by identifier, save to state and return as a resource.
     async fn open(&mut self, identifier: String) -> Result<Resource<Locker>> {
-        let locker = Locker {
-            identitfier: identifier.clone(),
-        };
+        let locker = Locker { identifier };
         Ok(self.table.push(locker)?)
     }
 
@@ -95,7 +93,7 @@ impl vault::HostLocker for VaultHost<'_> {
         let Ok(locker) = self.table.get(&locker_ref) else {
             return Err(Error::NoSuchStore);
         };
-        let secret_name = format!("{}-{secret_id}", locker.identitfier);
+        let secret_name = format!("{}-{secret_id}", locker.identifier);
         tracing::debug!("getting secret named: {secret_name}");
 
         let response = self.resources.azkeyvault()?.get_secret(&secret_name, "", None).await;
@@ -128,7 +126,7 @@ impl vault::HostLocker for VaultHost<'_> {
         let Ok(locker) = self.table.get(&locker_ref) else {
             return Err(Error::NoSuchStore);
         };
-        let secret_name = format!("{}-{secret_id}", locker.identitfier);
+        let secret_name = format!("{}-{secret_id}", locker.identifier);
         tracing::debug!("setting secret named: {secret_name}");
 
         let params = SetSecretParameters {
@@ -151,7 +149,7 @@ impl vault::HostLocker for VaultHost<'_> {
         let Ok(locker) = self.table.get(&locker_ref) else {
             return Err(Error::NoSuchStore);
         };
-        let secret_name = format!("{}-{secret_id}", locker.identitfier);
+        let secret_name = format!("{}-{secret_id}", locker.identifier);
         tracing::debug!("deleting secret named: {secret_name}");
 
         self.resources
@@ -171,7 +169,7 @@ impl vault::HostLocker for VaultHost<'_> {
         let Ok(locker) = self.table.get(&locker_ref) else {
             return Err(Error::NoSuchStore);
         };
-        let identifier = &locker.identitfier;
+        let identifier = &locker.identifier;
         tracing::debug!("listing secrets for: {identifier}");
 
         // get all secret properties from Azure KeyVault
@@ -187,7 +185,7 @@ impl vault::HostLocker for VaultHost<'_> {
                 let Some(id) = props.id else {
                     return Ok(None);
                 };
-                Ok(id.strip_prefix(&format!("{identifier}-")).map(|s| s.to_string()))
+                Ok(id.strip_prefix(&format!("{identifier}-")).map(ToString::to_string))
             })
             .try_collect()
             .await
