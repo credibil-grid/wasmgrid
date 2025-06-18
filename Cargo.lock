@@ -344,7 +344,7 @@ dependencies = [
  "tracing-subscriber",
  "wasi 0.14.2+wasi-0.2.4",
  "wasi-bindings",
- "wasi-http",
+ "wasi-http-ext",
 ]
 
 [[package]]
@@ -1460,7 +1460,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "wasi 0.14.2+wasi-0.2.4",
- "wasi-http",
+ "wasi-http-ext",
 ]
 
 [[package]]
@@ -1506,7 +1506,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "wasi 0.14.2+wasi-0.2.4",
- "wasi-http",
+ "wasi-http-ext",
 ]
 
 [[package]]
@@ -1519,7 +1519,7 @@ dependencies = [
  "tracing-subscriber",
  "wasi 0.14.2+wasi-0.2.4",
  "wasi-bindings",
- "wasi-http",
+ "wasi-http-ext",
 ]
 
 [[package]]
@@ -1863,7 +1863,7 @@ dependencies = [
  "tracing-subscriber",
  "wasi 0.14.2+wasi-0.2.4",
  "wasi-bindings",
- "wasi-http",
+ "wasi-http-ext",
 ]
 
 [[package]]
@@ -3137,7 +3137,7 @@ dependencies = [
  "tracing",
  "wasmtime",
  "wasmtime-wasi",
- "wasmtime-wasi-http",
+ "wasmtime-wasi-http-ext",
  "wasmtime-wasi-io",
 ]
 
@@ -3873,7 +3873,7 @@ dependencies = [
  "tracing-subscriber",
  "wasi 0.14.2+wasi-0.2.4",
  "wasi-bindings",
- "wasi-http",
+ "wasi-http-ext",
 ]
 
 [[package]]
@@ -3920,7 +3920,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "wasi-http"
+name = "wasi-http-ext"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -4311,7 +4311,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "wasmtime-wasi-http"
+name = "wasmtime-wasi-http-ext"
 version = "33.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7db9276689904ae7ed4359253d120015ec20cd14fc4c311db2f10a87576c44ab"

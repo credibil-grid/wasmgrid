@@ -16,4 +16,4 @@ tracing.workspace = true
 tracing-subscriber.workspace = true
 wasi.workspace = true
 wasi-bindings.workspace = true
-wasi-http.workspace = true
+wasi-http-ext.workspace = true
