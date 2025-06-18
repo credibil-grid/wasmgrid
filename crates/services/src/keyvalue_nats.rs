@@ -276,9 +276,8 @@ impl batch::Host for KeyvalueHost<'_> {
         let mut many = Vec::new();
         for key in keys {
             let key_enc = Base64UrlUnpadded::encode_string(key.as_bytes());
-            let value = bucket.get(key_enc).await.map_err(|e| {
-                anyhow!("issue getting value: {e}")
-            })?;
+            let value =
+                bucket.get(key_enc).await.map_err(|e| anyhow!("issue getting value: {e}"))?;
             if let Some(value) = value {
                 many.push(Some((key, value.to_vec())));
             }

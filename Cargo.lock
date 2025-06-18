@@ -3137,7 +3137,7 @@ dependencies = [
  "tracing",
  "wasmtime",
  "wasmtime-wasi",
- "wasmtime-wasi-http-ext",
+ "wasmtime-wasi-http",
  "wasmtime-wasi-io",
 ]
 
@@ -4311,7 +4311,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "wasmtime-wasi-http-ext"
+name = "wasmtime-wasi-http"
 version = "33.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7db9276689904ae7ed4359253d120015ec20cd14fc4c311db2f10a87576c44ab"

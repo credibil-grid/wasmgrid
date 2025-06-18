@@ -1,6 +1,6 @@
 [package]
-name = "wasi-http-ext-ext"
-description = "Wrapper for wasi-http-ext bindings"
+name = "wasi-http-ext"
+description = "Wrapper for wasi-http bindings"
 authors.workspace = true
 edition.workspace = true
 version = "0.1.0"

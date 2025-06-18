@@ -72,5 +72,5 @@ wasi-bindings = { path = "crates/wasi-bindings" }
 wasi-http-ext = { path = "crates/wasi-http-ext" }
 wasmtime = { version = "33.0.0", default-features = false, features = ["component-model"] }
 wasmtime-wasi = "33.0.0"
-wasmtime-wasi-http-ext = "33.0.0"
+wasmtime-wasi-http = "33.0.0"
 wasmtime-wasi-io = "33.0.0"
