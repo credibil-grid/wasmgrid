@@ -34,6 +34,7 @@ use std::time::Duration;
 use anyhow::anyhow;
 use async_nats::jetstream;
 use async_nats::jetstream::kv::{Config, Store};
+use base64ct::{Base64UrlUnpadded, Encoding};
 use futures::TryStreamExt;
 use generated::wasi::keyvalue::atomics::CasError;
 use runtime::Linkable;
@@ -89,15 +90,15 @@ impl Linkable for Service {
 impl store::Host for KeyvalueHost<'_> {
     // Open bucket specified by identifier, save to state and return as a resource.
     async fn open(&mut self, identifier: String) -> Result<Resource<Store>> {
-        tracing::trace!("store::Host::open {identifier}");
-
         let jetstream = jetstream::new(self.resources.nats()?.clone());
-        let bucket = if let Ok(bucket) = jetstream.get_key_value(&identifier).await {
+
+        let bucket_id = Base64UrlUnpadded::encode_string(identifier.as_bytes());
+        let bucket = if let Ok(bucket) = jetstream.get_key_value(&bucket_id).await {
             bucket
         } else {
             let result = jetstream
                 .create_key_value(Config {
-                    bucket: identifier.clone(),
+                    bucket: bucket_id,
                     history: 1,
                     max_age: Duration::from_secs(10 * 60),
                     max_bytes: 100 * 1024 * 1024, // 100 MiB
@@ -105,10 +106,7 @@ impl store::Host for KeyvalueHost<'_> {
                 })
                 .await;
 
-            result.map_err(|e| {
-                tracing::error!("Failed to create {identifier} bucket: {e}");
-                anyhow!("Failed to create {identifier} bucket: {e}")
-            })?
+            result.map_err(|e| anyhow!("failed to create bucket: {e}"))?
         };
 
         Ok(self.table.push(bucket)?)
@@ -122,46 +120,39 @@ impl store::Host for KeyvalueHost<'_> {
 
 impl store::HostBucket for KeyvalueHost<'_> {
     async fn get(&mut self, store_ref: Resource<Store>, key: String) -> Result<Option<Vec<u8>>> {
-        tracing::trace!("store::HostBucket::get {key}");
-
         let Ok(bucket) = self.table.get(&store_ref) else {
             return Err(Error::NoSuchStore);
         };
-        let value = bucket.get(key).await.map_err(|e| anyhow!("issue getting key: {e}"))?;
+        let key_enc = Base64UrlUnpadded::encode_string(key.as_bytes());
+        let value = bucket.get(key_enc).await.map_err(|e| anyhow!("issue getting key: {e}"))?;
         Ok(value.map(|v| v.to_vec()))
     }
 
     async fn set(
         &mut self, store_ref: Resource<Store>, key: String, value: Vec<u8>,
     ) -> Result<(), Error> {
-        tracing::trace!("store::HostBucket::set {key}");
-
         let Ok(bucket) = self.table.get_mut(&store_ref) else {
             return Err(Error::NoSuchStore);
         };
-        bucket.put(key, value.into()).await.map_or_else(|e| Err(anyhow!(e).into()), |_| Ok(()))
+        let key_enc = Base64UrlUnpadded::encode_string(key.as_bytes());
+        bucket.put(key_enc, value.into()).await.map_or_else(|e| Err(anyhow!(e).into()), |_| Ok(()))
     }
 
     async fn delete(&mut self, store_ref: Resource<Store>, key: String) -> Result<()> {
-        tracing::trace!("store::HostBucket::delete {key}");
-
         let Ok(bucket) = self.table.get_mut(&store_ref) else {
             return Err(Error::NoSuchStore);
         };
-        bucket.delete(key).await.map_err(|e| anyhow!("issue deleting value: {e}").into())
+        let key_enc = Base64UrlUnpadded::encode_string(key.as_bytes());
+        bucket.delete(key_enc).await.map_err(|e| anyhow!("issue deleting value: {e}").into())
     }
 
     async fn exists(&mut self, store_ref: Resource<Store>, key: String) -> Result<bool> {
-        tracing::trace!("store::HostBucket::exists {key}");
-
         let Ok(bucket) = self.table.get(&store_ref) else {
             return Err(Error::NoSuchStore);
         };
-        let value = bucket.get(&key).await.map_err(|e| {
-            tracing::error!("issue getting value: {e}");
-            anyhow!("issue getting value: {key}")
-        })?;
-
+        let key_enc = Base64UrlUnpadded::encode_string(key.as_bytes());
+        let value =
+            bucket.get(key_enc).await.map_err(|e| anyhow!("issue checking for {key}: {e}"))?;
         Ok(value.is_some())
     }
 
@@ -174,16 +165,25 @@ impl store::HostBucket for KeyvalueHost<'_> {
             return Err(Error::NoSuchStore);
         };
         let Ok(key_stream) = bucket.keys().await else {
-            return Err(anyhow!("Failed to list keys").into());
+            return Err(anyhow!("failed to list keys").into());
         };
-        let Ok(keys) = key_stream.try_collect().await else {
-            return Err(anyhow!("Failed to collect keys").into());
+        let Ok(keys) = key_stream
+            .try_filter_map(|enc| async move {
+                let Ok(decoded) = Base64UrlUnpadded::decode_vec(&enc) else {
+                    return Ok(None);
+                };
+                Ok(Some(String::from_utf8_lossy(&decoded).into_owned()))
+            })
+            .try_collect()
+            .await
+        else {
+            return Err(anyhow!("failed to collect keys").into());
         };
+
         Ok(KeyResponse { keys, cursor })
     }
 
     async fn drop(&mut self, store_ref: Resource<Store>) -> anyhow::Result<()> {
-        tracing::trace!("store::HostBucket::drop");
         self.table.delete(store_ref).map(|_| Ok(()))?
     }
 }
@@ -192,14 +192,13 @@ impl atomics::HostCas for KeyvalueHost<'_> {
     /// Construct a new CAS operation. Implementors can map the underlying functionality
     /// (transactions, versions, etc) as desired.
     async fn new(&mut self, store_ref: Resource<Store>, key: String) -> Result<Resource<Cas>> {
-        tracing::trace!("atomics::HostCas::new {key}");
-
         let Ok(bucket) = self.table.get(&store_ref) else {
             return Err(Error::NoSuchStore);
         };
-        let value = bucket.get(key.clone()).await.map_err(|e| anyhow!("issue getting key: {e}"))?;
+        let key_enc = Base64UrlUnpadded::encode_string(key.as_bytes());
+        let value = bucket.get(key_enc).await.map_err(|e| anyhow!("issue getting key: {e}"))?;
         let cas = Cas {
-            key: key.clone(),
+            key,
             current: value.map(|v| v.to_vec()),
         };
 
@@ -208,8 +207,6 @@ impl atomics::HostCas for KeyvalueHost<'_> {
 
     /// Get the current value of the CAS handle.
     async fn current(&mut self, cas_ref: Resource<Cas>) -> Result<Option<Vec<u8>>> {
-        tracing::trace!("atomics::HostCas::current");
-
         let Ok(cas) = self.table.get(&cas_ref) else {
             return Err(Error::NoSuchStore);
         };
@@ -235,13 +232,12 @@ impl atomics::Host for KeyvalueHost<'_> {
     async fn increment(
         &mut self, store_ref: Resource<Store>, key: String, delta: i64,
     ) -> Result<i64> {
-        tracing::trace!("atomics::Host::increment {key}, {delta}");
-
         let Ok(bucket) = self.table.get_mut(&store_ref) else {
             return Err(Error::NoSuchStore);
         };
-        let Ok(Some(value)) = bucket.get(key.clone()).await else {
-            tracing::error!("no value for {key}");
+
+        let key_enc = Base64UrlUnpadded::encode_string(key.as_bytes());
+        let Ok(Some(value)) = bucket.get(&key_enc).await else {
             return Err(anyhow!("no value for {key}").into());
         };
 
@@ -253,8 +249,7 @@ impl atomics::Host for KeyvalueHost<'_> {
         let inc = i64::from_be_bytes(buf) + delta;
 
         // update value in bucket
-        if let Err(e) = bucket.put(key, inc.to_be_bytes().to_vec().into()).await {
-            tracing::error!("issue saving increment: {e}");
+        if let Err(e) = bucket.put(key_enc, inc.to_be_bytes().to_vec().into()).await {
             return Err(anyhow!("issue saving increment: {e}").into());
         }
 
@@ -266,7 +261,6 @@ impl atomics::Host for KeyvalueHost<'_> {
     async fn swap(
         &mut self, _cas_ref: Resource<Cas>, _value: Vec<u8>,
     ) -> anyhow::Result<Result<(), CasError>> {
-        tracing::trace!("atomics::Host::swap");
         Err(anyhow!("not implemented"))
     }
 }
@@ -275,17 +269,15 @@ impl batch::Host for KeyvalueHost<'_> {
     async fn get_many(
         &mut self, store_ref: Resource<Store>, keys: Vec<String>,
     ) -> Result<Vec<Option<(String, Vec<u8>)>>> {
-        tracing::trace!("batch::Host::get_many {keys:?}");
-
         let Ok(bucket) = self.table.get(&store_ref) else {
             return Err(Error::NoSuchStore);
         };
 
         let mut many = Vec::new();
         for key in keys {
-            let value = bucket.get(&key).await.map_err(|e| {
-                tracing::error!("issue getting value: {e}");
-                anyhow!("issue getting value: {key}")
+            let key_enc = Base64UrlUnpadded::encode_string(key.as_bytes());
+            let value = bucket.get(key_enc).await.map_err(|e| {
+                anyhow!("issue getting value: {e}")
             })?;
             if let Some(value) = value {
                 many.push(Some((key, value.to_vec())));
@@ -298,14 +290,13 @@ impl batch::Host for KeyvalueHost<'_> {
     async fn set_many(
         &mut self, store_ref: Resource<Store>, key_values: Vec<(String, Vec<u8>)>,
     ) -> Result<()> {
-        tracing::trace!("batch::Host::set_many {key_values:?}");
-
         let Ok(bucket) = self.table.get_mut(&store_ref) else {
             return Err(Error::NoSuchStore);
         };
+
         for (key, value) in key_values {
-            if let Err(e) = bucket.put(key, value.into()).await {
-                tracing::error!("issue saving value: {e}");
+            let key_enc = Base64UrlUnpadded::encode_string(key.as_bytes());
+            if let Err(e) = bucket.put(key_enc, value.into()).await {
                 return Err(anyhow!("issue saving value: {e}").into());
             }
         }
@@ -314,14 +305,13 @@ impl batch::Host for KeyvalueHost<'_> {
     }
 
     async fn delete_many(&mut self, store_ref: Resource<Store>, keys: Vec<String>) -> Result<()> {
-        tracing::trace!("batch::Host::delete_many {keys:?}");
-
         let Ok(bucket) = self.table.get_mut(&store_ref) else {
             return Err(Error::NoSuchStore);
         };
+
         for key in keys {
-            if let Err(e) = bucket.delete(key).await {
-                tracing::error!("issue deleting value: {e}");
+            let key_enc = Base64UrlUnpadded::encode_string(key.as_bytes());
+            if let Err(e) = bucket.delete(key_enc).await {
                 return Err(anyhow!("issue deleting value: {e}").into());
             }
         }

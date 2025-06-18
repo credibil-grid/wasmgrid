@@ -11,3 +11,12 @@ services:
     volumes:
       - ./target/wasm32-wasip2/release/vault.wasm:/app.wasm
     command: ["/app/wasmgrid", "run", "/app.wasm"]
+    depends_on:
+      - nats
+
+  nats:
+    image: nats:latest
+    platform: linux/arm64
+    ports:
+      - 4222:4222
+    command: ["-js"]

@@ -95,8 +95,9 @@ impl vault::HostLocker for VaultHost<'_> {
         };
         let secret_name = format!("{}-{secret_id}", locker.identifier);
         tracing::debug!("getting secret named: {secret_name}");
+        let secret_id = Base64UrlUnpadded::encode_string(secret_name.as_bytes());
 
-        let response = self.resources.azkeyvault()?.get_secret(&secret_name, "", None).await;
+        let response = self.resources.azkeyvault()?.get_secret(&secret_id, "", None).await;
         let response = match response {
             Ok(resp) => resp,
             Err(e) => {
@@ -128,6 +129,7 @@ impl vault::HostLocker for VaultHost<'_> {
         };
         let secret_name = format!("{}-{secret_id}", locker.identifier);
         tracing::debug!("setting secret named: {secret_name}");
+        let secret_id = Base64UrlUnpadded::encode_string(secret_name.as_bytes());
 
         let params = SetSecretParameters {
             value: Some(Base64UrlUnpadded::encode_string(&value)),
@@ -138,7 +140,7 @@ impl vault::HostLocker for VaultHost<'_> {
 
         self.resources
             .azkeyvault()?
-            .set_secret(&secret_name, content, None)
+            .set_secret(&secret_id, content, None)
             .await
             .map_err(|e| anyhow!("issue setting secret: {e}"))?;
 
@@ -151,10 +153,11 @@ impl vault::HostLocker for VaultHost<'_> {
         };
         let secret_name = format!("{}-{secret_id}", locker.identifier);
         tracing::debug!("deleting secret named: {secret_name}");
+        let secret_id = Base64UrlUnpadded::encode_string(secret_name.as_bytes());
 
         self.resources
             .azkeyvault()?
-            .delete_secret(&secret_name, None)
+            .delete_secret(&secret_id, None)
             .await
             .map_err(|e| anyhow!("issue deleting secret: {e}"))?;
 
