@@ -4,7 +4,8 @@ services:
     image: acrcredibil.azurecr.io/demo/wasmgrid
     platform: linux/arm64
     env_file: .env
-    # environment:
+    environment:
+      - NATS_ADDR=nats:4222
     #   - RUST_LOG=runtime=trace,wasmgrid=trace,services=trace
     ports:
       - 8080:8080
