@@ -35,7 +35,7 @@ impl Router {
     #[must_use]
     pub fn route(mut self, route: impl Into<String>, handler: MethodHandler) -> Self {
         // create a regex to extract params from path
-        let pattern: String = route.into();
+        let pattern = route.into();
         let mut matcher = pattern.clone();
         for (_, [param]) in ROUTE_REGEX.captures_iter(&pattern).map(|caps| caps.extract()) {
             let param_name = param.trim_start_matches('{').trim_end_matches('}');
