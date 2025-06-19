@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use anyhow::{Result, anyhow};
 use http::Uri;
 use http::header::AUTHORIZATION;
@@ -7,11 +9,12 @@ use wasi::http::types::{Fields, IncomingRequest, Method, Scheme};
 #[derive(Clone)]
 pub struct Request<'a> {
     inner: &'a IncomingRequest,
+    pub(crate) params: Option<HashMap<String, String>>,
 }
 
 impl<'a> From<&'a IncomingRequest> for Request<'a> {
     fn from(inner: &'a IncomingRequest) -> Self {
-        Self { inner }
+        Self { inner, params: None }
     }
 }
 
@@ -83,6 +86,12 @@ impl<'a> Request<'a> {
         drop(stream);
 
         Ok(buffer)
+    }
+
+    /// Get the request headers.
+    #[must_use]
+    pub fn params(&self) -> Option<&HashMap<String, String>> {
+        self.params.as_ref()
     }
 
     /// Parse the request body from JSON.

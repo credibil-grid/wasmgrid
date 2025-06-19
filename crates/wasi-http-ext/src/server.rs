@@ -15,17 +15,18 @@ use crate::routing::Router;
 pub fn serve<'a>(
     router: &Router, request: impl Into<Request<'a>>,
 ) -> Result<OutgoingResponse, ErrorCode> {
-    let request: Request = request.into();
+    let mut request = request.into();
 
-    let Some(route) = router.find(&request) else {
+    let Some((route, params)) = router.find(&request) else {
         return Err(ErrorCode::DestinationNotFound);
     };
+    request.params = Some(params);
 
-    // serialize result
-    let mut response = match route.handler.handle(&request) {
+    // call the route's handler to process the request
+    let mut response = match route.handle(&request) {
         Ok(resp) => resp,
         Err(err) => {
-            tracing::error!("{}", err);
+            tracing::error!("{err}");
             let err_json = json!({"error": "server_error", "error_description": err.to_string()});
             serde_json::to_vec(&err_json).map_err(|_| {
                 ErrorCode::InternalError(Some("failed to serialize error".to_string()))
