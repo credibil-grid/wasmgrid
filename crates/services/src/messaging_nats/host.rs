@@ -316,7 +316,7 @@ impl request_reply::Host for MsgHost<'_> {
                 .map_err(|e| anyhow!("failed to reply: {e}"))?;
         }
 
-        todo!()
+        Ok(())
     }
 }
 

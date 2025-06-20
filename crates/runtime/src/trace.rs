@@ -33,7 +33,7 @@ impl OutputStream for OutStream {
     fn write(&mut self, bytes: Bytes) -> StreamResult<()> {
         let out = String::from_utf8(bytes.to_vec())
             .map_err(|e| StreamError::LastOperationFailed(anyhow!(e)))?;
-        println!("{out}");
+        print!("{out}");
         Ok(())
     }
 
@@ -70,7 +70,7 @@ impl OutputStream for ErroutStream {
     fn write(&mut self, bytes: Bytes) -> StreamResult<()> {
         let out = String::from_utf8(bytes.to_vec())
             .map_err(|e| StreamError::LastOperationFailed(anyhow!(e)))?;
-        println!("{out}");
+        print!("{out}");
         Ok(())
     }
 

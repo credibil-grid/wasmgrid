@@ -1,5 +1,5 @@
 [package]
-name = "http-msg"
+name = "pub-sub"
 authors.workspace = true
 edition.workspace = true
 

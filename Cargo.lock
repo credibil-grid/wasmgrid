@@ -1510,19 +1510,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "http-msg"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "serde_json",
- "tracing",
- "tracing-subscriber",
- "wasi 0.14.2+wasi-0.2.4",
- "wasi-bindings",
- "wasi-http-ext",
-]
-
-[[package]]
 name = "httparse"
 version = "1.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2454,6 +2441,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "pub-sub"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "serde_json",
+ "tracing",
+ "tracing-subscriber",
+ "wasi 0.14.2+wasi-0.2.4",
+ "wasi-bindings",
+ "wasi-http-ext",
+]
+
+[[package]]
 name = "pulley-interpreter"
 version = "33.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2610,6 +2610,19 @@ name = "regex-syntax"
 version = "0.8.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2b15c43186be67a4fd63bee50d0303afffcef381492ebe2c5d87f324e1b8815c"
+
+[[package]]
+name = "request-reply"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "serde_json",
+ "tracing",
+ "tracing-subscriber",
+ "wasi 0.14.2+wasi-0.2.4",
+ "wasi-bindings",
+ "wasi-http-ext",
+]
 
 [[package]]
 name = "reqwest"
