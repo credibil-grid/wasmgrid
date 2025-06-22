@@ -70,7 +70,7 @@ tracing-subscriber = { version = "0.3.19", features = ["env-filter", "fmt"] }
 wasi = "0.14.2"
 wasi-bindings = { path = "crates/wasi-bindings" }
 wasi-http-ext = { path = "crates/wasi-http-ext" }
-wasmtime = { version = "33.0.0", default-features = false, features = ["component-model"] }
-wasmtime-wasi = "33.0.0"
-wasmtime-wasi-http = "33.0.0"
-wasmtime-wasi-io = "33.0.0"
+wasmtime = { version = "34.0.0", default-features = false, features = ["component-model"] }
+wasmtime-wasi = "34.0.0"
+wasmtime-wasi-http = "34.0.0"
+wasmtime-wasi-io = "34.0.0"

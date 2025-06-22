@@ -38,7 +38,7 @@ use futures::StreamExt;
 use runtime::Linkable;
 use time::OffsetDateTime;
 use tokio::io::AsyncReadExt;
-use wasmtime::component::{Linker, Resource, ResourceTable};
+use wasmtime::component::{HasData, Linker, Resource, ResourceTable};
 use wasmtime_wasi::p2::bindings::io::streams::{InputStream, OutputStream};
 use wasmtime_wasi::p2::pipe::{MemoryInputPipe, MemoryOutputPipe};
 
@@ -66,6 +66,11 @@ impl Blobstore<'_> {
     }
 }
 
+struct Data;
+impl HasData for Data {
+    type Data<'a> = Blobstore<'a>;
+}
+
 pub struct Service;
 
 impl Linkable for Service {
@@ -73,13 +78,13 @@ impl Linkable for Service {
 
     // Add all the `wasi-keyvalue` world's interfaces to a [`Linker`], and
     // instantiate the `Blobstore` for the component.
-    fn add_to_linker(&self, linker: &mut Linker<Self::Ctx>) -> anyhow::Result<()> {
-        blobstore::add_to_linker_get_host(linker, Blobstore::new)?;
-        container::add_to_linker_get_host(linker, Blobstore::new)?;
-        types::add_to_linker_get_host(linker, Blobstore::new)?;
-        Ok(())
+    fn add_to_linker(&self, l: &mut Linker<Self::Ctx>) -> anyhow::Result<()> {
+        blobstore::add_to_linker::<_, Data>(l, Blobstore::new)?;
+        container::add_to_linker::<_, Data>(l, Blobstore::new)?;
+        types::add_to_linker::<_, Data>(l, Blobstore::new)
     }
 }
+
 
 // Implement the [`wasi_sql::ReadWriteView`]` trait for Blobstore<'_>.
 impl blobstore::Host for Blobstore<'_> {

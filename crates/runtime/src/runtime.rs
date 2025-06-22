@@ -11,7 +11,7 @@ use wasmtime_wasi::p2::WasiView;
 use crate::service::{Linkable, Runnable};
 
 /// Runtime for a wasm component.
-pub struct Runtime<T> {
+pub struct Runtime<T:'static> {
     pub component: Component,
     pub linker: Linker<T>,
 }

@@ -38,7 +38,7 @@ use base64ct::{Base64UrlUnpadded, Encoding};
 use futures::TryStreamExt;
 use generated::wasi::keyvalue::atomics::CasError;
 use runtime::Linkable;
-use wasmtime::component::{Linker, Resource, ResourceTableError};
+use wasmtime::component::{HasData, Linker, Resource, ResourceTableError};
 use wasmtime_wasi::ResourceTable;
 
 use self::generated::wasi::keyvalue::store::{Error, KeyResponse};
@@ -47,18 +47,23 @@ use crate::{Ctx, Resources};
 
 pub type Result<T, E = Error> = anyhow::Result<T, E>;
 
-pub struct KeyvalueHost<'a> {
+pub struct Keyvalue<'a> {
     resources: &'a Resources,
     table: &'a mut ResourceTable,
 }
 
-impl KeyvalueHost<'_> {
-    const fn new(c: &mut Ctx) -> KeyvalueHost<'_> {
-        KeyvalueHost {
+impl Keyvalue<'_> {
+    const fn new(c: &mut Ctx) -> Keyvalue<'_> {
+        Keyvalue {
             resources: &c.resources,
             table: &mut c.table,
         }
     }
+}
+
+struct Data;
+impl HasData for Data {
+    type Data<'a> = Keyvalue<'a>;
 }
 
 /// Compare and Swap (CAS) handle.
@@ -76,18 +81,16 @@ impl Linkable for Service {
     type Ctx = Ctx;
 
     // Add all the `wasi-keyvalue` world's interfaces to a [`Linker`], and
-    // instantiate the `KeyvalueHost` for the component.
+    // instantiate the `Keyvalue` for the component.
     fn add_to_linker(&self, linker: &mut Linker<Self::Ctx>) -> anyhow::Result<()> {
-        store::add_to_linker_get_host(linker, KeyvalueHost::new)?;
-        atomics::add_to_linker_get_host(linker, KeyvalueHost::new)?;
-        batch::add_to_linker_get_host(linker, KeyvalueHost::new)?;
-        tracing::trace!("added to linker");
-        Ok(())
+        store::add_to_linker::<_, Data>(linker, Keyvalue::new)?;
+        atomics::add_to_linker::<_, Data>(linker, Keyvalue::new)?;
+        batch::add_to_linker::<_, Data>(linker, Keyvalue::new)
     }
 }
 
-// Implement the [`wasi_keyvalue::KeyValueView`]` trait for  KeyvalueHost<'_>.
-impl store::Host for KeyvalueHost<'_> {
+// Implement the [`wasi_keyvalue::KeyValueView`]` trait for  Keyvalue<'_>.
+impl store::Host for Keyvalue<'_> {
     // Open bucket specified by identifier, save to state and return as a resource.
     async fn open(&mut self, identifier: String) -> Result<Resource<Store>> {
         let jetstream = jetstream::new(self.resources.nats()?.clone());
@@ -118,7 +121,7 @@ impl store::Host for KeyvalueHost<'_> {
     }
 }
 
-impl store::HostBucket for KeyvalueHost<'_> {
+impl store::HostBucket for Keyvalue<'_> {
     async fn get(&mut self, store_ref: Resource<Store>, key: String) -> Result<Option<Vec<u8>>> {
         let Ok(bucket) = self.table.get(&store_ref) else {
             return Err(Error::NoSuchStore);
@@ -188,7 +191,7 @@ impl store::HostBucket for KeyvalueHost<'_> {
     }
 }
 
-impl atomics::HostCas for KeyvalueHost<'_> {
+impl atomics::HostCas for Keyvalue<'_> {
     /// Construct a new CAS operation. Implementors can map the underlying functionality
     /// (transactions, versions, etc) as desired.
     async fn new(&mut self, store_ref: Resource<Store>, key: String) -> Result<Resource<Cas>> {
@@ -221,7 +224,7 @@ impl atomics::HostCas for KeyvalueHost<'_> {
     }
 }
 
-impl atomics::Host for KeyvalueHost<'_> {
+impl atomics::Host for Keyvalue<'_> {
     /// Atomically increment the value associated with the key in the store by
     /// the given delta. It returns the new value.
     ///
@@ -265,7 +268,7 @@ impl atomics::Host for KeyvalueHost<'_> {
     }
 }
 
-impl batch::Host for KeyvalueHost<'_> {
+impl batch::Host for Keyvalue<'_> {
     async fn get_many(
         &mut self, store_ref: Resource<Store>, keys: Vec<String>,
     ) -> Result<Vec<Option<(String, Vec<u8>)>>> {

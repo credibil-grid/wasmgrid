@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use anyhow::anyhow;
 use async_nats::{Client, HeaderMap, Subject};
-use wasmtime::component::{Linker, Resource};
+use wasmtime::component::{HasData, Linker, Resource};
 use wasmtime_wasi::{ResourceTable, ResourceTableError};
 
 use super::generated::wasi::messaging::request_reply::RequestOptions;
@@ -12,34 +12,39 @@ use crate::{Ctx, Resources};
 
 pub type Result<T, E = Error> = anyhow::Result<T, E>;
 
-pub struct MsgHost<'a> {
+pub struct Messaging<'a> {
     table: &'a mut ResourceTable,
     resources: &'a Resources,
 }
 
-impl MsgHost<'_> {
-    const fn new(c: &mut Ctx) -> MsgHost<'_> {
-        MsgHost {
+impl Messaging<'_> {
+    const fn new(c: &mut Ctx) -> Messaging<'_> {
+        Messaging {
             table: &mut c.table,
             resources: &c.resources,
         }
     }
 }
 
-/// Add all the `messaging` world's interfaces to a [`Linker`].
-pub fn add_to_linker(l: &mut Linker<Ctx>) -> anyhow::Result<()> {
-    producer::add_to_linker_get_host(l, MsgHost::new)?;
-    request_reply::add_to_linker_get_host(l, MsgHost::new)?;
-    types::add_to_linker_get_host(l, MsgHost::new)
+struct Data;
+impl HasData for Data {
+    type Data<'a> = Messaging<'a>;
 }
 
-impl types::Host for MsgHost<'_> {
+/// Add all the `messaging` world's interfaces to a [`Linker`].
+pub fn add_to_linker(l: &mut Linker<Ctx>) -> anyhow::Result<()> {
+    producer::add_to_linker::<_, Data>(l, Messaging::new)?;
+    request_reply::add_to_linker::<_, Data>(l, Messaging::new)?;
+    types::add_to_linker::<_, Data>(l, Messaging::new)
+}
+
+impl types::Host for Messaging<'_> {
     fn convert_error(&mut self, err: Error) -> anyhow::Result<Error> {
         Ok(err)
     }
 }
 
-impl HostMessage for MsgHost<'_> {
+impl HostMessage for Messaging<'_> {
     /// Create a new message with the given payload.
     async fn new(&mut self, data: Vec<u8>) -> anyhow::Result<Resource<Message>> {
         tracing::trace!("HostMessage::new with {} bytes", data.len());
@@ -216,7 +221,7 @@ impl HostMessage for MsgHost<'_> {
     }
 }
 
-impl types::HostClient for MsgHost<'_> {
+impl types::HostClient for Messaging<'_> {
     async fn connect(&mut self, name: String) -> Result<Resource<Client>> {
         tracing::trace!("HostClient::connect {name}");
         let client = self.resources.nats()?;
@@ -238,7 +243,7 @@ impl types::HostClient for MsgHost<'_> {
 }
 
 /// The producer interface is used to send messages to a channel/topic.
-impl producer::Host for MsgHost<'_> {
+impl producer::Host for Messaging<'_> {
     /// Sends the message using the given client.
     async fn send(
         &mut self, res_client: Resource<Client>, topic: Topic, this: Resource<Message>,
@@ -263,7 +268,7 @@ impl producer::Host for MsgHost<'_> {
 }
 
 /// The request-reply interface is used to send a request and receive a reply.
-impl request_reply::Host for MsgHost<'_> {
+impl request_reply::Host for Messaging<'_> {
     /// Performs a request-reply operation using the given client and options
     /// (if any).
     async fn request(
@@ -320,7 +325,7 @@ impl request_reply::Host for MsgHost<'_> {
     }
 }
 
-impl request_reply::HostRequestOptions for MsgHost<'_> {
+impl request_reply::HostRequestOptions for Messaging<'_> {
     /// Creates a new request options resource with no options set.
     async fn new(&mut self) -> anyhow::Result<Resource<RequestOptions>> {
         tracing::trace!("request_reply::HostRequestOptions::new");

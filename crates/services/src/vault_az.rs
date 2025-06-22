@@ -31,7 +31,7 @@ use azure_security_keyvault_secrets::models::{Secret, SetSecretParameters};
 use base64ct::{Base64UrlUnpadded, Encoding};
 use futures::TryStreamExt;
 use runtime::Linkable;
-use wasmtime::component::{Linker, Resource, ResourceTableError};
+use wasmtime::component::{HasData, Linker, Resource, ResourceTableError};
 use wasmtime_wasi::ResourceTable;
 
 use self::generated::wasi::vault::vault;
@@ -40,18 +40,23 @@ use crate::{Ctx, Resources};
 
 pub type Result<T, E = Error> = anyhow::Result<T, E>;
 
-pub struct VaultHost<'a> {
+pub struct Vault<'a> {
     resources: &'a Resources,
     table: &'a mut ResourceTable,
 }
 
-impl VaultHost<'_> {
-    const fn new(c: &mut Ctx) -> VaultHost<'_> {
-        VaultHost {
+impl Vault<'_> {
+    const fn new(c: &mut Ctx) -> Vault<'_> {
+        Vault {
             resources: &c.resources,
             table: &mut c.table,
         }
     }
+}
+
+struct Data;
+impl HasData for Data {
+    type Data<'a> = Vault<'a>;
 }
 
 pub struct Service;
@@ -60,11 +65,9 @@ impl Linkable for Service {
     type Ctx = Ctx;
 
     // Add all the `wasi-vault` world's interfaces to a [`Linker`], and
-    // instantiate the `VaultHost` for the component.
+    // instantiate the `Vault` for the component.
     fn add_to_linker(&self, linker: &mut Linker<Self::Ctx>) -> anyhow::Result<()> {
-        vault::add_to_linker_get_host(linker, VaultHost::new)?;
-        tracing::trace!("added to linker");
-        Ok(())
+        vault::add_to_linker::<_, Data>(linker, Vault::new)
     }
 }
 
@@ -72,8 +75,8 @@ pub struct Locker {
     identifier: String,
 }
 
-// Implement the [`wasi_vault::Host`]` trait for  VaultHost<'_>.
-impl vault::Host for VaultHost<'_> {
+// Implement the [`wasi_vault::Host`]` trait for  Vault<'_>.
+impl vault::Host for Vault<'_> {
     // Open locker specified by identifier, save to state and return as a resource.
     async fn open(&mut self, identifier: String) -> Result<Resource<Locker>> {
         let locker = Locker { identifier };
@@ -86,7 +89,7 @@ impl vault::Host for VaultHost<'_> {
     }
 }
 
-impl vault::HostLocker for VaultHost<'_> {
+impl vault::HostLocker for Vault<'_> {
     async fn get(
         &mut self, locker_ref: Resource<Locker>, secret_id: String,
     ) -> Result<Option<Vec<u8>>> {
