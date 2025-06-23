@@ -47,6 +47,15 @@ use crate::{Ctx, Resources};
 
 pub type Result<T, E = Error> = anyhow::Result<T, E>;
 
+/// Compare and Swap (CAS) handle.
+pub struct Cas {
+    /// Key of the stored value.
+    pub key: String,
+
+    /// Current value.
+    pub current: Option<Vec<u8>>,
+}
+
 pub struct Keyvalue<'a> {
     resources: &'a Resources,
     table: &'a mut ResourceTable,
@@ -64,15 +73,6 @@ impl Keyvalue<'_> {
 struct Data;
 impl HasData for Data {
     type Data<'a> = Keyvalue<'a>;
-}
-
-/// Compare and Swap (CAS) handle.
-pub struct Cas {
-    /// Key of the stored value.
-    pub key: String,
-
-    /// Current value.
-    pub current: Option<Vec<u8>>,
 }
 
 pub struct Service;

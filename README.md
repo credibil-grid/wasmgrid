@@ -32,13 +32,10 @@ az login
 
 ### Messaging Example
 
-Build and run the Messaging host and example guest.
-
-[examples/messaging/README.md](examples/messaging/README.md).
+[examples/pub-sub/README.md](examples/pub-sub/README.md).
+[examples/request-reply/README.md](examples/request-reply/README.md).
 
 ### Http Example
-
-Build and run the Http host and example guest.
 
 See [examples/http/README.md](examples/http/README.md).
 
