@@ -5,7 +5,6 @@ use std::sync::LazyLock;
 
 use anyhow::Result;
 use regex::Regex;
-use wasi::http::types::Method;
 
 use crate::handler::MethodHandler;
 use crate::request::Request;
@@ -15,7 +14,7 @@ static ROUTE_REGEX: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"/(\{[-\w()@:%_+.~]+\})").expect("should compile"));
 
 pub struct Router {
-    pub routes: BTreeMap<String, Route>,
+    pub routes: BTreeMap<String, HashMap<String, Route>>,
 }
 
 impl Default for Router {
@@ -46,7 +45,10 @@ impl Router {
         }
         let regex = Regex::new(&format!("^{matcher}$")).expect("should compile");
 
-        self.routes.insert(pattern, Route { regex, handler });
+        self.routes
+            .entry(pattern.clone())
+            .or_default()
+            .insert(format!("{:?}", handler.method), Route { regex, handler });
         self
     }
 
@@ -54,14 +56,17 @@ impl Router {
         let uri = request.uri();
         let path = uri.path();
 
-        for (pattern, route) in self.routes.iter().rev() {
-            if !is_match(&request.method(), &route.handler.method) {
+        for (pattern, routes) in self.routes.iter().rev() {
+            tracing::trace!("{:?} {path}", request.method());
+            tracing::trace!("{:?} {pattern}", routes.keys());
+
+            let Some(route) = routes.get(&format!("{:?}", request.method())) else {
+                tracing::trace!("No matching method");
                 continue;
-            }
-            tracing::debug!("Route `{pattern}`, `{path}`");
+            };
 
             if let Some(caps) = route.regex.captures(path) {
-                tracing::debug!("Route `{pattern}` matched `{path}`");
+                tracing::debug!("`{pattern}` matched `{path}`");
 
                 let mut params = HashMap::new();
                 for n in route.regex.capture_names().filter_map(|n| n).collect::<Vec<&str>>() {
@@ -89,19 +94,10 @@ impl Route {
     }
 }
 
-fn is_match(m1: &Method, m2: &Method) -> bool {
-    match m1 {
-        &Method::Get => matches!(m2, &Method::Get),
-        &Method::Patch => matches!(m2, &Method::Patch),
-        &Method::Post => matches!(m2, &Method::Post),
-        &Method::Put => matches!(m2, &Method::Put),
-        &Method::Delete => matches!(m2, &Method::Delete),
-        _ => false,
-    }
-}
-
 #[cfg(test)]
 mod tests {
+    use wasi::http::types::Method;
+
     use super::*;
 
     #[test]
@@ -109,11 +105,12 @@ mod tests {
         // create route
         let pattern = "/{greeting}/world/{id}/test/{again}";
         let router = Router::new().route(pattern, MethodHandler::new(Method::Get, |_| Ok(vec![])));
-        let route = router.routes.get(pattern).unwrap();
+        let routes = router.routes.get(pattern).unwrap();
 
         // check path for match
+        let method = format!("{:?}", Method::Get);
         let will_match = "/hello/world/my-id/test/repeated";
-        let Some(caps) = route.regex.captures(will_match) else {
+        let Some(caps) = routes[&method].regex.captures(will_match) else {
             panic!("should match");
         };
 
@@ -124,7 +121,7 @@ mod tests {
 
         // confirm regex does not match a different path
         let no_match = "/hello/auckland/my-id/test/repeated";
-        assert!(route.regex.captures(no_match).is_none());
+        assert!(routes[&method].regex.captures(no_match).is_none());
     }
 
     #[test]
@@ -132,11 +129,12 @@ mod tests {
         // create route
         let pattern = "/issuers/{issuer_id}/clients/{client_id}";
         let router = Router::new().route(pattern, MethodHandler::new(Method::Get, |_| Ok(vec![])));
-        let route = router.routes.get(pattern).unwrap();
+        let routes = router.routes.get(pattern).unwrap();
 
         // check path for match
+        let method = format!("{:?}", Method::Get);
         let will_match = "/issuers/http://issuer:8080/clients/http://wallet:8082";
-        let Some(caps) = route.regex.captures(will_match) else {
+        let Some(caps) = routes[&method].regex.captures(will_match) else {
             panic!("should match");
         };
 
