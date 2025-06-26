@@ -6,7 +6,7 @@ use std::sync::LazyLock;
 use anyhow::Result;
 use regex::Regex;
 
-use crate::handler::MethodHandler;
+use crate::handler::{Method, MethodHandler};
 use crate::request::Request;
 
 const PARAM_REGEX: &str = r"[-\w()@:%_+.~]+|https?://[-\w()@:%_+.~]+";
@@ -14,7 +14,7 @@ static ROUTE_REGEX: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"/(\{[-\w()@:%_+.~]+\})").expect("should compile"));
 
 pub struct Router {
-    pub routes: BTreeMap<String, HashMap<String, Route>>,
+    pub routes: BTreeMap<String, HashMap<Method, Route>>,
 }
 
 impl Default for Router {
@@ -48,19 +48,20 @@ impl Router {
         self.routes
             .entry(pattern.clone())
             .or_default()
-            .insert(format!("{:?}", handler.method), Route { regex, handler });
+            .insert(handler.method.clone(), Route { regex, handler });
         self
     }
 
     pub(crate) fn find(&self, request: &Request) -> Option<(&Route, HashMap<String, String>)> {
         let uri = request.uri();
         let path = uri.path();
+        let method = Method(request.method());
 
         for (pattern, routes) in self.routes.iter().rev() {
             tracing::trace!("{:?} {path}", request.method());
             tracing::trace!("{:?} {pattern}", routes.keys());
 
-            let Some(route) = routes.get(&format!("{:?}", request.method())) else {
+            let Some(route) = routes.get(&method) else {
                 tracing::trace!("No matching method");
                 continue;
             };
@@ -96,7 +97,8 @@ impl Route {
 
 #[cfg(test)]
 mod tests {
-    use wasi::http::types::Method;
+    // use wasi::http::types::Method;
+    use wasi::http::types::Method as HttpMethod;
 
     use super::*;
 
@@ -104,11 +106,12 @@ mod tests {
     fn match_route() {
         // create route
         let pattern = "/{greeting}/world/{id}/test/{again}";
-        let router = Router::new().route(pattern, MethodHandler::new(Method::Get, |_| Ok(vec![])));
+        let router =
+            Router::new().route(pattern, MethodHandler::new(HttpMethod::Get, |_| Ok(vec![])));
         let routes = router.routes.get(pattern).unwrap();
 
         // check path for match
-        let method = format!("{:?}", Method::Get);
+        let method = Method(HttpMethod::Get);
         let will_match = "/hello/world/my-id/test/repeated";
         let Some(caps) = routes[&method].regex.captures(will_match) else {
             panic!("should match");
@@ -128,11 +131,12 @@ mod tests {
     fn http_ids() {
         // create route
         let pattern = "/issuers/{issuer_id}/clients/{client_id}";
-        let router = Router::new().route(pattern, MethodHandler::new(Method::Get, |_| Ok(vec![])));
+        let router =
+            Router::new().route(pattern, MethodHandler::new(HttpMethod::Get, |_| Ok(vec![])));
         let routes = router.routes.get(pattern).unwrap();
 
         // check path for match
-        let method = format!("{:?}", Method::Get);
+        let method = Method(HttpMethod::Get);
         let will_match = "/issuers/http://issuer:8080/clients/http://wallet:8082";
         let Some(caps) = routes[&method].regex.captures(will_match) else {
             panic!("should match");
