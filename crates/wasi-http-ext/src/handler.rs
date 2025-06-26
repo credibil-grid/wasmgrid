@@ -13,6 +13,14 @@ pub struct MethodHandler {
 }
 
 impl MethodHandler {
+    /// Create a new method handler.
+    pub fn new(method: Method, handler: impl Handler + 'static) -> Self {
+        MethodHandler {
+            method,
+            handler: Box::new(handler),
+        }
+    }
+
     pub fn handle(&self, request: &Request) -> Result<Vec<u8>> {
         (self.handler)(request)
     }
