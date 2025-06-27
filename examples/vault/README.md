@@ -1,4 +1,4 @@
-# Blobstore Example
+# Vault Example
 
 Build the example guest:
 

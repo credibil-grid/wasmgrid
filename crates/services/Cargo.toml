@@ -14,7 +14,7 @@ workspace = true
 [features]
 default = ["blobstore", "http", "keyvalue", "vault", "messaging"]
 http = ["dep:wasmtime-wasi-http"]
-blobstore = ["dep:wasmtime-wasi-io", "dep:async-nats", "resources/nats"]
+blobstore = ["dep:wasmtime-wasi-io", "dep:async-nats", "dep:mongodb", "resources/nats", "resources/mongodb"]
 keyvalue = ["dep:async-nats", "resources/nats"]
 messaging = ["dep:async-nats", "resources/nats"]
 vault = ["dep:azure_core", "dep:azure_security_keyvault_secrets", "dep:openssl", "resources/azkeyvault"]
@@ -33,6 +33,7 @@ hyper = "1.6.0"
 mongodb = { version = "3.2.3", optional = true }
 resources = { path = "../resources", default-features = false }
 runtime.workspace = true
+serde.workspace = true
 serde_json.workspace = true
 sha2 = "0.10.9"
 time = "0.3.41"
