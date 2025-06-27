@@ -6,7 +6,7 @@ use anyhow::Result;
 use dotenv::dotenv;
 use runtime::{Cli, Parser};
 use services::{
-    Resources, blobstore_nats as blobstore, http, keyvalue_nats as keyvalue,
+    Resources, blobstore_mdb as blobstore, http, keyvalue_nats as keyvalue,
     messaging_nats as messaging, vault_az as vault,
 };
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
@@ -40,9 +40,11 @@ pub async fn main() -> Result<()> {
             let jwt = env::var("NATS_JWT").ok();
             let seed = env::var("NATS_SEED").ok();
             let kv_addr = env::var("KV_ADDR").unwrap_or_else(|_| DEF_KV_ADDR.into());
-
+            let mongo_uri = env::var("MONGODB_URI").expect("MONGODB_URI must be set");
+            
             let resources = Resources::new();
             resources.with_nats(nats_addr, jwt, seed);
+            resources.with_mongo(mongo_uri);
             resources.with_azkeyvault(kv_addr.clone());
 
             // start `Runnable` servers

@@ -43,7 +43,7 @@ use wasmtime_wasi::p2::pipe::{MemoryInputPipe, MemoryOutputPipe};
 use self::generated::wasi::blobstore::blobstore::{self, ObjectId};
 use self::generated::wasi::blobstore::container::{self, ContainerMetadata, ObjectMetadata};
 use self::generated::wasi::blobstore::types::{self, IncomingValueSyncBody};
-use crate::blobstore_mongo::bson::doc;
+use crate::blobstore_mdb::bson::doc;
 use crate::{Ctx, Resources};
 
 pub type Container = Collection<Blob>;

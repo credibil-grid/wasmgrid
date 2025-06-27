@@ -1,7 +1,7 @@
 //! # WebAssembly Runtime
 
 #[cfg(feature = "blobstore")]
-pub mod blobstore_mongo;
+pub mod blobstore_mdb;
 #[cfg(feature = "blobstore")]
 pub mod blobstore_nats;
 #[cfg(feature = "http")]
