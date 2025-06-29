@@ -43,9 +43,9 @@ impl http::incoming_handler::Guest for Http {
 
 wasi::http::proxy::export!(Http);
 
-pub struct Messaging;
+pub struct RequestReply;
 
-impl messaging::incoming_handler::Guest for Messaging {
+impl messaging::incoming_handler::Guest for RequestReply {
     // Handle messages to subscribed topics.
     fn handle(message: Message) -> Result<(), Error> {
         let subscriber =
@@ -81,4 +81,4 @@ impl messaging::incoming_handler::Guest for Messaging {
     }
 }
 
-wasi_bindings::messaging::export!(Messaging with_types_in wasi_bindings::messaging);
+wasi_bindings::messaging::export!(RequestReply  with_types_in wasi_bindings::messaging);
