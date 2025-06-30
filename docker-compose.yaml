@@ -10,7 +10,7 @@ services:
     ports:
       - 8080:8080
     volumes:
-      - ./target/wasm32-wasip2/release/vault.wasm:/app.wasm
+      - ./target/wasm32-wasip2/release/blobstore.wasm:/app.wasm
     command: ["/app/wasmgrid", "run", "/app.wasm"]
     depends_on:
       - nats
