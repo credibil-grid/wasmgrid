@@ -31,7 +31,9 @@ mod generated {
 }
 
 use anyhow::{Result, anyhow};
+use bson::Document;
 use bytes::Bytes;
+use chrono::Utc;
 use futures::StreamExt;
 use mongodb::{Collection, bson};
 use runtime::Linkable;
@@ -89,7 +91,9 @@ const DB_NAME: &str = "blobstore";
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Blob {
     name: String,
-    data: Bytes,
+    doc: Document,
+    size: u64,
+    created_at: u64,
 }
 
 // Implement the [`wasi_sql::ReadWriteView`]` trait for Blobstore<'_>.
@@ -150,7 +154,10 @@ impl container::HostContainer for Blobstore<'_> {
         let Some(blob) = collection.find_one(doc! { "name": name }).await? else {
             return Err(anyhow!("Object not found"));
         };
-        Ok(self.table.push(blob.data)?)
+        let data =
+            serde_json::to_vec(&blob.doc).map_err(|e| anyhow!("failed to serialize BSON: {e}"))?;
+
+        Ok(self.table.push(Bytes::from(data))?)
     }
 
     async fn write_data(
@@ -159,13 +166,21 @@ impl container::HostContainer for Blobstore<'_> {
         let Ok(value) = self.table.get(&value_ref) else {
             return Err(anyhow!("OutgoingValue not found"));
         };
-        let data = value.contents();
-
-        let Ok(collection) = self.table.get_mut(&coll_ref) else {
+        let Ok(collection) = self.table.get(&coll_ref) else {
             return Err(anyhow!("Container not found"));
         };
 
-        collection.insert_one(Blob { name, data }).await?;
+        let doc = serde_json::from_slice::<Document>(&value.contents())
+            .map_err(|e| anyhow!("failed to deserialize BSON: {e}"))?;
+        let blob = Blob {
+            name,
+            doc,
+            size: value.contents().len() as u64,
+            #[allow(clippy::cast_sign_loss)]
+            created_at: Utc::now().timestamp_millis() as u64,
+        };
+        collection.insert_one(blob).await?;
+
         Ok(())
     }
 
@@ -224,14 +239,12 @@ impl container::HostContainer for Blobstore<'_> {
             return Err(anyhow!("Object not found"));
         };
 
-        #[allow(clippy::cast_sign_loss)]
-        let metadata = ObjectMetadata {
+        Ok(ObjectMetadata {
             name: blob.name,
             container: collection.name().to_string(),
-            size: blob.data.len() as u64,
-            created_at: 0,
-        };
-        Ok(metadata)
+            size: blob.size,
+            created_at: blob.created_at,
+        })
     }
 
     async fn clear(&mut self, coll_ref: Resource<Container>) -> Result<()> {
