@@ -2044,15 +2044,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "messaging"
-version = "0.0.0"
-dependencies = [
- "tracing",
- "tracing-subscriber",
- "wasi-bindings",
-]
-
-[[package]]
 name = "miniz_oxide"
 version = "0.8.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"

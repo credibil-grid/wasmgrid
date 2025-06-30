@@ -5,8 +5,8 @@ use wasi::exports::http;
 use wasi::http::types::{IncomingRequest, ResponseOutparam};
 use wasi_bindings::messaging;
 use wasi_bindings::messaging::incoming_handler::Configuration;
-use wasi_bindings::messaging::producer::{self, Message};
-use wasi_bindings::messaging::types::{Client, Error};
+use wasi_bindings::messaging::producer;
+use wasi_bindings::messaging::types::{Client, Error, Message};
 use wasi_http_ext::{self, Router, post};
 
 pub struct Http;
