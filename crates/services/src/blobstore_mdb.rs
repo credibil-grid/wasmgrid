@@ -86,8 +86,6 @@ impl Linkable for Service {
     }
 }
 
-const DB_NAME: &str = "blobstore";
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Blob {
     name: String,
@@ -99,19 +97,25 @@ pub struct Blob {
 // Implement the [`wasi_sql::ReadWriteView`]` trait for Blobstore<'_>.
 impl blobstore::Host for Blobstore<'_> {
     async fn create_container(&mut self, name: String) -> Result<Resource<Container>> {
-        let db = self.resources.mongo()?.database(DB_NAME);
+        let Some(db) = self.resources.mongo()?.default_database() else {
+            return Err(anyhow!("No default database found"));
+        };
         let collection = db.collection::<Blob>(&name);
         Ok(self.table.push(collection)?)
     }
 
     async fn get_container(&mut self, name: String) -> Result<Resource<Container>> {
-        let db = self.resources.mongo()?.database(DB_NAME);
+        let Some(db) = self.resources.mongo()?.default_database() else {
+            return Err(anyhow!("No default database found"));
+        };
         let collection = db.collection::<Blob>(&name);
         Ok(self.table.push(collection)?)
     }
 
     async fn delete_container(&mut self, name: String) -> Result<()> {
-        let db = self.resources.mongo()?.database(DB_NAME);
+        let Some(db) = self.resources.mongo()?.default_database() else {
+            return Err(anyhow!("No default database found"));
+        };
         db.collection::<Blob>(&name)
             .drop()
             .await

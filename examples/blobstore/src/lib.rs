@@ -33,7 +33,7 @@ fn handler(request: &Request) -> Result<Vec<u8>> {
         outgoing.outgoing_value_write_body().map_err(|_| anyhow!("failed create stream"))?;
     stream.blocking_write_and_flush(&body)?;
 
-    let container = blobstore::create_container("credibil_bucket")
+    let container = blobstore::create_container("container")
         .map_err(|e| anyhow!("failed to create container: {e}"))?;
     container.write_data("request", &outgoing).map_err(|e| anyhow!("failed to write data: {e}"))?;
     OutgoingValue::finish(outgoing).map_err(|e| anyhow!("issue finishing: {e}"))?;
