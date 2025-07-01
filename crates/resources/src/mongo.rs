@@ -1,4 +1,4 @@
-use anyhow::{Result, anyhow};
+use anyhow::{Context, Result, anyhow};
 use tokio::task::JoinHandle;
 
 use super::{Resources, timeout};
@@ -36,6 +36,6 @@ impl Resources {
     /// method times out.
     pub fn mongo(&self) -> Result<&mongodb::Client> {
         tracing::debug!("getting mongodb client");
-        timeout(&self.mongo, CONNECTION_TIMEOUT)
+        timeout(&self.mongo, CONNECTION_TIMEOUT).context("getting mongodb client")
     }
 }

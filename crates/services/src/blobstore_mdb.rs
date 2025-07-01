@@ -319,7 +319,8 @@ impl types::HostIncomingValue for Blobstore<'_> {
 
 impl types::HostOutgoingValue for Blobstore<'_> {
     async fn new_outgoing_value(&mut self) -> Result<Resource<OutgoingValue>> {
-        Ok(self.table.push(OutgoingValue::new(1024))?)
+        // HACK: 1 MiB is the maximum capacity for in-mem outgoing values.
+        Ok(self.table.push(OutgoingValue::new(1_048_576))?)
     }
 
     async fn outgoing_value_write_body(
