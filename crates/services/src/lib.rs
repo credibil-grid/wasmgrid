@@ -10,6 +10,8 @@ pub mod http;
 pub mod keyvalue_nats;
 #[cfg(feature = "messaging")]
 pub mod messaging_nats;
+// #[cfg(feature = "sql")]
+// pub mod sql_mdb;
 #[cfg(feature = "vault")]
 pub mod vault_az;
 

@@ -17,3 +17,8 @@ sha512 = "ecf0dd2e0b6e5f62c2e10673cc8c2aab86c532f8b19c984fe2ecd9306e9a5c27831831
 url = "https://github.com/WebAssembly/wasi-messaging/archive/main.tar.gz"
 sha256 = "602487d60c3830fb4fcedcf933cdd6c20411a1a3dcb14db4c5b512f924532f3a"
 sha512 = "dfa9dc4062bad38bcff956aa8ef7b6a056912a2d865167953fbb3ec783b490347f443543f13c4a609c308fb054b75121937148266d178fac0b66d05826d32e44"
+
+[sql]
+url = "https://github.com/WebAssembly/wasi-sql/archive/main.tar.gz"
+sha256 = "b059c4b9951f656e24af3eff9f3dfedd2e45ffa3462bf5ddc17d8c51f757c315"
+sha512 = "cda940f0c995286ed6286ca40706e1811db1fc451f223b63db55edbf47deadff80e5be9fdef3fb3d307161df1671cbca399c6af2006a3498030b0d61bb5a0de1"
