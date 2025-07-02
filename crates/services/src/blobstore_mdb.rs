@@ -167,12 +167,15 @@ impl container::HostContainer for Blobstore<'_> {
     async fn write_data(
         &mut self, coll_ref: Resource<Container>, name: String, value_ref: Resource<OutgoingValue>,
     ) -> Result<()> {
-        let Ok(value) = self.table.get(&value_ref) else {
-            return Err(anyhow!("OutgoingValue not found"));
-        };
         let Ok(collection) = self.table.get(&coll_ref) else {
             return Err(anyhow!("Container not found"));
         };
+        let Ok(value) = self.table.get(&value_ref) else {
+            return Err(anyhow!("OutgoingValue not found"));
+        };
+
+        // `put` should update any previous value, so delete first
+        collection.delete_one(doc! { "name": &name }).await?;
 
         let doc = serde_json::from_slice::<Document>(&value.contents())
             .map_err(|e| anyhow!("failed to deserialize BSON: {e}"))?;
@@ -212,7 +215,6 @@ impl container::HostContainer for Blobstore<'_> {
             return Err(anyhow!("Container not found"));
         };
         collection.delete_one(doc! { "name": name }).await?;
-
         Ok(())
     }
 
