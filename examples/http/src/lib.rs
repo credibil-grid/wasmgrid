@@ -2,7 +2,7 @@ use serde_json::json;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 use wasi::exports::http::incoming_handler::Guest;
 use wasi::http::types::{IncomingRequest, ResponseOutparam};
-use wasi_http_ext::{self, Request, Router, post};
+use wasi_http_ext::{self, Request, Response, Router, post};
 
 struct HttpGuest;
 
@@ -27,14 +27,14 @@ impl Guest for HttpGuest {
 }
 
 // A simple "Hello, World!" endpoint that returns the client's request.
-fn hello(request: &Request) -> anyhow::Result<Vec<u8>> {
+fn hello(request: &Request) -> anyhow::Result<Response> {
     let req_val: serde_json::Value = serde_json::from_slice(&request.body()?)?;
 
-    serde_json::to_vec(&json!({
+    Ok(serde_json::to_vec(&json!({
         "message": "Hello, World!",
         "request": req_val
-    }))
-    .map_err(Into::into)
+    }))?
+    .into())
 }
 
 wasi::http::proxy::export!(HttpGuest);

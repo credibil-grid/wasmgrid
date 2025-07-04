@@ -2,7 +2,7 @@ use serde_json::json;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 use wasi::exports::http::incoming_handler::Guest;
 use wasi::http::types::{IncomingRequest, ResponseOutparam};
-use wasi_http_ext::{self, Request, Router, client, get, post};
+use wasi_http_ext::{self, Request, Response, Router, client, get, post};
 
 struct HttpGuest;
 
@@ -20,17 +20,17 @@ impl Guest for HttpGuest {
 }
 
 // Forward request to external service and return the response
-fn get_handler(_: &Request) -> anyhow::Result<Vec<u8>> {
+fn get_handler(_: &Request) -> anyhow::Result<Response> {
     let resp = client::Client::new().get("https://jsonplaceholder.cypress.io/posts/1").send()?;
 
-    serde_json::to_vec(&json!({
+    Ok(serde_json::to_vec(&json!({
         "response": resp.json::<serde_json::Value>()?
-    }))
-    .map_err(Into::into)
+    }))?
+    .into())
 }
 
 // Forward request to external service and return the response
-fn post_handler(request: &Request) -> anyhow::Result<Vec<u8>> {
+fn post_handler(request: &Request) -> anyhow::Result<Response> {
     let body: serde_json::Value = serde_json::from_slice(&request.body()?)?;
 
     let resp = client::Client::new()
@@ -39,10 +39,10 @@ fn post_handler(request: &Request) -> anyhow::Result<Vec<u8>> {
         .json(&body)
         .send()?;
 
-    serde_json::to_vec(&json!({
+    Ok(serde_json::to_vec(&json!({
         "response": resp.json::<serde_json::Value>()?
-    }))
-    .map_err(Into::into)
+    }))?
+    .into())
 }
 
 wasi::http::proxy::export!(HttpGuest);

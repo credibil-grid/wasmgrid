@@ -4,7 +4,7 @@ use tracing_subscriber::{EnvFilter, FmtSubscriber};
 use wasi::exports::http::incoming_handler::Guest;
 use wasi::http::types::{IncomingRequest, ResponseOutparam};
 use wasi_bindings::vault::vault;
-use wasi_http_ext::{self, Request, Router, post};
+use wasi_http_ext::{self, Request, Response, Router, post};
 
 struct HttpGuest;
 
@@ -21,7 +21,7 @@ impl Guest for HttpGuest {
     }
 }
 
-fn handler(request: &Request) -> Result<Vec<u8>> {
+fn handler(request: &Request) -> Result<Response> {
     let body = request.body()?;
     let request: Value = serde_json::from_slice(&body)?;
     tracing::debug!("received request: {request:?}");
@@ -38,7 +38,7 @@ fn handler(request: &Request) -> Result<Vec<u8>> {
 
     let response = serde_json::from_slice::<Value>(&body)?;
     tracing::debug!("sending response: {:?}", json!(response));
-    serde_json::to_vec(&response).map_err(Into::into)
+    Ok(serde_json::to_vec(&response)?.into())
 }
 
 wasi::http::proxy::export!(HttpGuest);

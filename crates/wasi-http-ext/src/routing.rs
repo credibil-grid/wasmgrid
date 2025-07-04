@@ -8,6 +8,7 @@ use regex::Regex;
 
 use crate::handler::{Method, MethodHandler};
 use crate::request::Request;
+use crate::response::Response;
 
 const PARAM_REGEX: &str = r"[-\w()@:%_+.~]+|https?://[-\w()@:%_+.~]+";
 static ROUTE_REGEX: LazyLock<Regex> =
@@ -90,14 +91,13 @@ pub struct Route {
 }
 
 impl Route {
-    pub fn handle(&self, request: &Request) -> Result<Vec<u8>> {
+    pub fn handle(&self, request: &Request) -> Result<Response> {
         self.handler.handle(request)
     }
 }
 
 #[cfg(test)]
 mod tests {
-    // use wasi::http::types::Method;
     use wasi::http::types::Method as HttpMethod;
 
     use super::*;
@@ -106,8 +106,10 @@ mod tests {
     fn match_route() {
         // create route
         let pattern = "/{greeting}/world/{id}/test/{again}";
-        let router =
-            Router::new().route(pattern, MethodHandler::new(HttpMethod::Get, |_| Ok(vec![])));
+        let router = Router::new().route(
+            pattern,
+            MethodHandler::new(HttpMethod::Get, |_| Ok(Response::from(vec![1, 2, 3]))),
+        );
         let routes = router.routes.get(pattern).unwrap();
 
         // check path for match
@@ -131,8 +133,8 @@ mod tests {
     fn http_ids() {
         // create route
         let pattern = "/issuers/{issuer_id}/clients/{client_id}";
-        let router =
-            Router::new().route(pattern, MethodHandler::new(HttpMethod::Get, |_| Ok(vec![])));
+        let router = Router::new()
+            .route(pattern, MethodHandler::new(HttpMethod::Get, |_| Ok(Response::from(vec![]))));
         let routes = router.routes.get(pattern).unwrap();
 
         // check path for match

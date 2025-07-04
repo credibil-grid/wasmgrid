@@ -3,7 +3,7 @@ use tracing_subscriber::{EnvFilter, FmtSubscriber};
 use wasi::exports::http::incoming_handler::Guest;
 use wasi::http::types::{IncomingRequest, ResponseOutparam};
 use wasi_bindings::keyvalue::store;
-use wasi_http_ext::{self, Request, Router, post};
+use wasi_http_ext::{self, Request, Response, Router, post};
 
 struct HttpGuest;
 
@@ -20,7 +20,7 @@ impl Guest for HttpGuest {
     }
 }
 
-fn handler(request: &Request) -> anyhow::Result<Vec<u8>> {
+fn handler(request: &Request) -> anyhow::Result<Response> {
     let body = request.body()?;
     let req: serde_json::Value = serde_json::from_slice(&body)?;
     tracing::debug!("json: {:?}", req);
@@ -39,10 +39,10 @@ fn handler(request: &Request) -> anyhow::Result<Vec<u8>> {
     let res = bucket.get("my_key");
     tracing::debug!("found val: {:?}", res);
 
-    serde_json::to_vec(&json!({
+    Ok(serde_json::to_vec(&json!({
         "message": "Hello, World!"
-    }))
-    .map_err(Into::into)
+    }))?
+    .into())
 }
 
 wasi::http::proxy::export!(HttpGuest);

@@ -31,7 +31,7 @@ impl http::incoming_handler::Guest for Http {
                     .unwrap_or("message bytes received but not utf-8".to_string());
 
                 let resp = json!({"reply": data_str});
-                serde_json::to_vec(&resp).map_err(Into::into)
+                Ok(serde_json::to_vec(&resp)?.into())
             }),
         );
 

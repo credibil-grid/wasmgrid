@@ -1,7 +1,9 @@
-#![feature(trait_alias)]
+// #![feature(trait_alias)]
+// #![feature(type_alias_impl_trait)]
 
 pub mod client;
-pub mod request;
+mod request;
+mod response;
 
 mod handler;
 mod routing;
@@ -9,5 +11,6 @@ mod server;
 
 pub use self::handler::*;
 pub use self::request::*;
+pub use self::response::*;
 pub use self::routing::*;
 pub use self::server::serve;

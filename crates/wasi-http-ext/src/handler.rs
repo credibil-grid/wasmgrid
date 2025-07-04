@@ -7,60 +7,61 @@ use anyhow::Result;
 use wasi::http::types::Method as HttpMethod;
 
 use crate::request::Request;
+use crate::response::Response;
 
-pub trait Handler = Fn(&Request) -> Result<Vec<u8>>;
+pub type Handler = fn(&Request) -> Result<Response>;
 
 pub struct MethodHandler {
     pub method: Method,
-    handler: Box<dyn Handler>,
+    handler: Handler,
 }
 
 impl MethodHandler {
     /// Create a new method handler.
-    pub fn new(method: HttpMethod, handler: impl Handler + 'static) -> Self {
+    pub fn new(method: HttpMethod, handler: Handler) -> Self {
         MethodHandler {
             method: Method(method),
-            handler: Box::new(handler),
+            handler,
         }
     }
 
-    pub fn handle(&self, request: &Request) -> Result<Vec<u8>> {
+    pub fn handle(&self, request: &Request) -> Result<Response> {
         (self.handler)(request)
     }
 }
 
-pub fn get(handler: impl Handler + 'static) -> MethodHandler {
+pub fn get(handler: Handler) -> MethodHandler {
     MethodHandler {
         method: Method(HttpMethod::Get),
-        handler: Box::new(handler),
+        handler,
     }
 }
 
-pub fn patch(handler: impl Handler + 'static) -> MethodHandler {
+pub fn patch(handler: Handler) -> MethodHandler {
     MethodHandler {
         method: Method(HttpMethod::Patch),
-        handler: Box::new(handler),
+        handler,
     }
 }
 
-pub fn post(handler: impl Handler + 'static) -> MethodHandler {
+pub fn post(handler: Handler) -> MethodHandler {
     MethodHandler {
         method: Method(HttpMethod::Post),
-        handler: Box::new(handler),
+        handler,
     }
 }
 
-pub fn put(handler: impl Handler + 'static) -> MethodHandler {
+pub fn put(handler: Handler) -> MethodHandler {
     MethodHandler {
         method: Method(HttpMethod::Put),
-        handler: Box::new(handler),
+        handler,
     }
 }
 
-pub fn delete(handler: impl Handler + 'static) -> MethodHandler {
+pub fn delete(handler: Handler) -> MethodHandler {
     MethodHandler {
         method: Method(HttpMethod::Delete),
-        handler: Box::new(handler),
+        handler,
     }
 }
 
