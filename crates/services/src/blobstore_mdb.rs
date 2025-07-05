@@ -157,8 +157,12 @@ impl container::HostContainer for Blobstore<'_> {
         let Some(blob) = collection.find_one(doc! { "name": name }).await? else {
             return Err(anyhow!("Object not found"));
         };
-        let data =
-            serde_json::to_vec(&blob.doc).map_err(|e| anyhow!("failed to serialize BSON: {e}"))?;
+
+        let data = match blob.doc.get("stringified") {
+            Some(bson::Bson::String(s)) => s.as_bytes().to_vec(),
+            _ => serde_json::to_vec(&blob.doc)
+                .map_err(|e| anyhow!("failed to serialize Document: {e}"))?,
+        };
 
         Ok(self.table.push(Bytes::from(data))?)
     }
@@ -176,12 +180,21 @@ impl container::HostContainer for Blobstore<'_> {
         // `put` should update any previous value, so delete first
         collection.delete_one(doc! { "name": &name }).await?;
 
-        let doc = serde_json::from_slice::<Document>(&value.contents())
-            .map_err(|e| anyhow!("failed to deserialize BSON: {e}"))?;
+        let bytes = value.contents();
+        let doc = match bytes.first() {
+            Some(b) if *b == b'{' => serde_json::from_slice::<Document>(&bytes)
+                .map_err(|e| anyhow!("issue deserializing into Document: {e}"))?,
+            Some(_) => {
+                // assume it's a JSON string
+                doc! {"stringified": String::from_utf8_lossy(&bytes).to_string()}
+            }
+            None => return Err(anyhow!("OutgoingValue is empty")),
+        };
+
         let blob = Blob {
             name,
             doc,
-            size: value.contents().len() as u64,
+            size: bytes.len() as u64,
             #[allow(clippy::cast_sign_loss)]
             created_at: Utc::now().timestamp_millis() as u64,
         };

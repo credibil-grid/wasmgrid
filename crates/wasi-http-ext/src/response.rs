@@ -12,15 +12,6 @@ pub struct Response {
     pub body: Vec<u8>,
 }
 
-// impl<T: Serialize> From<T> for Response {
-//     fn from(body: T) -> Self {
-//         Self {
-//             status: StatusCode::OK,
-//             body: serde_json::to_vec(&body).expect("failed to serialize response"),
-//         }
-//     }
-// }
-
 impl From<Vec<u8>> for Response {
     fn from(body: Vec<u8>) -> Self {
         Self {
