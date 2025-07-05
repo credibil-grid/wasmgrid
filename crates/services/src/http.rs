@@ -98,6 +98,8 @@ struct Svc {
 impl Svc {
     // Forward request to the wasm Guest.
     async fn handle(&self, request: Request<Incoming>) -> Result<Response<HyperOutgoingBody>> {
+        tracing::trace!("handling request: {request:?}");
+
         // HACK: CORS preflight request for use when testing locally
         let cors = env::var("WITH_CORS").is_ok_and(|v| v.parse().unwrap_or(false));
         if cors && request.method() == Method::OPTIONS {
@@ -168,7 +170,7 @@ fn prepare_request(mut request: Request<Incoming>) -> Result<(Request<Incoming>,
             }
         }
     } else {
-        // must be running locally
+        // should be running locally
         let Some(host) = request.headers().get(HOST) else {
             return Err(anyhow!("missing host header"));
         };
@@ -196,7 +198,6 @@ fn handle_options() -> Result<Response<HyperOutgoingBody>> {
         .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
         .header(ACCESS_CONTROL_ALLOW_HEADERS, "*")
         .header(ACCESS_CONTROL_ALLOW_METHODS, "DELETE, GET, OPTIONS, PATCH, POST, PUT")
-        // .header(CONTENT_TYPE, "application/json")
         .body(HyperOutgoingBody::default())
         .map_err(|e| anyhow!("failed to build response: {e}"))
 }

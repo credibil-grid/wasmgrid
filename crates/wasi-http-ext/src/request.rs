@@ -104,7 +104,11 @@ impl<'a> Request<'a> {
     /// Parse the request body from form-urlencoded.
     ///
     /// # Errors
-    pub fn form<T: DeserializeOwned>(&self) -> Result<T> {
-        Ok(serde_urlencoded::from_bytes::<T>(&self.body()?)?)
+    pub fn form<T: DeserializeOwned + Debug>(&self) -> Result<T> {
+        let form: Vec<(String, String)> = serde_json::from_slice(&self.body()?)
+            .map_err(|e| anyhow!("issue deserializing form: {e}"))?;
+        credibil_core::html::form_decode(&form)
     }
 }
+
+use std::fmt::Debug;

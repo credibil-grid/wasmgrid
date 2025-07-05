@@ -82,14 +82,11 @@ impl RequestBuilder<NoBody, NoJson, NoForm> {
     }
 
     pub fn json<T: Serialize>(self, json: T) -> RequestBuilder<NoBody, HasJson<T>, NoForm> {
-        let mut headers = self.headers.clone();
-        headers.push((CONTENT_TYPE.to_string(), "application/json".to_string()));
-
         RequestBuilder {
-            method: self.method.clone(),
-            url: self.url.clone(),
-            headers,
-            query: self.query.clone(),
+            method: self.method,
+            url: self.url,
+            headers: self.headers,
+            query: self.query,
             body: NoBody,
             json: HasJson(json),
             form: NoForm,
@@ -97,14 +94,11 @@ impl RequestBuilder<NoBody, NoJson, NoForm> {
     }
 
     pub fn form<T: Serialize>(self, form: T) -> RequestBuilder<NoBody, NoJson, HasForm<T>> {
-        let mut headers = self.headers.clone();
-        headers.push((CONTENT_TYPE.to_string(), "application/x-www-form-urlencoded".to_string()));
-
         RequestBuilder {
-            method: self.method.clone(),
-            url: self.url.clone(),
-            headers,
-            query: self.query.clone(),
+            method: self.method,
+            url: self.url,
+            headers: self.headers,
+            query: self.query,
             body: NoBody,
             json: NoJson,
             form: HasForm(form),
@@ -150,24 +144,34 @@ impl<T: Serialize> RequestBuilder<NoBody, HasJson<T>, NoForm> {
     pub fn send(&mut self) -> Result<Response> {
         let body =
             serde_json::to_vec(&self.json.0).map_err(|e| anyhow!("issue serializing json: {e}"))?;
-        self.headers.push(("Content-type".to_string(), "application/json".to_string()));
+        self.headers.push((CONTENT_TYPE.to_string(), "application/json".to_string()));
         self.send_any(Some(&body))
     }
 }
 
 impl<T: Serialize> RequestBuilder<NoBody, NoJson, HasForm<T>> {
     pub fn send(&mut self) -> Result<Response> {
-        let body = serde_urlencoded::to_string(&self.form.0)
+        let body = credibil_core::html::form_encode(&self.form.0)
             .map_err(|e| anyhow!("issue serializing form: {e}"))?;
+        let bytes =
+            serde_json::to_vec(&body).map_err(|e| anyhow!("issue serializing form: {e}"))?;
         self.headers
-            .push(("Content-type".to_string(), "application/x-www-form-urlencoded".to_string()));
-        self.send_any(Some(body.as_bytes()))
+            .push((CONTENT_TYPE.to_string(), "application/x-www-form-urlencoded".to_string()));
+        self.send_any(Some(&bytes))
     }
 }
 
 impl<B, J, F> RequestBuilder<B, J, F> {
     pub fn send_any(&self, body: Option<&[u8]>) -> Result<Response> {
         let request = self.prepare_request(body)?;
+
+        tracing::trace!(
+            "sending: {:?}://{:?}{:?}",
+            request.scheme(),
+            request.authority(),
+            request.path_with_query()
+        );
+
         let fut_resp = outgoing_handler::handle(request, None)
             .map_err(|e| anyhow!("issue making request: {e}"))?;
         Self::process_response(fut_resp)
@@ -197,12 +201,6 @@ impl<B, J, F> RequestBuilder<B, J, F> {
         request
             .set_authority(url.authority().map(|a| a.as_str()))
             .map_err(|()| anyhow!("issue setting authority"))?;
-
-        // // build authority from host and port
-        // let host = url.host().unwrap_or_default();
-        // let authority =
-        //     if let Some(port) = url.port() { format!("{host}:{port}") } else { host.to_string() };
-        // request.set_authority(Some(&authority)).map_err(|()| anyhow!("issue setting authority"))?;
 
         // path + query
         let mut path_and_query = url.path().to_string();
@@ -241,8 +239,8 @@ impl<B, J, F> RequestBuilder<B, J, F> {
                 return Err(anyhow!("output stream error"));
             }
         }
-        OutgoingBody::finish(out_body, None)?;
 
+        OutgoingBody::finish(out_body, None)?;
         Ok(request)
     }
 
@@ -251,7 +249,6 @@ impl<B, J, F> RequestBuilder<B, J, F> {
         let Some(result) = fut_resp.get() else {
             return Err(anyhow!("missing response"));
         };
-
         let response = result
             .map_err(|()| anyhow!("issue getting response"))?
             .map_err(|e| anyhow!("response error: {e}"))?;
@@ -261,9 +258,8 @@ impl<B, J, F> RequestBuilder<B, J, F> {
             return Err(anyhow!("unexpected status: {}", response.status()));
         }
 
-        let mut resp = Response { body: vec![] };
-
         // process body
+        let mut resp = Response { body: vec![] };
         let body = response.consume().map_err(|()| anyhow!("issue getting body"))?;
         let stream = body.stream().map_err(|()| anyhow!("issue getting body's stream"))?;
         while let Ok(chunk) = stream.blocking_read(1024 * 1024) {
@@ -277,6 +273,7 @@ impl<B, J, F> RequestBuilder<B, J, F> {
     }
 }
 
+#[derive(Debug)]
 pub struct Response {
     body: Vec<u8>,
 }

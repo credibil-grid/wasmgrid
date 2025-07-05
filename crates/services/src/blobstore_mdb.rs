@@ -30,8 +30,10 @@ mod generated {
     });
 }
 
+use std::cmp::min;
+
 use anyhow::{Result, anyhow};
-use bson::{Document, doc};
+use bson::{Bson, Document, doc};
 use bytes::Bytes;
 use chrono::Utc;
 use futures::StreamExt;
@@ -88,7 +90,7 @@ impl Linkable for Service {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Blob {
     name: String,
-    doc: Document,
+    data: Document,
     size: u64,
     created_at: u64,
 }
@@ -158,9 +160,12 @@ impl container::HostContainer for Blobstore<'_> {
             return Err(anyhow!("Object not found"));
         };
 
-        let data = match blob.doc.get("stringified") {
-            Some(bson::Bson::String(s)) => s.as_bytes().to_vec(),
-            _ => serde_json::to_vec(&blob.doc)
+        // HACK: blob data is a string not an object
+        let data = match blob.data.get("_string") {
+            Some(Bson::String(s)) => {
+                serde_json::to_vec(&s).map_err(|e| anyhow!("failed to serialize Document: {e}"))?
+            }
+            _ => serde_json::to_vec(&blob.data)
                 .map_err(|e| anyhow!("failed to serialize Document: {e}"))?,
         };
 
@@ -181,19 +186,22 @@ impl container::HostContainer for Blobstore<'_> {
         collection.delete_one(doc! { "name": &name }).await?;
 
         let bytes = value.contents();
-        let doc = match bytes.first() {
+
+        let data = match bytes.first() {
             Some(b) if *b == b'{' => serde_json::from_slice::<Document>(&bytes)
                 .map_err(|e| anyhow!("issue deserializing into Document: {e}"))?,
             Some(_) => {
-                // assume it's a JSON string
-                doc! {"stringified": String::from_utf8_lossy(&bytes).to_string()}
+                // HACK: blob data is a string not an object
+                let stringified = serde_json::from_slice::<String>(&bytes)
+                    .map_err(|e| anyhow!("issue deserializing into String: {e}"))?;
+                doc! {"_string": stringified}
             }
             None => return Err(anyhow!("OutgoingValue is empty")),
         };
 
         let blob = Blob {
             name,
-            doc,
+            data,
             size: bytes.len() as u64,
             #[allow(clippy::cast_sign_loss)]
             created_at: Utc::now().timestamp_millis() as u64,
@@ -280,15 +288,24 @@ impl container::HostContainer for Blobstore<'_> {
 
 impl container::HostStreamObjectNames for Blobstore<'_> {
     async fn read_stream_object_names(
-        &mut self, _names_ref: Resource<StreamObjectNames>, _len: u64,
+        &mut self, names_ref: Resource<StreamObjectNames>, len: u64,
     ) -> Result<(Vec<String>, bool)> {
-        todo!()
+        let names = self.table.get_mut(&names_ref)?;
+        tracing::trace!("read_stream_object_names: {names:?}");
+
+        let len = if len == 0 { names.len() as u64 } else { len };
+        let page = names.drain(..min(usize::try_from(len)?, names.len())).collect();
+
+        tracing::trace!("read_stream_object_names: {page:?}");
+        Ok((page, names.is_empty()))
     }
 
     async fn skip_stream_object_names(
-        &mut self, _names_ref: Resource<StreamObjectNames>, _num: u64,
+        &mut self, names_ref: Resource<StreamObjectNames>, num: u64,
     ) -> Result<(u64, bool)> {
-        todo!()
+        let names = self.table.get_mut(&names_ref)?;
+        let skipped = names.split_off(min(usize::try_from(num)?, names.len()));
+        Ok((skipped.len() as u64, names.is_empty()))
     }
 
     async fn drop(&mut self, names_ref: Resource<StreamObjectNames>) -> Result<()> {

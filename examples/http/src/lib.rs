@@ -12,15 +12,7 @@ impl Guest for HttpGuest {
             FmtSubscriber::builder().with_env_filter(EnvFilter::from_default_env()).finish();
         tracing::subscriber::set_global_default(subscriber).expect("should set subscriber");
 
-        for (name, value) in request.headers().entries() {
-            println!("guest {}: {}", name, String::from_utf8(value).unwrap());
-        }
-
-        println!("request.scheme(): {:?}", request.scheme());
-        println!("request.authority(): {:?}", request.authority());
-
         let router = Router::new().route("/", post(hello));
-
         let out = wasi_http_ext::serve(&router, &request);
         ResponseOutparam::set(response, out);
     }

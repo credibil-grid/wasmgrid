@@ -780,6 +780,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "credibil-core"
+version = "0.1.0"
+source = "git+https://github.com/credibil/core#a68726d10f58e8469c2e50c0a4b06df29f410360"
+dependencies = [
+ "anyhow",
+ "bytes",
+ "chrono",
+ "http 1.3.1",
+ "http-body",
+ "http-body-util",
+ "percent-encoding",
+ "serde",
+ "serde_json",
+ "tracing",
+]
+
+[[package]]
 name = "crossbeam-utils"
 version = "0.8.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3991,11 +4008,11 @@ name = "wasi-http-ext"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "credibil-core",
  "http 1.3.1",
  "regex",
  "serde",
  "serde_json",
- "serde_urlencoded",
  "tracing",
  "wasi 0.14.2+wasi-0.2.4",
 ]
