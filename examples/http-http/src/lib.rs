@@ -2,7 +2,7 @@ use serde_json::json;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 use wasi::exports::http::incoming_handler::Guest;
 use wasi::http::types::{IncomingRequest, ResponseOutparam};
-use wasi_http_ext::{self, Request, Response, Router, client, get, post};
+use wasi_http_ext::{self, Client, Request, Response, Router, get, post};
 
 struct HttpGuest;
 
@@ -21,7 +21,7 @@ impl Guest for HttpGuest {
 
 // Forward request to external service and return the response
 fn get_handler(_: &Request) -> anyhow::Result<Response> {
-    let resp = client::Client::new().get("https://jsonplaceholder.cypress.io/posts/1").send()?;
+    let resp = Client::new().get("https://jsonplaceholder.cypress.io/posts/1").send()?;
 
     Ok(serde_json::to_vec(&json!({
         "response": resp.json::<serde_json::Value>()?
@@ -33,7 +33,7 @@ fn get_handler(_: &Request) -> anyhow::Result<Response> {
 fn post_handler(request: &Request) -> anyhow::Result<Response> {
     let body: serde_json::Value = serde_json::from_slice(&request.body()?)?;
 
-    let resp = client::Client::new()
+    let resp = Client::new()
         .post("https://jsonplaceholder.cypress.io/posts")
         .bearer_auth("some token") // not required, but shown for example
         .json(&body)

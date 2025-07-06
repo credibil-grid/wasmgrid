@@ -85,7 +85,6 @@ impl Linkable for Service {
     }
 }
 
-
 // Implement the [`wasi_sql::ReadWriteView`]` trait for Blobstore<'_>.
 impl blobstore::Host for Blobstore<'_> {
     async fn create_container(&mut self, name: String) -> Result<Resource<Container>> {

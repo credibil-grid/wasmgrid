@@ -41,7 +41,7 @@ pub async fn main() -> Result<()> {
             let seed = env::var("NATS_SEED").ok();
             let kv_addr = env::var("KV_ADDR").unwrap_or_else(|_| DEF_KV_ADDR.into());
             let mongo_uri = env::var("MONGODB_URI").expect("MONGODB_URI must be set");
-            
+
             let resources = Resources::new();
             resources.with_nats(nats_addr, jwt, seed);
             resources.with_mongo(mongo_uri);

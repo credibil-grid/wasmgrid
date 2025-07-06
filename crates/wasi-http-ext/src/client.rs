@@ -2,11 +2,12 @@ use anyhow::{Result, anyhow};
 use http::Uri;
 use http::header::{AUTHORIZATION, CONTENT_TYPE};
 use serde::Serialize;
-use serde::de::DeserializeOwned;
 use wasi::http::outgoing_handler;
 use wasi::http::types::{
     FutureIncomingResponse, Headers, Method, OutgoingBody, OutgoingRequest, Scheme,
 };
+
+use crate::response::Response;
 
 pub struct Client {}
 
@@ -259,7 +260,7 @@ impl<B, J, F> RequestBuilder<B, J, F> {
         }
 
         // process body
-        let mut resp = Response { body: vec![] };
+        let mut resp = Response::default();
         let body = response.consume().map_err(|()| anyhow!("issue getting body"))?;
         let stream = body.stream().map_err(|()| anyhow!("issue getting body's stream"))?;
         while let Ok(chunk) = stream.blocking_read(1024 * 1024) {
@@ -270,23 +271,5 @@ impl<B, J, F> RequestBuilder<B, J, F> {
         drop(response);
 
         Ok(resp)
-    }
-}
-
-#[derive(Debug)]
-pub struct Response {
-    body: Vec<u8>,
-}
-
-impl Response {
-    pub fn as_bytes(&self) -> &[u8] {
-        &self.body
-    }
-
-    /// Parse the request payload as JSON.
-    ///
-    /// # Errors
-    pub fn json<T: DeserializeOwned>(&self) -> serde_json::Result<T> {
-        serde_json::from_slice::<T>(&self.body)
     }
 }
