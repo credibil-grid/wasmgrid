@@ -40,7 +40,6 @@ impl<'a> Request<'a> {
             Some(Scheme::Other(s)) => s,
             None => return Err(anyhow!("Scheme is missing")),
         };
-
         Ok(format!("{scheme}://{authority}"))
     }
 
@@ -88,8 +87,12 @@ impl<'a> Request<'a> {
 
     /// Get the request headers.
     #[must_use]
-    pub fn params(&self) -> Option<&HashMap<String, String>> {
-        self.params.as_ref()
+    pub fn params(&self) -> Option<HashMap<String, String>> {
+        let uri = self.uri();
+        let Some(query) = uri.query() else {
+            return None;
+        };
+        credibil_core::html::url_decode(query).ok()
     }
 
     /// Parse the request body from JSON.
@@ -102,11 +105,9 @@ impl<'a> Request<'a> {
     /// Parse the request body from form-urlencoded.
     ///
     /// # Errors
-    pub fn form<T: DeserializeOwned + Debug>(&self) -> Result<T> {
+    pub fn form<T: DeserializeOwned>(&self) -> Result<T> {
         let form: Vec<(String, String)> = serde_json::from_slice(&self.body()?)
             .map_err(|e| anyhow!("issue deserializing form: {e}"))?;
         credibil_core::html::form_decode(&form)
     }
 }
-
-use std::fmt::Debug;
