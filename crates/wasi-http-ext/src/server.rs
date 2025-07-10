@@ -24,10 +24,10 @@ pub fn serve<'a>(
         .map_err(|e| ErrorCode::InternalError(Some(format!("issue setting header: {e}"))))?;
     let response = OutgoingResponse::new(headers);
 
-    let Some((route, params)) = router.find(&request) else {
+    let Some((route, captures)) = router.find(&request) else {
         return Err(ErrorCode::DestinationNotFound);
     };
-    request.params = Some(params);
+    request.captures = Some(captures);
 
     // call the route's handler to process the request
     let mut inner_bytes = match route.handle(&request) {

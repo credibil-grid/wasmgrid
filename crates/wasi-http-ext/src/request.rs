@@ -9,12 +9,15 @@ use wasi::http::types::{Fields, IncomingRequest, Method, Scheme};
 #[derive(Clone)]
 pub struct Request<'a> {
     inner: &'a IncomingRequest,
-    pub(crate) params: Option<HashMap<String, String>>,
+    pub(crate) captures: Option<HashMap<String, String>>,
 }
 
 impl<'a> From<&'a IncomingRequest> for Request<'a> {
     fn from(inner: &'a IncomingRequest) -> Self {
-        Self { inner, params: None }
+        Self {
+            inner,
+            captures: None,
+        }
     }
 }
 
@@ -85,7 +88,12 @@ impl<'a> Request<'a> {
         Ok(buffer)
     }
 
-    /// Get the request headers.
+    #[must_use]
+    pub fn captures(&self) -> Option<&HashMap<String, String>> {
+        self.captures.as_ref()
+    }
+
+    /// Get the request query parameters.
     #[must_use]
     pub fn params(&self) -> Option<HashMap<String, String>> {
         let uri = self.uri();

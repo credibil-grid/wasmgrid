@@ -70,13 +70,13 @@ impl Router {
             if let Some(caps) = route.regex.captures(path) {
                 tracing::debug!("`{pattern}` matched `{path}`");
 
-                let mut params = HashMap::new();
+                let mut captures = HashMap::new();
                 for n in route.regex.capture_names().filter_map(|n| n).collect::<Vec<&str>>() {
                     if let Some(c) = caps.name(n) {
-                        params.insert(n.to_string(), c.as_str().to_string());
+                        captures.insert(n.to_string(), c.as_str().to_string());
                     }
                 }
-                return Some((route, params));
+                return Some((route, captures));
             }
         }
 
