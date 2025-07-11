@@ -75,10 +75,10 @@ impl<'a> Request<'a> {
     /// # Errors
     pub fn body(&self) -> Result<Vec<u8>> {
         let body = self.inner.consume().map_err(|()| anyhow!("error consuming request body"))?;
-
         let stream = body.stream().map_err(|()| anyhow!("error getting body stream"))?;
         let mut buffer = Vec::new();
-        while let Ok(bytes) = stream.read(4096)
+
+        while let Ok(bytes) = stream.blocking_read(4096)
             && bytes.len() > 0
         {
             buffer.extend_from_slice(&bytes);
