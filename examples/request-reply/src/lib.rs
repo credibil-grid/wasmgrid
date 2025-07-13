@@ -75,7 +75,7 @@ impl messaging::incoming_handler::Guest for RequestReply {
     // Subscribe to topics.
     fn configure() -> Result<Configuration, Error> {
         Ok(Configuration {
-            topics: vec!["a"].into_iter().map(|s| s.to_string()).collect(),
+            topics: vec!["a".to_string()],
         })
     }
 }
