@@ -4,6 +4,7 @@ use std::collections::{BTreeMap, HashMap};
 use std::sync::LazyLock;
 
 use anyhow::Result;
+use percent_encoding::percent_decode_str;
 use regex::Regex;
 
 use crate::handler::{Method, MethodHandler};
@@ -73,7 +74,8 @@ impl Router {
                 let mut captures = HashMap::new();
                 for n in route.regex.capture_names().filter_map(|n| n).collect::<Vec<&str>>() {
                     if let Some(c) = caps.name(n) {
-                        captures.insert(n.to_string(), c.as_str().to_string());
+                        let decoded = percent_decode_str(c.as_str()).decode_utf8_lossy();
+                        captures.insert(n.to_string(), decoded.to_string());
                     }
                 }
                 return Some((route, captures));

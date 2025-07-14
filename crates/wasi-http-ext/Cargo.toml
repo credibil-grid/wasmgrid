@@ -15,6 +15,7 @@ workspace = true
 anyhow.workspace = true
 credibil-core.workspace = true
 http.workspace = true
+percent-encoding = "2.3.1"
 regex = "1.11.1"
 serde.workspace = true
 serde_json.workspace = true

@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use anyhow::{Result, anyhow};
 use http::Uri;
 use http::header::AUTHORIZATION;
+use percent_encoding::percent_decode_str;
 use serde::de::DeserializeOwned;
 use wasi::http::types::{Fields, IncomingRequest, Method, Scheme};
 
@@ -22,12 +23,6 @@ impl<'a> From<&'a IncomingRequest> for Request<'a> {
 }
 
 impl<'a> Request<'a> {
-    #[must_use]
-    pub fn uri(&self) -> Uri {
-        let p_and_q = self.inner.path_with_query().unwrap_or_default();
-        p_and_q.parse::<Uri>().unwrap_or_else(|_| Uri::default())
-    }
-
     pub fn method(&self) -> Method {
         self.inner.method()
     }
@@ -70,22 +65,12 @@ impl<'a> Request<'a> {
         self.inner.headers()
     }
 
-    /// Request body.
-    ///
-    /// # Errors
-    pub fn body(&self) -> Result<Vec<u8>> {
-        let body = self.inner.consume().map_err(|()| anyhow!("error consuming request body"))?;
-        let stream = body.stream().map_err(|()| anyhow!("error getting body stream"))?;
-        let mut buffer = Vec::new();
-
-        while let Ok(bytes) = stream.blocking_read(4096)
-            && bytes.len() > 0
-        {
-            buffer.extend_from_slice(&bytes);
-        }
-        drop(stream);
-
-        Ok(buffer)
+    #[must_use]
+    pub fn uri(&self) -> Uri {
+        let p_and_q = self.inner.path_with_query().unwrap_or_default();
+        // FIXME: potentially repeated when decoding query parameters
+        let decoded = percent_decode_str(p_and_q.as_str()).decode_utf8_lossy();
+        decoded.parse::<Uri>().unwrap_or_else(|_| Uri::default())
     }
 
     #[must_use]
@@ -101,6 +86,24 @@ impl<'a> Request<'a> {
             return None;
         };
         credibil_core::html::url_decode(query).ok()
+    }
+
+    /// Request body.
+    ///
+    /// # Errors
+    pub fn body(&self) -> Result<Vec<u8>> {
+        let body = self.inner.consume().map_err(|()| anyhow!("issue consuming request body"))?;
+        let stream = body.stream().map_err(|()| anyhow!("issue getting body stream"))?;
+        let mut buffer = Vec::new();
+
+        while let Ok(bytes) = stream.blocking_read(4096)
+            && bytes.len() > 0
+        {
+            buffer.extend_from_slice(&bytes);
+        }
+        drop(stream);
+
+        Ok(buffer)
     }
 
     /// Parse the request body from JSON.

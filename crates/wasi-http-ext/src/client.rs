@@ -1,12 +1,15 @@
 use anyhow::{Result, anyhow};
 use http::Uri;
 use http::header::{AUTHORIZATION, CONTENT_TYPE};
+use percent_encoding::{AsciiSet, NON_ALPHANUMERIC, utf8_percent_encode};
 use serde::Serialize;
 use wasi::http::outgoing_handler;
 use wasi::http::types::{
     FutureIncomingResponse, Headers, Method, OutgoingBody, OutgoingRequest, Scheme,
 };
 
+const UNRESERVED: &AsciiSet =
+    &NON_ALPHANUMERIC.remove(b'.').remove(b'_').remove(b'-').remove(b'~').remove(b'/');
 use crate::response::Response;
 
 pub struct Client {}
@@ -167,10 +170,10 @@ impl<B, J, F> RequestBuilder<B, J, F> {
         let request = self.prepare_request(body)?;
 
         tracing::trace!(
-            "sending: {:?}://{:?}{:?}",
-            request.scheme(),
-            request.authority(),
-            request.path_with_query()
+            "sending request: {:?}://{}{}",
+            request.scheme().unwrap_or(Scheme::Http),
+            request.authority().unwrap_or_default(),
+            request.path_with_query().unwrap_or_default()
         );
 
         let fut_resp = outgoing_handler::handle(request, None)
@@ -204,13 +207,17 @@ impl<B, J, F> RequestBuilder<B, J, F> {
             .map_err(|()| anyhow!("issue setting authority"))?;
 
         // path + query
-        let mut path_and_query = url.path().to_string();
+        let path = url.path().to_string();
+        let mut path_with_query = utf8_percent_encode(&path, UNRESERVED).to_string();
         if let Some(query) = url.query() {
-            path_and_query = format!("{}?{}", path_and_query, query);
+            let query = utf8_percent_encode(query, UNRESERVED).to_string();
+            path_with_query = format!("{path_with_query}?{query}");
         }
+        tracing::trace!("encoded path_with_query: {path_with_query}");
+
         request
-            .set_path_with_query(Some(&path_and_query))
-            .map_err(|()| anyhow!("Failed to set path_with_query"))?;
+            .set_path_with_query(Some(&path_with_query))
+            .map_err(|()| anyhow!("issue setting path_with_query"))?;
 
         let out_body = request.body().map_err(|_| anyhow!("issue getting outgoing body"))?;
         if let Some(mut buf) = body {
