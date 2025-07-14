@@ -30,15 +30,15 @@ impl<'a> Request<'a> {
     /// Get the host the request was made to (using scheme and authority).
     ///
     /// # Errors
-    pub fn host(&self) -> Result<String> {
+    pub fn host(&self) -> String {
         let authority = self.inner.authority().unwrap_or_default();
         let scheme = match self.inner.scheme() {
             Some(Scheme::Http) => String::from("http"),
             Some(Scheme::Https) => String::from("https"),
             Some(Scheme::Other(s)) => s,
-            None => return Err(anyhow!("Scheme is missing")),
+            None => return String::from("http"),
         };
-        Ok(format!("{scheme}://{authority}"))
+        format!("{scheme}://{authority}")
     }
 
     /// Get the access token from the Authorization header.
