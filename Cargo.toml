@@ -56,22 +56,22 @@ pedantic = "warn"
 
 [workspace.dependencies]
 anyhow = "1.0.98"
-azure_core = { version = "0.25.0", default-features = false, features = ["reqwest_rustls"] }
-azure_identity = { version = "0.25.0", default-features = false }
-azure_security_keyvault_secrets = { version = "0.4.0", default-features = false }
+azure_core = { version = "0.26.0", default-features = false, features = ["reqwest_rustls"] }
+azure_identity = { version = "0.26.0", default-features = false }
+azure_security_keyvault_secrets = { version = "0.5.0", default-features = false }
 cfg-if = "1.0.1"
 credibil-core = { git = "https://github.com/credibil/core" }
 http = "1.3.1"
 runtime = { path = "crates/runtime" }
 serde = { version = "1.0.219", features = ["derive"] }
-serde_json = "1.0.140"
-tokio = "1.45.1"
+serde_json = "1.0.141"
+tokio = "1.46.1"
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["env-filter", "fmt"] }
 wasi = "0.14.2"
 wasi-bindings = { path = "crates/wasi-bindings" }
 wasi-http-ext = { path = "crates/wasi-http-ext" }
-wasmtime = { version = "34.0.1", default-features = false, features = ["component-model"] }
-wasmtime-wasi = "34.0.1"
-wasmtime-wasi-http = "34.0.1"
-wasmtime-wasi-io = "34.0.1"
+wasmtime = { version = "34.0.2", default-features = false, features = ["component-model"] }
+wasmtime-wasi = "34.0.2"
+wasmtime-wasi-http = "34.0.2"
+wasmtime-wasi-io = "34.0.2"

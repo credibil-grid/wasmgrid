@@ -30,7 +30,7 @@ chrono = "0.4.41"
 futures = "0.3.31"
 http.workspace = true
 hyper = "1.6.0"
-mongodb = { version = "3.2.3", optional = true }
+mongodb = { version = "3.2.4", optional = true }
 resources = { path = "../resources", default-features = false }
 runtime.workspace = true
 serde.workspace = true
