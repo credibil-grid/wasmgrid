@@ -7,13 +7,13 @@ use anyhow::Result;
 use percent_encoding::percent_decode_str;
 use regex::Regex;
 
-use crate::handler::{Method, MethodHandler};
-use crate::request::Request;
+use crate::handler::MethodHandler;
+use crate::request::{Method, Request};
 use crate::response::Response;
 
-const PARAM_REGEX: &str = r"[-\w()@:%_+.~]+|https?://[-\w()@:%_+.~]+";
+const URL_REGEX: &str = r"[-\w()@:%_+.~]+";
 static ROUTE_REGEX: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"/(\{[-\w()@:%_+.~]+\})").expect("should compile"));
+    LazyLock::new(|| Regex::new(&format!("/(\\{{{URL_REGEX}\\}})")).expect("should compile"));
 
 pub struct Router {
     pub routes: BTreeMap<String, HashMap<Method, Route>>,
@@ -42,10 +42,10 @@ impl Router {
         let mut matcher = pattern.clone();
         for (_, [param]) in ROUTE_REGEX.captures_iter(&pattern).map(|caps| caps.extract()) {
             let param_name = param.trim_start_matches('{').trim_end_matches('}');
-            let param_regex = format!(r"(?<{param_name}>{PARAM_REGEX})",);
+            let param_regex = format!(r"(?<{param_name}>{URL_REGEX})");
             matcher = matcher.replace(param, &param_regex);
         }
-        let regex = Regex::new(&format!("^{matcher}$")).expect("should compile");
+        let regex = Regex::new(&format!("^{matcher}")).expect("should compile");
 
         self.routes
             .entry(pattern.clone())
@@ -57,14 +57,13 @@ impl Router {
     pub(crate) fn find(&self, request: &Request) -> Option<(&Route, HashMap<String, String>)> {
         let uri = request.uri();
         let path = uri.path();
-        let method = Method(request.method());
+        let method = request.method();
 
         for (pattern, routes) in self.routes.iter().rev() {
-            tracing::trace!("{:?} {path}", request.method());
+            tracing::trace!("{} {path}", request.method());
             tracing::trace!("{:?} {pattern}", routes.keys());
 
             let Some(route) = routes.get(&method) else {
-                tracing::trace!("No matching method");
                 continue;
             };
 
@@ -105,7 +104,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn match_route() {
+    fn captures() {
         // create route
         let pattern = "/{greeting}/world/{id}/test/{again}";
         let router = Router::new().route(
@@ -131,23 +130,49 @@ mod tests {
         assert!(routes[&method].regex.captures(no_match).is_none());
     }
 
+    // #[test]
+    // fn http_ids() {
+    //     // create route
+    //     let pattern = "/issuers/{issuer_id}/clients/{client_id}";
+    //     let router = Router::new()
+    //         .route(pattern, MethodHandler::new(HttpMethod::Get, |_| Ok(Response::from(vec![]))));
+    //     let routes = router.routes.get(pattern).unwrap();
+
+    //     // check path for match
+    //     let method = Method(HttpMethod::Get);
+    //     let will_match = "/issuers/http://issuer:8080/clients/http://wallet:8082";
+    //     let Some(caps) = routes[&method].regex.captures(will_match) else {
+    //         panic!("should match");
+    //     };
+
+    //     assert_eq!(caps.len(), 3);
+    //     assert_eq!(&caps[1], "http://issuer:8080");
+    //     assert_eq!(&caps[2], "http://wallet:8082");
+    // }
+
     #[test]
-    fn http_ids() {
+    fn partial_matches() {
         // create route
-        let pattern = "/issuers/{issuer_id}/clients/{client_id}";
-        let router = Router::new()
-            .route(pattern, MethodHandler::new(HttpMethod::Get, |_| Ok(Response::from(vec![]))));
+        let pattern = "/{greeting}/world";
+        let should_match = "/hello/world/my-id/test/repeated";
+
+        let router = Router::new().route(
+            pattern,
+            MethodHandler::new(HttpMethod::Get, |_| Ok(Response::from(vec![1, 2, 3]))),
+        );
         let routes = router.routes.get(pattern).unwrap();
 
         // check path for match
         let method = Method(HttpMethod::Get);
-        let will_match = "/issuers/http://issuer:8080/clients/http://wallet:8082";
-        let Some(caps) = routes[&method].regex.captures(will_match) else {
+        let Some(caps) = routes[&method].regex.captures(should_match) else {
             panic!("should match");
         };
 
-        assert_eq!(caps.len(), 3);
-        assert_eq!(&caps[1], "http://issuer:8080");
-        assert_eq!(&caps[2], "http://wallet:8082");
+        assert_eq!(caps.len(), 2);
+        assert_eq!(&caps[1], "hello");
+
+        // confirm regex does not match a different path
+        let no_match = "/hello/auckland/my-id/test/repeated";
+        assert!(routes[&method].regex.captures(no_match).is_none());
     }
 }

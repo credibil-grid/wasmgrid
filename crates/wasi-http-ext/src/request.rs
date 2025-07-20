@@ -1,11 +1,13 @@
 use std::collections::HashMap;
+use std::fmt::{self, Display, Formatter};
+use std::hash::{Hash, Hasher};
 
 use anyhow::{Result, anyhow};
 use http::Uri;
 use http::header::AUTHORIZATION;
 use percent_encoding::percent_decode_str;
 use serde::de::DeserializeOwned;
-use wasi::http::types::{Fields, IncomingRequest, Method, Scheme};
+use wasi::http::types::{Fields, IncomingRequest, Method as WasiMethod, Scheme};
 
 #[derive(Clone)]
 pub struct Request<'a> {
@@ -24,7 +26,7 @@ impl<'a> From<&'a IncomingRequest> for Request<'a> {
 
 impl<'a> Request<'a> {
     pub fn method(&self) -> Method {
-        self.inner.method()
+        self.inner.method().into()
     }
 
     /// Get the host the request was made to (using scheme and authority).
@@ -120,5 +122,46 @@ impl<'a> Request<'a> {
         let form: Vec<(String, String)> = serde_json::from_slice(&self.body()?)
             .map_err(|e| anyhow!("issue deserializing form: {e}"))?;
         credibil_core::html::form_decode(&form)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Method(pub WasiMethod);
+
+impl Display for Method {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        let method = match &self.0 {
+            WasiMethod::Get => "GET",
+            WasiMethod::Post => "POST",
+            WasiMethod::Put => "PUT",
+            WasiMethod::Delete => "DELETE",
+            WasiMethod::Patch => "PATCH",
+            WasiMethod::Head => "HEAD",
+            WasiMethod::Options => "OPTIONS",
+            WasiMethod::Trace => "TRACE",
+            WasiMethod::Connect => "CONNECT",
+            WasiMethod::Other(s) => s,
+        };
+        write!(f, "{method}")
+    }
+}
+
+impl PartialEq for Method {
+    fn eq(&self, other: &Self) -> bool {
+        self.to_string() == other.to_string()
+    }
+}
+
+impl Eq for Method {}
+
+impl Hash for Method {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.to_string().hash(state);
+    }
+}
+
+impl From<WasiMethod> for Method {
+    fn from(method: WasiMethod) -> Self {
+        Method(method)
     }
 }

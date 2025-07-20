@@ -1,6 +1,3 @@
-// #![feature(trait_alias)]
-// #![feature(type_alias_impl_trait)]
-
 mod client;
 mod handler;
 mod request;

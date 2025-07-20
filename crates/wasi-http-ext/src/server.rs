@@ -37,12 +37,14 @@ pub fn serve<'a>(
             })?;
             resp.body
         }
-        Err(err) => {
-            tracing::error!("{err}");
+        Err(e) => {
+            let stack = e.chain().map(|cause| format!(" -> {cause}")).collect::<String>();
+            tracing::error!("error serving '{}'{stack}", request.uri(),);
+
             response.set_status_code(http::StatusCode::INTERNAL_SERVER_ERROR.as_u16()).map_err(
                 |_| ErrorCode::InternalError(Some("issue setting status code".to_string())),
             )?;
-            let err_json = json!({"error": "server_error", "error_description": err.to_string()});
+            let err_json = json!({"error": "server_error", "error_description": e.to_string()});
             serde_json::to_vec(&err_json).map_err(|_| {
                 ErrorCode::InternalError(Some("failed to serialize error".to_string()))
             })?
@@ -52,10 +54,10 @@ pub fn serve<'a>(
     // write outgoing body
     let body = response
         .body()
-        .map_err(|()| ErrorCode::InternalError(Some("issue getting outgoing body".into())))?;
+        .map_err(|_| ErrorCode::InternalError(Some("issue getting outgoing body".to_string())))?;
     let stream = body
         .write()
-        .map_err(|()| ErrorCode::InternalError(Some("issue getting body stream".into())))?;
+        .map_err(|_| ErrorCode::InternalError(Some("issue getting body stream".to_string())))?;
 
     // write to stream in chunks as max bytes for `blocking_write_and_flush` is 4096
     let pollable = stream.subscribe();
