@@ -26,10 +26,11 @@ mod generated {
     });
 }
 
-use anyhow::anyhow;
+use anyhow::Context;
 use azure_security_keyvault_secrets::models::{Secret, SetSecretParameters};
 use base64ct::{Base64UrlUnpadded, Encoding};
 use futures::TryStreamExt;
+use http::StatusCode;
 use runtime::Linkable;
 use wasmtime::component::{HasData, Linker, Resource, ResourceTableError};
 use wasmtime_wasi::ResourceTable;
@@ -100,26 +101,25 @@ impl vault::HostLocker for Vault<'_> {
         tracing::debug!("getting secret named: {secret_name}");
         let secret_id = Base64UrlUnpadded::encode_string(secret_name.as_bytes());
 
-        let response = self.resources.azkeyvault()?.get_secret(&secret_id, "", None).await;
-        let response = match response {
+        let kv = self.resources.azkeyvault().context("connecting to Azure KeyVault")?;
+        let result = kv.get_secret(&secret_id, "", None).await;
+        let response = match result {
             Ok(resp) => resp,
             Err(e) => {
                 if let Some(code) = e.http_status()
-                    && code == 400
+                    && code == StatusCode::NOT_FOUND.as_u16()
                 {
                     return Ok(None);
                 }
-                return Err(Error::Other(e.to_string()));
+                return Err(Error::Other(format!("issue getting secret: {e}")));
             }
         };
 
-        let secret: Secret =
-            response.into_body().await.map_err(|e| anyhow!("issue deserializing secret: {e}"))?;
+        let secret: Secret = response.into_body().await.context("issue deserializing secret")?;
         let Some(value) = secret.value else {
             return Ok(None);
         };
-        let decoded = Base64UrlUnpadded::decode_vec(&value)
-            .map_err(|e| anyhow!("issue decoding secret: {e}"))?;
+        let decoded = Base64UrlUnpadded::decode_vec(&value).context("issue decoding secret")?;
 
         Ok(Some(decoded))
     }
@@ -138,14 +138,10 @@ impl vault::HostLocker for Vault<'_> {
             value: Some(Base64UrlUnpadded::encode_string(&value)),
             ..SetSecretParameters::default()
         };
-        let content =
-            params.try_into().map_err(|e| anyhow!("issue converting params to content: {e}"))?;
+        let content = params.try_into().context("issue converting params to content")?;
 
-        self.resources
-            .azkeyvault()?
-            .set_secret(&secret_id, content, None)
-            .await
-            .map_err(|e| anyhow!("issue setting secret: {e}"))?;
+        let kv = self.resources.azkeyvault().context("connecting to Azure KeyVault")?;
+        kv.set_secret(&secret_id, content, None).await.context("issue setting secret")?;
 
         Ok(())
     }
@@ -158,11 +154,8 @@ impl vault::HostLocker for Vault<'_> {
         tracing::debug!("deleting secret named: {secret_name}");
         let secret_id = Base64UrlUnpadded::encode_string(secret_name.as_bytes());
 
-        self.resources
-            .azkeyvault()?
-            .delete_secret(&secret_id, None)
-            .await
-            .map_err(|e| anyhow!("issue deleting secret: {e}"))?;
+        let kv = self.resources.azkeyvault().context("connecting to Azure KeyVault")?;
+        kv.delete_secret(&secret_id, None).await.context("issue deleting secret")?;
 
         Ok(())
     }
@@ -179,11 +172,8 @@ impl vault::HostLocker for Vault<'_> {
         tracing::debug!("listing secrets for: {identifier}");
 
         // get all secret properties from Azure KeyVault
-        let iter = self
-            .resources
-            .azkeyvault()?
-            .list_secret_properties(None)
-            .map_err(|e| anyhow!("issue listing secrets: {e}"))?;
+        let kv = self.resources.azkeyvault().context("connecting to Azure KeyVault")?;
+        let iter = kv.list_secret_properties(None).context("issue listing secrets")?;
 
         // filter and collect secret IDs for this 'locker'
         let secret_ids: Vec<String> = iter
@@ -195,7 +185,7 @@ impl vault::HostLocker for Vault<'_> {
             })
             .try_collect()
             .await
-            .map_err(|e| anyhow!("issue collecting secrets: {e}"))?;
+            .context("issue collecting secrets")?;
 
         Ok(secret_ids)
     }
