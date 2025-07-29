@@ -61,7 +61,7 @@ impl messaging::incoming_handler::Guest for RequestReply {
                 // send message to topic `b`
                 let mut resp = b"reply from topic a: ".to_vec();
                 resp.extend(data.clone());
-                
+
                 let reply = Message::new(&resp);
                 request_reply::reply(&message, reply)?;
             }

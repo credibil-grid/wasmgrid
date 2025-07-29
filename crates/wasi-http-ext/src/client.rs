@@ -8,8 +8,14 @@ use wasi::http::types::{
     FutureIncomingResponse, Headers, Method, OutgoingBody, OutgoingRequest, Scheme,
 };
 
-const UNRESERVED: &AsciiSet =
-    &NON_ALPHANUMERIC.remove(b'.').remove(b'_').remove(b'-').remove(b'~').remove(b'/');
+const UNRESERVED: &AsciiSet = &NON_ALPHANUMERIC
+    .remove(b'=')
+    .remove(b'&')
+    .remove(b'.')
+    .remove(b'_')
+    .remove(b'-')
+    .remove(b'~')
+    .remove(b'/');
 use crate::response::Response;
 
 pub struct Client {}
@@ -261,22 +267,24 @@ impl<B, J, F> RequestBuilder<B, J, F> {
             .map_err(|()| anyhow!("issue getting response"))?
             .map_err(|e| anyhow!("response error: {e}"))?;
 
-        // turn unsuccessful requests into an error
-        if response.status() < 200 || response.status() >= 300 {
-            return Err(anyhow!("unexpected status: {}", response.status()));
-        }
-
         // process body
-        let mut resp = Response::default();
+        let mut out_resp = Response::default();
         let body = response.consume().map_err(|()| anyhow!("issue getting body"))?;
         let stream = body.stream().map_err(|()| anyhow!("issue getting body's stream"))?;
         while let Ok(chunk) = stream.blocking_read(1024 * 1024) {
-            resp.body.extend_from_slice(&chunk);
+            out_resp.body.extend_from_slice(&chunk);
+        }
+
+        // transform unsuccessful requests into an error
+        let status = response.status();
+        if status < 200 || status >= 300 {
+            let body = String::from_utf8_lossy(&out_resp.body);
+            return Err(anyhow!("request unsuccessful {status}, {body}"));
         }
 
         drop(stream);
         drop(response);
 
-        Ok(resp)
+        Ok(out_resp)
     }
 }
