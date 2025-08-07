@@ -1,4 +1,4 @@
-//! # WASI Sql Service for MongoDB
+//! # WASI SQL Service for Azure Data Tables
 //!
 //! This module implements a runtime service for `wasi:sql`
 //! (<https://github.com/WebAssembly/wasi-sql>).
