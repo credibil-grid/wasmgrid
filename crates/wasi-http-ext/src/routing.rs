@@ -15,17 +15,17 @@ const URL_REGEX: &str = r"[-\w()@:%_+.~]+";
 static ROUTE_REGEX: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(&format!("/(\\{{{URL_REGEX}\\}})")).expect("should compile"));
 
-pub struct Router {
-    pub routes: BTreeMap<String, HashMap<Method, Route>>,
+pub struct Router<T: Into<Response>> {
+    pub routes: BTreeMap<String, HashMap<Method, Route<T>>>,
 }
 
-impl Default for Router {
+impl<T: Into<Response>> Default for Router<T> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl Router {
+impl<T: Into<Response>> Router<T> {
     /// Create a new router.
     #[must_use]
     pub const fn new() -> Self {
@@ -36,7 +36,7 @@ impl Router {
 
     /// Add a new route to the router.
     #[must_use]
-    pub fn route(mut self, route: impl Into<String>, handler: MethodHandler) -> Self {
+    pub fn route(mut self, route: impl Into<String>, handler: MethodHandler<T>) -> Self {
         // create a regex to extract params from path
         let pattern = route.into();
         let mut matcher = pattern.clone();
@@ -54,7 +54,7 @@ impl Router {
         self
     }
 
-    pub(crate) fn find(&self, request: &Request) -> Option<(&Route, HashMap<String, String>)> {
+    pub(crate) fn find(&self, request: &Request) -> Option<(&Route<T>, HashMap<String, String>)> {
         let uri = request.uri();
         let path = uri.path();
         let method = request.method();
@@ -86,13 +86,13 @@ impl Router {
     }
 }
 
-pub struct Route {
+pub struct Route<T: Into<Response>> {
     regex: Regex,
-    pub handler: MethodHandler,
+    pub handler: MethodHandler<T>,
 }
 
-impl Route {
-    pub fn handle(&self, request: &Request) -> Result<Response> {
+impl<T: Into<Response>> Route<T> {
+    pub fn handle(&self, request: &Request) -> Result<T> {
         self.handler.handle(request)
     }
 }

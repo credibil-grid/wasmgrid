@@ -26,7 +26,7 @@ impl http::incoming_handler::Guest for Http {
                 producer::send(&client, "a", message).expect("should send");
 
                 let resp = json!({"message": "message published"});
-                Ok(serde_json::to_vec(&resp)?.into())
+                Ok(serde_json::to_vec(&resp)?)
             }),
         );
 

@@ -5,6 +5,7 @@ use serde_json::json;
 use wasi::http::types::{ErrorCode, Headers, OutgoingBody, OutgoingResponse};
 
 use crate::request::Request;
+use crate::response::Response;
 use crate::routing::Router;
 
 /// Serve an incoming request using the provided router.
@@ -12,8 +13,8 @@ use crate::routing::Router;
 /// # Errors
 ///
 /// Returns a [`wasi::http::types::ErrorCode`] if the request could not be served.
-pub fn serve<'a>(
-    router: &Router, request: impl Into<Request<'a>>,
+pub fn serve<'a, T: Into<Response>>(
+    router: &Router<T>, request: impl Into<Request<'a>>,
 ) -> Result<OutgoingResponse, ErrorCode> {
     let mut request = request.into();
 
@@ -32,6 +33,7 @@ pub fn serve<'a>(
     // call the route's handler to process the request
     let mut inner_bytes = match route.handle(&request) {
         Ok(resp) => {
+            let resp = resp.into();
             response.set_status_code(resp.status.as_u16()).map_err(|_| {
                 ErrorCode::InternalError(Some("issue setting status code".to_string()))
             })?;
