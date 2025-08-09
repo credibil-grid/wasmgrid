@@ -24,16 +24,17 @@ pub fn serve(
     router: axum::Router, request: IncomingRequest,
 ) -> Result<OutgoingResponse, ErrorCode> {
     // forward request to axum `Router` to handle
-    let http_req = Request(request)
-        .try_into()
-        .map_err(|e| ErrorCode::InternalError(Some(format!("issue converting request: {e}"))))?;
+    let http_req =
+        Request(request).try_into().map_err(|e| error!("issue converting request: {e}"))?;
     let http_resp = block_on(async { router.oneshot(http_req).await })
         .map_err(|e| error!("issue processing request: {e}"))?;
+
+    println!("create response: {http_resp:?}");
 
     // transform `http::Response` into `OutgoingResponse`
     let headers = Headers::new();
     headers
-        .set(&CONTENT_TYPE.to_string(), &[b"application/json".to_vec()])
+        .set(CONTENT_TYPE.as_str(), &[b"application/json".to_vec()])
         .map_err(|e| error!("issue setting header: {e}"))?;
     let response = OutgoingResponse::new(headers);
     response
@@ -87,7 +88,6 @@ impl Request {
 
     fn uri(&self) -> Uri {
         let p_and_q = self.0.path_with_query().unwrap_or_default();
-        // FIXME: potentially repeated when decoding query parameters
         let decoded = percent_decode_str(p_and_q.as_str()).decode_utf8_lossy();
         decoded.parse::<Uri>().unwrap_or_else(|_| Uri::default())
     }

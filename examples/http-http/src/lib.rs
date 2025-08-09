@@ -41,11 +41,11 @@ impl Guest for HttpGuest {
 async fn get_handler() -> Result<Json<Value>, AxumError> {
     let resp = Client::new()
         .get("https://jsonplaceholder.cypress.io/posts/1")
-        .send()
+        .send::<Value>()
         .context("issue sending request")?;
 
     Ok(Json(json!({
-        "response": resp.json::<Value>().context("some error occurred")?
+        "response": resp.body()
     })))
 }
 
@@ -55,11 +55,11 @@ async fn post_handler(Json(body): Json<Value>) -> Result<Json<Value>, AxumError>
         .post("https://jsonplaceholder.cypress.io/posts")
         .bearer_auth("some token") // not required, but shown for example
         .json(&body)
-        .send()
+        .send::<Value>()
         .context("issue sending request")?;
 
     Ok(Json(json!({
-        "response": resp.json::<Value>().context("some error occurred")?
+        "response": resp.body()
     })))
 }
 

@@ -76,3 +76,9 @@ wasmtime = { version = "35.0.0", default-features = false, features = ["componen
 wasmtime-wasi = "35.0.0"
 wasmtime-wasi-http = "35.0.0"
 wasmtime-wasi-io = "35.0.0"
+
+axum = { version = "0.8.4", default-features = false }
+# axum = { version = "0.8.4", default-features = false, features = ["form", "json", "query", "tracing"] }
+futures = "0.3.31"
+tower = "0.5.2"
+tower-http = { version = "0.6.6", features = ["cors", "trace"] }

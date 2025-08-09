@@ -13,14 +13,11 @@ workspace = true
 
 [dependencies]
 anyhow.workspace = true
-credibil-core.workspace = true
 http.workspace = true
 percent-encoding = "2.3.1"
-serde.workspace = true
 serde_json.workspace = true
-tracing.workspace = true
 wasi.workspace = true
 
-axum = { version = "0.8.4", default-features = false, features = ["json"] }
-futures = "0.3.31"
-tower = "0.5.2"
+axum.workspace = true
+futures.workspace = true
+tower.workspace = true

@@ -1,8 +1,9 @@
 use anyhow::{Result, anyhow};
-use http::Uri;
 use http::header::{AUTHORIZATION, CONTENT_TYPE};
+use http::{Response, Uri};
 use percent_encoding::{AsciiSet, NON_ALPHANUMERIC, utf8_percent_encode};
 use serde::Serialize;
+use serde::de::DeserializeOwned;
 use wasi::http::outgoing_handler;
 use wasi::http::types::{
     FutureIncomingResponse, Headers, Method, OutgoingBody, OutgoingRequest, Scheme,
@@ -16,7 +17,6 @@ const UNRESERVED: &AsciiSet = &NON_ALPHANUMERIC
     .remove(b'-')
     .remove(b'~')
     .remove(b'/');
-use crate::response::Response;
 
 pub struct Client {}
 
@@ -139,19 +139,19 @@ impl<B, J, F> RequestBuilder<B, J, F> {
 }
 
 impl RequestBuilder<NoBody, NoJson, NoForm> {
-    pub fn send(&self) -> Result<Response> {
+    pub fn send<T: DeserializeOwned>(&self) -> Result<Response<T>> {
         self.send_any(None)
     }
 }
 
 impl RequestBuilder<HasBody, NoJson, NoForm> {
-    pub fn send(&self) -> Result<Response> {
+    pub fn send<T: DeserializeOwned>(&self) -> Result<Response<T>> {
         self.send_any(Some(&self.body.0))
     }
 }
 
-impl<T: Serialize> RequestBuilder<NoBody, HasJson<T>, NoForm> {
-    pub fn send(&mut self) -> Result<Response> {
+impl<B: Serialize> RequestBuilder<NoBody, HasJson<B>, NoForm> {
+    pub fn send<T: DeserializeOwned>(&mut self) -> Result<Response<T>> {
         let body =
             serde_json::to_vec(&self.json.0).map_err(|e| anyhow!("issue serializing json: {e}"))?;
         self.headers.push((CONTENT_TYPE.to_string(), "application/json".to_string()));
@@ -159,8 +159,8 @@ impl<T: Serialize> RequestBuilder<NoBody, HasJson<T>, NoForm> {
     }
 }
 
-impl<T: Serialize> RequestBuilder<NoBody, NoJson, HasForm<T>> {
-    pub fn send(&mut self) -> Result<Response> {
+impl<B: Serialize> RequestBuilder<NoBody, NoJson, HasForm<B>> {
+    pub fn send<T: DeserializeOwned>(&mut self) -> Result<Response<T>> {
         let body = credibil_core::html::form_encode(&self.form.0)
             .map_err(|e| anyhow!("issue serializing form: {e}"))?;
         let bytes =
@@ -172,7 +172,7 @@ impl<T: Serialize> RequestBuilder<NoBody, NoJson, HasForm<T>> {
 }
 
 impl<B, J, F> RequestBuilder<B, J, F> {
-    pub fn send_any(&self, body: Option<&[u8]>) -> Result<Response> {
+    pub fn send_any<T: DeserializeOwned>(&self, body: Option<&[u8]>) -> Result<Response<T>> {
         let request = self.prepare_request(body)?;
 
         tracing::trace!(
@@ -258,7 +258,9 @@ impl<B, J, F> RequestBuilder<B, J, F> {
         Ok(request)
     }
 
-    fn process_response(fut_resp: FutureIncomingResponse) -> Result<Response> {
+    fn process_response<T: DeserializeOwned>(
+        fut_resp: FutureIncomingResponse,
+    ) -> Result<Response<T>> {
         fut_resp.subscribe().block();
         let Some(result) = fut_resp.get() else {
             return Err(anyhow!("missing response"));
@@ -268,23 +270,27 @@ impl<B, J, F> RequestBuilder<B, J, F> {
             .map_err(|e| anyhow!("response error: {e}"))?;
 
         // process body
-        let mut out_resp = Response::default();
+        // let mut out_resp = Response::<T>::default();
         let body = response.consume().map_err(|()| anyhow!("issue getting body"))?;
         let stream = body.stream().map_err(|()| anyhow!("issue getting body's stream"))?;
+
+        let mut body = vec![];
         while let Ok(chunk) = stream.blocking_read(1024 * 1024) {
-            out_resp.body.extend_from_slice(&chunk);
+            body.extend_from_slice(&chunk);
         }
 
         // transform unsuccessful requests into an error
         let status = response.status();
         if status < 200 || status >= 300 {
-            let body = String::from_utf8_lossy(&out_resp.body);
+            let body = String::from_utf8_lossy(&body);
             return Err(anyhow!("request unsuccessful {status}, {body}"));
         }
 
         drop(stream);
         drop(response);
 
-        Ok(out_resp)
+        let x = serde_json::from_slice::<T>(&body)
+            .map_err(|e| anyhow!("issue deserializing response body: {e}"))?;
+        Ok(Response::new(x))
     }
 }
