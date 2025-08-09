@@ -1,6 +1,7 @@
 use anyhow::{Context, Result, anyhow};
 use axum::routing::post;
 use axum::{Json, Router};
+use bytes::Bytes;
 use http_server::AxumError;
 use serde_json::Value;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
@@ -24,13 +25,12 @@ impl Guest for HttpGuest {
     }
 }
 
-async fn handler(Json(body): Json<Value>) -> Result<Json<Value>, AxumError> {
+async fn handler(body: Bytes) -> Result<Json<Value>, AxumError> {
     // write to blobstore
-    let bytes = serde_json::to_vec(&body).context("serialize body")?;
     let outgoing = OutgoingValue::new_outgoing_value();
     let stream =
         outgoing.outgoing_value_write_body().map_err(|_| anyhow!("failed create stream"))?;
-    stream.blocking_write_and_flush(&bytes).context("writing body")?;
+    stream.blocking_write_and_flush(&body).context("writing body")?;
 
     let container = blobstore::create_container("container")
         .map_err(|e| anyhow!("failed to create container: {e}"))?;
@@ -43,7 +43,7 @@ async fn handler(Json(body): Json<Value>) -> Result<Json<Value>, AxumError> {
     let data = IncomingValue::incoming_value_consume_sync(incoming)
         .map_err(|_| anyhow!("failed to create incoming value"))?;
 
-    assert_eq!(data, bytes);
+    assert_eq!(data, body);
 
     let response = serde_json::from_slice::<Value>(&data).context("deserializing data")?;
     Ok(Json(response))

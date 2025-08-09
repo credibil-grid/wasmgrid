@@ -387,6 +387,7 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "axum",
+ "bytes",
  "http-server",
  "serde_json",
  "tracing",
@@ -1974,6 +1975,7 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "axum",
+ "bytes",
  "http-server",
  "serde_json",
  "tracing",

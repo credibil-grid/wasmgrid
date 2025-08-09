@@ -1,6 +1,7 @@
 use anyhow::{Context, Result};
 use axum::routing::post;
 use axum::{Json, Router};
+use bytes::Bytes;
 use http_server::AxumError;
 use serde_json::{Value, json};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
@@ -23,16 +24,13 @@ impl Guest for HttpGuest {
     }
 }
 
-async fn handle(Json(body): Json<Value>) -> Result<Json<Value>, AxumError> {
-    tracing::debug!("json: {:?}", body);
-
+async fn handle(body: Bytes) -> Result<Json<Value>, AxumError> {
     let bucket = store::open("credibil_bucket").context("opening bucket")?;
-    let data = serde_json::to_vec(&body).context("serializing body")?;
-    bucket.set("my_key", &data).context("storing data")?;
+    bucket.set("my_key", &body).context("storing data")?;
 
     // check for previous value
     let res = bucket.get("my_key");
-    tracing::debug!("found val: {:?}", res);
+    tracing::debug!("found val: {res:?}");
 
     Ok(Json(json!({
         "message": "Hello, World!"
