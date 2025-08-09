@@ -10,4 +10,4 @@ pub use self::handler::*;
 pub use self::request::*;
 pub use self::response::*;
 pub use self::routing::*;
-pub use self::server::serve;
+pub use self::server::{serve, serve2};

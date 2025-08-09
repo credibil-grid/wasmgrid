@@ -7,19 +7,20 @@ This example demonstrates how to make an outgoing http request to a downstream s
 Build the example guest:
 
 ```bash
-cargo build --package http-http --target wasm32-wasip2 --release --release
+cargo build --package http-http --target wasm32-wasip2 --release
 ```
 
 Run a guest using the runtime:
 
 ```bash
-```bash
-cargo run -- compile  ./target/wasm32-wasip2/release/http_http.wasm
+# compile and run
+cargo run -- run ./target/wasm32-wasip2/release/http_http.wasm
+
+# pre-compile
+cargo run -- compile  ./target/wasm32-wasip2/release/http_http.wasm --output ./http_http.bin
 cargo run -- run ./http_http.bin
-# OR
-cargo run -- run --compile ./target/wasm32-wasip2/release/http_http.wasm
 ```
-```
+
 
 In a separate console, call the guest which will in turn call the downstream service
 at <https://jsonplaceholder.cypress.io>:
