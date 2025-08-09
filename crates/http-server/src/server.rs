@@ -25,11 +25,9 @@ pub fn serve(
 ) -> Result<OutgoingResponse, ErrorCode> {
     // forward request to axum `Router` to handle
     let http_req =
-        Request(request).try_into().map_err(|e| error!("issue converting request: {e}"))?;
+        Request(request).into_http().map_err(|e| error!("issue converting request: {e}"))?;
     let http_resp = block_on(async { router.oneshot(http_req).await })
         .map_err(|e| error!("issue processing request: {e}"))?;
-
-    println!("create response: {http_resp:?}");
 
     // transform `http::Response` into `OutgoingResponse`
     let headers = Headers::new();
@@ -78,11 +76,15 @@ pub fn serve(
 struct Request(IncomingRequest);
 
 impl Request {
-    pub fn method(&self) -> Method {
+    // fn new(request: IncomingRequest) -> Self {
+    //     Request(request)
+    // }
+
+    fn method(&self) -> Method {
         Method(self.0.method())
     }
 
-    pub fn headers(&self) -> Fields {
+    fn headers(&self) -> Fields {
         self.0.headers()
     }
 
@@ -106,31 +108,31 @@ impl Request {
 
         Ok(buffer)
     }
+
+    fn into_http(self) -> Result<HttpRequest<Body>> {
+        self.try_into()
+    }
 }
 
 impl TryFrom<Request> for HttpRequest<Body> {
-    type Error = ErrorCode;
+    type Error = anyhow::Error;
 
     fn try_from(request: Request) -> Result<Self, Self::Error> {
         let method = request.method().to_string();
         let headers = request.headers();
         let uri = request.uri();
-        let bytes = request.body().map_err(|e| error!("issue getting request body: {e}"))?;
+        let bytes = request.body()?;
+        let body = if bytes.is_empty() { Body::empty() } else { Body::from(bytes) };
 
-        let mut req = HttpRequest::builder()
-            .method(method.as_str())
-            .uri(uri)
-            .body(Body::from(bytes))
-            .map_err(|e| error!("issue building request: {e}"))?;
-
+        let mut http_req = HttpRequest::builder().method(method.as_str()).uri(uri).body(body)?;
         for (key, value) in headers.entries() {
-            req.headers_mut().insert(
+            http_req.headers_mut().insert(
                 HeaderName::from_str(&key).unwrap(),
                 HeaderValue::from_bytes(&value).unwrap(),
             );
         }
 
-        Ok(req)
+        Ok(http_req)
     }
 }
 
