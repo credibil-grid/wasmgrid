@@ -2,8 +2,6 @@
 // use axum::http::{HeaderMap, HeaderValue, StatusCode, header};
 // use axum::response::{Html, IntoResponse, Redirect, Response};
 use anyhow::Context;
-use axum::http::StatusCode;
-use axum::response::{IntoResponse, Response};
 use axum::routing::get;
 use axum::{Json, Router};
 use http::Method;
@@ -13,7 +11,7 @@ use tower_http::cors::{Any, CorsLayer};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 use wasi::exports::http::incoming_handler::Guest;
 use wasi::http::types::{IncomingRequest, ResponseOutparam};
-use wasi_http_ext::{self, Client};
+use wasi_http_ext::{self, AxumError, Client};
 
 struct HttpGuest;
 
@@ -36,7 +34,7 @@ impl Guest for HttpGuest {
 }
 
 // Forward request to external service and return the response
-async fn get_handler() -> Result<Json<serde_json::Value>, AxError> {
+async fn get_handler() -> Result<Json<serde_json::Value>, AxumError> {
     let resp = Client::new()
         .get("http://jsonplaceholder.cypress.io/posts/1")
         .send()
@@ -73,23 +71,23 @@ async fn get_handler() -> Result<Json<serde_json::Value>, AxError> {
 
 wasi::http::proxy::export!(HttpGuest);
 
-// Wrap anyhow::Error.
-struct AxError {
-    status: StatusCode,
-    error: serde_json::Value,
-}
+// // Wrap anyhow::Error.
+// struct AxError {
+//     status: StatusCode,
+//     error: serde_json::Value,
+// }
 
-impl From<anyhow::Error> for AxError {
-    fn from(e: anyhow::Error) -> Self {
-        Self {
-            status: StatusCode::INTERNAL_SERVER_ERROR,
-            error: json!({"error": e.to_string()}),
-        }
-    }
-}
+// impl From<anyhow::Error> for AxError {
+//     fn from(e: anyhow::Error) -> Self {
+//         Self {
+//             status: StatusCode::INTERNAL_SERVER_ERROR,
+//             error: json!({"error": e.to_string()}),
+//         }
+//     }
+// }
 
-impl IntoResponse for AxError {
-    fn into_response(self) -> Response {
-        (self.status, format!("{}", self.error)).into_response()
-    }
-}
+// impl IntoResponse for AxError {
+//     fn into_response(self) -> Response {
+//         (self.status, format!("{}", self.error)).into_response()
+//     }
+// }

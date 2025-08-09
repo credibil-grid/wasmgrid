@@ -1,4 +1,5 @@
 mod client;
+mod error;
 mod handler;
 mod request;
 mod response;
@@ -11,3 +12,4 @@ pub use self::request::*;
 pub use self::response::*;
 pub use self::routing::*;
 pub use self::server::{serve, serve2};
+pub use self::error::*;
