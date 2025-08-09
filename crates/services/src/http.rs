@@ -7,16 +7,12 @@ use std::clone::Clone;
 use std::env;
 
 use anyhow::{Result, anyhow};
-use http::uri::PathAndQuery;
-use http::uri::Uri; // Authority,
+use http::uri::{PathAndQuery, Uri};
 use hyper::body::Incoming;
-use hyper::header::{
-    ACCESS_CONTROL_ALLOW_HEADERS, ACCESS_CONTROL_ALLOW_METHODS, ACCESS_CONTROL_ALLOW_ORIGIN,
-    FORWARDED, HOST, HeaderValue,
-};
+use hyper::header::{FORWARDED, HOST};
 use hyper::server::conn::http1;
 use hyper::service::service_fn;
-use hyper::{Method, Request, Response, StatusCode};
+use hyper::{Request, Response};
 use runtime::{Linkable, Runnable};
 use tokio::net::TcpListener;
 use tokio::sync::oneshot;
@@ -100,12 +96,6 @@ impl Svc {
     async fn handle(&self, request: Request<Incoming>) -> Result<Response<HyperOutgoingBody>> {
         tracing::trace!("handling request: {request:?}");
 
-        // HACK: CORS preflight request for use when testing locally
-        let cors = env::var("WITH_CORS").is_ok_and(|v| v.parse().unwrap_or(false));
-        if cors && request.method() == Method::OPTIONS {
-            return handle_options();
-        }
-
         // prepare wasmtime http request and response
         let mut store = Store::new(
             self.proxy_pre.engine(),
@@ -126,12 +116,8 @@ impl Svc {
             proxy.wasi_http_incoming_handler().call_handle(&mut store, incoming, outgoing).await;
 
         match receiver.await {
-            Ok(Ok(mut resp)) => {
+            Ok(Ok(resp)) => {
                 tracing::trace!("request success: {resp:?}");
-                if cors {
-                    resp.headers_mut()
-                        .insert(ACCESS_CONTROL_ALLOW_ORIGIN, HeaderValue::from_static("*"));
-                }
                 Ok(resp)
             }
             Ok(Err(e)) => {
@@ -190,16 +176,6 @@ fn prepare_request(mut request: Request<Incoming>) -> Result<(Request<Incoming>,
     };
 
     Ok((request, scheme))
-}
-
-fn handle_options() -> Result<Response<HyperOutgoingBody>> {
-    Response::builder()
-        .status(StatusCode::OK)
-        .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
-        .header(ACCESS_CONTROL_ALLOW_HEADERS, "*")
-        .header(ACCESS_CONTROL_ALLOW_METHODS, "DELETE, GET, OPTIONS, PATCH, POST, PUT")
-        .body(HyperOutgoingBody::default())
-        .map_err(|e| anyhow!("failed to build response: {e}"))
 }
 
 impl WasiHttpView for Ctx {
