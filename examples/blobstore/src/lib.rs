@@ -1,11 +1,13 @@
-use anyhow::{Result, anyhow};
-use serde_json::{Value, json};
+use anyhow::{Context, Result, anyhow};
+use axum::routing::post;
+use axum::{Json, Router};
+use serde_json::Value;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 use wasi::exports::http::incoming_handler::Guest;
 use wasi::http::types::{IncomingRequest, ResponseOutparam};
 use wasi_bindings::blobstore::blobstore;
 use wasi_bindings::blobstore::types::{IncomingValue, OutgoingValue};
-use wasi_http_ext::{self, Request, Response, Router, post};
+use wasi_http_ext::{self, AxumError};
 
 struct HttpGuest;
 
@@ -17,21 +19,18 @@ impl Guest for HttpGuest {
 
         let router = Router::new().route("/", post(handler));
 
-        let out = wasi_http_ext::serve(&router, &request);
+        let out = wasi_http_ext::serve(router, request);
         ResponseOutparam::set(response, out);
     }
 }
 
-fn handler(request: &Request) -> Result<Response> {
-    let body = request.body()?;
-    let request: Value = serde_json::from_slice(&body)?;
-    tracing::debug!("received request: {request:?}");
-
+async fn handler(Json(body): Json<Value>) -> Result<Json<Value>, AxumError> {
     // write to blobstore
+    let bytes = serde_json::to_vec(&body).context("serialize body")?;
     let outgoing = OutgoingValue::new_outgoing_value();
     let stream =
         outgoing.outgoing_value_write_body().map_err(|_| anyhow!("failed create stream"))?;
-    stream.blocking_write_and_flush(&body)?;
+    stream.blocking_write_and_flush(&bytes).context("writing body")?;
 
     let container = blobstore::create_container("container")
         .map_err(|e| anyhow!("failed to create container: {e}"))?;
@@ -44,11 +43,10 @@ fn handler(request: &Request) -> Result<Response> {
     let data = IncomingValue::incoming_value_consume_sync(incoming)
         .map_err(|_| anyhow!("failed to create incoming value"))?;
 
-    assert_eq!(data, body);
+    assert_eq!(data, bytes);
 
-    let response = serde_json::from_slice::<Value>(&data)?;
-    tracing::debug!("sending response: {:?}", json!(response));
-    Ok(serde_json::to_vec(&response)?.into())
+    let response = serde_json::from_slice::<Value>(&data).context("deserializing data")?;
+    Ok(Json(response))
 }
 
 wasi::http::proxy::export!(HttpGuest);

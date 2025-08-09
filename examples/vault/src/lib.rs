@@ -1,10 +1,13 @@
-use anyhow::{Result, anyhow};
-use serde_json::{Value, json};
+use anyhow::{Context, Result, anyhow};
+use axum::routing::post;
+use axum::{Json, Router};
+use bytes::Bytes;
+use serde_json::Value;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 use wasi::exports::http::incoming_handler::Guest;
 use wasi::http::types::{IncomingRequest, ResponseOutparam};
 use wasi_bindings::vault::vault;
-use wasi_http_ext::{self, Request, Response, Router, post};
+use wasi_http_ext::AxumError;
 
 struct HttpGuest;
 
@@ -14,31 +17,25 @@ impl Guest for HttpGuest {
             FmtSubscriber::builder().with_env_filter(EnvFilter::from_default_env()).finish();
         tracing::subscriber::set_global_default(subscriber).expect("should set subscriber");
 
-        let router = Router::new().route("/", post(handler));
-
-        let out = wasi_http_ext::serve(&router, &request);
+        let router = Router::new().route("/", post(handle));
+        let out = wasi_http_ext::serve(router, request);
         ResponseOutparam::set(response, out);
     }
 }
 
-fn handler(request: &Request) -> Result<Response> {
-    let body = request.body()?;
-    let request: Value = serde_json::from_slice(&body)?;
-    tracing::debug!("received request: {request:?}");
-
+async fn handle(body: Bytes) -> Result<Json<Value>, AxumError> {
+    // write secret to vault
     let locker =
         vault::open("credibil-locker").map_err(|e| anyhow!("failed to open vault locker: {e}"))?;
-
-    // write secret to vault
     locker.set("secret-id", &body).map_err(|e| anyhow!("issue setting secret: {e}"))?;
 
     // read secret from vault
     let secret = locker.get("secret-id").map_err(|e| anyhow!("issue retriving secret: {e}"))?;
     assert_eq!(secret.unwrap(), body);
 
-    let response = serde_json::from_slice::<Value>(&body)?;
-    tracing::debug!("sending response: {:?}", json!(response));
-    Ok(serde_json::to_vec(&response)?.into())
+    let response = serde_json::from_slice::<Value>(&body).context("deserializing data")?;
+    tracing::debug!("sending response: {response:?}");
+    Ok(Json(response))
 }
 
 wasi::http::proxy::export!(HttpGuest);

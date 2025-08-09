@@ -20,7 +20,6 @@ vault = ["dep:azure_security_keyvault_secrets", "dep:openssl", "resources/azkeyv
 [dependencies]
 anyhow.workspace = true
 async-nats = { version = "0.42.0", optional = true }
-async-trait = "0.1.88"
 azure_security_keyvault_secrets = { workspace = true, optional = true }
 base64ct = { version = "1.8.0", features = ["std"] }
 bytes = "1.10.1"

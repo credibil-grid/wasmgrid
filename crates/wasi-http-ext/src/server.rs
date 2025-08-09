@@ -1,4 +1,3 @@
-use std::cmp;
 use std::fmt::{self, Display, Formatter};
 use std::str::FromStr;
 
@@ -10,122 +9,28 @@ use futures::executor::block_on;
 use http::header::CONTENT_TYPE;
 use http::{HeaderName, HeaderValue, Uri};
 use percent_encoding::percent_decode_str;
-use serde_json::json;
 use tower::ServiceExt;
 use wasi::http::types::{
     ErrorCode, Fields, Headers, IncomingRequest, Method as WasiMethod, OutgoingBody,
     OutgoingResponse,
 };
 
-use crate::request::Request;
-use crate::response::Response;
-use crate::routing::Router;
-
 /// Serve an incoming request using the provided router.
 ///
 /// # Errors
 ///
 /// Returns a [`wasi::http::types::ErrorCode`] if the request could not be served.
-pub fn serve<'a, T: Into<Response>>(
-    router: &Router<T>, request: impl Into<Request<'a>>,
-) -> Result<OutgoingResponse, ErrorCode> {
-    let mut request = request.into();
-
-    // create outgoing response
-    let headers = Headers::new();
-    headers
-        .set(&CONTENT_TYPE.to_string(), &[b"application/json".to_vec()])
-        .map_err(|e| ErrorCode::InternalError(Some(format!("issue setting header: {e}"))))?;
-    let response = OutgoingResponse::new(headers);
-
-    let Some((route, captures)) = router.find(&request) else {
-        return Err(ErrorCode::DestinationNotFound);
-    };
-    request.captures = Some(captures);
-
-    // call the route's handler to process the request
-    let mut inner_bytes = match route.handle(&request) {
-        Ok(resp) => {
-            let resp = resp.into();
-            response.set_status_code(resp.status.as_u16()).map_err(|_| {
-                ErrorCode::InternalError(Some("issue setting status code".to_string()))
-            })?;
-            resp.body
-        }
-        Err(e) => {
-            let stack = e.chain().map(|cause| format!(" -> {cause}")).collect::<String>();
-            tracing::error!("error serving '{}'{stack}", request.uri(),);
-
-            response.set_status_code(http::StatusCode::INTERNAL_SERVER_ERROR.as_u16()).map_err(
-                |_| ErrorCode::InternalError(Some("issue setting status code".to_string())),
-            )?;
-            let err_json = json!({"error": "server_error", "error_description": e.to_string()});
-            serde_json::to_vec(&err_json).map_err(|_| {
-                ErrorCode::InternalError(Some("failed to serialize error".to_string()))
-            })?
-        }
-    };
-
-    // write outgoing body
-    let body = response
-        .body()
-        .map_err(|_| ErrorCode::InternalError(Some("issue getting outgoing body".to_string())))?;
-    let stream = body
-        .write()
-        .map_err(|_| ErrorCode::InternalError(Some("issue getting body stream".to_string())))?;
-
-    // write to stream in chunks as max bytes for `blocking_write_and_flush` is 4096
-    let pollable = stream.subscribe();
-    while !inner_bytes.is_empty() {
-        pollable.block();
-        let n = stream
-            .check_write()
-            .map_err(|e| ErrorCode::InternalError(Some(format!("issue checking write: {e}"))))?;
-        let mid = cmp::min(n as usize, inner_bytes.len());
-        let (chunk, remaining) = inner_bytes.split_at(mid);
-        if let Err(e) = stream.write(chunk) {
-            return Err(ErrorCode::InternalError(Some(format!("issue writing to stream: {e}"))));
-        };
-
-        inner_bytes = remaining.to_vec();
-    }
-
-    if let Err(e) = stream.flush() {
-        return Err(ErrorCode::InternalError(Some(format!("issue flushing stream: {e}"))));
-    };
-    pollable.block();
-
-    // check for any errors
-    if let Err(e) = stream.check_write() {
-        return Err(ErrorCode::InternalError(Some(format!("issue writing to stream: {e}"))));
-    };
-
-    drop(pollable);
-    drop(stream);
-
-    if let Err(e) = OutgoingBody::finish(body, None) {
-        return Err(ErrorCode::InternalError(Some(format!("issue finishing body: {e}"))));
-    };
-
-    Ok(response)
-}
-
-/// Serve an incoming request using the provided router.
-///
-/// # Errors
-///
-/// Returns a [`wasi::http::types::ErrorCode`] if the request could not be served.
-pub fn serve2(
+pub fn serve(
     router: axum::Router, request: IncomingRequest,
 ) -> Result<OutgoingResponse, ErrorCode> {
-    // call the route's handler to process the request
-    let http_req = Request2(request)
+    // forward request to axum `Router` to handle
+    let http_req = Request(request)
         .try_into()
         .map_err(|e| ErrorCode::InternalError(Some(format!("issue converting request: {e}"))))?;
     let http_resp = block_on(async { router.oneshot(http_req).await })
         .map_err(|e| error!("issue processing request: {e}"))?;
 
-    // create outgoing response
+    // transform `http::Response` into `OutgoingResponse`
     let headers = Headers::new();
     headers
         .set(&CONTENT_TYPE.to_string(), &[b"application/json".to_vec()])
@@ -135,7 +40,7 @@ pub fn serve2(
         .set_status_code(http_resp.status().as_u16())
         .map_err(|_| error!("issue setting status code"))?;
 
-    // write outgoing body
+    // write `OutgoingBody`
     let http_body = http_resp.into_body();
     let mut http_stream = http_body.into_data_stream();
     let out_body = response.body().map_err(|_| error!("issue getting outgoing body"))?;
@@ -169,9 +74,9 @@ pub fn serve2(
     Ok(response)
 }
 
-struct Request2(IncomingRequest);
+struct Request(IncomingRequest);
 
-impl Request2 {
+impl Request {
     pub fn method(&self) -> Method {
         Method(self.0.method())
     }
@@ -203,14 +108,14 @@ impl Request2 {
     }
 }
 
-impl TryFrom<Request2> for HttpRequest<Body> {
+impl TryFrom<Request> for HttpRequest<Body> {
     type Error = ErrorCode;
 
-    fn try_from(inner: Request2) -> Result<Self, Self::Error> {
-        let method = inner.method().to_string();
-        let headers = inner.headers();
-        let uri = inner.uri();
-        let bytes = inner.body().map_err(|e| error!("issue getting request body: {e}"))?;
+    fn try_from(request: Request) -> Result<Self, Self::Error> {
+        let method = request.method().to_string();
+        let headers = request.headers();
+        let uri = request.uri();
+        let bytes = request.body().map_err(|e| error!("issue getting request body: {e}"))?;
 
         let mut req = HttpRequest::builder()
             .method(method.as_str())

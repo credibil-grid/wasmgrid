@@ -19,6 +19,4 @@ wasi.workspace = true
 wasi-http-ext.workspace = true
 
 axum = { version = "0.8.4", default-features = false, features = ["form", "json", "query", "tracing"] }
-axum-extra = { version = "0.10.1", features = ["typed-header"] }
-# axum-extra.workspace = true
 tower-http = { version = "0.6.6", features = ["cors", "trace"] }
