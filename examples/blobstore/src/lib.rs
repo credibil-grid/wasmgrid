@@ -1,13 +1,13 @@
 use anyhow::{Context, Result, anyhow};
 use axum::routing::post;
 use axum::{Json, Router};
+use http_server::AxumError;
 use serde_json::Value;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 use wasi::exports::http::incoming_handler::Guest;
 use wasi::http::types::{IncomingRequest, ResponseOutparam};
 use wasi_bindings::blobstore::blobstore;
 use wasi_bindings::blobstore::types::{IncomingValue, OutgoingValue};
-use wasi_http_ext::{self, AxumError};
 
 struct HttpGuest;
 
@@ -19,7 +19,7 @@ impl Guest for HttpGuest {
 
         let router = Router::new().route("/", post(handler));
 
-        let out = wasi_http_ext::serve(router, request);
+        let out = http_server::serve(router, request);
         ResponseOutparam::set(response, out);
     }
 }

@@ -21,7 +21,7 @@ impl http::incoming_handler::Guest for Http {
 
         let router = Router::new().route("/", post(handle));
 
-        let out = wasi_http_ext::serve(router, request);
+        let out = http_server::serve(router, request);
         ResponseOutparam::set(response, out);
     }
 }

@@ -1,11 +1,11 @@
 use anyhow::Result;
 use axum::routing::post;
 use axum::{Json, Router};
+use http_server::AxumError;
 use serde_json::{Value, json};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 use wasi::exports::http::incoming_handler::Guest;
 use wasi::http::types::{IncomingRequest, ResponseOutparam};
-use wasi_http_ext::AxumError;
 
 struct HttpGuest;
 
@@ -16,7 +16,7 @@ impl Guest for HttpGuest {
         tracing::subscriber::set_global_default(subscriber).expect("should set subscriber");
 
         let router = Router::new().route("/", post(handle));
-        let out = wasi_http_ext::serve(router, request);
+        let out = http_server::serve(router, request);
         ResponseOutparam::set(response, out);
     }
 }

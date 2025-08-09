@@ -6,12 +6,13 @@ use anyhow::{Context, Result};
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use http::Method;
+use http_client::Client;
+use http_server::AxumError;
 use serde_json::{Value, json};
 use tower_http::cors::{Any, CorsLayer};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 use wasi::exports::http::incoming_handler::Guest;
 use wasi::http::types::{IncomingRequest, ResponseOutparam};
-use wasi_http_ext::{self, AxumError, Client};
 
 struct HttpGuest;
 
@@ -31,7 +32,7 @@ impl Guest for HttpGuest {
             )
             .route("/", post(post_handler));
 
-        let out = wasi_http_ext::serve(router, request);
+        let out = http_server::serve(router, request);
         ResponseOutparam::set(response, out);
     }
 }
@@ -39,7 +40,7 @@ impl Guest for HttpGuest {
 // Forward request to external service and return the response
 async fn get_handler() -> Result<Json<Value>, AxumError> {
     let resp = Client::new()
-        .get("http://jsonplaceholder.cypress.io/posts/1")
+        .get("https://jsonplaceholder.cypress.io/posts/1")
         .send()
         .context("issue sending request")?;
 
