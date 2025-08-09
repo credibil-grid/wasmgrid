@@ -1,8 +1,8 @@
-use anyhow::{Context, Result, anyhow};
+use anyhow::{Context, anyhow};
 use axum::routing::post;
 use axum::{Json, Router};
 use bytes::Bytes;
-use http_server::AxumError;
+use http_server::Result;
 use serde_json::Value;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 use wasi::exports::http::incoming_handler::Guest;
@@ -23,7 +23,7 @@ impl Guest for HttpGuest {
     }
 }
 
-async fn handle(body: Bytes) -> Result<Json<Value>, AxumError> {
+async fn handle(body: Bytes) -> Result<Json<Value>> {
     // write secret to vault
     let locker =
         vault::open("credibil-locker").map_err(|e| anyhow!("failed to open vault locker: {e}"))?;

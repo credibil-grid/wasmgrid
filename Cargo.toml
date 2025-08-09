@@ -13,6 +13,11 @@ name = "wasmgrid"
 path = "src/wasmgrid.rs"
 doc = false
 
+[[bin]]
+name = "runtime"
+path = "src/runtime.rs"
+doc = false
+
 [lints]
 workspace = true
 

@@ -2,12 +2,12 @@
 // use axum::http::{HeaderMap, HeaderValue, StatusCode, header};
 // use axum::response::{Html, IntoResponse, Redirect, Response};
 
-use anyhow::{Context, Result};
+use anyhow::Context;
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use http::Method;
 use http_client::Client;
-use http_server::AxumError;
+use http_server::Result;
 use serde_json::{Value, json};
 use tower_http::cors::{Any, CorsLayer};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
@@ -38,7 +38,7 @@ impl Guest for HttpGuest {
 }
 
 // Forward request to external service and return the response
-async fn get_handler() -> Result<Json<Value>, AxumError> {
+async fn get_handler() -> Result<Json<Value>> {
     let resp = Client::new()
         .get("https://jsonplaceholder.cypress.io/posts/1")
         .send::<Value>()
@@ -50,7 +50,7 @@ async fn get_handler() -> Result<Json<Value>, AxumError> {
 }
 
 // Forward request to external service and return the response
-async fn post_handler(Json(body): Json<Value>) -> Result<Json<Value>, AxumError> {
+async fn post_handler(Json(body): Json<Value>) -> Result<Json<Value>> {
     let resp = Client::new()
         .post("https://jsonplaceholder.cypress.io/posts")
         .bearer_auth("some token") // not required, but shown for example

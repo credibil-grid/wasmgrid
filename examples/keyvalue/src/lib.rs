@@ -1,8 +1,8 @@
-use anyhow::{Context, Result};
+use anyhow::Context;
 use axum::routing::post;
 use axum::{Json, Router};
 use bytes::Bytes;
-use http_server::AxumError;
+use http_server::Result;
 use serde_json::{Value, json};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 use wasi::exports::http::incoming_handler::Guest;
@@ -24,7 +24,7 @@ impl Guest for HttpGuest {
     }
 }
 
-async fn handle(body: Bytes) -> Result<Json<Value>, AxumError> {
+async fn handle(body: Bytes) -> Result<Json<Value>> {
     let bucket = store::open("credibil_bucket").context("opening bucket")?;
     bucket.set("my_key", &body).context("storing data")?;
 

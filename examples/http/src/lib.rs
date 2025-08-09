@@ -1,7 +1,6 @@
-use anyhow::Result;
 use axum::routing::post;
 use axum::{Json, Router};
-use http_server::AxumError;
+use http_server::Result;
 use serde_json::{Value, json};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 use wasi::exports::http::incoming_handler::Guest;
@@ -22,7 +21,7 @@ impl Guest for HttpGuest {
 }
 
 // A simple "Hello, World!" endpoint that returns the client's request.
-async fn handle(Json(body): Json<Value>) -> Result<Json<Value>, AxumError> {
+async fn handle(Json(body): Json<Value>) -> Result<Json<Value>> {
     Ok(Json(json!({
         "message": "Hello, World!",
         "request": body
