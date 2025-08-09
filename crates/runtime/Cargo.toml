@@ -19,7 +19,7 @@ anyhow.workspace = true
 async-trait = "0.1.88"
 bytes = "1.10.1"
 cfg-if.workspace = true
-clap = { version = "4.5.41", features = ["derive"] }
+clap = { version = "4.5.43", features = ["derive"] }
 tokio.workspace = true
 tracing.workspace = true
 wasmtime = { workspace = true, features = ["runtime"] }
