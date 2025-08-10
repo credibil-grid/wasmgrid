@@ -31,13 +31,14 @@ use azure_security_keyvault_secrets::models::{Secret, SetSecretParameters};
 use base64ct::{Base64UrlUnpadded, Encoding};
 use futures::TryStreamExt;
 use http::StatusCode;
+use resources::Resources;
 use runtime::Linkable;
+use services::Ctx;
 use wasmtime::component::{HasData, Linker, Resource, ResourceTableError};
 use wasmtime_wasi::ResourceTable;
 
 use self::generated::wasi::vault::vault;
 use self::generated::wasi::vault::vault::Error;
-use crate::{Ctx, Resources};
 
 pub type Result<T, E = Error> = anyhow::Result<T, E>;
 

@@ -1554,7 +1554,6 @@ dependencies = [
 name = "http"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "axum",
  "http-server",
  "serde_json",
@@ -3460,26 +3459,8 @@ dependencies = [
 name = "services"
 version = "0.1.0"
 dependencies = [
- "anyhow",
- "async-nats",
- "azure_security_keyvault_secrets",
- "base64ct",
- "bytes",
- "chrono",
- "ecdsa",
- "futures",
- "http 1.3.1",
- "hyper",
- "k256",
- "mongodb",
- "openssl",
  "resources",
  "runtime",
- "serde",
- "serde_json",
- "time",
- "tokio",
- "tracing",
  "wasmtime",
  "wasmtime-wasi",
  "wasmtime-wasi-http",
@@ -4324,31 +4305,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "was-messaging"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "async-nats",
- "base64ct",
- "bytes",
- "chrono",
- "ecdsa",
- "futures",
- "http 1.3.1",
- "k256",
- "resources",
- "runtime",
- "serde",
- "serde_json",
- "time",
- "tokio",
- "tracing",
- "wasmtime",
- "wasmtime-wasi",
- "wasmtime-wasi-http",
-]
-
-[[package]]
 name = "wasi"
 version = "0.11.1+wasi-snapshot-preview1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4376,22 +4332,20 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-nats",
- "base64ct",
  "bytes",
  "chrono",
  "futures",
- "http 1.3.1",
  "mongodb",
  "resources",
  "runtime",
  "serde",
  "serde_json",
+ "services",
  "time",
  "tokio",
  "tracing",
  "wasmtime",
  "wasmtime-wasi",
- "wasmtime-wasi-http",
 ]
 
 [[package]]
@@ -4399,21 +4353,14 @@ name = "wasi-http"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "base64ct",
- "bytes",
- "chrono",
- "futures",
  "http 1.3.1",
  "hyper",
  "resources",
  "runtime",
- "serde",
- "serde_json",
- "time",
+ "services",
  "tokio",
  "tracing",
  "wasmtime",
- "wasmtime-wasi",
  "wasmtime-wasi-http",
 ]
 
@@ -4424,20 +4371,32 @@ dependencies = [
  "anyhow",
  "async-nats",
  "base64ct",
- "bytes",
- "chrono",
  "futures",
- "http 1.3.1",
  "resources",
  "runtime",
- "serde",
- "serde_json",
+ "services",
+ "tracing",
+ "wasmtime",
+ "wasmtime-wasi",
+]
+
+[[package]]
+name = "wasi-messaging"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-nats",
+ "ecdsa",
+ "futures",
+ "k256",
+ "resources",
+ "runtime",
+ "services",
  "time",
  "tokio",
  "tracing",
  "wasmtime",
  "wasmtime-wasi",
- "wasmtime-wasi-http",
 ]
 
 [[package]]
@@ -4445,19 +4404,8 @@ name = "wasi-otel"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "base64ct",
- "bytes",
- "chrono",
- "futures",
- "http 1.3.1",
- "hyper",
  "resources",
  "runtime",
- "serde",
- "serde_json",
- "time",
- "tokio",
- "tracing",
  "wasmtime",
  "wasmtime-wasi",
  "wasmtime-wasi-http",
@@ -4470,21 +4418,15 @@ dependencies = [
  "anyhow",
  "azure_security_keyvault_secrets",
  "base64ct",
- "bytes",
- "chrono",
  "futures",
  "http 1.3.1",
  "openssl",
  "resources",
  "runtime",
- "serde",
- "serde_json",
- "time",
- "tokio",
+ "services",
  "tracing",
  "wasmtime",
  "wasmtime-wasi",
- "wasmtime-wasi-http",
 ]
 
 [[package]]
@@ -4604,7 +4546,11 @@ dependencies = [
  "services",
  "tokio",
  "tracing",
- "tracing-subscriber",
+ "wasi-blobstore",
+ "wasi-http",
+ "wasi-keyvalue",
+ "wasi-messaging",
+ "wasi-vault",
 ]
 
 [[package]]

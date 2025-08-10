@@ -2,13 +2,14 @@ use std::time::Duration;
 
 use anyhow::anyhow;
 use async_nats::{Client, HeaderMap, Subject};
+use resources::Resources;
+use services::Ctx;
 use wasmtime::component::{HasData, Linker, Resource};
 use wasmtime_wasi::{ResourceTable, ResourceTableError};
 
 use super::generated::wasi::messaging::request_reply::RequestOptions;
 use super::generated::wasi::messaging::types::{Error, HostMessage, Message, Metadata, Topic};
 use super::generated::wasi::messaging::{producer, request_reply, types};
-use crate::{Ctx, Resources};
 
 pub type Result<T, E = Error> = anyhow::Result<T, E>;
 

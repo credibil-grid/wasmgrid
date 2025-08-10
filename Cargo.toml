@@ -13,10 +13,10 @@ name = "wasmgrid"
 path = "src/wasmgrid.rs"
 doc = false
 
-[[bin]]
-name = "runtime"
-path = "src/runtime.rs"
-doc = false
+# [[bin]]
+# name = "runtime"
+# path = "src/runtime.rs"
+# doc = false
 
 [lints]
 workspace = true
@@ -30,10 +30,15 @@ anyhow.workspace = true
 credibil-telemetry.workspace = true
 dotenv = "0.15.0"
 runtime.workspace = true
-services = { path = "crates/services", features = ["blobstore", "http", "keyvalue"] }
+services = { path = "crates/services" }
 tokio.workspace = true
 tracing.workspace = true
-tracing-subscriber.workspace = true
+
+wasi-blobstore = { path = "crates/wasi-blobstore" }
+wasi-http = { path = "crates/wasi-http" }
+wasi-keyvalue = { path = "crates/wasi-keyvalue" }
+wasi-messaging = { path = "crates/wasi-messaging" }
+wasi-vault = { path = "crates/wasi-vault" }
 
 [profile.release]
 lto = true
@@ -62,12 +67,15 @@ pedantic = "warn"
 
 [workspace.dependencies]
 anyhow = "1.0.98"
+async-nats = { version = "0.42.0" }
 axum = { version = "0.8.4", default-features = false }                                       # features = ["form", "json", "query", "tracing"]
 azure_core = { version = "0.27.0", default-features = false, features = ["reqwest_rustls"] }
 azure_identity = { version = "0.27.0", default-features = false }
 azure_security_keyvault_secrets = { version = "0.6.0", default-features = false }
+base64ct = { version = "1.8.0", features = ["std"] }
 bytes = "1.10.1"
 cfg-if = "1.0.1"
+chrono = "0.4.41"
 futures = "0.3.31"
 http = "1.3.1"
 http-client = { path = "crates/http-client" }
@@ -76,7 +84,7 @@ resources = { path = "crates/resources", default-features = false }
 runtime = { path = "crates/runtime" }
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.142"
-tokio = "1.47.1"
+tokio = { version = "1.47.1", default-features = false }
 tower = "0.5.2"
 tower-http = { version = "0.6.6", features = ["cors", "trace"] }
 tracing = "0.1.41"

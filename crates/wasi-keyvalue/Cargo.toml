@@ -12,19 +12,13 @@ workspace = true
 
 [dependencies]
 anyhow.workspace = true
-async-nats = { version = "0.42.0" }
-base64ct = { version = "1.8.0", features = ["std"] }
-bytes = "1.10.1"
-chrono = "0.4.41"
-futures = "0.3.31"
-http.workspace = true
-resources.workspace = true
+async-nats.workspace = true
+base64ct.workspace = true
+futures.workspace = true
+resources = { workspace = true, features = ["nats"] }
 runtime.workspace = true
-serde.workspace = true
-serde_json.workspace = true
-time = "0.3.41"
-tokio = { workspace = true, features = ["macros", "signal"] }
 tracing.workspace = true
 wasmtime.workspace = true
 wasmtime-wasi.workspace = true
-wasmtime-wasi-http.workspace = true
+
+services = { path = "../services" }

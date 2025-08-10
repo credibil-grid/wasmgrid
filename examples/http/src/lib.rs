@@ -15,7 +15,7 @@ impl Guest for HttpGuest {
         tracing::subscriber::set_global_default(subscriber).expect("should set subscriber");
 
         tracing::info!("Received request: {:?}", request);
-        
+
         let router = Router::new().route("/", post(handle));
         let out = http_server::serve(router, request);
         ResponseOutparam::set(response, out);

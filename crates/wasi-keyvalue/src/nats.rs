@@ -1,10 +1,5 @@
-//! # WASI Key/Value Service
-//!
-//! This module implements a runtime service for `wasi:keyvalue`
-//! (<https://github.com/WebAssembly/wasi-keyvalue>).
+//! # WASI Keyvalue NATS
 
-/// Wrap generation of wit bindings to simplify exports.
-/// See <https://docs.rs/wasmtime/latest/wasmtime/component/macro.bindgen.html>
 mod generated {
     #![allow(clippy::trait_duplication_in_bounds)]
 
@@ -37,13 +32,14 @@ use async_nats::jetstream::kv::{Config, Store};
 use base64ct::{Base64UrlUnpadded, Encoding};
 use futures::TryStreamExt;
 use generated::wasi::keyvalue::atomics::CasError;
+use resources::Resources;
 use runtime::Linkable;
+use services::Ctx;
 use wasmtime::component::{HasData, Linker, Resource, ResourceTableError};
 use wasmtime_wasi::ResourceTable;
 
 use self::generated::wasi::keyvalue::store::{Error, KeyResponse};
 use self::generated::wasi::keyvalue::{atomics, batch, store};
-use crate::{Ctx, Resources};
 
 pub type Result<T, E = Error> = anyhow::Result<T, E>;
 

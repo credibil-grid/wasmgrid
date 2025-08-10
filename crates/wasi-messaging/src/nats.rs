@@ -1,7 +1,4 @@
-//! # WASI Messaging Service
-//!
-//! This module implements a runtime service for `wasi:messaging`
-//! (<https://github.com/WebAssembly/wasi-messaging>).
+//! # WASI Messaging NATS
 
 mod host;
 mod server;
@@ -32,10 +29,10 @@ mod generated {
 }
 
 use anyhow::Result;
+use resources::Resources;
 use runtime::{Linkable, Runnable};
+use services::Ctx;
 use wasmtime::component::{InstancePre, Linker};
-
-use crate::{Ctx, Resources};
 
 pub struct Service;
 

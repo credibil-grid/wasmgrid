@@ -12,22 +12,17 @@ workspace = true
 
 [dependencies]
 anyhow.workspace = true
-azure_security_keyvault_secrets = { workspace = true, optional = true }
-base64ct = { version = "1.8.0", features = ["std"] }
-bytes = "1.10.1"
-chrono = "0.4.41"
-futures = "0.3.31"
+azure_security_keyvault_secrets.workspace = true
+base64ct.workspace = true
+futures.workspace = true
 http.workspace = true
-resources.workspace = true
+resources = { workspace = true, features = ["azkeyvault"] }
 runtime.workspace = true
-serde.workspace = true
-serde_json.workspace = true
-time = "0.3.41"
-tokio = { workspace = true, features = ["macros", "signal"] }
 tracing.workspace = true
 wasmtime.workspace = true
 wasmtime-wasi.workspace = true
-wasmtime-wasi-http.workspace = true
+
+services = { path = "../services" }
 
 # required for azure_identity, etc.
 openssl = { version = "0.10", optional = true, features = ["vendored"] }

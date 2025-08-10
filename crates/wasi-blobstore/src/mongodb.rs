@@ -38,8 +38,10 @@ use bytes::Bytes;
 use chrono::Utc;
 use futures::StreamExt;
 use mongodb::{Collection, bson};
+use resources::Resources;
 use runtime::Linkable;
 use serde::{Deserialize, Serialize};
+use services::Ctx;
 use wasmtime::component::{HasData, Linker, Resource, ResourceTable};
 use wasmtime_wasi::p2::bindings::io::streams::{InputStream, OutputStream};
 use wasmtime_wasi::p2::pipe::{MemoryInputPipe, MemoryOutputPipe};
@@ -47,7 +49,6 @@ use wasmtime_wasi::p2::pipe::{MemoryInputPipe, MemoryOutputPipe};
 use self::generated::wasi::blobstore::blobstore::{self, ObjectId};
 use self::generated::wasi::blobstore::container::{self, ContainerMetadata, ObjectMetadata};
 use self::generated::wasi::blobstore::types::{self, IncomingValueSyncBody};
-use crate::{Ctx, Resources};
 
 pub type Container = Collection<Blob>;
 pub type IncomingValue = Bytes;

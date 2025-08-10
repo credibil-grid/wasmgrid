@@ -1,39 +1,24 @@
 //! # WebAssembly Runtime
 
-#[cfg(feature = "blobstore")]
-pub mod blobstore_mdb;
-#[cfg(feature = "blobstore")]
-pub mod blobstore_nats;
-#[cfg(feature = "http")]
-pub mod http;
-#[cfg(feature = "keyvalue")]
-pub mod keyvalue_nats;
-#[cfg(feature = "messaging")]
-pub mod messaging_nats;
-// #[cfg(feature = "sql")]
-// pub mod sql_mdb;
-#[cfg(feature = "vault")]
-pub mod vault_az;
-
 pub use resources::Resources;
 use runtime::{Errout, Stdout};
 use wasmtime::StoreLimits;
 use wasmtime::component::InstancePre;
 use wasmtime_wasi::ResourceTable;
 use wasmtime_wasi::p2::{IoView, WasiCtx, WasiCtxBuilder, WasiView};
-use wasmtime_wasi_http::WasiHttpCtx;
+use wasmtime_wasi_http::{WasiHttpCtx, WasiHttpView};
 
 /// Ctx implements messaging host interfaces. In addition, it holds the
 /// host-defined state used by the wasm runtime [`Store`].
 #[allow(clippy::struct_field_names)]
 #[allow(dead_code)]
 pub struct Ctx {
-    table: ResourceTable,
-    wasi_ctx: WasiCtx,
-    limits: StoreLimits,
-    http_ctx: WasiHttpCtx,
-    instance_pre: InstancePre<Ctx>,
-    resources: Resources,
+    pub table: ResourceTable,
+    pub wasi_ctx: WasiCtx,
+    pub limits: StoreLimits,
+    pub http_ctx: WasiHttpCtx,
+    pub instance_pre: InstancePre<Ctx>,
+    pub resources: Resources,
 }
 
 impl Ctx {
@@ -68,5 +53,11 @@ impl IoView for Ctx {
 impl WasiView for Ctx {
     fn ctx(&mut self) -> &mut WasiCtx {
         &mut self.wasi_ctx
+    }
+}
+
+impl WasiHttpView for Ctx {
+    fn ctx(&mut self) -> &mut WasiHttpCtx {
+        &mut self.http_ctx
     }
 }

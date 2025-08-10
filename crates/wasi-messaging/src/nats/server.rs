@@ -1,11 +1,12 @@
 use async_nats::Message;
 use futures::stream::{self, StreamExt};
+use resources::Resources;
+use services::Ctx;
 use wasmtime::Store;
 use wasmtime::component::InstancePre;
 
 use super::generated::MessagingPre;
 use super::generated::exports::wasi::messaging::incoming_handler::Error;
-use crate::{Ctx, Resources};
 
 pub type Result<T, E = Error> = anyhow::Result<T, E>;
 

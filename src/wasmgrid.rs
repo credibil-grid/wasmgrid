@@ -7,11 +7,13 @@ use anyhow::{Context, Result, anyhow};
 use credibil_telemetry::Otel;
 use dotenv::dotenv;
 use runtime::{Cli, Command, Parser, Runtime};
-use services::{
-    Ctx, Resources, blobstore_mdb as blobstore, http, keyvalue_nats as keyvalue,
-    messaging_nats as messaging, vault_az as vault,
-};
+use services::{Ctx, Resources};
 use tracing::instrument;
+use wasi_blobstore::mongodb as blobstore;
+use wasi_http as http;
+use wasi_keyvalue::nats as keyvalue;
+use wasi_messaging::nats as messaging;
+use wasi_vault::az_keyvault as vault;
 
 const DEF_NATS_ADDR: &str = "demo.nats.io";
 const DEF_KV_ADDR: &str = "https://kv-credibil-demo.vault.azure.net";
@@ -35,7 +37,7 @@ pub async fn main() -> Result<()> {
             Otel::new(prefix).init().context("initializing telemetry")?;
 
             // run until shutdown
-            start(wasm)?.shutdown().await
+            start(&wasm)?.shutdown().await
         }
 
         #[cfg(feature = "compile")]
@@ -45,10 +47,10 @@ pub async fn main() -> Result<()> {
 
 // Start the runtime for the specified wasm file.
 #[instrument]
-fn start(wasm: PathBuf) -> Result<Runtime<Ctx>> {
+fn start(wasm: &PathBuf) -> Result<Runtime<Ctx>> {
     tracing::info!("starting runtime");
 
-    let mut rt = Runtime::from_file(&wasm)?;
+    let mut rt = Runtime::from_file(wasm)?;
 
     // link services
     rt.link(&http::Service)?;
@@ -67,11 +69,11 @@ fn start(wasm: PathBuf) -> Result<Runtime<Ctx>> {
     let resources = Resources::new();
     resources.with_nats(nats_addr, jwt, seed);
     resources.with_mongo(mongo_uri);
-    resources.with_azkeyvault(kv_addr.clone());
+    resources.with_azkeyvault(kv_addr);
 
     // start `Runnable` servers
     rt.run(http::Service, resources.clone())?;
-    rt.run(messaging::Service, resources.clone())?;
+    rt.run(messaging::Service, resources)?;
 
     Ok(rt)
 }
