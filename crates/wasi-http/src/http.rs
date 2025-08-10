@@ -16,7 +16,7 @@ use hyper::{Request, Response};
 use runtime::{Linkable, Runnable};
 use tokio::net::TcpListener;
 use tokio::sync::oneshot;
-use tracing::{Instrument, error, info_span};
+use tracing::Instrument;
 use wasmtime::Store;
 use wasmtime::component::{InstancePre, Linker};
 use wasmtime_wasi_http::bindings::ProxyPre;

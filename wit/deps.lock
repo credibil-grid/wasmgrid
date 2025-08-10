@@ -3,6 +3,11 @@ url = "https://github.com/WebAssembly/wasi-blobstore/archive/main.tar.gz"
 sha256 = "c7ea6547bf52fe3bbf5e9e2d7f06ac99ce87ed95ec11579a03d9b8d895b5be12"
 sha512 = "7540f24272901a12bf65c12a6db3636c87d8ff9f8cdfe6c8a4fcdbd426feabec00688bf27c60d8a390461009ece4b7a18b8c814c7af8866e865583c676182a23"
 
+[clocks]
+url = "https://github.com/WebAssembly/wasi-clocks/archive/main.tar.gz"
+sha256 = "59b8db7b6f3f8a72418510453c1fa9e437c7c7c2369c0bd5da83aa5d6d1d9b73"
+sha512 = "06ce14bbf34d5588ed0c26bd932d46b3025c16723d5b4558def5b8107781b2251471c1f7170640342e3d4f78efb560d5ff6383c6a127c1d9e757e83db31a0185"
+
 [io]
 url = "https://github.com/WebAssembly/wasi-io/archive/main.tar.gz"
 sha256 = "0f5187f86b360d90613fc11922001746b872c1df4583d5f35b6b6f1720ae4822"

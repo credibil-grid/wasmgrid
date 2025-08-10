@@ -16,7 +16,7 @@ world messaging {
 // 	include wasi:observe/imports;
 // }
 world otel {
-	include wasi:otel/imports;
+	include wasi:otel/imports@0.2.0-draft;
 }
 
 world sql {

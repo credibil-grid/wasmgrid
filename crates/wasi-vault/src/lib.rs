@@ -1,18 +1,5 @@
 //! # WebAssembly Runtime
 
-#[cfg(feature = "blobstore")]
-pub mod blobstore_mdb;
-#[cfg(feature = "blobstore")]
-pub mod blobstore_nats;
-#[cfg(feature = "http")]
-pub mod http;
-#[cfg(feature = "keyvalue")]
-pub mod keyvalue_nats;
-#[cfg(feature = "messaging")]
-pub mod messaging_nats;
-// #[cfg(feature = "sql")]
-// pub mod sql_mdb;
-#[cfg(feature = "vault")]
 pub mod vault_az;
 
 pub use resources::Resources;

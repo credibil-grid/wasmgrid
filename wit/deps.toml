@@ -3,7 +3,7 @@
 # 3. Run `wit-deps update` to import dependencies specified in deps.toml
 
 blobstore = "https://github.com/WebAssembly/wasi-blobstore/archive/main.tar.gz"
-clocks = "https://github.com/WebAssembly/wasi-clock/archive/main.tar.gz"
+clocks = "https://github.com/WebAssembly/wasi-clocks/archive/main.tar.gz"
 io = "https://github.com/WebAssembly/wasi-io/archive/main.tar.gz"
 keyvalue = "https://github.com/WebAssembly/wasi-keyvalue/archive/main.tar.gz"
 messaging = "https://github.com/WebAssembly/wasi-messaging/archive/main.tar.gz"

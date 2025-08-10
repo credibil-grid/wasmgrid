@@ -9,7 +9,6 @@ use services::{
     Resources, blobstore_mdb as blobstore, http, keyvalue_nats as keyvalue,
     messaging_nats as messaging, vault_az as vault,
 };
-use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 const DEF_NATS_ADDR: &str = "demo.nats.io";
 const DEF_KV_ADDR: &str = "https://kv-credibil-demo.vault.azure.net";
