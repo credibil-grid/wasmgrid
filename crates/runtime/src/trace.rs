@@ -31,8 +31,7 @@ impl Pollable for OutStream {
 
 impl OutputStream for OutStream {
     fn write(&mut self, bytes: Bytes) -> StreamResult<()> {
-        let out = String::from_utf8(bytes.to_vec())
-            .map_err(|e| StreamError::LastOperationFailed(anyhow!(e)))?;
+        let out = String::from_utf8_lossy(&bytes);
         print!("{out}");
         Ok(())
     }

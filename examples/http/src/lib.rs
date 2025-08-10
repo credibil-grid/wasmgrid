@@ -14,6 +14,8 @@ impl Guest for HttpGuest {
             FmtSubscriber::builder().with_env_filter(EnvFilter::from_default_env()).finish();
         tracing::subscriber::set_global_default(subscriber).expect("should set subscriber");
 
+        tracing::info!("Received request: {:?}", request);
+        
         let router = Router::new().route("/", post(handle));
         let out = http_server::serve(router, request);
         ResponseOutparam::set(response, out);

@@ -19,9 +19,9 @@ pub async fn main() -> Result<()> {
     if cfg!(debug_assertions) {
         dotenv().ok();
     }
-    let subscriber =
-        FmtSubscriber::builder().with_env_filter(EnvFilter::from_default_env()).finish();
-    tracing::subscriber::set_global_default(subscriber)?;
+    // let subscriber =
+    //     FmtSubscriber::builder().with_env_filter(EnvFilter::from_default_env()).finish();
+    // tracing::subscriber::set_global_default(subscriber)?;
 
     match Cli::parse().command {
         runtime::Command::Run { wasm } => {

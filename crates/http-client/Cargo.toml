@@ -13,7 +13,7 @@ workspace = true
 
 [dependencies]
 anyhow.workspace = true
-credibil-core.workspace = true
+credibil-encoding.workspace = true
 http.workspace = true
 percent-encoding = "2.3.1"
 serde.workspace = true

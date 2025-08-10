@@ -161,7 +161,7 @@ impl<B: Serialize> RequestBuilder<NoBody, HasJson<B>, NoForm> {
 
 impl<B: Serialize> RequestBuilder<NoBody, NoJson, HasForm<B>> {
     pub fn send<T: DeserializeOwned>(&mut self) -> Result<Response<T>> {
-        let body = credibil_core::html::form_encode(&self.form.0)
+        let body = credibil_encoding::form_encode(&self.form.0)
             .map_err(|e| anyhow!("issue serializing form: {e}"))?;
         let bytes =
             serde_json::to_vec(&body).map_err(|e| anyhow!("issue serializing form: {e}"))?;

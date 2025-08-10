@@ -12,6 +12,13 @@ world messaging {
 	include wasi:messaging/messaging-request-reply@0.2.0-draft;
 }
 
+// world observe {
+// 	include wasi:observe/imports;
+// }
+world otel {
+	include wasi:otel/imports;
+}
+
 world sql {
 	include wasi:sql/imports@0.2.0-draft;
 }
