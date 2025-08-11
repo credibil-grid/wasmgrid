@@ -5,6 +5,11 @@
 //! stdout and stderr streams. This is useful for debugging purposes, as it
 //! allows us to see the output of the guest's code in the host's console.
 
+// use opentelemetry::Context;
+// use opentelemetry::trace::TraceContextExt;
+
+use std::str::FromStr;
+
 use anyhow::anyhow;
 use bytes::Bytes;
 use wasmtime_wasi::p2::{OutputStream, Pollable, StdoutStream, StreamError, StreamResult};
@@ -29,10 +34,19 @@ impl Pollable for OutStream {
     async fn ready(&mut self) {}
 }
 
+use tracing::callsite::{Callsite, DefaultCallsite, Identifier};
+use tracing::field::{FieldSet, ValueSet};
+use tracing::metadata::Kind;
+use tracing::{Event, Level, Metadata, Value, callsite};
+
 impl OutputStream for OutStream {
     fn write(&mut self, bytes: Bytes) -> StreamResult<()> {
         let out = String::from_utf8_lossy(&bytes);
         print!("{out}");
+
+        // let (level, target, message) =
+        //     parser::parse(&out).map_err(StreamError::LastOperationFailed)?;
+
         Ok(())
     }
 
@@ -79,5 +93,61 @@ impl OutputStream for ErroutStream {
 
     fn check_write(&mut self) -> StreamResult<usize> {
         Ok(1024 * 1024)
+    }
+}
+
+mod parser {
+    use anyhow::{Result, anyhow};
+    use nom::bytes::complete::{is_not, take_until};
+    use nom::character::complete::char;
+    use nom::sequence::delimited;
+    use nom::{IResult, Parser};
+
+    pub fn parse(event: &str) -> Result<(&str, &str, &str)> {
+        let timeless = &event[27..];
+        let (_, (level, target, message)) = (level, target, message)
+            .parse(timeless)
+            .map_err(|e| anyhow!("issue parsing event: {e}"))?;
+        Ok((level, target, message))
+    }
+
+    fn level(input: &str) -> IResult<&str, &str> {
+        section(input)
+    }
+
+    fn target(input: &str) -> IResult<&str, &str> {
+        section(input)
+    }
+
+    fn message(input: &str) -> IResult<&str, &str> {
+        strip_formatting(input).map(|(remainder, _)| ("", remainder))
+    }
+
+    fn section(input: &str) -> IResult<&str, &str> {
+        let (remainder, _) = strip_formatting(input).unwrap();
+        take_until("\u{1b}")(remainder)
+    }
+
+    fn strip_formatting(input: &str) -> IResult<&str, &str> {
+        if !input.starts_with('\u{1b}') {
+            return Ok((input, ""));
+        }
+        let (remainder, _) = delimited(char('\u{1b}'), is_not("m"), char('m')).parse(input)?;
+        strip_formatting(remainder.trim_matches([' ', ':']))
+    }
+
+    mod tests {
+
+        #[test]
+        fn test_level() {
+            let entry = "2025-08-11T04:48:59.374477Z\u{1b}[0m \u{1b}[32m INFO\u{1b}[0m \u{1b}[2mhttp\u{1b}[0m\u{1b}[2m:\u{1b}[0m received request";
+
+            let timeless = &entry[27..];
+            let (_, (level, target, message)) = (level, target, message).parse(timeless).unwrap();
+
+            assert_eq!(level, "INFO");
+            assert_eq!(target, "http");
+            assert_eq!(message, "received request");
+        }
     }
 }

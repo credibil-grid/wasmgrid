@@ -1,9 +1,9 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use opentelemetry::trace::TraceError;
+// use opentelemetry::trace::Error;
 use opentelemetry_sdk::trace::SpanProcessor;
 
-use crate::wit::wasi::otel::tracing::{on_end, on_start};
+use crate::generated::wasi::otel::tracing;
 
 #[derive(Debug)]
 pub struct WasiProcessor {
@@ -31,7 +31,7 @@ impl SpanProcessor for WasiProcessor {
             return;
         }
         if let Some(span_data) = span.exported_data() {
-            on_start(&span_data.span_context.into());
+            tracing::on_start(&span_data.span_context.into());
         }
     }
 

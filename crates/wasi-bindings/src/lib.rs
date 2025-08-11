@@ -46,6 +46,18 @@ pub mod messaging {
     });
 }
 
+/// Bindings for the `wasi:otel` world.
+pub mod otel {
+    pub use self::wasi::otel::*;
+
+    wit_bindgen::generate!({
+        world: "otel",
+        path: "../../wit",
+        generate_all,
+        pub_export_macro: true
+    });
+}
+
 /// Bindings for the `wasi:vault` world.
 pub mod vault {
     pub use self::wasi::vault::*;

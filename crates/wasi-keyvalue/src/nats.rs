@@ -31,13 +31,13 @@ use async_nats::jetstream;
 use async_nats::jetstream::kv::{Config, Store};
 use base64ct::{Base64UrlUnpadded, Encoding};
 use futures::TryStreamExt;
-use generated::wasi::keyvalue::atomics::CasError;
 use resources::Resources;
 use runtime::Linkable;
 use services::Ctx;
 use wasmtime::component::{HasData, Linker, Resource, ResourceTableError};
 use wasmtime_wasi::ResourceTable;
 
+use self::generated::wasi::keyvalue::atomics::CasError;
 use self::generated::wasi::keyvalue::store::{Error, KeyResponse};
 use self::generated::wasi::keyvalue::{atomics, batch, store};
 

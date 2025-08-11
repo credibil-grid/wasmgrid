@@ -2325,6 +2325,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "nom"
+version = "8.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "df9761775871bdef83bee530e60050f7e54b1105350d6884eb0fb4f46c2f9405"
+dependencies = [
+ "memchr",
+]
+
+[[package]]
 name = "nu-ansi-term"
 version = "0.46.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3022,8 +3031,12 @@ dependencies = [
  "bytes",
  "cfg-if",
  "clap",
+ "nom",
+ "opentelemetry",
+ "opentelemetry_sdk",
  "tokio",
  "tracing",
+ "tracing-subscriber",
  "wasmtime",
  "wasmtime-wasi",
 ]
@@ -4404,11 +4417,14 @@ name = "wasi-otel"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "opentelemetry",
+ "opentelemetry_sdk",
  "resources",
  "runtime",
+ "services",
+ "tracing",
  "wasmtime",
  "wasmtime-wasi",
- "wasmtime-wasi-http",
 ]
 
 [[package]]
@@ -4550,6 +4566,7 @@ dependencies = [
  "wasi-http",
  "wasi-keyvalue",
  "wasi-messaging",
+ "wasi-otel",
  "wasi-vault",
 ]
 

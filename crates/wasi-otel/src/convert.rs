@@ -1,9 +1,9 @@
 use std::time::UNIX_EPOCH;
 
-use crate::wit::wasi::otel::tracing::*;
+use crate::generated::wasi::otel::tracing;
 
-impl From<opentelemetry_sdk::export::trace::SpanData> for SpanData {
-    fn from(value: opentelemetry_sdk::export::trace::SpanData) -> Self {
+impl From<opentelemetry_sdk::trace::SpanData> for tracing::SpanData {
+    fn from(value: opentelemetry_sdk::trace::SpanData) -> Self {
         Self {
             span_context: value.span_context.into(),
             parent_span_id: value.parent_span_id.to_string(),
@@ -23,7 +23,7 @@ impl From<opentelemetry_sdk::export::trace::SpanData> for SpanData {
     }
 }
 
-impl From<opentelemetry::trace::SpanContext> for SpanContext {
+impl From<opentelemetry::trace::SpanContext> for tracing::SpanContext {
     fn from(value: opentelemetry::trace::SpanContext) -> Self {
         Self {
             trace_id: format!("{:x}", value.trace_id()),
@@ -46,41 +46,35 @@ impl From<opentelemetry::trace::SpanContext> for SpanContext {
     }
 }
 
-impl From<SpanContext> for opentelemetry::trace::SpanContext {
-    fn from(value: SpanContext) -> Self {
+impl From<tracing::SpanContext> for opentelemetry::trace::SpanContext {
+    fn from(value: tracing::SpanContext) -> Self {
         let trace_id = opentelemetry::trace::TraceId::from_hex(&value.trace_id)
             .unwrap_or(opentelemetry::trace::TraceId::INVALID);
         let span_id = opentelemetry::trace::SpanId::from_hex(&value.span_id)
             .unwrap_or(opentelemetry::trace::SpanId::INVALID);
         let trace_state = opentelemetry::trace::TraceState::from_key_value(value.trace_state)
             .unwrap_or_else(|_| opentelemetry::trace::TraceState::default());
-        Self::new(
-            trace_id,
-            span_id,
-            value.trace_flags.into(),
-            value.is_remote,
-            trace_state,
-        )
+        Self::new(trace_id, span_id, value.trace_flags.into(), value.is_remote, trace_state)
     }
 }
 
-impl From<opentelemetry::trace::TraceFlags> for TraceFlags {
+impl From<opentelemetry::trace::TraceFlags> for tracing::TraceFlags {
     fn from(value: opentelemetry::trace::TraceFlags) -> Self {
-        if value.is_sampled() {
-            TraceFlags::SAMPLED
+        if value.is_sampled() { tracing::TraceFlags::SAMPLED } else { tracing::TraceFlags::empty() }
+    }
+}
+
+impl From<tracing::TraceFlags> for opentelemetry::trace::TraceFlags {
+    fn from(value: tracing::TraceFlags) -> Self {
+        if value.contains(tracing::TraceFlags::SAMPLED) {
+            opentelemetry::trace::TraceFlags::SAMPLED
         } else {
-            TraceFlags::empty()
+            opentelemetry::trace::TraceFlags::default()
         }
     }
 }
 
-impl From<TraceFlags> for opentelemetry::trace::TraceFlags {
-    fn from(value: TraceFlags) -> Self {
-        Self::new(value.bits())
-    }
-}
-
-impl From<opentelemetry::trace::SpanKind> for SpanKind {
+impl From<opentelemetry::trace::SpanKind> for tracing::SpanKind {
     fn from(value: opentelemetry::trace::SpanKind) -> Self {
         match value {
             opentelemetry::trace::SpanKind::Client => Self::Client,
@@ -92,11 +86,10 @@ impl From<opentelemetry::trace::SpanKind> for SpanKind {
     }
 }
 
-impl From<std::time::SystemTime> for Datetime {
+impl From<std::time::SystemTime> for tracing::Datetime {
     fn from(value: std::time::SystemTime) -> Self {
-        let duration_since_epoch = value
-            .duration_since(UNIX_EPOCH)
-            .expect("SystemTime should be after UNIX EPOCH");
+        let duration_since_epoch =
+            value.duration_since(UNIX_EPOCH).expect("SystemTime should be after UNIX EPOCH");
         Self {
             seconds: duration_since_epoch.as_secs(),
             nanoseconds: duration_since_epoch.subsec_nanos(),
@@ -104,7 +97,7 @@ impl From<std::time::SystemTime> for Datetime {
     }
 }
 
-impl From<opentelemetry::KeyValue> for KeyValue {
+impl From<opentelemetry::KeyValue> for tracing::KeyValue {
     fn from(value: opentelemetry::KeyValue) -> Self {
         Self {
             key: value.key.to_string(),
@@ -113,7 +106,7 @@ impl From<opentelemetry::KeyValue> for KeyValue {
     }
 }
 
-impl From<&opentelemetry::KeyValue> for KeyValue {
+impl From<&opentelemetry::KeyValue> for tracing::KeyValue {
     fn from(value: &opentelemetry::KeyValue) -> Self {
         Self {
             key: value.key.to_string(),
@@ -122,7 +115,7 @@ impl From<&opentelemetry::KeyValue> for KeyValue {
     }
 }
 
-impl From<opentelemetry::Value> for Value {
+impl From<opentelemetry::Value> for tracing::Value {
     fn from(value: opentelemetry::Value) -> Self {
         match value {
             opentelemetry::Value::Bool(v) => Self::Bool(v),
@@ -143,7 +136,7 @@ impl From<opentelemetry::Value> for Value {
     }
 }
 
-impl From<opentelemetry::trace::Event> for Event {
+impl From<opentelemetry::trace::Event> for tracing::Event {
     fn from(value: opentelemetry::trace::Event) -> Self {
         Self {
             name: value.name.to_string(),
@@ -153,7 +146,7 @@ impl From<opentelemetry::trace::Event> for Event {
     }
 }
 
-impl From<opentelemetry::trace::Link> for Link {
+impl From<opentelemetry::trace::Link> for tracing::Link {
     fn from(value: opentelemetry::trace::Link) -> Self {
         Self {
             span_context: value.span_context.into(),
@@ -162,7 +155,7 @@ impl From<opentelemetry::trace::Link> for Link {
     }
 }
 
-impl From<opentelemetry::trace::Status> for Status {
+impl From<opentelemetry::trace::Status> for tracing::Status {
     fn from(value: opentelemetry::trace::Status) -> Self {
         match value {
             opentelemetry::trace::Status::Unset => Self::Unset,
@@ -174,7 +167,7 @@ impl From<opentelemetry::trace::Status> for Status {
     }
 }
 
-impl From<opentelemetry::InstrumentationScope> for InstrumentationScope {
+impl From<opentelemetry::InstrumentationScope> for tracing::InstrumentationScope {
     fn from(value: opentelemetry::InstrumentationScope) -> Self {
         Self {
             name: value.name().to_string(),

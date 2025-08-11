@@ -38,6 +38,7 @@ wasi-blobstore = { path = "crates/wasi-blobstore" }
 wasi-http = { path = "crates/wasi-http" }
 wasi-keyvalue = { path = "crates/wasi-keyvalue" }
 wasi-messaging = { path = "crates/wasi-messaging" }
+wasi-otel = { path = "crates/wasi-otel" }
 wasi-vault = { path = "crates/wasi-vault" }
 
 [profile.release]
