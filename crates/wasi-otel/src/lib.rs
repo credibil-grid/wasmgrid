@@ -14,35 +14,25 @@ mod generated {
         tracing: true,
         async: true,
         trappable_imports: true,
-        // with: {
-        //     "wasi:io": wasmtime_wasi::p2::bindings::io,
-
-        //     "wasi:blobstore/types/incoming-value": IncomingValue,
-        //     "wasi:blobstore/types/outgoing-value": OutgoingValue,
-        //     "wasi:blobstore/container/container": Container,
-        //     "wasi:blobstore/container/stream-object-names": StreamObjectNames,
-        // },
-        // trappable_error_type: {
-        //     "wasi:blobstore/types/error" => anyhow::Error,
-        // },
     });
 }
 
 use std::time::SystemTime;
 
 use anyhow::Result;
-use opentelemetry::trace;
+use opentelemetry::trace as otel;
+use opentelemetry::trace::TraceContextExt;
+use opentelemetry_sdk::trace as sdk;
 use resources::Resources;
 use runtime::Linkable;
 use services::Ctx;
+use tracing::Span;
+use tracing_opentelemetry::OpenTelemetrySpanExt;
 use wasmtime::component::{HasData, Linker};
 use wasmtime_wasi::ResourceTable;
 
-use self::generated::wasi::otel;
-use self::generated::wasi::otel::tracing::{
-    Datetime, Event, InstrumentationScope, KeyValue, Link, SpanContext, SpanData, SpanKind, Status,
-    TraceFlags, Value,
-};
+use self::generated::wasi::otel as wasi_otel;
+use self::generated::wasi::otel::tracing::{self as wasi};
 
 // pub type Result<T, E = Error> = anyhow::Result<T, E>;
 
@@ -72,45 +62,49 @@ impl Linkable for Service {
 
     // Add the `wasi-otel` world's interfaces to a [`Linker`]
     fn add_to_linker(&self, linker: &mut Linker<Self::Ctx>) -> Result<()> {
-        otel::tracing::add_to_linker::<_, Data>(linker, Otel::new)
+        wasi_otel::tracing::add_to_linker::<_, Data>(linker, Otel::new)
     }
 }
 
-impl otel::tracing::Host for Otel<'_> {
-    async fn on_start(&mut self, _span: SpanData, _parent: SpanContext) -> Result<()> {
+impl wasi_otel::tracing::Host for Otel<'_> {
+    async fn on_start(&mut self, span: wasi::SpanData, _parent: wasi::SpanContext) -> Result<()> {
         // if self.is_shutdown.load(Ordering::Relaxed) {
         //     return;
         // }
 
-        // let span = opentelemetry_sdk::trace::SpanData::from(span);
+        // let span = sdk::SpanData::from(span);
 
+        println!("on_start: {span:?}\n");
         Ok(())
     }
 
-    async fn on_end(&mut self, _span: SpanData) -> Result<()> {
+    async fn on_end(&mut self, span: wasi::SpanData) -> Result<()> {
         // if self.is_shutdown.load(Ordering::Relaxed) {
         //     return;
         // }
 
-        // let _span = opentelemetry_sdk::trace::SpanData::from(span);
+        // let _span = sdk::SpanData::from(span);
 
+        println!("on_end: {span:?}\n");
         Ok(())
     }
 
-    async fn current_span_context(&mut self) -> Result<SpanContext> {
-        todo!()
+    async fn current_span_context(&mut self) -> Result<wasi::SpanContext> {
+        let ctx = Span::current().context();
+        let span = ctx.span();
+        Ok(wasi::SpanContext::from(span.span_context()))
     }
 }
 
-impl From<SpanData> for opentelemetry_sdk::trace::SpanData {
-    fn from(span: SpanData) -> Self {
+impl From<wasi::SpanData> for sdk::SpanData {
+    fn from(span: wasi::SpanData) -> Self {
         let parent_span_id =
-            trace::SpanId::from_hex(&span.parent_span_id).unwrap_or(trace::SpanId::INVALID);
+            otel::SpanId::from_hex(&span.parent_span_id).unwrap_or(otel::SpanId::INVALID);
 
-        let mut events = opentelemetry_sdk::trace::SpanEvents::default();
+        let mut events = sdk::SpanEvents::default();
         events.events = span.events.into_iter().map(Into::into).collect();
 
-        let mut links = opentelemetry_sdk::trace::SpanLinks::default();
+        let mut links = sdk::SpanLinks::default();
         links.links = span.links.into_iter().map(Into::into).collect();
 
         Self {
@@ -130,20 +124,20 @@ impl From<SpanData> for opentelemetry_sdk::trace::SpanData {
     }
 }
 
-impl From<trace::SpanContext> for SpanContext {
-    fn from(value: trace::SpanContext) -> Self {
+impl From<&otel::SpanContext> for wasi::SpanContext {
+    fn from(ctx: &otel::SpanContext) -> Self {
         Self {
-            trace_id: format!("{:x}", value.trace_id()),
-            span_id: format!("{:x}", value.span_id()),
-            trace_flags: value.trace_flags().into(),
-            is_remote: value.is_remote(),
-            trace_state: value
+            trace_id: format!("{:x}", ctx.trace_id()),
+            span_id: format!("{:x}", ctx.span_id()),
+            trace_flags: ctx.trace_flags().into(),
+            is_remote: ctx.is_remote(),
+            trace_state: ctx
                 .trace_state()
                 .header()
                 .split(',')
                 .filter_map(|s| {
-                    if let Some((key, value)) = s.split_once('=') {
-                        Some((key.to_string(), value.to_string()))
+                    if let Some((key, ctx)) = s.split_once('=') {
+                        Some((key.to_string(), ctx.to_string()))
                     } else {
                         None
                     }
@@ -153,105 +147,105 @@ impl From<trace::SpanContext> for SpanContext {
     }
 }
 
-impl From<SpanContext> for trace::SpanContext {
-    fn from(value: SpanContext) -> Self {
-        let trace_id = trace::TraceId::from_hex(&value.trace_id).unwrap_or(trace::TraceId::INVALID);
-        let span_id = trace::SpanId::from_hex(&value.span_id).unwrap_or(trace::SpanId::INVALID);
-        let trace_state = trace::TraceState::from_key_value(value.trace_state)
-            .unwrap_or_else(|_| trace::TraceState::default());
-        Self::new(trace_id, span_id, value.trace_flags.into(), value.is_remote, trace_state)
+impl From<wasi::SpanContext> for otel::SpanContext {
+    fn from(ctx: wasi::SpanContext) -> Self {
+        let trace_id = otel::TraceId::from_hex(&ctx.trace_id).unwrap_or(otel::TraceId::INVALID);
+        let span_id = otel::SpanId::from_hex(&ctx.span_id).unwrap_or(otel::SpanId::INVALID);
+        let trace_state = otel::TraceState::from_key_value(ctx.trace_state)
+            .unwrap_or_else(|_| otel::TraceState::default());
+        Self::new(trace_id, span_id, ctx.trace_flags.into(), ctx.is_remote, trace_state)
     }
 }
 
-impl From<trace::TraceFlags> for TraceFlags {
-    fn from(value: trace::TraceFlags) -> Self {
+impl From<otel::TraceFlags> for wasi::TraceFlags {
+    fn from(value: otel::TraceFlags) -> Self {
         if value.is_sampled() { Self::SAMPLED } else { Self::empty() }
     }
 }
 
-impl From<TraceFlags> for trace::TraceFlags {
-    fn from(value: TraceFlags) -> Self {
-        if value.contains(TraceFlags::SAMPLED) { Self::SAMPLED } else { Self::NOT_SAMPLED }
+impl From<wasi::TraceFlags> for otel::TraceFlags {
+    fn from(value: wasi::TraceFlags) -> Self {
+        if value.contains(wasi::TraceFlags::SAMPLED) { Self::SAMPLED } else { Self::NOT_SAMPLED }
     }
 }
 
-impl From<SpanKind> for trace::SpanKind {
-    fn from(value: SpanKind) -> Self {
+impl From<wasi::SpanKind> for otel::SpanKind {
+    fn from(value: wasi::SpanKind) -> Self {
         match value {
-            SpanKind::Client => Self::Client,
-            SpanKind::Server => Self::Server,
-            SpanKind::Producer => Self::Producer,
-            SpanKind::Consumer => Self::Consumer,
-            SpanKind::Internal => Self::Internal,
+            wasi::SpanKind::Client => Self::Client,
+            wasi::SpanKind::Server => Self::Server,
+            wasi::SpanKind::Producer => Self::Producer,
+            wasi::SpanKind::Consumer => Self::Consumer,
+            wasi::SpanKind::Internal => Self::Internal,
         }
     }
 }
 
-impl From<Datetime> for SystemTime {
-    fn from(value: Datetime) -> Self {
+impl From<wasi::Datetime> for SystemTime {
+    fn from(value: wasi::Datetime) -> Self {
         Self::UNIX_EPOCH
             .checked_add(std::time::Duration::new(value.seconds, value.nanoseconds))
             .unwrap_or(Self::UNIX_EPOCH)
     }
 }
 
-impl From<KeyValue> for opentelemetry::KeyValue {
-    fn from(value: KeyValue) -> Self {
+impl From<wasi::KeyValue> for opentelemetry::KeyValue {
+    fn from(value: wasi::KeyValue) -> Self {
         Self::new(value.key, value.value)
     }
 }
 
-impl From<&KeyValue> for opentelemetry::KeyValue {
-    fn from(value: &KeyValue) -> Self {
+impl From<&wasi::KeyValue> for opentelemetry::KeyValue {
+    fn from(value: &wasi::KeyValue) -> Self {
         Self::new(value.key.clone(), value.value.clone())
     }
 }
 
-impl From<Value> for opentelemetry::Value {
-    fn from(value: Value) -> Self {
+impl From<wasi::Value> for opentelemetry::Value {
+    fn from(value: wasi::Value) -> Self {
         match value {
-            Value::Bool(v) => Self::Bool(v),
-            Value::S64(v) => Self::I64(v),
-            Value::F64(v) => Self::F64(v),
-            Value::String(v) => Self::String(v.into()),
-            Value::BoolArray(items) => Self::Array(opentelemetry::Array::Bool(items)),
-            Value::S64Array(items) => Self::Array(opentelemetry::Array::I64(items)),
-            Value::F64Array(items) => Self::Array(opentelemetry::Array::F64(items)),
-            Value::StringArray(items) => Self::Array(opentelemetry::Array::String(
+            wasi::Value::Bool(v) => Self::Bool(v),
+            wasi::Value::S64(v) => Self::I64(v),
+            wasi::Value::F64(v) => Self::F64(v),
+            wasi::Value::String(v) => Self::String(v.into()),
+            wasi::Value::BoolArray(items) => Self::Array(opentelemetry::Array::Bool(items)),
+            wasi::Value::S64Array(items) => Self::Array(opentelemetry::Array::I64(items)),
+            wasi::Value::F64Array(items) => Self::Array(opentelemetry::Array::F64(items)),
+            wasi::Value::StringArray(items) => Self::Array(opentelemetry::Array::String(
                 items.into_iter().map(Into::into).collect(),
             )),
         }
     }
 }
 
-impl From<Event> for trace::Event {
-    fn from(value: Event) -> Self {
+impl From<wasi::Event> for otel::Event {
+    fn from(value: wasi::Event) -> Self {
         let attrs = value.attributes.into_iter().map(Into::into).collect();
         Self::new(value.name, value.time.into(), attrs, 0)
     }
 }
 
-impl From<Link> for trace::Link {
-    fn from(value: Link) -> Self {
+impl From<wasi::Link> for otel::Link {
+    fn from(value: wasi::Link) -> Self {
         let attrs = value.attributes.into_iter().map(Into::into).collect();
         Self::new(value.span_context.into(), attrs, 0)
     }
 }
 
-impl From<Status> for trace::Status {
-    fn from(value: Status) -> Self {
+impl From<wasi::Status> for otel::Status {
+    fn from(value: wasi::Status) -> Self {
         match value {
-            Status::Unset => Self::Unset,
-            Status::Error(description) => Self::Error {
+            wasi::Status::Unset => Self::Unset,
+            wasi::Status::Error(description) => Self::Error {
                 description: description.into(),
             },
-            Status::Ok => Self::Ok,
+            wasi::Status::Ok => Self::Ok,
         }
     }
 }
 
-impl From<InstrumentationScope> for opentelemetry::InstrumentationScope {
-    fn from(value: InstrumentationScope) -> Self {
+impl From<wasi::InstrumentationScope> for opentelemetry::InstrumentationScope {
+    fn from(value: wasi::InstrumentationScope) -> Self {
         let mut builder = Self::builder(value.name);
         if let Some(version) = value.version {
             builder = builder.with_version(version);

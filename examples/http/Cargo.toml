@@ -17,3 +17,7 @@ serde_json.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 wasi.workspace = true
+
+opentelemetry = "0.30.0"
+opentelemetry_sdk = { version = "0.30.0" }
+otel-client = { path = "../../crates/otel-client" }

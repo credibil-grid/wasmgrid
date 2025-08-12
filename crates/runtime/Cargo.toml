@@ -24,8 +24,3 @@ tokio = { workspace = true, features = ["signal"] }
 tracing.workspace = true
 wasmtime = { workspace = true, features = ["runtime"] }
 wasmtime-wasi.workspace = true
-
-nom = "8.0.0"
-opentelemetry = "0.30.0"
-opentelemetry_sdk = { version = "0.30.0", features = ["rt-tokio"] }
-tracing-subscriber.workspace = true

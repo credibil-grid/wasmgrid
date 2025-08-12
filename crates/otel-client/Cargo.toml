@@ -1,5 +1,5 @@
 [package]
-name = "wasi-otel"
+name = "otel-client"
 description = "Wasm opentelemetry service"
 authors.workspace = true
 edition.workspace = true
@@ -14,11 +14,4 @@ workspace = true
 anyhow.workspace = true
 opentelemetry = "0.30.0"
 opentelemetry_sdk = { version = "0.30.0" }
-resources.workspace = true
-runtime.workspace = true
-tracing.workspace = true
-tracing-opentelemetry = "0.31.0"
-wasmtime.workspace = true
-wasmtime-wasi.workspace = true
-
-services = { path = "../services" }
+wit-bindgen = "0.43.0"

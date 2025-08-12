@@ -1,7 +1,7 @@
 use opentelemetry::Context;
 use opentelemetry::trace::TraceContextExt;
 
-use crate::wit::wasi::otel::tracing::outer_span_context;
+use crate::otel::wasi::otel::tracing::current_span_context;
 
 pub trait WasiPropagator {
     fn extract(&self, cx: &Context) -> Context;
@@ -22,7 +22,7 @@ impl Default for TraceContextPropagator {
 }
 
 impl WasiPropagator for TraceContextPropagator {
-    fn extract(&self, cx: &Context) -> Context {
-        cx.with_remote_span_context(outer_span_context().into())
+    fn extract(&self, ctx: &Context) -> Context {
+        ctx.with_remote_span_context(current_span_context().into())
     }
 }
