@@ -4,7 +4,7 @@ use http_server::Result;
 use opentelemetry::trace::{TraceContextExt, Tracer};
 use opentelemetry::{Context, KeyValue, global};
 use opentelemetry_sdk::trace::SdkTracerProvider;
-use otel_client::WasiPropagator;
+use otel_client::Propagator;
 use serde_json::{Value, json};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 use wasi::exports::http::incoming_handler::Guest;
@@ -14,9 +14,9 @@ struct HttpGuest;
 
 impl Guest for HttpGuest {
     fn handle(request: IncomingRequest, response: ResponseOutparam) {
-        // let subscriber =
-        //     FmtSubscriber::builder().with_env_filter(EnvFilter::from_default_env()).finish();
-        // tracing::subscriber::set_global_default(subscriber).expect("should set subscriber");
+        let subscriber =
+            FmtSubscriber::builder().with_env_filter(EnvFilter::from_default_env()).finish();
+        tracing::subscriber::set_global_default(subscriber).expect("should set subscriber");
 
         // Set up a tracer using the WASI processor
         let wasi_processor = otel_client::Processor::new();
@@ -26,7 +26,7 @@ impl Guest for HttpGuest {
         let tracer = global::tracer("basic-spin");
 
         // Extract context from the Wasm host
-        let wasi_propagator = otel_client::TraceContextPropagator::new();
+        let wasi_propagator = otel_client::ContextPropagator::new();
         let _context_guard = wasi_propagator.extract(&Context::current()).attach();
 
         // Create some spans and events
@@ -37,10 +37,8 @@ impl Guest for HttpGuest {
             tracer.in_span("child-operation", |cx| {
                 let span = cx.span();
                 span.add_event("Sub span event", vec![KeyValue::new("bar", "1")]);
-
                 // let store = Store::open_default().unwrap();
                 // store.set("foo", "bar".as_bytes()).unwrap();
-                tracing::info!("received request");
             });
         });
 

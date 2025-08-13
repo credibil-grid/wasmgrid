@@ -5,9 +5,6 @@
 //! stdout and stderr streams. This is useful for debugging purposes, as it
 //! allows us to see the output of the guest's code in the host's console.
 
-// use opentelemetry::Context;
-// use opentelemetry::trace::TraceContextExt;
-
 use anyhow::anyhow;
 use bytes::Bytes;
 use wasmtime_wasi::p2::{OutputStream, Pollable, StdoutStream, StreamError, StreamResult};
@@ -32,47 +29,18 @@ impl Pollable for OutStream {
     async fn ready(&mut self) {}
 }
 
-// use tracing::callsite::{Callsite, DefaultCallsite, Identifier};
-// use tracing::field::{FieldSet, ValueSet};
-// use tracing::metadata::Kind;
-// use tracing::{Event, Level, Metadata, Value, callsite};
-
 impl OutputStream for OutStream {
     fn write(&mut self, bytes: Bytes) -> StreamResult<()> {
         let out = String::from_utf8_lossy(&bytes);
         print!("{out}");
 
-        // let (level, target, message) =
-        //     parser::parse(&out).map_err(StreamError::LastOperationFailed)?;
+        // use opentelemetry::trace::TraceContextExt;
+        // use tracing_opentelemetry::OpenTelemetrySpanExt;
 
         // let span = tracing::Span::current();
-        // span
-
-        // // let identifier = Callsite::new();
-        // let md = span.metadata().unwrap();
-
-        // static CALLSITE: DefaultCallsite = {
-        //     // The values of the metadata are unimportant
-        //     static META: Metadata<'static> = Metadata::new(
-        //         "event ",
-        //         target,
-        //         Level::INFO,
-        //         None,
-        //         None,
-        //         None,
-        //         FieldSet::new(&["message"], Identifier(&CALLSITE)),
-        //         Kind::EVENT,
-        //     );
-        //     DefaultCallsite::new(&META)
-        // };
-        // let _interest = CALLSITE.interest();
-
-        // let meta = CALLSITE.metadata();
-        // let field = meta.fields().field("message").unwrap();
-        // // let message = format!("event-from-{idx}", idx = idx);
-        // let values = [(&field, Some(&message as &dyn Value))];
-        // let value_set = CALLSITE.metadata().fields().value_set(&values);
-        // Event::dispatch(meta, &value_set);
+        // span.add_event("test-end", vec![]);
+        // let (level, target, message) =
+        //     parser::parse(&out).map_err(StreamError::LastOperationFailed)?;
 
         Ok(())
     }

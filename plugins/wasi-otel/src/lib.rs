@@ -67,14 +67,10 @@ impl Linkable for Service {
 }
 
 impl wasi_otel::tracing::Host for Otel<'_> {
-    async fn on_start(&mut self, span: wasi::SpanData, _parent: wasi::SpanContext) -> Result<()> {
+    async fn on_start(&mut self, _span: wasi::SpanData, _parent: wasi::SpanContext) -> Result<()> {
         // if self.is_shutdown.load(Ordering::Relaxed) {
         //     return;
         // }
-
-        // let span = sdk::SpanData::from(span);
-
-        println!("on_start: {span:?}\n");
         Ok(())
     }
 
@@ -83,9 +79,46 @@ impl wasi_otel::tracing::Host for Otel<'_> {
         //     return;
         // }
 
-        // let _span = sdk::SpanData::from(span);
+        // use tracing::instrument::WithSubscriber;
+        // use opentelemetry::global::ObjectSafeSpan;
+        // use opentelemetry::global;
+        // use opentelemetry::trace::Tracer;
 
-        println!("on_end: {span:?}\n");
+        let span_data = sdk::SpanData::from(span);
+
+        println!("Span Data: {:?}", span_data);
+
+        let span = Span::current();
+        span.add_event("event added", vec![]);
+
+        let ctx = span.context();
+        let span_ref = ctx.span();
+
+        // let tracer = global::tracer("http");
+        // let sub_span = tracer.start_with_context(span_data.name, &ctx);
+        let sub_span_ref = ctx.span();
+        sub_span_ref.add_event("test-sub_span_ref", vec![]);
+
+        for a in span_data.attributes {
+            sub_span_ref.set_attribute(a);
+        }
+        for e in span_data.events {
+            sub_span_ref.add_event(e.name, e.attributes);
+        }
+
+        sub_span_ref.end();
+
+        // ObjectSafeSpan::set_attribute(&mut sub_span, KeyValue::new("otel.scope.name", span_data.name.to_string()));
+        // sub_span.set_attribute(KeyValue::new("span.kind", format!("{:?}", span_data.span_kind)));
+        // trace::Span::add_event(&mut sub_span, "test-end", vec![]);
+        // sub_span.end();
+
+        // let span = Span::current();
+        // let ctx = span.context();
+        // let span_ref = ctx.span();
+
+        span_ref.end();
+
         Ok(())
     }
 

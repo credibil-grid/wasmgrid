@@ -30,16 +30,16 @@ anyhow.workspace = true
 credibil-telemetry.workspace = true
 dotenv = "0.15.0"
 runtime.workspace = true
-services = { path = "crates/services" }
 tokio.workspace = true
 tracing.workspace = true
 
-wasi-blobstore = { path = "crates/wasi-blobstore" }
-wasi-http = { path = "crates/wasi-http" }
-wasi-keyvalue = { path = "crates/wasi-keyvalue" }
-wasi-messaging = { path = "crates/wasi-messaging" }
-wasi-otel = { path = "crates/wasi-otel" }
-wasi-vault = { path = "crates/wasi-vault" }
+services = { path = "plugins/services" }
+wasi-blobstore = { path = "plugins/wasi-blobstore" }
+wasi-http = { path = "plugins/wasi-http" }
+wasi-keyvalue = { path = "plugins/wasi-keyvalue" }
+wasi-messaging = { path = "plugins/wasi-messaging" }
+wasi-otel = { path = "plugins/wasi-otel" }
+wasi-vault = { path = "plugins/wasi-vault" }
 
 [profile.release]
 lto = true
@@ -47,7 +47,7 @@ opt-level = "s"
 strip = true
 
 [workspace]
-members = ["crates/*", "examples/*"]
+members = ["crates/*", "plugins/*", "examples/*"]
 resolver = "3"
 
 [workspace.package]
