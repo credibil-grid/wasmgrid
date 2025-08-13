@@ -21,4 +21,4 @@ tracing.workspace = true
 wasmtime.workspace = true
 wasmtime-wasi-http.workspace = true
 
-services = { path = "../services" }
+wasi-core.workspace = true

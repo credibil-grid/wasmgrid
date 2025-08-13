@@ -22,7 +22,7 @@ tracing.workspace = true
 wasmtime.workspace = true
 wasmtime-wasi.workspace = true
 
-services = { path = "../services" }
+wasi-core.workspace = true
 
 # required for azure_identity, etc.
 openssl = { version = "0.10", optional = true, features = ["vendored"] }

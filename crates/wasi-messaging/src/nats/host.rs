@@ -3,7 +3,7 @@ use std::time::Duration;
 use anyhow::anyhow;
 use async_nats::{Client, HeaderMap, Subject};
 use resources::Resources;
-use services::Ctx;
+use wasi_core::Ctx;
 use wasmtime::component::{HasData, Linker, Resource};
 use wasmtime_wasi::{ResourceTable, ResourceTableError};
 

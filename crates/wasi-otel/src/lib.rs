@@ -25,9 +25,9 @@ use opentelemetry::trace::TraceContextExt;
 use opentelemetry_sdk::trace as sdk;
 use resources::Resources;
 use runtime::Linkable;
-use services::Ctx;
 use tracing::Span;
 use tracing_opentelemetry::OpenTelemetrySpanExt;
+use wasi_core::Ctx;
 use wasmtime::component::{HasData, Linker};
 use wasmtime_wasi::ResourceTable;
 

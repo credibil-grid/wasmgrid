@@ -1,8 +1,8 @@
 [package]
+name = "wasi-core"
+description = "Types shared between WASI host implementations"
 authors.workspace = true
-description = "Wasm services"
 edition.workspace = true
-name = "services"
 version = "0.1.0"
 
 [lints]

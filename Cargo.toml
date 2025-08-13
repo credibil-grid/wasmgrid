@@ -32,9 +32,10 @@ dotenv = "0.15.0"
 runtime.workspace = true
 tokio.workspace = true
 tracing.workspace = true
+wasi.workspace = true
 
-services = { path = "crates/services" }
 wasi-blobstore = { path = "crates/wasi-blobstore" }
+wasi-core.workspace = true
 wasi-http = { path = "crates/wasi-http" }
 wasi-keyvalue = { path = "crates/wasi-keyvalue" }
 wasi-messaging = { path = "crates/wasi-messaging" }
@@ -67,7 +68,7 @@ nursery = "warn"
 pedantic = "warn"
 
 [workspace.dependencies]
-anyhow = "1.0.98"
+anyhow = "1.0.99"
 async-nats = { version = "0.42.0" }
 axum = { version = "0.8.4", default-features = false }                                       # features = ["form", "json", "query", "tracing"]
 azure_core = { version = "0.27.0", default-features = false, features = ["reqwest_rustls"] }
@@ -91,6 +92,7 @@ tower-http = { version = "0.6.6", features = ["cors", "trace"] }
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["env-filter", "fmt"] }
 wasi = "0.14.2"
+wasi-core = { path = "crates/wasi-core" }
 wasmtime = { version = "35.0.0", default-features = false, features = ["component-model"] }
 wasmtime-wasi = "35.0.0"
 wasmtime-wasi-http = "35.0.0"

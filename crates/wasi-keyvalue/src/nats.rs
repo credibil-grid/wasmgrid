@@ -33,7 +33,7 @@ use base64ct::{Base64UrlUnpadded, Encoding};
 use futures::TryStreamExt;
 use resources::Resources;
 use runtime::Linkable;
-use services::Ctx;
+use wasi_core::Ctx;
 use wasmtime::component::{HasData, Linker, Resource, ResourceTableError};
 use wasmtime_wasi::ResourceTable;
 

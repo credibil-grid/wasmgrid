@@ -31,7 +31,7 @@ mod generated {
 use anyhow::Result;
 use resources::Resources;
 use runtime::{Linkable, Runnable};
-use services::Ctx;
+use wasi_core::Ctx;
 use wasmtime::component::{InstancePre, Linker};
 
 pub struct Service;

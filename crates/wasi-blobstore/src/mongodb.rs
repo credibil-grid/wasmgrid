@@ -41,7 +41,7 @@ use mongodb::{Collection, bson};
 use resources::Resources;
 use runtime::Linkable;
 use serde::{Deserialize, Serialize};
-use services::Ctx;
+use wasi_core::Ctx;
 use wasmtime::component::{HasData, Linker, Resource, ResourceTable};
 use wasmtime_wasi::p2::bindings::io::streams::{InputStream, OutputStream};
 use wasmtime_wasi::p2::pipe::{MemoryInputPipe, MemoryOutputPipe};

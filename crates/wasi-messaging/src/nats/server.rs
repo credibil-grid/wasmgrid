@@ -1,7 +1,7 @@
 use async_nats::Message;
 use futures::stream::{self, StreamExt};
 use resources::Resources;
-use services::Ctx;
+use wasi_core::Ctx;
 use wasmtime::Store;
 use wasmtime::component::InstancePre;
 

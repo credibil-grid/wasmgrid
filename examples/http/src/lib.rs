@@ -1,9 +1,9 @@
 use axum::routing::post;
 use axum::{Json, Router};
-use sdk_http_router::Result;
 use opentelemetry::trace::{TraceContextExt, Tracer};
 use opentelemetry::{Context, KeyValue, global};
 use opentelemetry_sdk::trace::SdkTracerProvider;
+use sdk_http_router::Result;
 use sdk_otel_client::Propagator;
 use serde_json::{Value, json};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
