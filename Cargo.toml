@@ -47,7 +47,7 @@ opt-level = "s"
 strip = true
 
 [workspace]
-members = ["crates/*", "plugins/*", "guest/*", "examples/*"]
+members = ["crates/*", "plugins/*", "guest-sdks/*", "examples/*"]
 resolver = "3"
 
 [workspace.package]
@@ -79,8 +79,8 @@ cfg-if = "1.0.1"
 chrono = "0.4.41"
 futures = "0.3.31"
 http = "1.3.1"
-http-client = { path = "guest/http-client" }
-http-router = { path = "guest/http-router" }
+http-client = { path = "guest-sdks/http-client" }
+http-router = { path = "guest-sdks/http-router" }
 resources = { path = "crates/resources", default-features = false }
 runtime = { path = "crates/runtime" }
 serde = { version = "1.0.219", features = ["derive"] }
@@ -91,11 +91,11 @@ tower-http = { version = "0.6.6", features = ["cors", "trace"] }
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["env-filter", "fmt"] }
 wasi = "0.14.2"
-wit-bindings = { path = "guest/wit-bindings" }
 wasmtime = { version = "35.0.0", default-features = false, features = ["component-model"] }
 wasmtime-wasi = "35.0.0"
 wasmtime-wasi-http = "35.0.0"
 wasmtime-wasi-io = "35.0.0"
+wit-bindings = { path = "guest-sdks/wit-bindings" }
 
 credibil-encoding = { git = "https://github.com/credibil/core.git" }
 credibil-telemetry = { git = "https://github.com/credibil/core.git" }
