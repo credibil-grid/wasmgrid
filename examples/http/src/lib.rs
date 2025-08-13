@@ -1,10 +1,9 @@
 use axum::routing::post;
 use axum::{Json, Router};
-use opentelemetry::trace::{TraceContextExt, Tracer};
-use opentelemetry::{Context, KeyValue, global};
-use opentelemetry_sdk::trace::SdkTracerProvider;
-use sdk_http_router::Result;
-use sdk_otel_client::Propagator;
+use opentelemetry_http::HttpClient;
+use opentelemetry_otlp::{HttpExporterBuilder, WithHttpConfig};
+use sdk_http::{Client, Result};
+// use sdk_otel::Propagator;
 use serde_json::{Value, json};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 use wasi::exports::http::incoming_handler::Guest;
@@ -12,40 +11,71 @@ use wasi::http::types::{IncomingRequest, ResponseOutparam};
 
 struct HttpGuest;
 
+#[derive(Debug)]
+struct OtelClient;
+
+use std::mem;
+
+use async_trait::async_trait;
+use bytes::Bytes;
+use http::{Request, Response};
+use opentelemetry_http::HttpError;
+
+#[async_trait]
+impl HttpClient for OtelClient {
+    async fn send_bytes(&self, request: Request<Bytes>) -> Result<Response<Bytes>, HttpError> {
+        let mut response = Client::new()
+            .post(request.uri())
+            .headers(request.headers())
+            .body(request.into_body().to_vec())
+            .send::<Bytes>()?;
+
+        let headers = mem::take(response.headers_mut());
+        let mut http_response =
+            Response::builder().status(response.status()).body(response.body().clone())?;
+        *http_response.headers_mut() = headers;
+
+        Ok(http_response)
+    }
+}
+
 impl Guest for HttpGuest {
     fn handle(request: IncomingRequest, response: ResponseOutparam) {
         let subscriber =
             FmtSubscriber::builder().with_env_filter(EnvFilter::from_default_env()).finish();
         tracing::subscriber::set_global_default(subscriber).expect("should set subscriber");
 
-        // Set up a tracer using the WASI processor
-        let wasi_processor = sdk_otel_client::Processor::new();
-        let tracer_provider =
-            SdkTracerProvider::builder().with_span_processor(wasi_processor).build();
-        global::set_tracer_provider(tracer_provider);
-        let tracer = global::tracer("basic-spin");
+        let span_exporter =
+            HttpExporterBuilder::default().with_http_client(OtelClient).build_span_exporter();
 
-        // Extract context from the Wasm host
-        let wasi_propagator = sdk_otel_client::ContextPropagator::new();
-        let _context_guard = wasi_propagator.extract(&Context::current()).attach();
+        // // Set up a tracer using the WASI processor
+        // let processor = sdk_otel::Processor::new();
+        // let tracer_provider =
+        //     SdkTracerProvider::builder().with_span_processor(processor).build();
+        // global::set_tracer_provider(tracer_provider);
+        // let tracer = global::tracer("basic-spin");
 
-        // Create some spans and events
-        tracer.in_span("main-operation", |cx| {
-            let span = cx.span();
-            span.set_attribute(KeyValue::new("my-attribute", "my-value"));
-            span.add_event("Main span event".to_string(), vec![KeyValue::new("foo", "1")]);
-            tracer.in_span("child-operation", |cx| {
-                let span = cx.span();
-                span.add_event("Sub span event", vec![KeyValue::new("bar", "1")]);
-                // let store = Store::open_default().unwrap();
-                // store.set("foo", "bar".as_bytes()).unwrap();
-            });
-        });
+        // // get context from the Wasm host
+        // let propagator = sdk_otel::ContextPropagator::new();
+        // let _context = propagator.extract(&Context::current()).attach();
+
+        // // Create some spans and events
+        // tracer.in_span("main-operation", |cx| {
+        //     let span = cx.span();
+        //     span.set_attribute(KeyValue::new("my-attribute", "my-value"));
+        //     span.add_event("Main span event".to_string(), vec![KeyValue::new("foo", "1")]);
+        //     tracer.in_span("child-operation", |cx| {
+        //         let span = cx.span();
+        //         span.add_event("Sub span event", vec![KeyValue::new("bar", "1")]);
+        //         // let store = Store::open_default().unwrap();
+        //         // store.set("foo", "bar".as_bytes()).unwrap();
+        //     });
+        // });
 
         tracing::info!("received request");
 
         let router = Router::new().route("/", post(handle));
-        let out = sdk_http_router::serve(router, request);
+        let out = sdk_http::serve(router, request);
         ResponseOutparam::set(response, out);
     }
 }

@@ -2,7 +2,7 @@ use anyhow::{Context, anyhow};
 use axum::routing::post;
 use axum::{Json, Router};
 use bytes::Bytes;
-use sdk_http_router::Result;
+use sdk_http::Result;
 use serde_json::Value;
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 use wasi::exports::http::incoming_handler::Guest;
@@ -20,7 +20,7 @@ impl Guest for HttpGuest {
 
         let router = Router::new().route("/", post(handler));
 
-        let out = sdk_http_router::serve(router, request);
+        let out = sdk_http::serve(router, request);
         ResponseOutparam::set(response, out);
     }
 }

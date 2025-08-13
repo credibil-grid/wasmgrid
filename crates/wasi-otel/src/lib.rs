@@ -84,40 +84,25 @@ impl wasi_otel::tracing::Host for Otel<'_> {
         // use opentelemetry::global;
         // use opentelemetry::trace::Tracer;
 
-        let span_data = sdk::SpanData::from(span);
-
-        println!("Span Data: {:?}", span_data);
+        let _span_data = sdk::SpanData::from(span);
 
         let span = Span::current();
         let ctx = span.context();
         let span_ref = ctx.span();
-
-        span.add_event("event added", vec![]);
+        span_ref.end();
 
         // let tracer = global::tracer("http");
         // let sub_span = tracer.start_with_context(span_data.name, &ctx);
-        let sub_span_ref = ctx.span();
-        sub_span_ref.add_event("test-sub_span_ref", vec![]);
-
-        for a in span_data.attributes {
-            sub_span_ref.set_attribute(a);
-        }
-        for e in span_data.events {
-            sub_span_ref.add_event(e.name, e.attributes);
-        }
-
-        sub_span_ref.end();
-
-        // ObjectSafeSpan::set_attribute(&mut sub_span, KeyValue::new("otel.scope.name", span_data.name.to_string()));
-        // sub_span.set_attribute(KeyValue::new("span.kind", format!("{:?}", span_data.span_kind)));
-        // trace::Span::add_event(&mut sub_span, "test-end", vec![]);
-        // sub_span.end();
-
-        // let span = Span::current();
-        // let ctx = span.context();
-        // let span_ref = ctx.span();
-
-        span_ref.end();
+        // let sub_span_ref = ctx.span();
+        // sub_span_ref.add_event("test-sub_span_ref", vec![]);
+        // for a in span_data.attributes {
+        //     sub_span_ref.set_attribute(a);
+        // }
+        // for e in span_data.events {
+        //     sub_span_ref.add_event(e.name, e.attributes);
+        // }
+        // sub_span_ref.end();
+        // span_ref.end();
 
         Ok(())
     }

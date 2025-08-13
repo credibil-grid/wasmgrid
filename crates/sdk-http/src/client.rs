@@ -1,6 +1,6 @@
 use anyhow::{Result, anyhow};
 use http::header::{AUTHORIZATION, CONTENT_TYPE};
-use http::{Response, Uri};
+use http::{HeaderMap, HeaderName, HeaderValue, Response};
 use percent_encoding::{AsciiSet, NON_ALPHANUMERIC, utf8_percent_encode};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -8,6 +8,8 @@ use wasi::http::outgoing_handler;
 use wasi::http::types::{
     FutureIncomingResponse, Headers, Method, OutgoingBody, OutgoingRequest, Scheme,
 };
+
+use crate::uri::UriLike;
 
 const UNRESERVED: &AsciiSet = &NON_ALPHANUMERIC
     .remove(b'=')
@@ -25,20 +27,20 @@ impl Client {
         Self {}
     }
 
-    pub fn get(&self, url: impl Into<String>) -> RequestBuilder<NoBody, NoJson, NoForm> {
-        RequestBuilder::new(url)
+    pub fn get<U: Into<UriLike>>(&self, uri: U) -> RequestBuilder<NoBody, NoJson, NoForm> {
+        RequestBuilder::new(uri)
     }
 
-    pub fn post(&self, url: impl Into<String>) -> RequestBuilder<NoBody, NoJson, NoForm> {
-        RequestBuilder::new(url).method(Method::Post)
+    pub fn post<U: Into<UriLike>>(&self, uri: U) -> RequestBuilder<NoBody, NoJson, NoForm> {
+        RequestBuilder::new(uri).method(Method::Post)
     }
 }
 
 #[derive(Debug)]
 pub struct RequestBuilder<B, J, F> {
     method: Method,
-    url: String,
-    headers: Vec<(String, String)>,
+    uri: UriLike,
+    headers: HeaderMap<String>,
     query: Option<String>,
     body: B,
     json: J,
@@ -66,12 +68,12 @@ pub struct NoForm;
 #[doc(hidden)]
 pub struct HasForm<T: Serialize>(T);
 
-impl RequestBuilder<NoBody, NoJson, NoForm> {
-    fn new(url: impl Into<String>) -> Self {
+impl<'a> RequestBuilder<NoBody, NoJson, NoForm> {
+    fn new<U: Into<UriLike>>(uri: U) -> Self {
         Self {
             method: Method::Get,
-            url: url.into(),
-            headers: vec![],
+            uri: uri.into(),
+            headers: HeaderMap::default(),
             query: None,
             body: NoBody,
             json: NoJson,
@@ -79,13 +81,13 @@ impl RequestBuilder<NoBody, NoJson, NoForm> {
         }
     }
 
-    pub fn body(self, body: &[u8]) -> RequestBuilder<HasBody, NoJson, NoForm> {
+    pub fn body(self, body: Vec<u8>) -> RequestBuilder<HasBody, NoJson, NoForm> {
         RequestBuilder {
-            method: self.method.clone(),
-            url: self.url.clone(),
-            headers: self.headers.clone(),
-            query: self.query.clone(),
-            body: HasBody(body.to_vec()),
+            method: self.method,
+            uri: self.uri,
+            headers: self.headers,
+            query: self.query,
+            body: HasBody(body),
             json: NoJson,
             form: NoForm,
         }
@@ -94,7 +96,7 @@ impl RequestBuilder<NoBody, NoJson, NoForm> {
     pub fn json<T: Serialize>(self, json: T) -> RequestBuilder<NoBody, HasJson<T>, NoForm> {
         RequestBuilder {
             method: self.method,
-            url: self.url,
+            uri: self.uri,
             headers: self.headers,
             query: self.query,
             body: NoBody,
@@ -106,7 +108,7 @@ impl RequestBuilder<NoBody, NoJson, NoForm> {
     pub fn form<T: Serialize>(self, form: T) -> RequestBuilder<NoBody, NoJson, HasForm<T>> {
         RequestBuilder {
             method: self.method,
-            url: self.url,
+            uri: self.uri,
             headers: self.headers,
             query: self.query,
             body: NoBody,
@@ -122,8 +124,16 @@ impl<B, J, F> RequestBuilder<B, J, F> {
         self
     }
 
-    pub fn header(mut self, name: impl Into<String>, value: impl Into<String>) -> Self {
-        self.headers.push((name.into(), value.into()));
+    pub fn header(mut self, name: impl Into<HeaderName>, value: impl Into<String>) -> Self {
+        self.headers.insert(name.into(), value.into());
+        self
+    }
+
+    pub fn headers(mut self, headers: &HeaderMap) -> Self {
+        self.headers = headers
+            .iter()
+            .map(|(k, v)| (k.clone(), v.to_str().unwrap_or_default().to_string()))
+            .collect();
         self
     }
 
@@ -133,20 +143,20 @@ impl<B, J, F> RequestBuilder<B, J, F> {
     }
 
     pub fn bearer_auth(mut self, token: &str) -> Self {
-        self.headers.push((AUTHORIZATION.to_string(), format!("Bearer {token}")));
+        self.headers.insert(AUTHORIZATION, format!("Bearer {token}"));
         self
     }
 }
 
 impl RequestBuilder<NoBody, NoJson, NoForm> {
     pub fn send<T: DeserializeOwned>(&self) -> Result<Response<T>> {
-        self.send_any(None)
+        self.send_bytes(None)
     }
 }
 
 impl RequestBuilder<HasBody, NoJson, NoForm> {
     pub fn send<T: DeserializeOwned>(&self) -> Result<Response<T>> {
-        self.send_any(Some(&self.body.0))
+        self.send_bytes(Some(&self.body.0))
     }
 }
 
@@ -154,8 +164,8 @@ impl<B: Serialize> RequestBuilder<NoBody, HasJson<B>, NoForm> {
     pub fn send<T: DeserializeOwned>(&mut self) -> Result<Response<T>> {
         let body =
             serde_json::to_vec(&self.json.0).map_err(|e| anyhow!("issue serializing json: {e}"))?;
-        self.headers.push((CONTENT_TYPE.to_string(), "application/json".to_string()));
-        self.send_any(Some(&body))
+        self.headers.insert(CONTENT_TYPE, "application/json".into());
+        self.send_bytes(Some(&body))
     }
 }
 
@@ -165,14 +175,13 @@ impl<B: Serialize> RequestBuilder<NoBody, NoJson, HasForm<B>> {
             .map_err(|e| anyhow!("issue serializing form: {e}"))?;
         let bytes =
             serde_json::to_vec(&body).map_err(|e| anyhow!("issue serializing form: {e}"))?;
-        self.headers
-            .push((CONTENT_TYPE.to_string(), "application/x-www-form-urlencoded".to_string()));
-        self.send_any(Some(&bytes))
+        self.headers.insert(CONTENT_TYPE, "application/x-www-form-urlencoded".into());
+        self.send_bytes(Some(&bytes))
     }
 }
 
 impl<B, J, F> RequestBuilder<B, J, F> {
-    pub fn send_any<T: DeserializeOwned>(&self, body: Option<&[u8]>) -> Result<Response<T>> {
+    pub fn send_bytes<T: DeserializeOwned>(&self, body: Option<&[u8]>) -> Result<Response<T>> {
         let request = self.prepare_request(body)?;
 
         tracing::trace!(
@@ -191,15 +200,15 @@ impl<B, J, F> RequestBuilder<B, J, F> {
         let headers = Headers::new();
         for (key, value) in self.headers.iter() {
             headers
-                .append(&key, value.as_bytes())
+                .append(key.as_str(), value.as_bytes())
                 .map_err(|e| anyhow!("issue setting header: {e}"))?;
         }
         let request = OutgoingRequest::new(headers);
         request.set_method(&self.method).map_err(|_| anyhow!("issue setting method"))?;
 
         // url
-        let url = &self.url.parse::<Uri>().map_err(|e| anyhow!("issue parsing url: {e}"))?;
-        let Some(scheme) = url.scheme() else {
+        let uri = self.uri.into_uri()?;
+        let Some(scheme) = uri.scheme() else {
             return Err(anyhow!("missing scheme"));
         };
         let scheme = match scheme.as_str() {
@@ -209,13 +218,13 @@ impl<B, J, F> RequestBuilder<B, J, F> {
         };
         request.set_scheme(Some(&scheme)).map_err(|()| anyhow!("issue setting scheme"))?;
         request
-            .set_authority(url.authority().map(|a| a.as_str()))
+            .set_authority(uri.authority().map(|a| a.as_str()))
             .map_err(|()| anyhow!("issue setting authority"))?;
 
         // path + query
-        let path = url.path().to_string();
+        let path = uri.path().to_string();
         let mut path_with_query = utf8_percent_encode(&path, UNRESERVED).to_string();
-        if let Some(query) = url.query() {
+        if let Some(query) = uri.query() {
             let query = utf8_percent_encode(query, UNRESERVED).to_string();
             path_with_query = format!("{path_with_query}?{query}");
         }

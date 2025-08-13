@@ -21,7 +21,7 @@ impl http::incoming_handler::Guest for Http {
 
         let router = Router::new().route("/", post(handle));
 
-        let out = sdk_http_router::serve(router, request);
+        let out = sdk_http::serve(router, request);
         ResponseOutparam::set(response, out);
     }
 }

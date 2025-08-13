@@ -1,5 +1,5 @@
 services:
-  otel-collector:
+  otelcol:
     image: otel/opentelemetry-collector-contrib:latest
     volumes:
       - ./otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml

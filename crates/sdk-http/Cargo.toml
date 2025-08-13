@@ -1,5 +1,5 @@
 [package]
-name = "sdk-http-router"
+name = "sdk-http"
 description = "Wrapper for wasi-http incoming request bindings"
 authors.workspace = true
 edition.workspace = true
@@ -14,9 +14,12 @@ workspace = true
 [dependencies]
 anyhow.workspace = true
 axum.workspace = true
+credibil-encoding.workspace = true
 futures.workspace = true
 http.workspace = true
 percent-encoding = "2.3.1"
+serde.workspace = true
 serde_json.workspace = true
 tower.workspace = true
+tracing.workspace = true
 wasi.workspace = true
