@@ -11,14 +11,6 @@ skip_crate_env_info = true
 skip_git_env_info = true
 skip_rust_env_info = true
 
-# update wasi-bindings
-[tasks.bindings]
-script = """
-    cd crates/wasi-bindings
-    wit-deps
-    cd ../..
-"""
-
 # -------------------------------------
 # Build and test
 # -------------------------------------

@@ -89,10 +89,10 @@ impl wasi_otel::tracing::Host for Otel<'_> {
         println!("Span Data: {:?}", span_data);
 
         let span = Span::current();
-        span.add_event("event added", vec![]);
-
         let ctx = span.context();
         let span_ref = ctx.span();
+
+        span.add_event("event added", vec![]);
 
         // let tracer = global::tracer("http");
         // let sub_span = tracer.start_with_context(span_data.name, &ctx);

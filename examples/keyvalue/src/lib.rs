@@ -2,12 +2,12 @@ use anyhow::Context;
 use axum::routing::post;
 use axum::{Json, Router};
 use bytes::Bytes;
-use http_server::Result;
+use http_router::Result;
 use serde_json::{Value, json};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 use wasi::exports::http::incoming_handler::Guest;
 use wasi::http::types::{IncomingRequest, ResponseOutparam};
-use wasi_bindings::keyvalue::store;
+use wit_bindings::keyvalue::store;
 
 struct HttpGuest;
 
@@ -19,7 +19,7 @@ impl Guest for HttpGuest {
 
         let router = Router::new().route("/", post(handle));
 
-        let out = http_server::serve(router, request);
+        let out = http_router::serve(router, request);
         ResponseOutparam::set(response, out);
     }
 }

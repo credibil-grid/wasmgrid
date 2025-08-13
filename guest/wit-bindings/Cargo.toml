@@ -1,5 +1,5 @@
 [package]
-name = "wasi-bindings"
+name = "wit-bindings"
 description = "Guest bindings for wasmgrid service"
 authors.workspace = true
 edition.workspace = true

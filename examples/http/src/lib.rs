@@ -1,6 +1,6 @@
 use axum::routing::post;
 use axum::{Json, Router};
-use http_server::Result;
+use http_router::Result;
 use opentelemetry::trace::{TraceContextExt, Tracer};
 use opentelemetry::{Context, KeyValue, global};
 use opentelemetry_sdk::trace::SdkTracerProvider;
@@ -45,7 +45,7 @@ impl Guest for HttpGuest {
         tracing::info!("received request");
 
         let router = Router::new().route("/", post(handle));
-        let out = http_server::serve(router, request);
+        let out = http_router::serve(router, request);
         ResponseOutparam::set(response, out);
     }
 }

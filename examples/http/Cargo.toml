@@ -12,7 +12,7 @@ workspace = true
 
 [dependencies]
 axum = { workspace = true, features = ["json"] }
-http-server.workspace = true
+http-router.workspace = true
 serde_json.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true

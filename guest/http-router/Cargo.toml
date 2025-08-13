@@ -1,5 +1,5 @@
 [package]
-name = "http-server"
+name = "http-router"
 description = "Wrapper for wasi-http incoming request bindings"
 authors.workspace = true
 edition.workspace = true

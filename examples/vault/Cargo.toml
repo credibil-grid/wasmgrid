@@ -13,9 +13,9 @@ workspace = true
 anyhow.workspace = true
 axum = { workspace = true, features = ["json"] }
 bytes = "1.10.1"
-http-server.workspace = true
+http-router.workspace = true
 serde_json.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 wasi.workspace = true
-wasi-bindings.workspace = true
+wit-bindings.workspace = true

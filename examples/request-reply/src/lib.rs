@@ -6,10 +6,10 @@ use serde_json::{Value, json};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 use wasi::exports::http;
 use wasi::http::types::{IncomingRequest, ResponseOutparam};
-use wasi_bindings::messaging;
-use wasi_bindings::messaging::incoming_handler::Configuration;
-use wasi_bindings::messaging::request_reply;
-use wasi_bindings::messaging::types::{Client, Error, Message};
+use wit_bindings::messaging;
+use wit_bindings::messaging::incoming_handler::Configuration;
+use wit_bindings::messaging::request_reply;
+use wit_bindings::messaging::types::{Client, Error, Message};
 
 pub struct Http;
 
@@ -21,7 +21,7 @@ impl http::incoming_handler::Guest for Http {
 
         let router = Router::new().route("/", post(handle));
 
-        let out = http_server::serve(router, request);
+        let out = http_router::serve(router, request);
         ResponseOutparam::set(response, out);
     }
 }
@@ -79,4 +79,4 @@ impl messaging::incoming_handler::Guest for RequestReply {
     }
 }
 
-wasi_bindings::messaging::export!(RequestReply  with_types_in wasi_bindings::messaging);
+wit_bindings::messaging::export!(RequestReply  with_types_in wit_bindings::messaging);
