@@ -11,18 +11,9 @@ crate-type = ["cdylib"]
 workspace = true
 
 [dependencies]
-async-trait = "0.1.88"
 axum = { workspace = true, features = ["json"] }
-bytes.workspace = true
-http.workspace = true
 sdk-http.workspace = true
-sdk-otel = { path = "../../crates/sdk-otel" }
 serde_json.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 wasi.workspace = true
-
-opentelemetry = "0.30.0"
-opentelemetry-http = "0.30.0"
-opentelemetry-otlp = "0.30.0"
-opentelemetry_sdk = "0.30.0"

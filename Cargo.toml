@@ -32,8 +32,6 @@ dotenv = "0.15.0"
 runtime.workspace = true
 tokio.workspace = true
 tracing.workspace = true
-wasi.workspace = true
-
 wasi-blobstore = { path = "crates/wasi-blobstore" }
 wasi-core.workspace = true
 wasi-http = { path = "crates/wasi-http" }

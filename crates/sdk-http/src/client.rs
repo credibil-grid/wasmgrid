@@ -1,6 +1,6 @@
 use anyhow::{Result, anyhow};
 use http::header::{AUTHORIZATION, CONTENT_TYPE};
-use http::{HeaderMap, HeaderName, HeaderValue, Response};
+use http::{HeaderMap, HeaderName, Response};
 use percent_encoding::{AsciiSet, NON_ALPHANUMERIC, utf8_percent_encode};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -20,11 +20,11 @@ const UNRESERVED: &AsciiSet = &NON_ALPHANUMERIC
     .remove(b'~')
     .remove(b'/');
 
-pub struct Client {}
+pub struct Client;
 
 impl Client {
     pub fn new() -> Self {
-        Self {}
+        Self
     }
 
     pub fn get<U: Into<UriLike>>(&self, uri: U) -> RequestBuilder<NoBody, NoJson, NoForm> {

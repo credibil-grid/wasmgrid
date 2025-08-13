@@ -1,0 +1,28 @@
+[package]
+name = "otel"
+version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+
+[lib]
+crate-type = ["cdylib"]
+
+[lints]
+workspace = true
+
+[dependencies]
+async-trait = "0.1.88"
+axum = { workspace = true, features = ["json"] }
+bytes.workspace = true
+http.workspace = true
+sdk-http.workspace = true
+sdk-otel = { path = "../../crates/sdk-otel" }
+serde_json.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+wasi.workspace = true
+
+opentelemetry = "0.30.0"
+opentelemetry-http = { version = "0.30.0", default-features = false }
+opentelemetry-otlp = { version = "0.30.0", default-features = false, features = ["http-proto", "trace"] }
+opentelemetry_sdk = "0.30.0"
