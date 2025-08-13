@@ -52,7 +52,7 @@ resolver = "3"
 [workspace.package]
 authors = ["Credibil"]
 edition = "2024"
-rust-version = "1.88"
+rust-version = "1.89"
 
 [workspace.lints.rust]
 trivial_numeric_casts = "warn"
