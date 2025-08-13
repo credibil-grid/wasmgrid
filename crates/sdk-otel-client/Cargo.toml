@@ -1,5 +1,5 @@
 [package]
-name = "otel-client"
+name = "sdk-otel-client"
 description = "Wasm opentelemetry service"
 authors.workspace = true
 edition.workspace = true

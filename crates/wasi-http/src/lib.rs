@@ -3,7 +3,7 @@
 //! # WASI Http Service
 //!
 //! This module implements a runtime service for `wasi:http`
-//! (<https://github.com/WebAssembly/http-router>).
+//! (<https://github.com/WebAssembly/sdk-http-router>).
 
 use std::clone::Clone;
 use std::env;

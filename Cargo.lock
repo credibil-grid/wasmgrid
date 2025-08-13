@@ -402,7 +402,7 @@ dependencies = [
  "anyhow",
  "axum",
  "bytes",
- "http-router",
+ "sdk-http-router",
  "serde_json",
  "tracing",
  "tracing-subscriber",
@@ -1555,10 +1555,10 @@ name = "http"
 version = "0.1.0"
 dependencies = [
  "axum",
- "http-router",
  "opentelemetry",
  "opentelemetry_sdk",
- "otel-client",
+ "sdk-http-router",
+ "sdk-otel-client",
  "serde_json",
  "tracing",
  "tracing-subscriber",
@@ -1600,46 +1600,18 @@ dependencies = [
 ]
 
 [[package]]
-name = "http-client"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "credibil-encoding",
- "http 1.3.1",
- "percent-encoding",
- "serde",
- "serde_json",
- "tracing",
- "wasi 0.14.2+wasi-0.2.4",
-]
-
-[[package]]
 name = "http-http"
 version = "0.0.0"
 dependencies = [
  "anyhow",
  "axum",
  "http 1.3.1",
- "http-client",
- "http-router",
+ "sdk-http-client",
+ "sdk-http-router",
  "serde_json",
  "tower-http",
  "tracing",
  "tracing-subscriber",
- "wasi 0.14.2+wasi-0.2.4",
-]
-
-[[package]]
-name = "http-router"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "axum",
- "futures",
- "http 1.3.1",
- "percent-encoding",
- "serde_json",
- "tower",
  "wasi 0.14.2+wasi-0.2.4",
 ]
 
@@ -2018,7 +1990,7 @@ dependencies = [
  "anyhow",
  "axum",
  "bytes",
- "http-router",
+ "sdk-http-router",
  "serde_json",
  "tracing",
  "tracing-subscriber",
@@ -2516,16 +2488,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "otel-client"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "opentelemetry",
- "opentelemetry_sdk",
- "wit-bindgen",
-]
-
-[[package]]
 name = "overload"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2723,7 +2685,7 @@ dependencies = [
  "anyhow",
  "axum",
  "bytes",
- "http-router",
+ "sdk-http-router",
  "serde_json",
  "tracing",
  "tracing-subscriber",
@@ -2928,7 +2890,7 @@ dependencies = [
  "anyhow",
  "axum",
  "bytes",
- "http-router",
+ "sdk-http-router",
  "serde_json",
  "tracing",
  "tracing-subscriber",
@@ -3291,6 +3253,44 @@ checksum = "da046153aa2352493d6cb7da4b6e5c0c057d8a1d0a9aa8560baffdd945acd414"
 dependencies = [
  "ring",
  "untrusted",
+]
+
+[[package]]
+name = "sdk-http-client"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "credibil-encoding",
+ "http 1.3.1",
+ "percent-encoding",
+ "serde",
+ "serde_json",
+ "tracing",
+ "wasi 0.14.2+wasi-0.2.4",
+]
+
+[[package]]
+name = "sdk-http-router"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "axum",
+ "futures",
+ "http 1.3.1",
+ "percent-encoding",
+ "serde_json",
+ "tower",
+ "wasi 0.14.2+wasi-0.2.4",
+]
+
+[[package]]
+name = "sdk-otel-client"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "opentelemetry",
+ "opentelemetry_sdk",
+ "wit-bindgen",
 ]
 
 [[package]]
@@ -4288,7 +4288,7 @@ dependencies = [
  "anyhow",
  "axum",
  "bytes",
- "http-router",
+ "sdk-http-router",
  "serde_json",
  "tracing",
  "tracing-subscriber",
@@ -4330,13 +4330,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9683f9a5a998d873c0d21fcbe3c083009670149a8fab228644b8bd36b2c48cb3"
 dependencies = [
  "wit-bindgen-rt 0.39.0",
-]
-
-[[package]]
-name = "wit-bindings"
-version = "0.1.0"
-dependencies = [
- "wit-bindgen",
 ]
 
 [[package]]
@@ -5410,6 +5403,13 @@ dependencies = [
  "syn 2.0.104",
  "wit-bindgen-core",
  "wit-bindgen-rust",
+]
+
+[[package]]
+name = "wit-bindings"
+version = "0.1.0"
+dependencies = [
+ "wit-bindgen",
 ]
 
 [[package]]

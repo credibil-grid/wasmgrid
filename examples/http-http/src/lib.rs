@@ -6,8 +6,8 @@ use anyhow::Context;
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use http::Method;
-use http_client::Client;
-use http_router::Result;
+use sdk_http_client::Client;
+use sdk_http_router::Result;
 use serde_json::{Value, json};
 use tower_http::cors::{Any, CorsLayer};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
@@ -32,7 +32,7 @@ impl Guest for HttpGuest {
             )
             .route("/", post(post_handler));
 
-        let out = http_router::serve(router, request);
+        let out = sdk_http_router::serve(router, request);
         ResponseOutparam::set(response, out);
     }
 }

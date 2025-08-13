@@ -1,5 +1,5 @@
 [package]
-name = "http-client"
+name = "sdk-http-client"
 description = "Wrapper for wasi-http outgoing request bindings"
 authors.workspace = true
 edition.workspace = true

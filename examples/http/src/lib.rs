@@ -1,10 +1,10 @@
 use axum::routing::post;
 use axum::{Json, Router};
-use http_router::Result;
+use sdk_http_router::Result;
 use opentelemetry::trace::{TraceContextExt, Tracer};
 use opentelemetry::{Context, KeyValue, global};
 use opentelemetry_sdk::trace::SdkTracerProvider;
-use otel_client::Propagator;
+use sdk_otel_client::Propagator;
 use serde_json::{Value, json};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 use wasi::exports::http::incoming_handler::Guest;
@@ -19,14 +19,14 @@ impl Guest for HttpGuest {
         tracing::subscriber::set_global_default(subscriber).expect("should set subscriber");
 
         // Set up a tracer using the WASI processor
-        let wasi_processor = otel_client::Processor::new();
+        let wasi_processor = sdk_otel_client::Processor::new();
         let tracer_provider =
             SdkTracerProvider::builder().with_span_processor(wasi_processor).build();
         global::set_tracer_provider(tracer_provider);
         let tracer = global::tracer("basic-spin");
 
         // Extract context from the Wasm host
-        let wasi_propagator = otel_client::ContextPropagator::new();
+        let wasi_propagator = sdk_otel_client::ContextPropagator::new();
         let _context_guard = wasi_propagator.extract(&Context::current()).attach();
 
         // Create some spans and events
@@ -45,7 +45,7 @@ impl Guest for HttpGuest {
         tracing::info!("received request");
 
         let router = Router::new().route("/", post(handle));
-        let out = http_router::serve(router, request);
+        let out = sdk_http_router::serve(router, request);
         ResponseOutparam::set(response, out);
     }
 }
