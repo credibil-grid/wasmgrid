@@ -26,3 +26,4 @@ opentelemetry = "0.30.0"
 opentelemetry-http = { version = "0.30.0", default-features = false }
 opentelemetry-otlp = { version = "0.30.0", default-features = false, features = ["http-proto", "trace"] }
 opentelemetry_sdk = "0.30.0"
+tracing-opentelemetry = "0.31.0"

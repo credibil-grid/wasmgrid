@@ -8,6 +8,12 @@ use wasi::http::types::{IncomingRequest, ResponseOutparam};
 
 struct HttpGuest;
 
+// use opentelemetry::trace::TracerProvider;
+// use opentelemetry_sdk::trace::SdkTracerProvider;
+// use tracing_subscriber::layer::SubscriberExt;
+// use tracing_subscriber::registry;
+// use tracing_subscriber::util::SubscriberInitExt;
+
 impl Guest for HttpGuest {
     fn handle(request: IncomingRequest, response: ResponseOutparam) {
         // // Set up a tracer using the WASI processor
@@ -19,8 +25,8 @@ impl Guest for HttpGuest {
         // let tracing_layer = tracing_opentelemetry::layer().with_tracer(tracer);
         // registry().with(tracing_layer).try_init().unwrap();
 
-        let timer = std::time::SystemTime::now();
         // get host context
+        let timer = std::time::SystemTime::now();
         let _guard = Otel::new("otel").with_host_context().expect("initializing telemetry");
         println!("time: {:?}", timer.elapsed());
 
