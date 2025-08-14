@@ -10,7 +10,16 @@ struct HttpGuest;
 
 impl Guest for HttpGuest {
     fn handle(request: IncomingRequest, response: ResponseOutparam) {
-        let timer=std::time::SystemTime::now();
+        // // Set up a tracer using the WASI processor
+        // let processor = sdk_otel::Processor::new();
+        // let provider = SdkTracerProvider::builder().with_span_processor(processor).build();
+        // let tracer = provider.tracer("otel");
+
+        // // Create a tracing layer with the configured tracer and setup the subscriber
+        // let tracing_layer = tracing_opentelemetry::layer().with_tracer(tracer);
+        // registry().with(tracing_layer).try_init().unwrap();
+
+        let timer = std::time::SystemTime::now();
         // get host context
         let _guard = Otel::new("otel").with_host_context().expect("initializing telemetry");
         println!("time: {:?}", timer.elapsed());
@@ -27,6 +36,7 @@ impl Guest for HttpGuest {
         //         // store.set("foo", "bar".as_bytes()).unwrap();
         //     });
         // });
+
         let out = tracing::debug_span!("handle request").in_scope(|| {
             tracing::info!("received request");
             let router = Router::new().route("/", post(handle));

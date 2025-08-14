@@ -29,6 +29,8 @@ use tracing_opentelemetry::OpenTelemetrySpanExt;
 use wasi_core::Ctx;
 use wasmtime::component::{HasData, Linker};
 
+// use opentelemetry::trace::Tracer;
+// use opentelemetry::{KeyValue, global};
 use self::generated::wasi::otel as wasi_otel;
 use self::generated::wasi::otel::tracing::{self as wasi};
 
@@ -60,35 +62,27 @@ impl Linkable for Service {
     }
 }
 
-use opentelemetry::trace::Tracer;
-use opentelemetry::{KeyValue, global};
-
 impl wasi_otel::tracing::Host for Otel<'_> {
     async fn on_start(&mut self, _span: wasi::SpanData, _parent: wasi::SpanContext) -> Result<()> {
         Ok(())
     }
 
-    async fn on_end(&mut self, span_data: wasi::SpanData) -> Result<()> {
+    async fn on_end(&mut self, _span_data: wasi::SpanData) -> Result<()> {
         // TODO: export SpanData directory
 
-        let sd = sdk::SpanData::from(span_data);
-        let span = Span::current();
-        let name = span.metadata().unwrap().name();
+        // let ctx = Span::current().context();
+        // println!("current span context: {:?}", ctx);
 
-        let tracer = global::tracer("");
-        tracer.in_span(format!("host:{}", name), |cx| {
-            tracer.in_span(format!("host:{}", sd.name), |cx| {
-                let span = cx.span();
+        // let mut child = tracer("wasm").start_with_context("child2", &ctx);
+        // println!("child span: {:?}\n", child.end_with_timestamp(SystemTime::now()));
 
-                for event in sd.events.events {
-                    span.add_event(event.name, event.attributes);
-                }
-                for attrs in sd.attributes {
-                    println!("attr: {:?}", attrs);
-                    span.set_attribute(attrs);
-                }
-            });
-        });
+        // let sd = sdk::SpanData::from(span_data);
+        // for event in sd.events.events {
+        //     child.add_event(event.name, event.attributes);
+        // }
+        // for attrs in sd.attributes {
+        //     child.set_attribute(attrs);
+        // }
 
         Ok(())
     }
