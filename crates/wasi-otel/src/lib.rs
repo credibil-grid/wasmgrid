@@ -1,12 +1,11 @@
 //! # WASI OpenTelemetry
 //!
-//! This module provides bindings for the OpenTelemetry specification in the
-//! context of WebAssembly System Interface (WASI) components.
+//! This module provides bindings for the OpenTelemetry specification
+//! (wasi:otel) in the context of WebAssembly System Interface (WASI)
+//! components.
 
 mod generated {
     #![allow(clippy::trait_duplication_in_bounds)]
-
-    // pub use super::{Container, IncomingValue, OutgoingValue, StreamObjectNames};
 
     wasmtime::component::bindgen!({
         world: "otel",
@@ -17,35 +16,30 @@ mod generated {
     });
 }
 
+use std::marker::PhantomData;
 use std::time::SystemTime;
 
 use anyhow::Result;
 use opentelemetry::trace as otel;
 use opentelemetry::trace::TraceContextExt;
 use opentelemetry_sdk::trace as sdk;
-use resources::Resources;
 use runtime::Linkable;
 use tracing::Span;
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 use wasi_core::Ctx;
 use wasmtime::component::{HasData, Linker};
-use wasmtime_wasi::ResourceTable;
 
 use self::generated::wasi::otel as wasi_otel;
 use self::generated::wasi::otel::tracing::{self as wasi};
 
-// pub type Result<T, E = Error> = anyhow::Result<T, E>;
-
 pub struct Otel<'a> {
-    _resources: &'a Resources,
-    _table: &'a mut ResourceTable,
+    _phantom: PhantomData<&'a ()>,
 }
 
 impl Otel<'_> {
-    const fn new(c: &mut Ctx) -> Otel<'_> {
+    const fn new(_: &mut Ctx) -> Otel<'_> {
         Otel {
-            _resources: &c.resources,
-            _table: &mut c.table,
+            _phantom: PhantomData,
         }
     }
 }
@@ -66,43 +60,35 @@ impl Linkable for Service {
     }
 }
 
+use opentelemetry::trace::Tracer;
+use opentelemetry::{KeyValue, global};
+
 impl wasi_otel::tracing::Host for Otel<'_> {
     async fn on_start(&mut self, _span: wasi::SpanData, _parent: wasi::SpanContext) -> Result<()> {
-        // if self.is_shutdown.load(Ordering::Relaxed) {
-        //     return;
-        // }
         Ok(())
     }
 
-    async fn on_end(&mut self, span: wasi::SpanData) -> Result<()> {
-        // if self.is_shutdown.load(Ordering::Relaxed) {
-        //     return;
-        // }
+    async fn on_end(&mut self, span_data: wasi::SpanData) -> Result<()> {
+        // TODO: export SpanData directory
 
-        // use tracing::instrument::WithSubscriber;
-        // use opentelemetry::global::ObjectSafeSpan;
-        // use opentelemetry::global;
-        // use opentelemetry::trace::Tracer;
-
-        let _span_data = sdk::SpanData::from(span);
-
+        let sd = sdk::SpanData::from(span_data);
         let span = Span::current();
-        let ctx = span.context();
-        let span_ref = ctx.span();
-        span_ref.end();
+        let name = span.metadata().unwrap().name();
 
-        // let tracer = global::tracer("http");
-        // let sub_span = tracer.start_with_context(span_data.name, &ctx);
-        // let sub_span_ref = ctx.span();
-        // sub_span_ref.add_event("test-sub_span_ref", vec![]);
-        // for a in span_data.attributes {
-        //     sub_span_ref.set_attribute(a);
-        // }
-        // for e in span_data.events {
-        //     sub_span_ref.add_event(e.name, e.attributes);
-        // }
-        // sub_span_ref.end();
-        // span_ref.end();
+        let tracer = global::tracer("");
+        tracer.in_span(format!("host:{}", name), |cx| {
+            tracer.in_span(format!("host:{}", sd.name), |cx| {
+                let span = cx.span();
+
+                for event in sd.events.events {
+                    span.add_event(event.name, event.attributes);
+                }
+                for attrs in sd.attributes {
+                    println!("attr: {:?}", attrs);
+                    span.set_attribute(attrs);
+                }
+            });
+        });
 
         Ok(())
     }

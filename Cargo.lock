@@ -3293,8 +3293,18 @@ name = "sdk-otel"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-trait",
+ "bytes",
+ "http 1.3.1",
  "opentelemetry",
+ "opentelemetry-http",
+ "opentelemetry-otlp",
  "opentelemetry_sdk",
+ "sdk-http",
+ "serde",
+ "tracing",
+ "tracing-opentelemetry",
+ "tracing-subscriber",
  "wit-bindgen",
 ]
 
@@ -4417,13 +4427,11 @@ dependencies = [
  "anyhow",
  "opentelemetry",
  "opentelemetry_sdk",
- "resources",
  "runtime",
  "tracing",
  "tracing-opentelemetry",
  "wasi-core",
  "wasmtime",
- "wasmtime-wasi",
 ]
 
 [[package]]

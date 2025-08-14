@@ -12,6 +12,17 @@ workspace = true
 
 [dependencies]
 anyhow.workspace = true
-opentelemetry = "0.30.0"
-opentelemetry_sdk = { version = "0.30.0" }
 wit-bindgen = "0.44.0"
+
+async-trait = "0.1.88"
+bytes.workspace = true
+http.workspace = true
+opentelemetry = "0.30.0"
+opentelemetry-http = { version = "0.30.0", default-features = false }
+opentelemetry-otlp = { version = "0.30.0", default-features = false, features = ["http-proto", "trace"] }
+opentelemetry_sdk = "0.30.0"
+sdk-http.workspace = true
+serde.workspace = true
+tracing.workspace = true
+tracing-opentelemetry = "0.31.0"
+tracing-subscriber = { workspace = true, features = ["env-filter"] }

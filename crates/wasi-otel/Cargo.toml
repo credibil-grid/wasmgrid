@@ -13,12 +13,9 @@ workspace = true
 [dependencies]
 anyhow.workspace = true
 opentelemetry = "0.30.0"
-opentelemetry_sdk = { version = "0.30.0" }
-resources.workspace = true
+opentelemetry_sdk = "0.30.0"
 runtime.workspace = true
 tracing.workspace = true
 tracing-opentelemetry = "0.31.0"
-wasmtime.workspace = true
-wasmtime-wasi.workspace = true
-
 wasi-core.workspace = true
+wasmtime.workspace = true
