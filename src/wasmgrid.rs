@@ -4,7 +4,7 @@ use std::env;
 use std::path::PathBuf;
 
 use anyhow::{Context, Result, anyhow};
-use credibil_telemetry::Otel;
+use credibil_otel::Otel;
 use dotenv::dotenv;
 use runtime::{Cli, Command, Parser, Runtime};
 use tracing::instrument;

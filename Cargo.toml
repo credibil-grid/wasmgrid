@@ -27,7 +27,7 @@ compile = ["runtime/compile"] # adds cranelift (+ ~4Mb)
 
 [dependencies]
 anyhow.workspace = true
-credibil-telemetry.workspace = true
+credibil-otel.workspace = true
 dotenv = "0.15.0"
 runtime.workspace = true
 tokio.workspace = true
@@ -97,4 +97,8 @@ wasmtime-wasi-io = "35.0.0"
 wit-bindings = { path = "crates/wit-bindings" }
 
 credibil-encoding = { git = "https://github.com/credibil/core.git" }
-credibil-telemetry = { git = "https://github.com/credibil/core.git" }
+credibil-otel = { git = "https://github.com/credibil/core.git" }
+
+[patch."https://github.com/credibil/core.git"]
+# credibil-core = { path = "../core" }
+credibil-otel = { path = "../../credibil/core/crates/otel" }
