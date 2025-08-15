@@ -1,3 +1,7 @@
+//! # HTTP SDK
+//!
+//! WASM component (guest) HTTP SDK.
+
 mod client;
 mod error;
 mod router;

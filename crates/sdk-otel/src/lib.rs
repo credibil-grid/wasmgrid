@@ -1,11 +1,8 @@
-//! # WASI OpenTelemetry
+//! # OpenTelemetry SDK
 //!
-//! This module provides bindings for the OpenTelemetry specification in the
-//! context of WebAssembly System Interface (WASI) components.
+//! WASM component (guest) OpenTelemetry SDK.
 
 pub mod tracing;
-
-// pub use self::tracing::*;
 
 pub mod generated {
     wit_bindgen::generate!({
