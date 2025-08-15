@@ -79,9 +79,6 @@ impl Linkable for Service {
     }
 }
 
-// use opentelemetry::global;
-// use opentelemetry::trace::{self, Span as _, Status, Tracer, TracerProvider};
-
 impl wasi_otel::tracing::Host for Otel<'_> {
     async fn on_start(&mut self, _span: wasi::SpanData, _parent: wasi::SpanContext) -> Result<()> {
         Ok(())

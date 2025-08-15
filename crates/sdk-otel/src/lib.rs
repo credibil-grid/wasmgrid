@@ -3,8 +3,14 @@
 //! This module provides bindings for the OpenTelemetry specification in the
 //! context of WebAssembly System Interface (WASI) components.
 
-mod init;
-mod propagate;
+pub mod tracing;
 
-pub use self::init::*;
-pub use self::propagate::*;
+// pub use self::tracing::*;
+
+pub mod generated {
+    wit_bindgen::generate!({
+        world: "otel",
+        path: "../../wit",
+        generate_all,
+    });
+}

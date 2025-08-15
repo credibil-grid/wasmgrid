@@ -1,47 +1,14 @@
-//! # WASI OpenTelemetry
-//!
-//! This module provides bindings for the OpenTelemetry specification in the
-//! context of WebAssembly System Interface (WASI) components.
-
-pub mod generated {
-    wit_bindgen::generate!({
-        world: "otel",
-        path: "../../wit",
-        generate_all,
-    });
-}
-
-// mod convert;
+//! # Tracing
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, UNIX_EPOCH};
 
 use anyhow::Result;
-use opentelemetry::trace::TraceContextExt;
 use opentelemetry::{Context, trace as otel};
 use opentelemetry_sdk::error::OTelSdkError;
 use opentelemetry_sdk::trace as sdk;
 
-use self::generated::wasi::otel::tracing as wasi;
-
-pub trait Propagator {
-    fn extract(&self, cx: &Context) -> Context;
-}
-
-#[derive(Default)]
-pub struct ContextPropagator;
-
-impl ContextPropagator {
-    pub fn new() -> Self {
-        Self
-    }
-}
-
-impl Propagator for ContextPropagator {
-    fn extract(&self, ctx: &Context) -> Context {
-        ctx.with_remote_span_context(wasi::current_span_context().into())
-    }
-}
+use crate::generated::wasi::otel::tracing as wasi;
 
 #[derive(Debug, Default)]
 pub struct Processor {
