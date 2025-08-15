@@ -1,5 +1,7 @@
 use axum::routing::post;
 use axum::{Json, Router};
+use opentelemetry::trace::{TraceContextExt, Tracer};
+use opentelemetry::{KeyValue, global};
 use sdk_http::Result;
 use sdk_otel::Otel;
 use serde_json::{Value, json};
@@ -8,40 +10,25 @@ use wasi::http::types::{IncomingRequest, ResponseOutparam};
 
 struct HttpGuest;
 
-// use opentelemetry::trace::TracerProvider;
-// use opentelemetry_sdk::trace::SdkTracerProvider;
-// use tracing_subscriber::layer::SubscriberExt;
-// use tracing_subscriber::registry;
-// use tracing_subscriber::util::SubscriberInitExt;
-
 impl Guest for HttpGuest {
     fn handle(request: IncomingRequest, response: ResponseOutparam) {
-        // // Set up a tracer using the WASI processor
-        // let processor = sdk_otel::Processor::new();
-        // let provider = SdkTracerProvider::builder().with_span_processor(processor).build();
-        // let tracer = provider.tracer("otel");
-
-        // // Create a tracing layer with the configured tracer and setup the subscriber
-        // let tracing_layer = tracing_opentelemetry::layer().with_tracer(tracer);
-        // registry().with(tracing_layer).try_init().unwrap();
-
         // get host context
         let timer = std::time::SystemTime::now();
         let _guard = Otel::new("otel").with_host_context().expect("initializing telemetry");
-        println!("time: {:?}", timer.elapsed());
+        println!("otel init time: {:?}", timer.elapsed());
 
-        // let tracer = global::tracer("basic-spin");
-        // tracer.in_span("main-operation", |cx| {
-        //     let span = cx.span();
-        //     span.set_attribute(KeyValue::new("my-attribute", "my-value"));
-        //     span.add_event("Main span event".to_string(), vec![KeyValue::new("foo", "1")]);
-        //     tracer.in_span("child-operation", |cx| {
-        //         let span = cx.span();
-        //         span.add_event("Sub span event", vec![KeyValue::new("bar", "1")]);
-        //         // let store = Store::open_default().unwrap();
-        //         // store.set("foo", "bar".as_bytes()).unwrap();
-        //     });
-        // });
+        let tracer = global::tracer("basic-spin");
+        tracer.in_span("main-operation", |cx| {
+            let span = cx.span();
+            span.set_attribute(KeyValue::new("my-attribute", "my-value"));
+            span.add_event("Main span event".to_string(), vec![KeyValue::new("foo", "1")]);
+            tracer.in_span("child-operation", |cx| {
+                let span = cx.span();
+                span.add_event("Sub span event", vec![KeyValue::new("bar", "1")]);
+                // let store = Store::open_default().unwrap();
+                // store.set("foo", "bar".as_bytes()).unwrap();
+            });
+        });
 
         let out = tracing::debug_span!("handle request").in_scope(|| {
             tracing::info!("received request");

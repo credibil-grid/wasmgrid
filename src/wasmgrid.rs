@@ -34,7 +34,7 @@ pub async fn main() -> Result<()> {
             let Some((prefix, _)) = name.split_once('.') else {
                 return Err(anyhow!("file name does not have an extension"));
             };
-            Otel::new(prefix).init().context("initializing telemetry")?;
+            Otel::new(prefix).build().context("initializing telemetry")?;
 
             // run until shutdown
             start(&wasm)?.shutdown().await

@@ -2,8 +2,7 @@
 //!
 //! This module implements the `wasmtime_wasi::StdoutStream` and
 //! `wasmtime_wasi::StderrStream` traits to capture the output of the guest's
-//! stdout and stderr streams. This is useful for debugging purposes, as it
-//! allows us to see the output of the guest's code in the host's console.
+//! stdout and stderr streams.
 
 use anyhow::anyhow;
 use bytes::Bytes;
