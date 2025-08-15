@@ -1,20 +1,13 @@
 use axum::routing::post;
 use axum::{Json, Router};
-use opentelemetry::global;
+use opentelemetry::trace::{TraceContextExt, Tracer};
+use opentelemetry::{KeyValue, global};
 use sdk_http::Result;
 use serde_json::{Value, json};
 use wasi::exports::http::incoming_handler::Guest;
 use wasi::http::types::{IncomingRequest, ResponseOutparam};
 
 struct HttpGuest;
-
-use opentelemetry::KeyValue;
-use opentelemetry::trace::{TraceContextExt, Tracer};
-// use opentelemetry_sdk::trace::SdkTracerProvider;
-// use sdk_otel::tracing::{Processor, Propagator};
-// use tracing_subscriber::layer::SubscriberExt;
-// use tracing_subscriber::registry;
-// use tracing_subscriber::util::SubscriberInitExt;
 
 impl Guest for HttpGuest {
     fn handle(request: IncomingRequest, response: ResponseOutparam) {
