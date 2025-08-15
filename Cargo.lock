@@ -2488,10 +2488,13 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "opentelemetry",
+ "opentelemetry_sdk",
  "sdk-http",
  "sdk-otel",
  "serde_json",
  "tracing",
+ "tracing-opentelemetry",
+ "tracing-subscriber",
  "wasi 0.14.2+wasi-0.2.4",
 ]
 
@@ -4418,6 +4421,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "opentelemetry",
+ "opentelemetry-otlp",
  "opentelemetry_sdk",
  "runtime",
  "tracing",

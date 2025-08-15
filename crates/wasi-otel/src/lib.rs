@@ -20,27 +20,44 @@ use std::marker::PhantomData;
 use std::time::SystemTime;
 
 use anyhow::Result;
-use opentelemetry::trace as otel;
-use opentelemetry::trace::TraceContextExt;
-use opentelemetry_sdk::trace as sdk;
+use opentelemetry::KeyValue;
+use opentelemetry::trace::{self as otel, TraceContextExt};
+use opentelemetry_otlp::SpanExporter;
+use opentelemetry_sdk::trace::SpanExporter as _;
+use opentelemetry_sdk::{Resource, trace as sdk};
 use runtime::Linkable;
 use tracing::Span;
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 use wasi_core::Ctx;
 use wasmtime::component::{HasData, Linker};
 
-// use opentelemetry::trace::Tracer;
-// use opentelemetry::{KeyValue, global};
 use self::generated::wasi::otel as wasi_otel;
 use self::generated::wasi::otel::tracing::{self as wasi};
 
 pub struct Otel<'a> {
+    exporter: SpanExporter,
     _phantom: PhantomData<&'a ()>,
 }
 
 impl Otel<'_> {
-    const fn new(_: &mut Ctx) -> Otel<'_> {
+    fn new(_: &mut Ctx) -> Otel<'_> {
+        let mut exporter =
+            SpanExporter::builder().with_tonic().build().expect("should build exporter");
+        let resource = Resource::builder()
+            .with_service_name("otel")
+            .with_attributes(vec![
+                KeyValue::new("deployment.environment", "unknown"),
+                KeyValue::new("service.namespace", "otel"),
+                KeyValue::new("service.version", env!("CARGO_PKG_VERSION")),
+                KeyValue::new("service.instance.id", "unknown"),
+                KeyValue::new("telemetry.sdk.name", "opentelemetry"),
+                KeyValue::new("instrumentation.provider", "opentelemetry"),
+            ])
+            .build();
+        exporter.set_resource(&resource);
+
         Otel {
+            exporter,
             _phantom: PhantomData,
         }
     }
@@ -70,23 +87,8 @@ impl wasi_otel::tracing::Host for Otel<'_> {
         Ok(())
     }
 
-    async fn on_end(&mut self, _span_data: wasi::SpanData) -> Result<()> {
-        // TODO: export SpanData directory
-
-        // let ctx = Span::current().context();
-        // println!("current span context: {:?}", ctx);
-
-        // let mut child = tracer("wasm").start_with_context("child2", &ctx);
-        // println!("child span: {:?}\n", child.end_with_timestamp(SystemTime::now()));
-
-        // let sd = sdk::SpanData::from(span_data);
-        // for event in sd.events.events {
-        //     child.add_event(event.name, event.attributes);
-        // }
-        // for attrs in sd.attributes {
-        //     child.set_attribute(attrs);
-        // }
-
+    async fn on_end(&mut self, span_data: wasi::SpanData) -> Result<()> {
+        self.exporter.export(vec![sdk::SpanData::from(span_data)]).await?;
         Ok(())
     }
 

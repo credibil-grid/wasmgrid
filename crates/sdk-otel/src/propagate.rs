@@ -8,7 +8,6 @@ pub mod generated {
         world: "otel",
         path: "../../wit",
         generate_all,
-        // pub_export_macro: true
     });
 }
 

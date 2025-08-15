@@ -1,34 +1,46 @@
 use axum::routing::post;
 use axum::{Json, Router};
-use opentelemetry::trace::{TraceContextExt, Tracer};
-use opentelemetry::{KeyValue, global};
+use opentelemetry::global;
 use sdk_http::Result;
-use sdk_otel::Otel;
 use serde_json::{Value, json};
 use wasi::exports::http::incoming_handler::Guest;
 use wasi::http::types::{IncomingRequest, ResponseOutparam};
 
 struct HttpGuest;
 
+use opentelemetry::trace::{TraceContextExt, Tracer, TracerProvider};
+use opentelemetry::{Context, KeyValue};
+use opentelemetry_sdk::trace::SdkTracerProvider;
+use sdk_otel::Propagator;
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::registry;
+use tracing_subscriber::util::SubscriberInitExt;
+
 impl Guest for HttpGuest {
     fn handle(request: IncomingRequest, response: ResponseOutparam) {
-        // get host context
-        let timer = std::time::SystemTime::now();
-        let _guard = Otel::new("otel").with_host_context().expect("initializing telemetry");
-        println!("otel init time: {:?}", timer.elapsed());
+        let processor = sdk_otel::Processor::new();
+        let provider = SdkTracerProvider::builder().with_span_processor(processor).build();
+        // tracing layer is required by tracer::xxx_span! macros
+        let tracer = provider.tracer("otel-tracing");
+        let layer = tracing_opentelemetry::layer().with_tracer(tracer);
+        registry().with(layer).try_init().unwrap();
+        // set a global tracer provider
+        global::set_tracer_provider(provider);
 
-        let tracer = global::tracer("basic-spin");
+        // basic span
+        let tracer = global::tracer("basic");
         tracer.in_span("main-operation", |cx| {
             let span = cx.span();
             span.set_attribute(KeyValue::new("my-attribute", "my-value"));
-            span.add_event("Main span event".to_string(), vec![KeyValue::new("foo", "1")]);
+            span.add_event("main span event", vec![KeyValue::new("foo", "1")]);
             tracer.in_span("child-operation", |cx| {
-                let span = cx.span();
-                span.add_event("Sub span event", vec![KeyValue::new("bar", "1")]);
-                // let store = Store::open_default().unwrap();
-                // store.set("foo", "bar".as_bytes()).unwrap();
+                cx.span().add_event("sub span event", vec![KeyValue::new("bar", "1")]);
             });
         });
+
+        // inject remote (host) context
+        let propagator = sdk_otel::ContextPropagator::new();
+        let _guard = propagator.extract(&Context::current()).attach();
 
         let out = tracing::debug_span!("handle request").in_scope(|| {
             tracing::info!("received request");
