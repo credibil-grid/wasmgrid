@@ -1,7 +1,7 @@
 //! # Tracing
 
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::Duration;
 
 use anyhow::Result;
 use opentelemetry::trace::{TraceContextExt, TracerProvider};
@@ -13,11 +13,11 @@ use tracing_subscriber::Registry;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
-use crate::generated::wasi::otel::{tracing as wasi, types};
+use crate::generated::wasi::otel::tracing as wasi;
 
 // TODO: handle initialization error
 pub fn init() {
-    let processor = SpanProcessor::new();
+    let processor = Processor::new();
     let provider = SdkTracerProvider::builder().with_span_processor(processor).build();
 
     // tracing layer is required by `tracer::xxx_span!` macros
@@ -59,18 +59,18 @@ impl From<wasi::TraceFlags> for otel::TraceFlags {
 }
 
 #[derive(Debug, Default)]
-pub struct SpanProcessor {
+pub struct Processor {
     is_shutdown: AtomicBool,
 }
 
-impl SpanProcessor {
-    /// Create a new `SpanProcessor`.
+impl Processor {
+    /// Create a new `Processor`.
     pub fn new() -> Self {
         Self::default()
     }
 }
 
-impl sdk::SpanProcessor for SpanProcessor {
+impl sdk::SpanProcessor for Processor {
     fn on_start(&self, span: &mut sdk::Span, _: &Context) {
         if self.is_shutdown.load(Ordering::Relaxed) {
             return;
@@ -95,163 +95,8 @@ impl sdk::SpanProcessor for SpanProcessor {
         Ok(())
     }
 
-    fn shutdown(&self) -> Result<(), OTelSdkError> {
-        self.force_flush()
-    }
-
     fn shutdown_with_timeout(&self, _: Duration) -> Result<(), OTelSdkError> {
-        unimplemented!("`shutdown_with_timeout` is not implemented");
-    }
-}
-
-impl From<sdk::SpanData> for wasi::SpanData {
-    fn from(value: sdk::SpanData) -> Self {
-        Self {
-            span_context: value.span_context.into(),
-            parent_span_id: value.parent_span_id.to_string(),
-            span_kind: value.span_kind.into(),
-            name: value.name.to_string(),
-            start_time: value.start_time.into(),
-            end_time: value.end_time.into(),
-            attributes: value.attributes.into_iter().map(Into::into).collect(),
-            events: value.events.events.into_iter().map(Into::into).collect(),
-            links: value.links.links.into_iter().map(Into::into).collect(),
-            status: value.status.into(),
-            instrumentation_scope: value.instrumentation_scope.into(),
-            dropped_attributes: value.dropped_attributes_count,
-            dropped_events: value.events.dropped_count,
-            dropped_links: value.links.dropped_count,
-        }
-    }
-}
-
-impl From<otel::SpanContext> for wasi::SpanContext {
-    fn from(value: otel::SpanContext) -> Self {
-        Self {
-            trace_id: format!("{:x}", value.trace_id()),
-            span_id: format!("{:x}", value.span_id()),
-            trace_flags: value.trace_flags().into(),
-            is_remote: value.is_remote(),
-            trace_state: value
-                .trace_state()
-                .header()
-                .split(',')
-                .filter_map(|s| {
-                    if let Some((key, value)) = s.split_once('=') {
-                        Some((key.to_string(), value.to_string()))
-                    } else {
-                        None
-                    }
-                })
-                .collect(),
-        }
-    }
-}
-
-impl From<otel::TraceFlags> for wasi::TraceFlags {
-    fn from(value: otel::TraceFlags) -> Self {
-        if value.is_sampled() { wasi::TraceFlags::SAMPLED } else { wasi::TraceFlags::empty() }
-    }
-}
-
-impl From<otel::SpanKind> for wasi::SpanKind {
-    fn from(value: otel::SpanKind) -> Self {
-        match value {
-            otel::SpanKind::Client => Self::Client,
-            otel::SpanKind::Server => Self::Server,
-            otel::SpanKind::Producer => Self::Producer,
-            otel::SpanKind::Consumer => Self::Consumer,
-            otel::SpanKind::Internal => Self::Internal,
-        }
-    }
-}
-
-impl From<SystemTime> for wasi::Datetime {
-    fn from(value: SystemTime) -> Self {
-        let duration_since_epoch =
-            value.duration_since(UNIX_EPOCH).expect("SystemTime should be after UNIX EPOCH");
-        Self {
-            seconds: duration_since_epoch.as_secs(),
-            nanoseconds: duration_since_epoch.subsec_nanos(),
-        }
-    }
-}
-
-impl From<opentelemetry::KeyValue> for types::KeyValue {
-    fn from(value: opentelemetry::KeyValue) -> Self {
-        Self {
-            key: value.key.to_string(),
-            value: value.value.into(),
-        }
-    }
-}
-
-impl From<&opentelemetry::KeyValue> for types::KeyValue {
-    fn from(value: &opentelemetry::KeyValue) -> Self {
-        Self {
-            key: value.key.to_string(),
-            value: value.value.clone().into(),
-        }
-    }
-}
-
-impl From<opentelemetry::Value> for types::Value {
-    fn from(value: opentelemetry::Value) -> Self {
-        match value {
-            opentelemetry::Value::Bool(v) => Self::Bool(v),
-            opentelemetry::Value::I64(v) => Self::S64(v),
-            opentelemetry::Value::F64(v) => Self::F64(v),
-            opentelemetry::Value::String(v) => Self::String(v.to_string()),
-            opentelemetry::Value::Array(v) => match v {
-                opentelemetry::Array::Bool(items) => Self::BoolArray(items),
-                opentelemetry::Array::I64(items) => Self::S64Array(items),
-                opentelemetry::Array::F64(items) => Self::F64Array(items),
-                opentelemetry::Array::String(items) => {
-                    Self::StringArray(items.into_iter().map(Into::into).collect())
-                }
-                _ => unimplemented!(),
-            },
-            _ => unimplemented!(),
-        }
-    }
-}
-
-impl From<otel::Event> for wasi::Event {
-    fn from(value: otel::Event) -> Self {
-        Self {
-            name: value.name.to_string(),
-            time: value.timestamp.into(),
-            attributes: value.attributes.into_iter().map(Into::into).collect(),
-        }
-    }
-}
-
-impl From<otel::Link> for wasi::Link {
-    fn from(value: otel::Link) -> Self {
-        Self {
-            span_context: value.span_context.into(),
-            attributes: value.attributes.into_iter().map(Into::into).collect(),
-        }
-    }
-}
-
-impl From<otel::Status> for wasi::Status {
-    fn from(value: otel::Status) -> Self {
-        match value {
-            otel::Status::Unset => Self::Unset,
-            otel::Status::Error { description } => Self::Error(description.to_string()),
-            otel::Status::Ok => Self::Ok,
-        }
-    }
-}
-
-impl From<opentelemetry::InstrumentationScope> for wasi::InstrumentationScope {
-    fn from(value: opentelemetry::InstrumentationScope) -> Self {
-        Self {
-            name: value.name().to_string(),
-            version: value.version().map(Into::into),
-            schema_url: value.schema_url().map(Into::into),
-            attributes: value.attributes().map(Into::into).collect(),
-        }
+        self.is_shutdown.store(true, Ordering::Relaxed);
+        self.force_flush()
     }
 }

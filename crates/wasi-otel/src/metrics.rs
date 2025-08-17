@@ -5,7 +5,7 @@
 // use anyhow::Result;
 use opentelemetry_otlp::MetricExporter;
 use opentelemetry_sdk::error::OTelSdkError;
-use opentelemetry_sdk::metrics as sdk;
+use opentelemetry_sdk::metrics::data as sdk;
 use opentelemetry_sdk::metrics::exporter::PushMetricExporter;
 
 use crate::Otel;
@@ -13,18 +13,12 @@ use crate::generated::wasi::otel::metrics::{self as wm};
 use crate::generated::wasi::otel::types;
 
 impl wm::Host for Otel<'_> {
-    async fn collect(&mut self, rm: wm::ResourceMetrics) -> Result<(), types::Error> {
+    async fn export(&mut self, rm: wm::ResourceMetrics) -> Result<(), types::Error> {
         let exporter =
             MetricExporter::builder().with_tonic().build().expect("should build exporter");
-        exporter.export(&sdk::data::ResourceMetrics::from(rm)).await?;
+        exporter.export(&sdk::ResourceMetrics::from(rm)).await?;
         Ok(())
     }
-
-    // async fn output_temporality(
-    //     &mut self, kind: wm::InstrumentKind,
-    // ) -> wasmtime::Result<wm::Temporality> {
-    //     todo!()
-    // }
 }
 
 impl types::Host for Otel<'_> {
@@ -34,7 +28,7 @@ impl types::Host for Otel<'_> {
     }
 }
 
-impl From<wm::ResourceMetrics> for sdk::data::ResourceMetrics {
+impl From<wm::ResourceMetrics> for sdk::ResourceMetrics {
     fn from(_rm: wm::ResourceMetrics) -> Self {
         todo!()
     }

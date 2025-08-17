@@ -95,6 +95,7 @@ wasmtime = { version = "35.0.0", default-features = false, features = ["componen
 wasmtime-wasi = "35.0.0"
 wasmtime-wasi-http = "35.0.0"
 wasmtime-wasi-io = "35.0.0"
+# wasmtime-wasi-threads = "35.0.0"
 wit-bindings = { path = "crates/wit-bindings" }
 
 credibil-encoding = { git = "https://github.com/credibil/core.git" }

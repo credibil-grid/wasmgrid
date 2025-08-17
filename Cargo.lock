@@ -3285,6 +3285,7 @@ name = "sdk-otel"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "num-traits",
  "opentelemetry",
  "opentelemetry_sdk",
  "tracing-opentelemetry",

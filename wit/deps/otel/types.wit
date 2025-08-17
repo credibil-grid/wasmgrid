@@ -1,5 +1,4 @@
 interface types {
-
     /// A key-value pair describing an attribute.
     record key-value {
         /// The attribute name.

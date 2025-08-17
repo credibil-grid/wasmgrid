@@ -2,25 +2,12 @@ interface metrics {
     use wasi:clocks/wall-clock@0.2.6.{datetime};
     use types.{error, key, value, key-value, instrumentation-scope};
 
-    // /// Registers a [MetricReader] with a [Pipeline].
-    // ///
-    // /// The pipeline argument allows the `MetricReader` to signal the sdk to collect
-    // /// and send aggregated metric measurements.
-    // register-pipeline: func(pipeline: pipeline);
-
     /// Gathers and returns all metric data related to the [MetricReader] from the
     /// SDK and stores it in the provided [ResourceMetrics] reference.
     ///
     /// An error is returned if this is called after shutdown.
-    collect: func(rm: resource-metrics) -> result<_, error>;
+    %export: func(rm: resource-metrics) -> result<_, error>;
 
-    // /// The output temporality, a function of instrument kind.
-    // /// This SHOULD be obtained from the exporter.
-    // ///
-    // /// If not configured, the Cumulative temporality SHOULD be used.
-    // output-temporality: func(kind: instrument-kind) -> temporality;
-
-    
     /// A collection of scope metrics and the associated resource that created them.
     record resource-metrics {
         /// The entity that collected the metrics.
@@ -35,7 +22,7 @@ interface metrics {
         attributes: list<key-value>,
 
         /// The `span-id` for this `span-context`.
-        schema-url: string,
+        schema-url: option<string>,
     }
 
     record scope-metrics {

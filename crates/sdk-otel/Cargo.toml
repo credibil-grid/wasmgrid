@@ -8,8 +8,6 @@ version = "0.1.0"
 [lints]
 workspace = true
 
-[features]
-
 [dependencies]
 anyhow.workspace = true
 opentelemetry = "0.30.0"
@@ -19,3 +17,4 @@ tracing-subscriber = { workspace = true, features = ["env-filter"] }
 wit-bindgen = "0.44.0"
 
 wasi.workspace = true
+num-traits = "0.2"
