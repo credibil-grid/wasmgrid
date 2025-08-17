@@ -1,6 +1,6 @@
 //! # WASI Tracing
 
-use std::time::SystemTime;
+// use std::time::SystemTime;
 
 // use anyhow::Result;
 use opentelemetry_otlp::MetricExporter;
@@ -35,7 +35,7 @@ impl types::Host for Otel<'_> {
 }
 
 impl From<wm::ResourceMetrics> for sdk::data::ResourceMetrics {
-    fn from(span: wm::ResourceMetrics) -> Self {
+    fn from(_rm: wm::ResourceMetrics) -> Self {
         todo!()
     }
 }

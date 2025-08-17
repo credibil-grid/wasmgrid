@@ -3285,12 +3285,11 @@ name = "sdk-otel"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "chrono",
  "opentelemetry",
  "opentelemetry_sdk",
- "timer",
  "tracing-opentelemetry",
  "tracing-subscriber",
+ "wasi 0.14.2+wasi-0.2.4",
  "wit-bindgen",
 ]
 
@@ -3788,15 +3787,6 @@ checksum = "3526739392ec93fd8b359c8e98514cb3e8e021beb4e5f597b00a0221f8ed8a49"
 dependencies = [
  "num-conv",
  "time-core",
-]
-
-[[package]]
-name = "timer"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "31d42176308937165701f50638db1c31586f183f1aab416268216577aec7306b"
-dependencies = [
- "chrono",
 ]
 
 [[package]]
