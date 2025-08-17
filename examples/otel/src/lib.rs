@@ -14,6 +14,14 @@ impl Guest for HttpGuest {
         // inject remote (host) context
         let _guard = sdk_otel::tracing::init_with_context();
 
+        let reader = sdk_otel::metrics::init();
+        let meter = global::meter("my_meter");
+        let counter = meter.u64_counter("my_counter").build();
+        counter.add(1, &[KeyValue::new("message", "my message")]);
+        counter.add(1, &[KeyValue::new("message", "my message")]);
+
+        reader.collect_and_export();
+
         // basic span
         let tracer = global::tracer("basic");
         tracer.in_span("main-operation", |cx| {

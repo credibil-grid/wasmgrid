@@ -2,6 +2,7 @@
 //!
 //! WASM component (guest) OpenTelemetry SDK.
 
+pub mod metrics;
 pub mod tracing;
 
 pub mod generated {

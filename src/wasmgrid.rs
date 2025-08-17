@@ -4,7 +4,7 @@ use std::env;
 use std::path::PathBuf;
 
 use anyhow::{Context, Result, anyhow};
-use credibil_otel::Otel;
+use credibil_otel::Telemetry;
 use dotenv::dotenv;
 use runtime::{Cli, Command, Parser, Runtime};
 use tracing::instrument;
@@ -34,7 +34,7 @@ pub async fn main() -> Result<()> {
             let Some((prefix, _)) = name.split_once('.') else {
                 return Err(anyhow!("file name does not have an extension"));
             };
-            Otel::new(prefix).build().context("initializing telemetry")?;
+            Telemetry::new(prefix).build().context("initializing telemetry")?;
 
             // run until shutdown
             start(&wasm)?.shutdown().await

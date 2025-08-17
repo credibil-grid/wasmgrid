@@ -101,5 +101,4 @@ credibil-encoding = { git = "https://github.com/credibil/core.git" }
 credibil-otel = { git = "https://github.com/credibil/core.git" }
 
 [patch."https://github.com/credibil/core.git"]
-# credibil-core = { path = "../core" }
 credibil-otel = { path = "../../credibil/core/crates/otel" }
