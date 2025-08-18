@@ -14,25 +14,17 @@ use opentelemetry_sdk::metrics::{
 // use wasi::clocks::monotonic_clock::subscribe_duration;
 use crate::generated::wasi::otel::metrics as wasi;
 
-pub fn init() {
+pub fn init() -> Reader {
     let reader = Reader::new();
-    let provider = SdkMeterProvider::builder().with_reader(reader).build();
+    let provider = SdkMeterProvider::builder().with_reader(reader.clone()).build();
     global::set_meter_provider(provider);
+
+    reader
 }
 
 #[derive(Debug, Clone)]
 pub struct Reader {
     inner: Arc<ManualReader>,
-}
-
-impl Drop for Reader {
-    fn drop(&mut self) {
-        let mut rm = ResourceMetrics::default();
-        self.inner.collect(&mut rm).unwrap();
-        println!("Collected ResourceMetrics: {rm:?}");
-
-        wasi::export(&rm.into()).expect("should collect metrics");
-    }
 }
 
 impl Reader {
@@ -63,5 +55,15 @@ impl MetricReader for Reader {
 
     fn shutdown_with_timeout(&self, timeout: Duration) -> OTelSdkResult {
         self.inner.shutdown_with_timeout(timeout)
+    }
+}
+
+impl Drop for Reader {
+    fn drop(&mut self) {
+        let mut rm = ResourceMetrics::default();
+        self.inner.collect(&mut rm).unwrap();
+
+        println!("Collected ResourceMetrics: {rm:?}");
+        wasi::export(&rm.into()).expect("should collect metrics");
     }
 }

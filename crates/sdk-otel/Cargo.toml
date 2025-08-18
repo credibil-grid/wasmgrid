@@ -16,5 +16,7 @@ tracing-opentelemetry = "0.31.0"
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
 wit-bindgen = "0.44.0"
 
-wasi.workspace = true
+bincode = "2.0.1"
+bytemuck = "1.23.2"
 num-traits = "0.2"
+wasi.workspace = true

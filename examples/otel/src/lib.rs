@@ -13,7 +13,7 @@ impl Guest for HttpGuest {
     fn handle(request: IncomingRequest, response: ResponseOutparam) {
         // inject remote (host) context
         let _guard = sdk_otel::tracing::init_with_context();
-        let _ = sdk_otel::metrics::init();
+        let _reader = sdk_otel::metrics::init();
 
         let meter = global::meter("my_meter");
         let counter = meter.u64_counter("my_counter").build();

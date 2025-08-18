@@ -3,8 +3,9 @@
 use std::time::SystemTime;
 
 use anyhow::Result;
-use opentelemetry::trace::TraceContextExt;
-use opentelemetry::trace::{self as otel};
+use opentelemetry::trace::{
+    TraceContextExt, {self as otel},
+};
 use opentelemetry_sdk::trace as sdk;
 use opentelemetry_sdk::trace::SpanExporter as _;
 use tracing::Span;
@@ -15,7 +16,7 @@ use crate::generated::wasi::otel as wasi_otel;
 use crate::generated::wasi::otel::tracing::{self as wt};
 
 impl wasi_otel::tracing::Host for Otel<'_> {
-    async fn on_start(&mut self, _span: wt::SpanData, _parent: wt::SpanContext) -> Result<()> {
+    async fn on_start(&mut self, _: wt::SpanData, _parent: wt::SpanContext) -> Result<()> {
         Ok(())
     }
 

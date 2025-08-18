@@ -1,0 +1,46 @@
+ResourceMetrics { 
+    resource: Resource { 
+        inner: ResourceInner { 
+            attrs: {
+                Static("telemetry.sdk.version"): String(Static("0.30.0")), 
+                Static("telemetry.sdk.name"): String(Static("opentelemetry")), 
+                Static("telemetry.sdk.language"): String(Static("rust")), 
+                Static("service.name"): String(Static("unknown_service"))
+            }, 
+            schema_url: None 
+        } 
+    }, 
+    scope_metrics: [
+        ScopeMetrics { 
+            scope: InstrumentationScope { 
+                name: "my_meter", 
+                version: None, 
+                schema_url: None, 
+                attributes: [] 
+            }, 
+            metrics: [
+                Metric { 
+                    name: "my_counter", 
+                    description: "", 
+                    unit: "", 
+                    data: U64(Sum(Sum { 
+                        data_points: [
+                            SumDataPoint { attributes: [
+                                KeyValue { 
+                                    key: Static("message"), 
+                                    value: String(Static("my message")) 
+                                }], 
+                                value: 2, 
+                                exemplars: [] 
+                            }
+                        ], 
+                        start_time: SystemTime(1755491363.83518s), 
+                        time: SystemTime(1755491363.846257s), 
+                        temporality: Cumulative, 
+                        is_monotonic: true 
+                    }))
+                }
+            ] 
+        }
+    ] 
+}
