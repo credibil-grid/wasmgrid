@@ -63,7 +63,7 @@ impl Drop for Reader {
         let mut rm = ResourceMetrics::default();
         self.inner.collect(&mut rm).unwrap();
 
-        println!("Collected ResourceMetrics: {rm:?}");
+        println!("collected: {rm:?}");
         wasi::export(&rm.into()).expect("should collect metrics");
     }
 }

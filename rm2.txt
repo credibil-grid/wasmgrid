@@ -2,10 +2,10 @@ ResourceMetrics {
     resource: Resource { 
         inner: ResourceInner { 
             attrs: {
-                Static("telemetry.sdk.version"): String(Static("0.30.0")), 
-                Static("telemetry.sdk.name"): String(Static("opentelemetry")), 
-                Static("telemetry.sdk.language"): String(Static("rust")), 
-                Static("service.name"): String(Static("unknown_service"))
+                Owned("telemetry.sdk.language"): String(Static("rust")), 
+                Owned("telemetry.sdk.name"): String(Static("opentelemetry")), 
+                Owned("telemetry.sdk.version"): String(Static("0.30.0")), 
+                Owned("service.name"): String(Static("unknown_service"))
             }, 
             schema_url: None 
         } 
@@ -28,19 +28,25 @@ ResourceMetrics {
                             SumDataPoint { 
                                 attributes: [
                                     KeyValue { 
-                                        key: Static("message"), 
-                                        value: String(Static("my message")) 
+                                        key: Owned("message"), 
+                                        value: String(Owned("my message")) 
                                     }
                                 ], 
                                 value: 2, 
                                 exemplars: [] 
                             }
                         ], 
-                        start_time: SystemTime(1755491363.83518s), 
-                        time: SystemTime(1755491363.846257s), 
+                        start_time: SystemTime { 
+                            tv_sec: 1755504137,
+                            tv_nsec: 604684000 
+                        }, 
+                        time: SystemTime { 
+                            tv_sec: 1755504137, 
+                            tv_nsec: 604718000 
+                        }, 
                         temporality: Cumulative, 
                         is_monotonic: true 
-                    }))
+                    })) 
                 }
             ] 
         }

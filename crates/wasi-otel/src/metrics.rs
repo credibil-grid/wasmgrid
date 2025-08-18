@@ -5,7 +5,7 @@ use std::time::Duration;
 
 use anyhow::Result;
 use opentelemetry::KeyValue;
-use opentelemetry::metrics::{Counter, Meter, MeterProvider};
+use opentelemetry::metrics::{Counter, Gauge, Meter, MeterProvider};
 use opentelemetry_otlp::MetricExporter;
 use opentelemetry_sdk::Resource;
 use opentelemetry_sdk::error::{OTelSdkError, OTelSdkResult};
@@ -32,6 +32,7 @@ impl wm::Host for Otel<'_> {
         let reader = Reader::new();
         let provider =
             SdkMeterProvider::builder().with_resource(resource).with_reader(reader.clone()).build();
+        //
 
         for m in rm.scope_metrics {
             let meter = provider.meter_with_scope(m.scope.into());
@@ -116,8 +117,29 @@ impl MeterWriter {
                         .with_description(metric.description.clone())
                         .with_unit(metric.unit.clone())
                         .build();
-                    SumWriter::new(counter).write_sum(sum)?;
+                    SumWriter::new(counter).write(sum)?;
                 }
+                wm::MetricData::Gauge(gauge) => {
+                    let gauge64 = self
+                        .meter
+                        .u64_gauge(metric.name.clone())
+                        .with_description(metric.description.clone())
+                        .with_unit(metric.unit.clone())
+                        .build();
+                    GaugeWriter::new(gauge64).write(gauge)?;
+                }
+                // wm::MetricData::Histogram(histogram) => {
+                //     let histogram64 = self
+                //         .meter
+                //         .u64_histogram(metric.name.clone())
+                //         .with_description(metric.description.clone())
+                //         .with_unit(metric.unit.clone())
+                //         .build();
+                //     histogram64.record_batch(
+                //         &histogram.data_points.iter().map(|dp| dp.value).collect::<Vec<_>>(),
+                //         &histogram.data_points.iter().map(|dp| dp.attributes.iter().map(|a| KeyValue::new(a.key.clone(), a.value.clone()))).flatten().collect::<Vec<_>>(),
+                //     );
+                // }
                 _ => {}
             },
             _ => {}
@@ -136,8 +158,12 @@ impl SumWriter {
         Self { counter }
     }
 
-    fn write_sum(&self, sum: wm::Sum) -> Result<()> {
-        for dp in sum.data_points {
+    fn write(&self, sum: wm::Sum) -> Result<()> {
+        // let mut data_points = sum.data_points;
+        // sum.data_points.iter().rev()
+        // data_points.reverse();
+
+        for dp in sum.data_points.into_iter().rev() {
             let mut attributes = vec![];
             for attr in dp.attributes {
                 attributes.push(KeyValue::new(attr.key, attr.value));
@@ -146,6 +172,34 @@ impl SumWriter {
             match dp.value {
                 wm::DataValue::U64(value) => {
                     self.counter.add(value, &attributes);
+                }
+                _ => {}
+            }
+        }
+
+        Ok(())
+    }
+}
+
+struct GaugeWriter {
+    gauge: Gauge<u64>,
+}
+
+impl GaugeWriter {
+    fn new(gauge: Gauge<u64>) -> Self {
+        Self { gauge }
+    }
+
+    fn write(&self, gauge: wm::Gauge) -> Result<()> {
+        for dp in gauge.data_points {
+            let mut attributes = vec![];
+            for attr in dp.attributes {
+                attributes.push(KeyValue::new(attr.key, attr.value));
+            }
+
+            match dp.value {
+                wm::DataValue::U64(value) => {
+                    self.gauge.record(value, &attributes);
                 }
                 _ => {}
             }
