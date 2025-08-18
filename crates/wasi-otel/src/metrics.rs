@@ -4,25 +4,19 @@ use std::sync::{Arc, Weak};
 use std::time::Duration;
 
 use anyhow::Result;
-use opentelemetry::KeyValue;
 use opentelemetry::metrics::{Counter, Gauge, Meter, MeterProvider};
 use opentelemetry_otlp::MetricExporter;
 use opentelemetry_sdk::Resource;
 use opentelemetry_sdk::error::{OTelSdkError, OTelSdkResult};
-use opentelemetry_sdk::metrics::data::{AggregatedMetrics, ResourceMetrics};
+use opentelemetry_sdk::metrics::data::ResourceMetrics;
 use opentelemetry_sdk::metrics::exporter::PushMetricExporter;
 use opentelemetry_sdk::metrics::reader::MetricReader;
 use opentelemetry_sdk::metrics::{
-    InstrumentKind, ManualReader, Pipeline, SdkMeterProvider, Temporality, data as sdk,
+    InstrumentKind, ManualReader, Pipeline, SdkMeterProvider, Temporality,
 };
 
 use crate::Otel;
 use crate::generated::wasi::otel::metrics::{self as wm};
-// use crate::generated::wasi::otel::metrics::{
-//     self as wm, AggregatedMetrics, Exemplar, ExponentialHistogram, ExponentialHistogramDataPoint,
-//     Gauge, GaugeDataPoint, Histogram, HistogramDataPoint, Metric, MetricData, ScopeMetrics, Sum,
-//     SumDataPoint,
-// };
 use crate::generated::wasi::otel::types;
 
 impl wm::Host for Otel<'_> {
@@ -38,7 +32,7 @@ impl wm::Host for Otel<'_> {
             let meter = provider.meter_with_scope(m.scope.into());
             let writer = MeterWriter::new(meter.clone());
             for metric in m.metrics {
-                writer.write(metric)?;
+                writer.write(metric);
             }
         }
 
@@ -103,81 +97,80 @@ struct MeterWriter {
 }
 
 impl MeterWriter {
-    fn new(meter: Meter) -> Self {
+    const fn new(meter: Meter) -> Self {
         Self { meter }
     }
 
-    fn write(&self, metric: wm::Metric) -> Result<()> {
+    fn write(&self, metric: wm::Metric) {
         match metric.data {
             wm::AggregatedMetrics::U64(data) => match data {
                 wm::MetricData::Sum(sum) => {
                     let counter = self
                         .meter
-                        .u64_counter(metric.name.clone())
-                        .with_description(metric.description.clone())
-                        .with_unit(metric.unit.clone())
+                        .u64_counter(metric.name)
+                        .with_description(metric.description)
+                        .with_unit(metric.unit)
                         .build();
-                    SumWriter::new(counter).write(sum)?;
+                    SumWriter::new(CounterType::U64(counter)).write(sum);
                 }
                 wm::MetricData::Gauge(gauge) => {
                     let gauge64 = self
                         .meter
-                        .u64_gauge(metric.name.clone())
-                        .with_description(metric.description.clone())
-                        .with_unit(metric.unit.clone())
+                        .u64_gauge(metric.name)
+                        .with_description(metric.description)
+                        .with_unit(metric.unit)
                         .build();
-                    GaugeWriter::new(gauge64).write(gauge)?;
+                    GaugeWriter::new(gauge64).write(gauge);
                 }
-                // wm::MetricData::Histogram(histogram) => {
-                //     let histogram64 = self
-                //         .meter
-                //         .u64_histogram(metric.name.clone())
-                //         .with_description(metric.description.clone())
-                //         .with_unit(metric.unit.clone())
-                //         .build();
-                //     histogram64.record_batch(
-                //         &histogram.data_points.iter().map(|dp| dp.value).collect::<Vec<_>>(),
-                //         &histogram.data_points.iter().map(|dp| dp.attributes.iter().map(|a| KeyValue::new(a.key.clone(), a.value.clone()))).flatten().collect::<Vec<_>>(),
-                //     );
-                // }
-                _ => {}
+                wm::MetricData::Histogram(_) => {
+                    unimplemented!("Histogram is not supported");
+                }
+                wm::MetricData::ExponentialHistogram(_) => {
+                    unimplemented!("ExponentialHistogram is not supported");
+                }
             },
             _ => {}
         }
-
-        Ok(())
     }
+}
+
+enum CounterType {
+    U64(Counter<u64>),
+    S64(Counter<i64>),
+    F64(Counter<f64>),
 }
 
 struct SumWriter {
-    counter: Counter<u64>,
+    counter: CounterType,
 }
 
 impl SumWriter {
-    fn new(counter: Counter<u64>) -> Self {
+    const fn new(counter: CounterType) -> Self {
         Self { counter }
     }
 
-    fn write(&self, sum: wm::Sum) -> Result<()> {
-        // let mut data_points = sum.data_points;
-        // sum.data_points.iter().rev()
-        // data_points.reverse();
-
+    fn write(&self, sum: wm::Sum) {
         for dp in sum.data_points.into_iter().rev() {
-            let mut attributes = vec![];
-            for attr in dp.attributes {
-                attributes.push(KeyValue::new(attr.key, attr.value));
-            }
+            let attributes = dp.attributes.iter().map(Into::into).collect::<Vec<_>>();
 
             match dp.value {
                 wm::DataValue::U64(value) => {
-                    self.counter.add(value, &attributes);
+                    if let CounterType::U64(counter) = &self.counter {
+                        counter.add(value, &attributes);
+                    }
                 }
-                _ => {}
+                wm::DataValue::S64(value) => {
+                    if let CounterType::S64(counter) = &self.counter {
+                        counter.add(value, &attributes);
+                    }
+                }
+                wm::DataValue::F64(value) => {
+                    if let CounterType::F64(counter) = &self.counter {
+                        counter.add(value, &attributes);
+                    }
+                }
             }
         }
-
-        Ok(())
     }
 }
 
@@ -186,16 +179,13 @@ struct GaugeWriter {
 }
 
 impl GaugeWriter {
-    fn new(gauge: Gauge<u64>) -> Self {
+    const fn new(gauge: Gauge<u64>) -> Self {
         Self { gauge }
     }
 
-    fn write(&self, gauge: wm::Gauge) -> Result<()> {
-        for dp in gauge.data_points {
-            let mut attributes = vec![];
-            for attr in dp.attributes {
-                attributes.push(KeyValue::new(attr.key, attr.value));
-            }
+    fn write(&self, gauge: wm::Gauge) {
+        for dp in gauge.data_points.into_iter().rev() {
+            let attributes = dp.attributes.iter().map(Into::into).collect::<Vec<_>>();
 
             match dp.value {
                 wm::DataValue::U64(value) => {
@@ -204,20 +194,17 @@ impl GaugeWriter {
                 _ => {}
             }
         }
-
-        Ok(())
     }
 }
 
 impl From<&wm::Resource> for Resource {
     fn from(resource: &wm::Resource) -> Self {
-        let attributes =
-            resource.attributes.iter().map(|a| KeyValue::new(a.key.clone(), a.value.clone()));
+        let attributes = resource.attributes.iter().map(Into::into);
         let schema_url = resource.schema_url.clone().unwrap_or_default();
-
         Self::builder().with_schema_url(attributes, schema_url).build()
     }
 }
+
 impl From<OTelSdkError> for types::Error {
     fn from(err: OTelSdkError) -> Self {
         match err {

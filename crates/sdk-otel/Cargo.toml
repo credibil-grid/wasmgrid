@@ -10,13 +10,10 @@ workspace = true
 
 [dependencies]
 anyhow.workspace = true
+num-traits = "0.2"
 opentelemetry = "0.30.0"
 opentelemetry_sdk = { version = "0.30.0", features = ["experimental_metrics_custom_reader"] }
 tracing-opentelemetry = "0.31.0"
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
-wit-bindgen = "0.44.0"
-
-bincode = "2.0.1"
-bytemuck = "1.23.2"
-num-traits = "0.2"
 wasi.workspace = true
+wit-bindgen = "0.44.0"

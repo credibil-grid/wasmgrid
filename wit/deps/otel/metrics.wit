@@ -98,7 +98,7 @@ interface metrics {
         /// The value of this data point.
         value: data-value,
 
-        /// The sampled [Exemplar]s collected during the time series.
+        /// The sampled exemplars collected during the time series.
         exemplars: list<exemplar>,
     }
 
@@ -130,7 +130,7 @@ interface metrics {
         /// The value of this data point.
         value: data-value,
 
-        /// The sampled [Exemplar]s collected during the time series.
+        /// The sampled exemplars collected during the time series.
         exemplars: list<exemplar>,
     }
 
@@ -175,7 +175,7 @@ interface metrics {
         /// The sum of the values recorded.
         sum: data-value,
 
-        /// The sampled [Exemplar]s collected during the time series.
+        /// The sampled exemplars collected during the time series.
         exemplars: list<exemplar>,
     }
 

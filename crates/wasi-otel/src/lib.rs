@@ -34,6 +34,7 @@ use wasi_core::Ctx;
 use wasmtime::component::{HasData, Linker};
 
 use self::generated::wasi::otel as wasi_otel;
+use self::generated::wasi::otel::types;
 
 pub struct Otel<'a> {
     exporter: SpanExporter,
@@ -68,5 +69,48 @@ impl Linkable for Service {
         wasi_otel::tracing::add_to_linker::<_, Data>(linker, Otel::new)?;
         wasi_otel::metrics::add_to_linker::<_, Data>(linker, Otel::new)?;
         wasi_otel::types::add_to_linker::<_, Data>(linker, Otel::new)
+    }
+}
+
+impl From<types::KeyValue> for opentelemetry::KeyValue {
+    fn from(value: types::KeyValue) -> Self {
+        Self::new(value.key, value.value)
+    }
+}
+
+impl From<&types::KeyValue> for opentelemetry::KeyValue {
+    fn from(value: &types::KeyValue) -> Self {
+        Self::new(value.key.clone(), value.value.clone())
+    }
+}
+
+impl From<types::Value> for opentelemetry::Value {
+    fn from(value: types::Value) -> Self {
+        match value {
+            types::Value::Bool(v) => Self::Bool(v),
+            types::Value::S64(v) => Self::I64(v),
+            types::Value::F64(v) => Self::F64(v),
+            types::Value::String(v) => Self::String(v.into()),
+            types::Value::BoolArray(items) => Self::Array(opentelemetry::Array::Bool(items)),
+            types::Value::S64Array(items) => Self::Array(opentelemetry::Array::I64(items)),
+            types::Value::F64Array(items) => Self::Array(opentelemetry::Array::F64(items)),
+            types::Value::StringArray(items) => Self::Array(opentelemetry::Array::String(
+                items.into_iter().map(Into::into).collect(),
+            )),
+        }
+    }
+}
+
+impl From<types::InstrumentationScope> for opentelemetry::InstrumentationScope {
+    fn from(value: types::InstrumentationScope) -> Self {
+        let mut builder = Self::builder(value.name);
+        if let Some(version) = value.version {
+            builder = builder.with_version(version);
+        }
+        if let Some(schema_url) = value.schema_url {
+            builder = builder.with_schema_url(schema_url);
+        }
+        builder = builder.with_attributes(value.attributes.iter().map(Into::into));
+        builder.build()
     }
 }

@@ -63,8 +63,8 @@ impl From<wt::SpanData> for sdk::SpanData {
 impl From<&otel::SpanContext> for wt::SpanContext {
     fn from(ctx: &otel::SpanContext) -> Self {
         Self {
-            trace_id: format!("{:x}", ctx.trace_id()),
-            span_id: format!("{:x}", ctx.span_id()),
+            trace_id: ctx.trace_id().to_string(),
+            span_id: ctx.span_id().to_string(),
             trace_flags: ctx.trace_flags().into(),
             is_remote: ctx.is_remote(),
             trace_state: ctx
@@ -125,35 +125,6 @@ impl From<wt::Datetime> for SystemTime {
     }
 }
 
-impl From<wt::KeyValue> for opentelemetry::KeyValue {
-    fn from(value: wt::KeyValue) -> Self {
-        Self::new(value.key, value.value)
-    }
-}
-
-impl From<&wt::KeyValue> for opentelemetry::KeyValue {
-    fn from(value: &wt::KeyValue) -> Self {
-        Self::new(value.key.clone(), value.value.clone())
-    }
-}
-
-impl From<wt::Value> for opentelemetry::Value {
-    fn from(value: wt::Value) -> Self {
-        match value {
-            wt::Value::Bool(v) => Self::Bool(v),
-            wt::Value::S64(v) => Self::I64(v),
-            wt::Value::F64(v) => Self::F64(v),
-            wt::Value::String(v) => Self::String(v.into()),
-            wt::Value::BoolArray(items) => Self::Array(opentelemetry::Array::Bool(items)),
-            wt::Value::S64Array(items) => Self::Array(opentelemetry::Array::I64(items)),
-            wt::Value::F64Array(items) => Self::Array(opentelemetry::Array::F64(items)),
-            wt::Value::StringArray(items) => Self::Array(opentelemetry::Array::String(
-                items.into_iter().map(Into::into).collect(),
-            )),
-        }
-    }
-}
-
 impl From<wt::Event> for otel::Event {
     fn from(value: wt::Event) -> Self {
         let attrs = value.attributes.into_iter().map(Into::into).collect();
@@ -177,19 +148,5 @@ impl From<wt::Status> for otel::Status {
             },
             wt::Status::Ok => Self::Ok,
         }
-    }
-}
-
-impl From<wt::InstrumentationScope> for opentelemetry::InstrumentationScope {
-    fn from(value: wt::InstrumentationScope) -> Self {
-        let mut builder = Self::builder(value.name);
-        if let Some(version) = value.version {
-            builder = builder.with_version(version);
-        }
-        if let Some(schema_url) = value.schema_url {
-            builder = builder.with_schema_url(schema_url);
-        }
-        builder = builder.with_attributes(value.attributes.iter().map(Into::into));
-        builder.build()
     }
 }

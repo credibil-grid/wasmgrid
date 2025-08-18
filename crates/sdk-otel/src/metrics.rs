@@ -23,47 +23,41 @@ pub fn init() -> Reader {
 }
 
 #[derive(Debug, Clone)]
-pub struct Reader {
-    inner: Arc<ManualReader>,
-}
+pub struct Reader(Arc<ManualReader>);
 
 impl Reader {
     /// Create a new `MetricReader`.
     pub fn new() -> Self {
-        Self {
-            inner: Arc::new(ManualReader::default()),
-        }
+        Self(Arc::new(ManualReader::default()))
     }
 }
 
 impl MetricReader for Reader {
     fn register_pipeline(&self, pipeline: Weak<Pipeline>) {
-        self.inner.register_pipeline(pipeline)
+        self.0.register_pipeline(pipeline)
     }
 
     fn collect(&self, rm: &mut ResourceMetrics) -> OTelSdkResult {
-        self.inner.collect(rm)
+        self.0.collect(rm)
     }
 
     fn force_flush(&self) -> OTelSdkResult {
-        self.inner.force_flush()
+        self.0.force_flush()
     }
 
     fn temporality(&self, kind: InstrumentKind) -> Temporality {
-        self.inner.temporality(kind)
+        self.0.temporality(kind)
     }
 
     fn shutdown_with_timeout(&self, timeout: Duration) -> OTelSdkResult {
-        self.inner.shutdown_with_timeout(timeout)
+        self.0.shutdown_with_timeout(timeout)
     }
 }
 
 impl Drop for Reader {
     fn drop(&mut self) {
         let mut rm = ResourceMetrics::default();
-        self.inner.collect(&mut rm).unwrap();
-
-        println!("collected: {rm:?}");
-        wasi::export(&rm.into()).expect("should collect metrics");
+        self.0.collect(&mut rm).expect("should collect");
+        wasi::export(&rm.into()).expect("should export");
     }
 }
