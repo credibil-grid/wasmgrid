@@ -11,7 +11,7 @@ use opentelemetry_sdk::metrics::{
     InstrumentKind, ManualReader, Pipeline, SdkMeterProvider, Temporality,
 };
 
-// use wasi::clocks::monotonic_clock::subscribe_duration;
+
 use crate::generated::wasi::otel::metrics as wasi;
 
 pub fn init() -> Reader {

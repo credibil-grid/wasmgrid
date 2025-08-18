@@ -105,13 +105,13 @@ impl MeterWriter {
         match metric.data {
             wm::AggregatedMetrics::U64(data) => match data {
                 wm::MetricData::Sum(sum) => {
-                    let counter = self
+                    let counter64 = self
                         .meter
                         .u64_counter(metric.name)
                         .with_description(metric.description)
                         .with_unit(metric.unit)
                         .build();
-                    SumWriter::new(CounterType::U64(counter)).write(sum);
+                    SumWriter::new(counter64).write(sum);
                 }
                 wm::MetricData::Gauge(gauge) => {
                     let gauge64 = self
@@ -129,23 +129,19 @@ impl MeterWriter {
                     unimplemented!("ExponentialHistogram is not supported");
                 }
             },
-            _ => {}
+            _ => {
+                unimplemented!("Non-u64 aggregations are not supported");
+            }
         }
     }
 }
 
-enum CounterType {
-    U64(Counter<u64>),
-    S64(Counter<i64>),
-    F64(Counter<f64>),
-}
-
 struct SumWriter {
-    counter: CounterType,
+    counter: Counter<u64>,
 }
 
 impl SumWriter {
-    const fn new(counter: CounterType) -> Self {
+    const fn new(counter: Counter<u64>) -> Self {
         Self { counter }
     }
 
@@ -155,20 +151,9 @@ impl SumWriter {
 
             match dp.value {
                 wm::DataValue::U64(value) => {
-                    if let CounterType::U64(counter) = &self.counter {
-                        counter.add(value, &attributes);
-                    }
+                    self.counter.add(value, &attributes);
                 }
-                wm::DataValue::S64(value) => {
-                    if let CounterType::S64(counter) = &self.counter {
-                        counter.add(value, &attributes);
-                    }
-                }
-                wm::DataValue::F64(value) => {
-                    if let CounterType::F64(counter) = &self.counter {
-                        counter.add(value, &attributes);
-                    }
-                }
+                _ => unimplemented!("Non-u64 data values are not supported"),
             }
         }
     }
