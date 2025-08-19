@@ -3296,6 +3296,7 @@ dependencies = [
  "opentelemetry-otlp",
  "opentelemetry_sdk",
  "sdk-http",
+ "tracing",
  "tracing-opentelemetry",
  "tracing-subscriber",
  "wasi 0.14.2+wasi-0.2.4",

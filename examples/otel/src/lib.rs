@@ -14,11 +14,9 @@ struct HttpGuest;
 impl Guest for HttpGuest {
     fn handle(request: IncomingRequest, response: ResponseOutparam) {
         // inject remote (host) context
-        let _guard = sdk_otel::tracing::init_with_context();
-
         let now = SystemTime::now();
-        let _reader = sdk_otel::metrics::init();
-        println!("Metrics initialized at {:?}", now.elapsed().unwrap());
+        let _guard = sdk_otel::init();
+        tracing::debug!("telemetry initialized {:?}", now.elapsed().unwrap());
 
         let meter = global::meter("my_meter");
         let counter = meter.u64_counter("my_counter").build();
@@ -36,13 +34,13 @@ impl Guest for HttpGuest {
             });
         });
 
-        let out = tracing::debug_span!("handle request").in_scope(|| {
+        let out = tracing::info_span!("handle request").in_scope(|| {
             tracing::info!("received request");
             let router = Router::new().route("/", post(handle));
             sdk_http::serve(router, request)
         });
 
-        println!("Request processed in {:?}", now.elapsed().unwrap());
+        tracing::info!("request processed {:?}", now.elapsed().unwrap());
 
         ResponseOutparam::set(response, out);
     }

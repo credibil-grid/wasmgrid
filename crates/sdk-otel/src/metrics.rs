@@ -3,9 +3,10 @@
 use std::sync::{Arc, Weak};
 use std::time::Duration;
 
+use futures::executor::block_on;
 use opentelemetry::global;
-use opentelemetry_http::HttpClient;
 use opentelemetry_otlp::{MetricExporter, WithHttpConfig};
+use opentelemetry_sdk::Resource;
 use opentelemetry_sdk::error::OTelSdkResult;
 use opentelemetry_sdk::metrics::data::ResourceMetrics;
 use opentelemetry_sdk::metrics::exporter::PushMetricExporter;
@@ -14,15 +15,17 @@ use opentelemetry_sdk::metrics::{
     InstrumentKind, ManualReader, Pipeline, SdkMeterProvider, Temporality,
 };
 
-use crate::generated::wasi::otel::metrics as wasi;
+use crate::ExportClient;
+// use crate::generated::wasi::otel::metrics as wasi;
 
-pub fn init() -> Reader {
-    let builder = MetricExporter::builder().with_http().with_http_client(MetricsClient);
+pub fn init(resource: Resource) -> Reader {
+    let builder = MetricExporter::builder().with_http().with_http_client(ExportClient);
 
     let exporter = builder.build().expect("should build exporter");
     let reader = Reader::new(exporter);
 
-    let provider = SdkMeterProvider::builder().with_reader(reader.clone()).build();
+    let provider =
+        SdkMeterProvider::builder().with_resource(resource).with_reader(reader.clone()).build();
     global::set_meter_provider(provider);
 
     reader
@@ -68,42 +71,14 @@ impl MetricReader for Reader {
 
 impl Drop for Reader {
     fn drop(&mut self) {
+        // collect
         let mut rm = ResourceMetrics::default();
         self.reader.collect(&mut rm).expect("should collect");
+
+        // export
         block_on(async {
             self.exporter.export(&rm.into()).await.expect("should export metrics");
         });
         // wasi::export(&rm.into()).expect("should export");
-    }
-}
-
-use std::mem;
-
-use anyhow::Result;
-use async_trait::async_trait;
-use bytes::Bytes;
-use futures::executor::block_on;
-use http::{Request, Response};
-use opentelemetry_http::HttpError;
-use sdk_http::Client;
-
-#[derive(Debug)]
-struct MetricsClient;
-
-#[async_trait]
-impl HttpClient for MetricsClient {
-    async fn send_bytes(&self, request: Request<Bytes>) -> Result<Response<Bytes>, HttpError> {
-        let mut response = Client::new()
-            .post(request.uri())
-            .headers(request.headers())
-            .body(request.into_body().to_vec())
-            .send()?;
-
-        let headers = mem::take(response.headers_mut());
-        let mut http_response =
-            Response::builder().status(response.status()).body(response.body().clone().into())?;
-        *http_response.headers_mut() = headers;
-
-        Ok(http_response)
     }
 }
