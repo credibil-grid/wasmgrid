@@ -1,12 +1,14 @@
 //! # Tracing
 
-use anyhow::{Context as _, Result};
+use anyhow::Result;
 use opentelemetry::trace::{TraceContextExt, TracerProvider};
 use opentelemetry::{Context, ContextGuard, global, trace as otel};
 use opentelemetry_otlp::{SpanExporter, WithHttpConfig};
 use opentelemetry_sdk::Resource;
 use opentelemetry_sdk::trace::SdkTracerProvider;
+use tracing_opentelemetry::layer as tracing_layer;
 use tracing_subscriber::fmt::format::FmtSpan;
+use tracing_subscriber::fmt::layer as format_layer;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::{EnvFilter, Registry};
@@ -21,18 +23,19 @@ pub fn init(resource: Resource) -> Result<ContextGuard> {
     // let processor = Processor::new();
     // let provider = SdkTracerProvider::builder().with_span_processor(processor).build();
 
+    // tracing provider
     let exporter = SpanExporter::builder().with_http().with_http_client(ExportClient).build()?;
     let provider =
         SdkTracerProvider::builder().with_resource(resource).with_simple_exporter(exporter).build();
 
-    // tracing layer is required by `tracer::xxx_span!` macros
-    let tracer = provider.tracer("otel-tracing");
-    let tracing = tracing_opentelemetry::layer().with_tracer(tracer);
+    // tracing layers
     let filter = EnvFilter::from_default_env()
         .add_directive("hyper=off".parse()?)
         .add_directive("h2=off".parse()?)
         .add_directive("tonic=off".parse()?);
-    let format = tracing_subscriber::fmt::layer().with_span_events(FmtSpan::NEW | FmtSpan::CLOSE);
+    let format = format_layer().with_span_events(FmtSpan::NEW | FmtSpan::CLOSE);
+    let tracer = provider.tracer("global");
+    let tracing = tracing_layer().with_tracer(tracer);
 
     Registry::default().with(filter).with(format).with(tracing).try_init()?;
     global::set_tracer_provider(provider);

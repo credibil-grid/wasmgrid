@@ -3,6 +3,7 @@
 use std::sync::{Arc, Weak};
 use std::time::Duration;
 
+use anyhow::Result;
 use futures::executor::block_on;
 use opentelemetry::global;
 use opentelemetry_otlp::{MetricExporter, WithHttpConfig};
@@ -18,17 +19,15 @@ use opentelemetry_sdk::metrics::{
 use crate::ExportClient;
 // use crate::generated::wasi::otel::metrics as wasi;
 
-pub fn init(resource: Resource) -> Reader {
-    let builder = MetricExporter::builder().with_http().with_http_client(ExportClient);
-
-    let exporter = builder.build().expect("should build exporter");
+pub fn init(resource: Resource) -> Result<Reader> {
+    let exporter = MetricExporter::builder().with_http().with_http_client(ExportClient).build()?;
     let reader = Reader::new(exporter);
 
     let provider =
         SdkMeterProvider::builder().with_resource(resource).with_reader(reader.clone()).build();
     global::set_meter_provider(provider);
 
-    reader
+    Ok(reader)
 }
 
 #[derive(Debug, Clone)]
@@ -77,7 +76,7 @@ impl Drop for Reader {
 
         // export
         block_on(async {
-            self.exporter.export(&rm.into()).await.expect("should export metrics");
+            self.exporter.export(&rm).await.expect("should export metrics");
         });
         // wasi::export(&rm.into()).expect("should export");
     }

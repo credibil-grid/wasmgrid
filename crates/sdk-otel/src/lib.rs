@@ -33,7 +33,7 @@ pub fn init() -> (ContextGuard, Reader) {
     let resource = Resource::builder().with_service_name("otel").build();
 
     let cg = tracing::init(resource.clone()).expect("should initialize");
-    let r = metrics::init(resource);
+    let r = metrics::init(resource).expect("should initialize");
 
     (cg, r)
 }
