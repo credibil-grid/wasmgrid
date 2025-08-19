@@ -1,4 +1,5 @@
 use anyhow::{Result, anyhow};
+use bytes::Bytes;
 use http::header::{AUTHORIZATION, CONTENT_TYPE};
 use http::{HeaderMap, HeaderName, Response};
 use percent_encoding::{AsciiSet, NON_ALPHANUMERIC, utf8_percent_encode};
@@ -149,19 +150,19 @@ impl<B, J, F> RequestBuilder<B, J, F> {
 }
 
 impl RequestBuilder<NoBody, NoJson, NoForm> {
-    pub fn send<T: DeserializeOwned>(&self) -> Result<Response<T>> {
+    pub fn send(&self) -> Result<Response<Bytes>> {
         self.send_bytes(None)
     }
 }
 
 impl RequestBuilder<HasBody, NoJson, NoForm> {
-    pub fn send<T: DeserializeOwned>(&self) -> Result<Response<T>> {
+    pub fn send(&self) -> Result<Response<Bytes>> {
         self.send_bytes(Some(&self.body.0))
     }
 }
 
 impl<B: Serialize> RequestBuilder<NoBody, HasJson<B>, NoForm> {
-    pub fn send<T: DeserializeOwned>(&mut self) -> Result<Response<T>> {
+    pub fn send(&mut self) -> Result<Response<Bytes>> {
         let body =
             serde_json::to_vec(&self.json.0).map_err(|e| anyhow!("issue serializing json: {e}"))?;
         self.headers.insert(CONTENT_TYPE, "application/json".into());
@@ -170,7 +171,7 @@ impl<B: Serialize> RequestBuilder<NoBody, HasJson<B>, NoForm> {
 }
 
 impl<B: Serialize> RequestBuilder<NoBody, NoJson, HasForm<B>> {
-    pub fn send<T: DeserializeOwned>(&mut self) -> Result<Response<T>> {
+    pub fn send(&mut self) -> Result<Response<Bytes>> {
         let body = credibil_encoding::form_encode(&self.form.0)
             .map_err(|e| anyhow!("issue serializing form: {e}"))?;
         let bytes =
@@ -181,7 +182,7 @@ impl<B: Serialize> RequestBuilder<NoBody, NoJson, HasForm<B>> {
 }
 
 impl<B, J, F> RequestBuilder<B, J, F> {
-    pub fn send_bytes<T: DeserializeOwned>(&self, body: Option<&[u8]>) -> Result<Response<T>> {
+    pub fn send_bytes(&self, body: Option<&[u8]>) -> Result<Response<Bytes>> {
         let request = self.prepare_request(body)?;
 
         tracing::trace!(
@@ -267,9 +268,7 @@ impl<B, J, F> RequestBuilder<B, J, F> {
         Ok(request)
     }
 
-    fn process_response<T: DeserializeOwned>(
-        fut_resp: FutureIncomingResponse,
-    ) -> Result<Response<T>> {
+    fn process_response(fut_resp: FutureIncomingResponse) -> Result<Response<Bytes>> {
         fut_resp.subscribe().block();
         let Some(result) = fut_resp.get() else {
             return Err(anyhow!("missing response"));
@@ -279,7 +278,6 @@ impl<B, J, F> RequestBuilder<B, J, F> {
             .map_err(|e| anyhow!("response error: {e}"))?;
 
         // process body
-        // let mut out_resp = Response::<T>::default();
         let body = response.consume().map_err(|()| anyhow!("issue getting body"))?;
         let stream = body.stream().map_err(|()| anyhow!("issue getting body's stream"))?;
 
@@ -298,8 +296,18 @@ impl<B, J, F> RequestBuilder<B, J, F> {
         drop(stream);
         drop(response);
 
-        let x = serde_json::from_slice::<T>(&body)
-            .map_err(|e| anyhow!("issue deserializing response body: {e}"))?;
-        Ok(Response::new(x))
+        Ok(Response::new(Bytes::from(body)))
+    }
+}
+
+pub trait Decode {
+    fn json<T: DeserializeOwned>(self) -> Result<T>;
+}
+
+impl Decode for Response<Bytes> {
+    fn json<T: DeserializeOwned>(self) -> Result<T> {
+        let body = self.into_body();
+        let data = serde_json::from_slice::<T>(&body)?;
+        Ok(data)
     }
 }

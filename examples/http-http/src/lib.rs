@@ -6,7 +6,7 @@ use anyhow::Context;
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use http::Method;
-use sdk_http::{Client, Result};
+use sdk_http::{Client, Decode, Result};
 use serde_json::{Value, json};
 use tower_http::cors::{Any, CorsLayer};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
@@ -38,27 +38,29 @@ impl Guest for HttpGuest {
 
 // Forward request to external service and return the response
 async fn get_handler() -> Result<Json<Value>> {
-    let resp = Client::new()
+    let body = Client::new()
         .get("https://jsonplaceholder.cypress.io/posts/1")
-        .send::<Value>()
+        .send()?
+        .json::<Value>()
         .context("issue sending request")?;
 
     Ok(Json(json!({
-        "response": resp.body()
+        "response": body
     })))
 }
 
 // Forward request to external service and return the response
 async fn post_handler(Json(body): Json<Value>) -> Result<Json<Value>> {
-    let resp = Client::new()
+    let body = Client::new()
         .post("https://jsonplaceholder.cypress.io/posts")
         .bearer_auth("some token") // not required, but shown for example
         .json(&body)
-        .send::<Value>()
+        .send()?
+        .json::<Value>()
         .context("issue sending request")?;
 
     Ok(Json(json!({
-        "response": resp.body()
+        "response": body
     })))
 }
 

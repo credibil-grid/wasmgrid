@@ -1,3 +1,5 @@
+use std::time::SystemTime;
+
 use axum::routing::post;
 use axum::{Json, Router};
 use opentelemetry::trace::{TraceContextExt, Tracer};
@@ -13,7 +15,10 @@ impl Guest for HttpGuest {
     fn handle(request: IncomingRequest, response: ResponseOutparam) {
         // inject remote (host) context
         let _guard = sdk_otel::tracing::init_with_context();
+
+        let now = SystemTime::now();
         let _reader = sdk_otel::metrics::init();
+        println!("Metrics initialized at {:?}", now.elapsed().unwrap());
 
         let meter = global::meter("my_meter");
         let counter = meter.u64_counter("my_counter").build();
@@ -36,6 +41,8 @@ impl Guest for HttpGuest {
             let router = Router::new().route("/", post(handle));
             sdk_http::serve(router, request)
         });
+
+        println!("Request processed in {:?}", now.elapsed().unwrap());
 
         ResponseOutparam::set(response, out);
     }

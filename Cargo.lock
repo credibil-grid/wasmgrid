@@ -3269,6 +3269,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "axum",
+ "bytes",
  "credibil-encoding",
  "futures",
  "http 1.3.1",
@@ -3285,9 +3286,16 @@ name = "sdk-otel"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-trait",
+ "bytes",
+ "futures",
+ "http 1.3.1",
  "num-traits",
  "opentelemetry",
+ "opentelemetry-http",
+ "opentelemetry-otlp",
  "opentelemetry_sdk",
+ "sdk-http",
  "tracing-opentelemetry",
  "tracing-subscriber",
  "wasi 0.14.2+wasi-0.2.4",
