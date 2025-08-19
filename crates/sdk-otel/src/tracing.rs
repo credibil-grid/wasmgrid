@@ -19,7 +19,7 @@ use crate::generated::wasi::otel::tracing as wasi;
 // TODO: add .in_span(|| Fn(ctx)) as alternative to guard
 // TODO: add xxx_span! macros
 // TODO: handle initialization error
-pub fn init(resource: Resource) -> Result<ContextGuard> {
+pub(crate) fn init(resource: Resource) -> Result<ContextGuard> {
     // let processor = Processor::new();
     // let provider = SdkTracerProvider::builder().with_span_processor(processor).build();
 

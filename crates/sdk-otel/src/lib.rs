@@ -27,15 +27,28 @@ use sdk_http::Client;
 
 use self::metrics::Reader;
 
+pub struct ScopeGuard {
+    _tracing: ContextGuard,
+    _metrics: Reader,
+}
+
 // TODO: add .in_span(|| Fn(ctx)) as alternative to guard
 // TODO: add xxx_span! macros
-pub fn init() -> (ContextGuard, Reader) {
+pub fn init() -> ScopeGuard {
     let resource = Resource::builder().with_service_name("otel").build();
 
-    let cg = tracing::init(resource.clone()).expect("should initialize");
-    let r = metrics::init(resource).expect("should initialize");
+    ScopeGuard {
+        _tracing: tracing::init(resource.clone()).expect("should initialize"),
+        _metrics: metrics::init(resource).expect("should initialize"),
+    }
+}
 
-    (cg, r)
+pub fn instrument<F, R>(f: F) -> R
+where
+    F: FnOnce() -> R,
+{
+    let _guard = init();
+    f()
 }
 
 #[derive(Debug)]
