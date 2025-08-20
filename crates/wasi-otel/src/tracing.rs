@@ -1,7 +1,5 @@
 //! # WASI Tracing
 
-
-
 use anyhow::Result;
 use opentelemetry::trace::{
     TraceContextExt, {self as otel},
@@ -16,19 +14,15 @@ use crate::generated::wasi::otel as wasi_otel;
 use crate::generated::wasi::otel::tracing::{self as wt};
 
 impl wasi_otel::tracing::Host for Otel<'_> {
-    async fn on_start(&mut self, _: wt::SpanData, _parent: wt::SpanContext) -> Result<()> {
-        Ok(())
-    }
-
-    async fn on_end(&mut self, span_data: wt::SpanData) -> Result<()> {
-        self.exporter.export(vec![sdk::SpanData::from(span_data)]).await?;
-        Ok(())
-    }
-
     async fn current_span_context(&mut self) -> Result<wt::SpanContext> {
         let ctx = Span::current().context();
         let span = ctx.span();
         Ok(wt::SpanContext::from(span.span_context()))
+    }
+
+    async fn export(&mut self, span_data: Vec<wt::SpanData>) -> Result<()> {
+        self.exporter.export(span_data.into_iter().map(Into::into).collect()).await?;
+        Ok(())
     }
 }
 
@@ -116,8 +110,6 @@ impl From<wt::SpanKind> for otel::SpanKind {
         }
     }
 }
-
-
 
 impl From<wt::Event> for otel::Event {
     fn from(value: wt::Event) -> Self {

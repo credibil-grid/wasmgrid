@@ -3,7 +3,6 @@
 use anyhow::Result;
 use opentelemetry::trace::{TraceContextExt, TracerProvider};
 use opentelemetry::{Context, ContextGuard, global, trace as otel};
-use opentelemetry_otlp::{SpanExporter, WithHttpConfig};
 use opentelemetry_sdk::Resource;
 use opentelemetry_sdk::trace::SdkTracerProvider;
 use tracing_opentelemetry::layer as tracing_layer;
@@ -13,18 +12,13 @@ use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::{EnvFilter, Registry};
 
-use crate::ExportClient;
+use crate::export::tracing;
 use crate::generated::wasi::otel::tracing as wasi;
 
-// TODO: add .in_span(|| Fn(ctx)) as alternative to guard
 // TODO: add xxx_span! macros
 // TODO: handle initialization error
 pub(crate) fn init(resource: Resource) -> Result<ContextGuard> {
-    // let processor = Processor::new();
-    // let provider = SdkTracerProvider::builder().with_span_processor(processor).build();
-
-    // tracing provider
-    let exporter = SpanExporter::builder().with_http().with_http_client(ExportClient).build()?;
+    let exporter = tracing::exporter()?;
     let provider =
         SdkTracerProvider::builder().with_resource(resource).with_simple_exporter(exporter).build();
 
@@ -67,53 +61,3 @@ impl From<wasi::TraceFlags> for otel::TraceFlags {
         }
     }
 }
-
-// use std::sync::atomic::{AtomicBool, Ordering};
-// use std::time::Duration;
-
-// use anyhow::Result;
-// use opentelemetry_sdk::error::OTelSdkError;
-// use opentelemetry_sdk::trace as sdk;
-
-// #[derive(Debug, Default)]
-// pub struct Processor {
-//     is_shutdown: AtomicBool,
-// }
-
-// impl Processor {
-//     /// Create a new `Processor`.
-//     pub fn new() -> Self {
-//         Self::default()
-//     }
-// }
-
-// impl sdk::SpanProcessor for Processor {
-//     fn on_start(&self, span: &mut sdk::Span, _: &Context) {
-//         if self.is_shutdown.load(Ordering::Relaxed) {
-//             return;
-//         }
-//         if let Some(span_data) = span.exported_data() {
-//             let span_data = wasi::SpanData::from(span_data);
-//             wasi::on_start(&span_data, &span_data.span_context);
-//         }
-//     }
-
-//     fn on_end(&self, span_data: sdk::SpanData) {
-//         if self.is_shutdown.load(Ordering::Relaxed) {
-//             return;
-//         }
-//         wasi::on_end(&span_data.into());
-//     }
-
-//     fn force_flush(&self) -> Result<(), OTelSdkError> {
-//         if self.is_shutdown.load(Ordering::Relaxed) {
-//             return Err(OTelSdkError::AlreadyShutdown);
-//         }
-//         Ok(())
-//     }
-
-//     fn shutdown_with_timeout(&self, _: Duration) -> Result<(), OTelSdkError> {
-//         self.is_shutdown.store(true, Ordering::Relaxed);
-//         self.force_flush()
-//     }
-// }
