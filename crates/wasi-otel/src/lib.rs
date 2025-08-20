@@ -24,6 +24,7 @@ mod generated {
 }
 
 use std::marker::PhantomData;
+use std::time::{Duration, SystemTime};
 
 use anyhow::Result;
 use credibil_otel::init;
@@ -112,5 +113,19 @@ impl From<types::InstrumentationScope> for opentelemetry::InstrumentationScope {
         }
         builder = builder.with_attributes(value.attributes.iter().map(Into::into));
         builder.build()
+    }
+}
+
+impl From<types::Datetime> for SystemTime {
+    fn from(value: types::Datetime) -> Self {
+        Self::UNIX_EPOCH
+            .checked_add(Duration::new(value.seconds, value.nanoseconds))
+            .unwrap_or(Self::UNIX_EPOCH)
+    }
+}
+
+impl From<types::Datetime> for u64 {
+    fn from(value: types::Datetime) -> Self {
+        value.seconds * 1_000_000_000 + value.nanoseconds as u64
     }
 }

@@ -1,6 +1,6 @@
 //! # WASI Tracing
 
-use std::time::SystemTime;
+
 
 use anyhow::Result;
 use opentelemetry::trace::{
@@ -117,13 +117,7 @@ impl From<wt::SpanKind> for otel::SpanKind {
     }
 }
 
-impl From<wt::Datetime> for SystemTime {
-    fn from(value: wt::Datetime) -> Self {
-        Self::UNIX_EPOCH
-            .checked_add(std::time::Duration::new(value.seconds, value.nanoseconds))
-            .unwrap_or(Self::UNIX_EPOCH)
-    }
-}
+
 
 impl From<wt::Event> for otel::Event {
     fn from(value: wt::Event) -> Self {

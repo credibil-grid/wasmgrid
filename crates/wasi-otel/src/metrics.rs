@@ -1,19 +1,23 @@
 //! # WASI Tracing
 
-use std::sync::{Arc, Weak};
-use std::time::Duration;
-
-use anyhow::Result;
-use opentelemetry::metrics::{Counter, Gauge, Meter, MeterProvider};
-use opentelemetry_otlp::MetricExporter;
-use opentelemetry_sdk::Resource;
-use opentelemetry_sdk::error::{OTelSdkError, OTelSdkResult};
-use opentelemetry_sdk::metrics::data::ResourceMetrics;
-use opentelemetry_sdk::metrics::exporter::PushMetricExporter;
-use opentelemetry_sdk::metrics::reader::MetricReader;
-use opentelemetry_sdk::metrics::{
-    InstrumentKind, ManualReader, Pipeline, SdkMeterProvider, Temporality,
+use anyhow::{Result, anyhow};
+use opentelemetry_proto::tonic::collector::metrics::v1::ExportMetricsServiceRequest;
+use opentelemetry_proto::tonic::common::v1::any_value::Value;
+use opentelemetry_proto::tonic::common::v1::{
+    AnyValue, ArrayValue, InstrumentationScope, KeyValue,
 };
+use opentelemetry_proto::tonic::metrics::v1::exemplar::Value as ExemplarValue;
+use opentelemetry_proto::tonic::metrics::v1::exponential_histogram_data_point::Buckets;
+use opentelemetry_proto::tonic::metrics::v1::metric::Data as MetricData;
+use opentelemetry_proto::tonic::metrics::v1::number_data_point::Value as NumberValue;
+use opentelemetry_proto::tonic::metrics::v1::{
+    AggregationTemporality, Exemplar, ExponentialHistogram, ExponentialHistogramDataPoint, Gauge,
+    Histogram, HistogramDataPoint, Metric, NumberDataPoint, ResourceMetrics, ScopeMetrics, Sum,
+};
+use opentelemetry_proto::tonic::resource::v1::Resource;
+// use opentelemetry_sdk::Resource;
+use opentelemetry_sdk::error::OTelSdkError;
+use prost::Message;
 
 use crate::Otel;
 use crate::generated::wasi::otel::metrics::{self as wm};
@@ -22,66 +26,18 @@ use crate::generated::wasi::otel::types;
 impl wm::Host for Otel<'_> {
     async fn export(&mut self, rm: wm::ResourceMetrics) -> Result<(), types::Error> {
         // convert to opentelemetry metrics
-        let resource = Resource::from(&rm.resource);
-        let reader = Reader::new();
-        let provider =
-            SdkMeterProvider::builder().with_resource(resource).with_reader(reader.clone()).build();
-        //
+        let request = ExportMetricsServiceRequest::from(rm);
+        let body = Message::encode_to_vec(&request);
 
-        for m in rm.scope_metrics {
-            let meter = provider.meter_with_scope(m.scope.into());
-            let writer = MeterWriter::new(meter.clone());
-            for metric in m.metrics {
-                writer.write(metric);
-            }
-        }
-
-        // export metrics
-        let mut rm = ResourceMetrics::default();
-        reader.inner.collect(&mut rm).unwrap();
-        let exporter =
-            MetricExporter::builder().with_tonic().build().expect("should build exporter");
-        exporter.export(&rm).await?;
-
-        println!("exported: {rm:?}");
+        reqwest::Client::new()
+            .post("http://localhost:4318/v1/metrics")
+            .header(http::header::CONTENT_TYPE, "application/x-protobuf")
+            .body(body)
+            .send()
+            .await
+            .map_err(|e| anyhow!("{e:?}"))?;
 
         Ok(())
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct Reader {
-    inner: Arc<ManualReader>,
-}
-
-impl Reader {
-    /// Create a new `MetricReader`.
-    pub fn new() -> Self {
-        Self {
-            inner: Arc::new(ManualReader::default()),
-        }
-    }
-}
-
-impl MetricReader for Reader {
-    fn register_pipeline(&self, pipeline: Weak<Pipeline>) {
-        self.inner.register_pipeline(pipeline);
-    }
-
-    fn collect(&self, rm: &mut ResourceMetrics) -> OTelSdkResult {
-        self.inner.collect(rm)
-    }
-
-    fn force_flush(&self) -> OTelSdkResult {
-        self.inner.force_flush()
-    }
-
-    fn temporality(&self, kind: InstrumentKind) -> Temporality {
-        self.inner.temporality(kind)
-    }
-
-    fn shutdown_with_timeout(&self, timeout: Duration) -> OTelSdkResult {
-        self.inner.shutdown_with_timeout(timeout)
     }
 }
 
@@ -89,104 +45,6 @@ impl types::Host for Otel<'_> {
     fn convert_error(&mut self, err: types::Error) -> anyhow::Result<types::Error> {
         tracing::error!("{err}");
         Ok(err)
-    }
-}
-
-struct MeterWriter {
-    meter: Meter,
-}
-
-impl MeterWriter {
-    const fn new(meter: Meter) -> Self {
-        Self { meter }
-    }
-
-    fn write(&self, metric: wm::Metric) {
-        match metric.data {
-            wm::AggregatedMetrics::U64(data) => match data {
-                wm::MetricData::Sum(sum) => {
-                    let counter64 = self
-                        .meter
-                        .u64_counter(metric.name)
-                        .with_description(metric.description)
-                        .with_unit(metric.unit)
-                        .build();
-                    SumWriter::new(counter64).write(sum);
-                }
-                wm::MetricData::Gauge(gauge) => {
-                    let gauge64 = self
-                        .meter
-                        .u64_gauge(metric.name)
-                        .with_description(metric.description)
-                        .with_unit(metric.unit)
-                        .build();
-                    GaugeWriter::new(gauge64).write(gauge);
-                }
-                wm::MetricData::Histogram(_) => {
-                    unimplemented!("Histogram is not supported");
-                }
-                wm::MetricData::ExponentialHistogram(_) => {
-                    unimplemented!("ExponentialHistogram is not supported");
-                }
-            },
-            _ => {
-                unimplemented!("Non-u64 aggregations are not supported");
-            }
-        }
-    }
-}
-
-struct SumWriter {
-    counter: Counter<u64>,
-}
-
-impl SumWriter {
-    const fn new(counter: Counter<u64>) -> Self {
-        Self { counter }
-    }
-
-    fn write(&self, sum: wm::Sum) {
-        for dp in sum.data_points.into_iter().rev() {
-            let attributes = dp.attributes.iter().map(Into::into).collect::<Vec<_>>();
-
-            match dp.value {
-                wm::DataValue::U64(value) => {
-                    self.counter.add(value, &attributes);
-                }
-                _ => unimplemented!("Non-u64 data values are not supported"),
-            }
-        }
-    }
-}
-
-struct GaugeWriter {
-    gauge: Gauge<u64>,
-}
-
-impl GaugeWriter {
-    const fn new(gauge: Gauge<u64>) -> Self {
-        Self { gauge }
-    }
-
-    fn write(&self, gauge: wm::Gauge) {
-        for dp in gauge.data_points.into_iter().rev() {
-            let attributes = dp.attributes.iter().map(Into::into).collect::<Vec<_>>();
-
-            match dp.value {
-                wm::DataValue::U64(value) => {
-                    self.gauge.record(value, &attributes);
-                }
-                _ => {}
-            }
-        }
-    }
-}
-
-impl From<&wm::Resource> for Resource {
-    fn from(resource: &wm::Resource) -> Self {
-        let attributes = resource.attributes.iter().map(Into::into);
-        let schema_url = resource.schema_url.clone().unwrap_or_default();
-        Self::builder().with_schema_url(attributes, schema_url).build()
     }
 }
 
@@ -204,4 +62,307 @@ impl From<anyhow::Error> for types::Error {
     fn from(err: anyhow::Error) -> Self {
         Self::InternalFailure(err.to_string())
     }
+}
+
+impl From<wm::ResourceMetrics> for ExportMetricsServiceRequest {
+    fn from(rm: wm::ResourceMetrics) -> Self {
+        let schema_url = rm.resource.schema_url.clone().unwrap_or_default();
+
+        ExportMetricsServiceRequest {
+            resource_metrics: vec![ResourceMetrics {
+                resource: Some(rm.resource.into()),
+                scope_metrics: rm.scope_metrics.into_iter().map(Into::into).collect(),
+                schema_url,
+            }],
+        }
+    }
+}
+
+impl From<wm::Resource> for Resource {
+    fn from(resource: wm::Resource) -> Self {
+        let mut attributes = resource.attributes.into_iter().map(Into::into).collect::<Vec<_>>();
+        attributes.push(KeyValue {
+            key: "schema_url".to_string(),
+            value: resource.schema_url.as_ref().map(|s| AnyValue {
+                value: Some(Value::StringValue(s.to_string())),
+            }),
+        });
+
+        Self {
+            attributes,
+            dropped_attributes_count: 0,
+            entity_refs: vec![],
+        }
+    }
+}
+
+impl From<wm::KeyValue> for KeyValue {
+    fn from(value: wm::KeyValue) -> Self {
+        Self {
+            key: value.key,
+            value: Some(value.value.into()),
+        }
+    }
+}
+
+impl From<wm::Value> for AnyValue {
+    fn from(value: wm::Value) -> Self {
+        let v: Value = match value {
+            wm::Value::Bool(v) => Value::BoolValue(v),
+            wm::Value::S64(v) => Value::IntValue(v),
+            wm::Value::F64(v) => Value::DoubleValue(v),
+            wm::Value::String(v) => Value::StringValue(v.into()),
+            wm::Value::BoolArray(items) => Value::ArrayValue(ArrayValue {
+                values: items
+                    .into_iter()
+                    .map(|v| AnyValue {
+                        value: Some(Value::BoolValue(v)),
+                    })
+                    .collect(),
+            }),
+            wm::Value::S64Array(items) => Value::ArrayValue(ArrayValue {
+                values: items
+                    .into_iter()
+                    .map(|v| AnyValue {
+                        value: Some(Value::IntValue(v)),
+                    })
+                    .collect(),
+            }),
+            wm::Value::F64Array(items) => Value::ArrayValue(ArrayValue {
+                values: items
+                    .into_iter()
+                    .map(|v| AnyValue {
+                        value: Some(Value::DoubleValue(v)),
+                    })
+                    .collect(),
+            }),
+            wm::Value::StringArray(items) => Value::ArrayValue(ArrayValue {
+                values: items
+                    .into_iter()
+                    .map(|v| AnyValue {
+                        value: Some(Value::StringValue(v)),
+                    })
+                    .collect(),
+            }),
+        };
+
+        Self { value: Some(v) }
+    }
+}
+
+impl From<wm::ScopeMetrics> for ScopeMetrics {
+    fn from(sm: wm::ScopeMetrics) -> Self {
+        let schema_url = sm.scope.clone().schema_url.unwrap_or_default();
+
+        ScopeMetrics {
+            scope: Some(sm.scope.into()),
+            metrics: sm.metrics.into_iter().map(Into::into).collect(),
+            schema_url,
+        }
+    }
+}
+
+impl From<wm::InstrumentationScope> for InstrumentationScope {
+    fn from(data: wm::InstrumentationScope) -> Self {
+        InstrumentationScope {
+            name: data.name,
+            version: data.version.unwrap_or_default(),
+            attributes: data.attributes.into_iter().map(Into::into).collect(),
+            dropped_attributes_count: 0,
+        }
+    }
+}
+
+impl From<wm::Metric> for Metric {
+    fn from(metric: wm::Metric) -> Self {
+        Metric {
+            name: metric.name,
+            description: metric.description,
+            unit: metric.unit,
+            metadata: vec![], // internal and currently unused
+            data: Some(match metric.data {
+                wm::AggregatedMetrics::F64(data) => data.into(),
+                wm::AggregatedMetrics::U64(data) => data.into(),
+                wm::AggregatedMetrics::S64(data) => data.into(),
+            }),
+        }
+    }
+}
+
+impl From<wm::MetricData> for MetricData {
+    fn from(data: wm::MetricData) -> Self {
+        match data {
+            wm::MetricData::Gauge(gauge) => MetricData::Gauge(gauge.into()),
+            wm::MetricData::Sum(sum) => MetricData::Sum(sum.into()),
+            wm::MetricData::Histogram(hist) => MetricData::Histogram(hist.into()),
+            wm::MetricData::ExponentialHistogram(hist) => {
+                MetricData::ExponentialHistogram(hist.into())
+            }
+        }
+    }
+}
+
+impl From<wm::Gauge> for Gauge {
+    fn from(gauge: wm::Gauge) -> Self {
+        Gauge {
+            data_points: gauge
+                .data_points
+                .into_iter()
+                .map(|dp| NumberDataPoint {
+                    attributes: dp.attributes.into_iter().map(Into::into).collect(),
+                    start_time_unix_nano: gauge.start_time.map(Into::into).unwrap_or_default(),
+                    time_unix_nano: gauge.time.into(),
+                    exemplars: dp.exemplars.into_iter().map(Into::into).collect(),
+                    flags: DataPointFlags::default() as u32,
+                    value: Some(dp.value.into()),
+                })
+                .collect(),
+        }
+    }
+}
+
+impl From<wm::Sum> for Sum {
+    fn from(sum: wm::Sum) -> Self {
+        Sum {
+            data_points: sum
+                .data_points
+                .into_iter()
+                .map(|dp| NumberDataPoint {
+                    attributes: dp.attributes.into_iter().map(Into::into).collect(),
+                    start_time_unix_nano: sum.start_time.into(),
+                    time_unix_nano: sum.time.into(),
+                    exemplars: dp.exemplars.into_iter().map(Into::into).collect(),
+                    flags: DataPointFlags::default() as u32,
+                    value: Some(dp.value.into()),
+                })
+                .collect(),
+            aggregation_temporality: AggregationTemporality::from(sum.temporality).into(),
+            is_monotonic: sum.is_monotonic,
+        }
+    }
+}
+
+impl From<wm::Histogram> for Histogram {
+    fn from(hist: wm::Histogram) -> Self {
+        Histogram {
+            data_points: hist
+                .data_points
+                .into_iter()
+                .map(|dp| HistogramDataPoint {
+                    attributes: dp.attributes.into_iter().map(Into::into).collect(),
+                    start_time_unix_nano: hist.start_time.into(),
+                    time_unix_nano: hist.time.into(),
+                    count: dp.count,
+                    sum: Some(dp.sum.into()),
+                    bucket_counts: dp.bucket_counts,
+                    explicit_bounds: dp.bounds,
+                    exemplars: dp.exemplars.into_iter().map(Into::into).collect(),
+                    flags: DataPointFlags::default() as u32,
+                    min: dp.min.map(Into::into),
+                    max: dp.max.map(Into::into),
+                })
+                .collect(),
+            aggregation_temporality: hist.temporality.into(),
+        }
+    }
+}
+
+impl From<wm::ExponentialHistogram> for ExponentialHistogram {
+    fn from(hist: wm::ExponentialHistogram) -> Self {
+        ExponentialHistogram {
+            data_points: hist
+                .data_points
+                .into_iter()
+                .map(|dp| ExponentialHistogramDataPoint {
+                    attributes: dp.attributes.into_iter().map(Into::into).collect(),
+                    start_time_unix_nano: hist.start_time.into(),
+                    time_unix_nano: hist.time.into(),
+                    count: dp.count,
+                    sum: Some(dp.sum.into()),
+                    scale: dp.scale.into(),
+                    zero_count: dp.zero_count,
+                    positive: Some(Buckets {
+                        offset: dp.positive_bucket.offset,
+                        bucket_counts: dp.positive_bucket.counts,
+                    }),
+                    negative: Some(Buckets {
+                        offset: dp.negative_bucket.offset,
+                        bucket_counts: dp.negative_bucket.counts,
+                    }),
+                    flags: DataPointFlags::default() as u32,
+                    exemplars: dp.exemplars.into_iter().map(Into::into).collect(),
+                    min: dp.min.map(Into::into),
+                    max: dp.max.map(Into::into),
+                    zero_threshold: dp.zero_threshold,
+                })
+                .collect(),
+            aggregation_temporality: hist.temporality.into(),
+        }
+    }
+}
+
+impl From<wm::Exemplar> for Exemplar {
+    fn from(ex: wm::Exemplar) -> Self {
+        Exemplar {
+            filtered_attributes: ex.filtered_attributes.into_iter().map(Into::into).collect(),
+            time_unix_nano: ex.time.into(),
+            span_id: ex.span_id.as_bytes().to_vec(),
+            trace_id: ex.trace_id.as_bytes().to_vec(),
+            value: Some(ex.value.into()),
+        }
+    }
+}
+
+impl From<wm::DataValue> for ExemplarValue {
+    fn from(dv: wm::DataValue) -> Self {
+        match dv {
+            wm::DataValue::U64(v) => ExemplarValue::AsInt(v as i64),
+            wm::DataValue::S64(v) => ExemplarValue::AsInt(v),
+            wm::DataValue::F64(v) => ExemplarValue::AsDouble(v),
+        }
+    }
+}
+
+impl From<wm::DataValue> for NumberValue {
+    fn from(dv: wm::DataValue) -> Self {
+        match dv {
+            wm::DataValue::U64(v) => NumberValue::AsInt(v as i64),
+            wm::DataValue::S64(v) => NumberValue::AsInt(v),
+            wm::DataValue::F64(v) => NumberValue::AsDouble(v),
+        }
+    }
+}
+
+impl From<wm::DataValue> for f64 {
+    fn from(dv: wm::DataValue) -> Self {
+        match dv {
+            wm::DataValue::U64(v) => v as f64,
+            wm::DataValue::S64(v) => v as f64,
+            wm::DataValue::F64(v) => v,
+        }
+    }
+}
+
+impl From<wm::Temporality> for AggregationTemporality {
+    fn from(temporality: wm::Temporality) -> Self {
+        match temporality {
+            wm::Temporality::Cumulative => AggregationTemporality::Cumulative,
+            wm::Temporality::Delta => AggregationTemporality::Delta,
+            wm::Temporality::LowMemory => AggregationTemporality::Unspecified,
+        }
+    }
+}
+
+impl From<wm::Temporality> for i32 {
+    fn from(temporality: wm::Temporality) -> Self {
+        AggregationTemporality::from(temporality) as i32
+    }
+}
+
+#[derive(Default)]
+#[repr(i32)]
+pub enum DataPointFlags {
+    #[default]
+    DoNotUse = 0,
+    // NoRecordedValueMask = 1,
 }

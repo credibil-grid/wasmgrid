@@ -10,7 +10,7 @@ pub mod generated {
     });
 }
 
-// mod convert;
+mod convert;
 pub mod metrics;
 pub mod tracing;
 
@@ -36,7 +36,7 @@ pub struct ScopeGuard {
 // TODO: add xxx_span! macros
 pub fn init() -> ScopeGuard {
     let resource = Resource::builder().with_service_name("otel").build();
-
+    
     ScopeGuard {
         _tracing: tracing::init(resource.clone()).expect("should initialize"),
         _metrics: metrics::init(resource).expect("should initialize"),

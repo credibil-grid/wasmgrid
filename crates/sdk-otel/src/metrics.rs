@@ -17,7 +17,7 @@ use opentelemetry_sdk::metrics::{
 };
 
 use crate::ExportClient;
-// use crate::generated::wasi::otel::metrics as wasi;
+use crate::generated::wasi::otel::metrics as wasi;
 
 pub(crate) fn init(resource: Resource) -> Result<Reader> {
     let exporter = MetricExporter::builder().with_http().with_http_client(ExportClient).build()?;
@@ -75,9 +75,9 @@ impl Drop for Reader {
         self.reader.collect(&mut rm).expect("should collect");
 
         // export
-        block_on(async {
-            self.exporter.export(&rm).await.expect("should export metrics");
-        });
-        // wasi::export(&rm.into()).expect("should export");
+        // block_on(async {
+        //     self.exporter.export(&rm).await.expect("should export metrics");
+        // });
+        wasi::export(&rm.into()).expect("should export");
     }
 }
