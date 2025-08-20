@@ -16,7 +16,6 @@ use opentelemetry_proto::tonic::metrics::v1::{
     Histogram, HistogramDataPoint, Metric, NumberDataPoint, ResourceMetrics, ScopeMetrics, Sum,
 };
 use opentelemetry_proto::tonic::resource::v1::Resource;
-// use opentelemetry_sdk::Resource;
 use opentelemetry_sdk::error::OTelSdkError;
 use prost::Message;
 
@@ -180,7 +179,7 @@ impl From<wm::Metric> for Metric {
             name: metric.name,
             description: metric.description,
             unit: metric.unit,
-            metadata: vec![], // internal and currently unused
+            metadata: vec![],
             data: Some(match metric.data {
                 wm::AggregatedMetrics::F64(data)
                 | wm::AggregatedMetrics::U64(data)
