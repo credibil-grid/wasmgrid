@@ -4,13 +4,13 @@ use std::sync::{Arc, Weak};
 use std::time::Duration;
 
 use anyhow::Result;
-use futures::executor::block_on;
+// use futures::executor::block_on;
 use opentelemetry::global;
 use opentelemetry_otlp::{MetricExporter, WithHttpConfig};
 use opentelemetry_sdk::Resource;
 use opentelemetry_sdk::error::OTelSdkResult;
 use opentelemetry_sdk::metrics::data::ResourceMetrics;
-use opentelemetry_sdk::metrics::exporter::PushMetricExporter;
+// use opentelemetry_sdk::metrics::exporter::PushMetricExporter;
 use opentelemetry_sdk::metrics::reader::MetricReader;
 use opentelemetry_sdk::metrics::{
     InstrumentKind, ManualReader, Pipeline, SdkMeterProvider, Temporality,
@@ -33,15 +33,15 @@ pub(crate) fn init(resource: Resource) -> Result<Reader> {
 #[derive(Debug, Clone)]
 pub struct Reader {
     reader: Arc<ManualReader>,
-    exporter: Arc<MetricExporter>,
+    // exporter: Arc<MetricExporter>,
 }
 
 impl Reader {
     /// Create a new `MetricReader`.
-    pub fn new(exporter: MetricExporter) -> Self {
+    pub fn new(_exporter: MetricExporter) -> Self {
         Self {
             reader: Arc::new(ManualReader::default()),
-            exporter: Arc::new(exporter),
+            // exporter: Arc::new(exporter),
         }
     }
 }

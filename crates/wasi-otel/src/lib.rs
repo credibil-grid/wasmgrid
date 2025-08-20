@@ -126,6 +126,6 @@ impl From<types::Datetime> for SystemTime {
 
 impl From<types::Datetime> for u64 {
     fn from(value: types::Datetime) -> Self {
-        value.seconds * 1_000_000_000 + value.nanoseconds as u64
+        value.seconds * 1_000_000_000 + Self::from(value.nanoseconds)
     }
 }

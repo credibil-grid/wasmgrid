@@ -25,4 +25,4 @@ wasmtime.workspace = true
 
 http.workspace = true
 prost = "0.13.5"
-reqwest = { version = "0.12.23", features = ["rustls-tls"] }
+reqwest = "0.12.23"

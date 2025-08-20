@@ -1,6 +1,7 @@
 //! # WASI Tracing
 
 use anyhow::{Result, anyhow};
+use http::header::CONTENT_TYPE;
 use opentelemetry_proto::tonic::collector::metrics::v1::ExportMetricsServiceRequest;
 use opentelemetry_proto::tonic::common::v1::any_value::Value;
 use opentelemetry_proto::tonic::common::v1::{
@@ -31,7 +32,7 @@ impl wm::Host for Otel<'_> {
 
         reqwest::Client::new()
             .post("http://localhost:4318/v1/metrics")
-            .header(http::header::CONTENT_TYPE, "application/x-protobuf")
+            .header(CONTENT_TYPE, "application/x-protobuf")
             .body(body)
             .send()
             .await
@@ -68,7 +69,7 @@ impl From<wm::ResourceMetrics> for ExportMetricsServiceRequest {
     fn from(rm: wm::ResourceMetrics) -> Self {
         let schema_url = rm.resource.schema_url.clone().unwrap_or_default();
 
-        ExportMetricsServiceRequest {
+        Self {
             resource_metrics: vec![ResourceMetrics {
                 resource: Some(rm.resource.into()),
                 scope_metrics: rm.scope_metrics.into_iter().map(Into::into).collect(),
@@ -84,7 +85,7 @@ impl From<wm::Resource> for Resource {
         attributes.push(KeyValue {
             key: "schema_url".to_string(),
             value: resource.schema_url.as_ref().map(|s| AnyValue {
-                value: Some(Value::StringValue(s.to_string())),
+                value: Some(Value::StringValue(s.clone())),
             }),
         });
 
@@ -111,11 +112,11 @@ impl From<wm::Value> for AnyValue {
             wm::Value::Bool(v) => Value::BoolValue(v),
             wm::Value::S64(v) => Value::IntValue(v),
             wm::Value::F64(v) => Value::DoubleValue(v),
-            wm::Value::String(v) => Value::StringValue(v.into()),
+            wm::Value::String(v) => Value::StringValue(v),
             wm::Value::BoolArray(items) => Value::ArrayValue(ArrayValue {
                 values: items
                     .into_iter()
-                    .map(|v| AnyValue {
+                    .map(|v| Self {
                         value: Some(Value::BoolValue(v)),
                     })
                     .collect(),
@@ -123,7 +124,7 @@ impl From<wm::Value> for AnyValue {
             wm::Value::S64Array(items) => Value::ArrayValue(ArrayValue {
                 values: items
                     .into_iter()
-                    .map(|v| AnyValue {
+                    .map(|v| Self {
                         value: Some(Value::IntValue(v)),
                     })
                     .collect(),
@@ -131,7 +132,7 @@ impl From<wm::Value> for AnyValue {
             wm::Value::F64Array(items) => Value::ArrayValue(ArrayValue {
                 values: items
                     .into_iter()
-                    .map(|v| AnyValue {
+                    .map(|v| Self {
                         value: Some(Value::DoubleValue(v)),
                     })
                     .collect(),
@@ -139,7 +140,7 @@ impl From<wm::Value> for AnyValue {
             wm::Value::StringArray(items) => Value::ArrayValue(ArrayValue {
                 values: items
                     .into_iter()
-                    .map(|v| AnyValue {
+                    .map(|v| Self {
                         value: Some(Value::StringValue(v)),
                     })
                     .collect(),
@@ -154,7 +155,7 @@ impl From<wm::ScopeMetrics> for ScopeMetrics {
     fn from(sm: wm::ScopeMetrics) -> Self {
         let schema_url = sm.scope.clone().schema_url.unwrap_or_default();
 
-        ScopeMetrics {
+        Self {
             scope: Some(sm.scope.into()),
             metrics: sm.metrics.into_iter().map(Into::into).collect(),
             schema_url,
@@ -164,7 +165,7 @@ impl From<wm::ScopeMetrics> for ScopeMetrics {
 
 impl From<wm::InstrumentationScope> for InstrumentationScope {
     fn from(data: wm::InstrumentationScope) -> Self {
-        InstrumentationScope {
+        Self {
             name: data.name,
             version: data.version.unwrap_or_default(),
             attributes: data.attributes.into_iter().map(Into::into).collect(),
@@ -175,15 +176,15 @@ impl From<wm::InstrumentationScope> for InstrumentationScope {
 
 impl From<wm::Metric> for Metric {
     fn from(metric: wm::Metric) -> Self {
-        Metric {
+        Self {
             name: metric.name,
             description: metric.description,
             unit: metric.unit,
             metadata: vec![], // internal and currently unused
             data: Some(match metric.data {
-                wm::AggregatedMetrics::F64(data) => data.into(),
-                wm::AggregatedMetrics::U64(data) => data.into(),
-                wm::AggregatedMetrics::S64(data) => data.into(),
+                wm::AggregatedMetrics::F64(data)
+                | wm::AggregatedMetrics::U64(data)
+                | wm::AggregatedMetrics::S64(data) => data.into(),
             }),
         }
     }
@@ -192,19 +193,17 @@ impl From<wm::Metric> for Metric {
 impl From<wm::MetricData> for MetricData {
     fn from(data: wm::MetricData) -> Self {
         match data {
-            wm::MetricData::Gauge(gauge) => MetricData::Gauge(gauge.into()),
-            wm::MetricData::Sum(sum) => MetricData::Sum(sum.into()),
-            wm::MetricData::Histogram(hist) => MetricData::Histogram(hist.into()),
-            wm::MetricData::ExponentialHistogram(hist) => {
-                MetricData::ExponentialHistogram(hist.into())
-            }
+            wm::MetricData::Gauge(gauge) => Self::Gauge(gauge.into()),
+            wm::MetricData::Sum(sum) => Self::Sum(sum.into()),
+            wm::MetricData::Histogram(hist) => Self::Histogram(hist.into()),
+            wm::MetricData::ExponentialHistogram(hist) => Self::ExponentialHistogram(hist.into()),
         }
     }
 }
 
 impl From<wm::Gauge> for Gauge {
     fn from(gauge: wm::Gauge) -> Self {
-        Gauge {
+        Self {
             data_points: gauge
                 .data_points
                 .into_iter()
@@ -223,7 +222,7 @@ impl From<wm::Gauge> for Gauge {
 
 impl From<wm::Sum> for Sum {
     fn from(sum: wm::Sum) -> Self {
-        Sum {
+        Self {
             data_points: sum
                 .data_points
                 .into_iter()
@@ -244,7 +243,7 @@ impl From<wm::Sum> for Sum {
 
 impl From<wm::Histogram> for Histogram {
     fn from(hist: wm::Histogram) -> Self {
-        Histogram {
+        Self {
             data_points: hist
                 .data_points
                 .into_iter()
@@ -269,7 +268,7 @@ impl From<wm::Histogram> for Histogram {
 
 impl From<wm::ExponentialHistogram> for ExponentialHistogram {
     fn from(hist: wm::ExponentialHistogram) -> Self {
-        ExponentialHistogram {
+        Self {
             data_points: hist
                 .data_points
                 .into_iter()
@@ -303,7 +302,7 @@ impl From<wm::ExponentialHistogram> for ExponentialHistogram {
 
 impl From<wm::Exemplar> for Exemplar {
     fn from(ex: wm::Exemplar) -> Self {
-        Exemplar {
+        Self {
             filtered_attributes: ex.filtered_attributes.into_iter().map(Into::into).collect(),
             time_unix_nano: ex.time.into(),
             span_id: ex.span_id.as_bytes().to_vec(),
@@ -313,31 +312,34 @@ impl From<wm::Exemplar> for Exemplar {
     }
 }
 
+#[allow(clippy::cast_possible_wrap)]
 impl From<wm::DataValue> for ExemplarValue {
     fn from(dv: wm::DataValue) -> Self {
         match dv {
-            wm::DataValue::U64(v) => ExemplarValue::AsInt(v as i64),
-            wm::DataValue::S64(v) => ExemplarValue::AsInt(v),
-            wm::DataValue::F64(v) => ExemplarValue::AsDouble(v),
+            wm::DataValue::U64(v) => Self::AsInt(v as i64),
+            wm::DataValue::S64(v) => Self::AsInt(v),
+            wm::DataValue::F64(v) => Self::AsDouble(v),
         }
     }
 }
 
+#[allow(clippy::cast_possible_wrap)]
 impl From<wm::DataValue> for NumberValue {
     fn from(dv: wm::DataValue) -> Self {
         match dv {
-            wm::DataValue::U64(v) => NumberValue::AsInt(v as i64),
-            wm::DataValue::S64(v) => NumberValue::AsInt(v),
-            wm::DataValue::F64(v) => NumberValue::AsDouble(v),
+            wm::DataValue::U64(v) => Self::AsInt(v as i64),
+            wm::DataValue::S64(v) => Self::AsInt(v),
+            wm::DataValue::F64(v) => Self::AsDouble(v),
         }
     }
 }
 
+#[allow(clippy::cast_precision_loss)]
 impl From<wm::DataValue> for f64 {
     fn from(dv: wm::DataValue) -> Self {
         match dv {
-            wm::DataValue::U64(v) => v as f64,
-            wm::DataValue::S64(v) => v as f64,
+            wm::DataValue::U64(v) => v as Self,
+            wm::DataValue::S64(v) => v as Self,
             wm::DataValue::F64(v) => v,
         }
     }
@@ -346,16 +348,16 @@ impl From<wm::DataValue> for f64 {
 impl From<wm::Temporality> for AggregationTemporality {
     fn from(temporality: wm::Temporality) -> Self {
         match temporality {
-            wm::Temporality::Cumulative => AggregationTemporality::Cumulative,
-            wm::Temporality::Delta => AggregationTemporality::Delta,
-            wm::Temporality::LowMemory => AggregationTemporality::Unspecified,
+            wm::Temporality::Cumulative => Self::Cumulative,
+            wm::Temporality::Delta => Self::Delta,
+            wm::Temporality::LowMemory => Self::Unspecified,
         }
     }
 }
 
 impl From<wm::Temporality> for i32 {
     fn from(temporality: wm::Temporality) -> Self {
-        AggregationTemporality::from(temporality) as i32
+        AggregationTemporality::from(temporality) as Self
     }
 }
 
