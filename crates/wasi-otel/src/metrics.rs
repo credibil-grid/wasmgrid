@@ -19,18 +19,19 @@ use opentelemetry_proto::tonic::resource::v1::Resource;
 use opentelemetry_sdk::error::OTelSdkError;
 use prost::Message;
 
-use crate::Otel;
 use crate::generated::wasi::otel::metrics::{self as wm};
 use crate::generated::wasi::otel::types;
+use crate::{OTEL_ADDR, Otel};
 
 impl wm::Host for Otel<'_> {
     async fn export(&mut self, rm: wm::ResourceMetrics) -> Result<(), types::Error> {
         // convert to opentelemetry metrics
         let request = ExportMetricsServiceRequest::from(rm);
         let body = Message::encode_to_vec(&request);
+        let addr = option_env!("OTEL_ADDR").unwrap_or(OTEL_ADDR);
 
         reqwest::Client::new()
-            .post("http://localhost:4318/v1/metrics")
+            .post(format!("{addr}/v1/metrics"))
             .header(CONTENT_TYPE, "application/x-protobuf")
             .body(body)
             .send()

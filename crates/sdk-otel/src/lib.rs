@@ -21,13 +21,10 @@ pub mod tracing;
 use opentelemetry::ContextGuard;
 use opentelemetry_sdk::Resource;
 
-#[cfg(feature = "metrics")]
-use self::metrics::Reader;
-
 pub struct ScopeGuard {
     _tracing: ContextGuard,
     #[cfg(feature = "metrics")]
-    _metrics: Reader,
+    _metrics: metrics::Reader,
 }
 
 // TODO: add .in_span(|| Fn(ctx)) as alternative to guard
