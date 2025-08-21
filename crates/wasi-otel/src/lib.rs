@@ -19,10 +19,11 @@ mod generated {
         trappable_imports: true,
         trappable_error_type: {
             "wasi:otel/types/error" => Error,
-        },
+        }
     });
 }
 
+use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 use std::time::{Duration, SystemTime};
 
@@ -80,6 +81,19 @@ impl From<&types::KeyValue> for opentelemetry::KeyValue {
     }
 }
 
+impl PartialEq for types::KeyValue {
+    fn eq(&self, other: &Self) -> bool {
+        self.key == other.key && self.value == other.value
+    }
+}
+
+impl Hash for types::KeyValue {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.key.hash(state);
+        self.value.hash(state);
+    }
+}
+
 impl From<types::Value> for opentelemetry::Value {
     fn from(value: types::Value) -> Self {
         match value {
@@ -97,17 +111,71 @@ impl From<types::Value> for opentelemetry::Value {
     }
 }
 
+impl PartialEq for types::Value {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Bool(a), Self::Bool(b)) => a == b,
+            (Self::S64(a), Self::S64(b)) => a == b,
+            (Self::F64(a), Self::F64(b)) => a == b,
+            (Self::String(a), Self::String(b)) => a == b,
+            (Self::BoolArray(a), Self::BoolArray(b)) => a == b,
+            (Self::S64Array(a), Self::S64Array(b)) => a == b,
+            (Self::F64Array(a), Self::F64Array(b)) => a == b,
+            (Self::StringArray(a), Self::StringArray(b)) => a == b,
+            _ => false,
+        }
+    }
+}
+
+impl Hash for types::Value {
+    #[allow(clippy::cast_possible_truncation)]
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        match self {
+            Self::Bool(v) => v.hash(state),
+            Self::S64(v) => v.hash(state),
+            Self::F64(v) => v.to_bits().hash(state),
+            Self::String(v) => v.hash(state),
+            Self::BoolArray(items) => items.hash(state),
+            Self::S64Array(items) => items.hash(state),
+            Self::F64Array(items) => {
+                items.iter().map(|v| *v as i64).collect::<Vec<_>>().hash(state);
+            }
+            Self::StringArray(items) => items.hash(state),
+        }
+    }
+}
+
 impl From<types::InstrumentationScope> for opentelemetry::InstrumentationScope {
-    fn from(value: types::InstrumentationScope) -> Self {
-        let mut builder = Self::builder(value.name);
-        if let Some(version) = value.version {
+    fn from(scope: types::InstrumentationScope) -> Self {
+        let mut builder = Self::builder(scope.name);
+        if let Some(version) = scope.version {
             builder = builder.with_version(version);
         }
-        if let Some(schema_url) = value.schema_url {
+        if let Some(schema_url) = scope.schema_url {
             builder = builder.with_schema_url(schema_url);
         }
-        builder = builder.with_attributes(value.attributes.iter().map(Into::into));
+        builder = builder.with_attributes(scope.attributes.iter().map(Into::into));
         builder.build()
+    }
+}
+
+impl Eq for types::InstrumentationScope {}
+
+impl PartialEq for types::InstrumentationScope {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name
+            && self.version == other.version
+            && self.schema_url == other.schema_url
+            && self.attributes == other.attributes
+    }
+}
+
+impl Hash for types::InstrumentationScope {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.name.hash(state);
+        self.version.hash(state);
+        self.schema_url.hash(state);
+        self.attributes.hash(state);
     }
 }
 

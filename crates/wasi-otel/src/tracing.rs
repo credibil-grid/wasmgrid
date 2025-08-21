@@ -54,9 +54,8 @@ pub fn resource_spans(
     // Group spans by their instrumentation scope
     let scope_map = spans.into_iter().fold(
         HashMap::new(),
-        |mut scope_map: HashMap<opentelemetry::InstrumentationScope, Vec<wt::SpanData>>, span| {
-            let instrumentation =
-                opentelemetry::InstrumentationScope::from(span.instrumentation_scope.clone());
+        |mut scope_map: HashMap<wt::InstrumentationScope, Vec<wt::SpanData>>, span| {
+            let instrumentation = span.instrumentation_scope.clone();
             scope_map.entry(instrumentation).or_default().push(span);
             scope_map
         },
@@ -64,18 +63,18 @@ pub fn resource_spans(
 
     // Convert the grouped spans into ScopeSpans
     let scope_spans = scope_map
-        .into_iter()
-        .map(|(_, spans)| ScopeSpans {
+        .into_values()
+        .map(|spans| ScopeSpans {
             scope: Some(spans[0].instrumentation_scope.clone().into()),
             schema_url: resource.schema_url().map(Into::into).unwrap_or_default(),
-            spans: spans.into_iter().map(|span_data| span_data.into()).collect(),
+            spans: spans.into_iter().map(Into::into).collect(),
         })
         .collect();
 
     // Wrap ScopeSpans into a single ResourceSpans
     vec![ResourceSpans {
         resource: Some(Resource {
-            attributes: resource.iter().into_iter().map(Into::into).collect(),
+            attributes: resource.iter().map(Into::into).collect(),
             dropped_attributes_count: 0,
             entity_refs: vec![],
         }),
@@ -96,7 +95,7 @@ impl From<wt::SpanData> for Span {
             trace_state,
             parent_span_id: hex::decode(span.parent_span_id).unwrap_or_default(),
             flags: span.span_context.trace_flags.into(),
-            name: span.name.into(),
+            name: span.name,
             kind: span.span_kind as i32,
             start_time_unix_nano: span.start_time.into(),
             end_time_unix_nano: span.end_time.into(),
@@ -153,9 +152,9 @@ impl From<otel::TraceFlags> for wt::TraceFlags {
 impl From<wt::TraceFlags> for u32 {
     fn from(value: wt::TraceFlags) -> Self {
         if value.contains(wt::TraceFlags::SAMPLED) {
-            otel::TraceFlags::SAMPLED.to_u8() as Self
+            Self::from(otel::TraceFlags::SAMPLED.to_u8())
         } else {
-            otel::TraceFlags::NOT_SAMPLED.to_u8() as Self
+            Self::from(otel::TraceFlags::NOT_SAMPLED.to_u8())
         }
     }
 }
@@ -208,7 +207,7 @@ impl From<wt::Status> for Status {
             wt::Status::Unset => Self::default(),
             wt::Status::Error(description) => Self {
                 code: StatusCode::Error.into(),
-                message: description.into(),
+                message: description,
             },
             wt::Status::Ok => Self {
                 code: StatusCode::Ok.into(),
