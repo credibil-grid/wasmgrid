@@ -41,6 +41,7 @@ const OTEL_ADDR: &str = "http://localhost:4318";
 
 pub struct Otel<'a> {
     exporter: SpanExporter,
+    http_client: reqwest::Client,
     _phantom: PhantomData<&'a ()>,
 }
 
@@ -52,6 +53,7 @@ impl Otel<'_> {
 
         Otel {
             exporter,
+            http_client: reqwest::Client::new(),
             _phantom: PhantomData,
         }
     }

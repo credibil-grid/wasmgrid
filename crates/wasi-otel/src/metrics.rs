@@ -1,6 +1,6 @@
 //! # WASI Tracing
 
-use anyhow::{Result, anyhow};
+use anyhow::{Context, Result};
 use http::header::CONTENT_TYPE;
 use opentelemetry_proto::tonic::collector::metrics::v1::ExportMetricsServiceRequest;
 use opentelemetry_proto::tonic::common::v1::any_value::Value;
@@ -30,13 +30,14 @@ impl wm::Host for Otel<'_> {
         let body = Message::encode_to_vec(&request);
         let addr = option_env!("OTEL_ADDR").unwrap_or(OTEL_ADDR);
 
-        reqwest::Client::new()
+        // send to collector
+        self.http_client
             .post(format!("{addr}/v1/metrics"))
             .header(CONTENT_TYPE, "application/x-protobuf")
             .body(body)
             .send()
             .await
-            .map_err(|e| anyhow!("{e:?}"))?;
+            .context("sending metrics")?;
 
         Ok(())
     }
