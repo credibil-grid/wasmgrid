@@ -25,7 +25,7 @@ use crate::{OTEL_ADDR, Otel};
 
 impl wm::Host for Otel<'_> {
     async fn export(&mut self, rm: wm::ResourceMetrics) -> Result<(), types::Error> {
-        // convert to opentelemetry metrics
+        // convert to opentelemetry export format
         let request = ExportMetricsServiceRequest::from(rm);
         let body = Message::encode_to_vec(&request);
         let addr = option_env!("OTEL_ADDR").unwrap_or(OTEL_ADDR);

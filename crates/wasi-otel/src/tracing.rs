@@ -9,7 +9,6 @@ use opentelemetry::trace::{
     TraceContextExt, {self as otel},
 };
 use opentelemetry_proto::tonic::collector::trace::v1::ExportTraceServiceRequest;
-// use opentelemetry_proto::tonic::common::v1::InstrumentationScope;
 use opentelemetry_proto::tonic::resource::v1::Resource;
 use opentelemetry_proto::tonic::trace::v1::span::{Event, Link};
 use opentelemetry_proto::tonic::trace::v1::status::StatusCode;
@@ -29,6 +28,7 @@ impl wasi_otel::tracing::Host for Otel<'_> {
     }
 
     async fn export(&mut self, span_data: Vec<wt::SpanData>) -> Result<()> {
+        // convert to opentelemetry export format
         let resource_spans = resource_spans(span_data, init::resource());
         let request = ExportTraceServiceRequest { resource_spans };
 
@@ -51,7 +51,7 @@ impl wasi_otel::tracing::Host for Otel<'_> {
 pub fn resource_spans(
     spans: Vec<wt::SpanData>, resource: &opentelemetry_sdk::Resource,
 ) -> Vec<ResourceSpans> {
-    // Group spans by their instrumentation scope
+    // group spans by InstrumentationScope
     let scope_map = spans.into_iter().fold(
         HashMap::new(),
         |mut scope_map: HashMap<wt::InstrumentationScope, Vec<wt::SpanData>>, span| {
@@ -61,7 +61,7 @@ pub fn resource_spans(
         },
     );
 
-    // Convert the grouped spans into ScopeSpans
+    // convert into ScopeSpans
     let scope_spans = scope_map
         .into_values()
         .map(|spans| ScopeSpans {
@@ -71,7 +71,7 @@ pub fn resource_spans(
         })
         .collect();
 
-    // Wrap ScopeSpans into a single ResourceSpans
+    // create ResourceSpans
     vec![ResourceSpans {
         resource: Some(Resource {
             attributes: resource.iter().map(Into::into).collect(),
@@ -133,16 +133,6 @@ impl From<&otel::SpanContext> for wt::SpanContext {
     }
 }
 
-// impl From<wt::SpanContext> for otel::SpanContext {
-//     fn from(ctx: wt::SpanContext) -> Self {
-//         let trace_id = otel::TraceId::from_hex(&ctx.trace_id).unwrap_or(otel::TraceId::INVALID);
-//         let span_id = otel::SpanId::from_hex(&ctx.span_id).unwrap_or(otel::SpanId::INVALID);
-//         let trace_state = otel::TraceState::from_key_value(ctx.trace_state)
-//             .unwrap_or_else(|_| otel::TraceState::default());
-//         Self::new(trace_id, span_id, ctx.trace_flags.into(), ctx.is_remote, trace_state)
-//     }
-// }
-
 impl From<otel::TraceFlags> for wt::TraceFlags {
     fn from(value: otel::TraceFlags) -> Self {
         if value.is_sampled() { Self::SAMPLED } else { Self::empty() }
@@ -158,18 +148,6 @@ impl From<wt::TraceFlags> for u32 {
         }
     }
 }
-
-// impl From<wt::SpanKind> for i32 {
-//     fn from(value: wt::SpanKind) -> Self {
-//         match value {
-//             wt::SpanKind::Client => Self::Client,
-//             wt::SpanKind::Server => Self::Server,
-//             wt::SpanKind::Producer => Self::Producer,
-//             wt::SpanKind::Consumer => Self::Consumer,
-//             wt::SpanKind::Internal => Self::Internal,
-//         }
-//     }
-// }
 
 impl From<wt::Event> for Event {
     fn from(event: wt::Event) -> Self {
@@ -214,15 +192,5 @@ impl From<wt::Status> for Status {
                 message: String::new(),
             },
         }
-    }
-}
-
-mod tests {
-    #[test]
-    fn from_hex() {
-        let hex = "ff59dca6e9c68f0adddf8aba67294b16";
-        let bytes = hex::decode(hex).unwrap();
-        // assert_eq!(span_context.trace_id, hex);
-        println!("Bytes: {:?}", bytes);
     }
 }
