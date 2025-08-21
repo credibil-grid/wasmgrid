@@ -27,9 +27,6 @@ use std::marker::PhantomData;
 use std::time::{Duration, SystemTime};
 
 use anyhow::Result;
-use credibil_otel::init;
-use opentelemetry_otlp::SpanExporter;
-use opentelemetry_sdk::trace::SpanExporter as _;
 use runtime::Linkable;
 use wasi_core::Ctx;
 use wasmtime::component::{HasData, Linker};
@@ -37,22 +34,16 @@ use wasmtime::component::{HasData, Linker};
 use self::generated::wasi::otel as wasi_otel;
 use self::generated::wasi::otel::types;
 
-const OTEL_ADDR: &str = "http://localhost:4318";    
+const OTEL_ADDR: &str = "http://localhost:4318";
 
 pub struct Otel<'a> {
-    exporter: SpanExporter,
     http_client: reqwest::Client,
     _phantom: PhantomData<&'a ()>,
 }
 
 impl Otel<'_> {
     fn new(_: &mut Ctx) -> Otel<'_> {
-        let mut exporter =
-            SpanExporter::builder().with_tonic().build().expect("should build exporter");
-        exporter.set_resource(init::resource());
-
         Otel {
-            exporter,
             http_client: reqwest::Client::new(),
             _phantom: PhantomData,
         }

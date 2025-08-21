@@ -30,7 +30,7 @@ impl wm::Host for Otel<'_> {
         let body = Message::encode_to_vec(&request);
         let addr = option_env!("OTEL_ADDR").unwrap_or(OTEL_ADDR);
 
-        // send to collector
+        // export to collector
         self.http_client
             .post(format!("{addr}/v1/metrics"))
             .header(CONTENT_TYPE, "application/x-protobuf")
@@ -158,7 +158,7 @@ impl From<wm::ScopeMetrics> for ScopeMetrics {
 
         Self {
             scope: Some(sm.scope.into()),
-            metrics: sm.metrics.into_iter().map(Into::into).collect(),
+            metrics: sm.metrics.into_iter().rev().map(Into::into).collect(),
             schema_url,
         }
     }
