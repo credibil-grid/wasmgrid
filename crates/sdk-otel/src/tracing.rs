@@ -12,13 +12,13 @@ use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::{EnvFilter, Registry};
 
-use crate::export::tracing;
+use crate::export::tracing::Exporter;
 use crate::generated::wasi::otel::tracing as wasi;
 
 // TODO: add xxx_span! macros
 // TODO: handle initialization error
 pub(crate) fn init(resource: Resource) -> Result<ContextGuard> {
-    let exporter = tracing::exporter()?;
+    let exporter = Exporter::new()?;
     let provider =
         SdkTracerProvider::builder().with_resource(resource).with_simple_exporter(exporter).build();
 

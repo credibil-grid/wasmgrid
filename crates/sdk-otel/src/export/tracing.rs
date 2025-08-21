@@ -12,23 +12,24 @@ use opentelemetry_sdk::trace::SpanData;
 #[cfg(not(feature = "guest-mode"))]
 use crate::generated::wasi::otel::tracing as wasi;
 
-pub fn exporter() -> Result<Exporter> {
-    cfg_if! {
-        if #[cfg(feature = "guest-mode")] {
-            use crate::export::ExportClient;
-            let inner = SpanExporter::builder().with_http().with_http_client(ExportClient).build()?;
-            Ok(Exporter { inner })
-        } else {
-            Ok(Exporter{})
-        }
-    }
-}
-
 #[derive(Debug)]
 pub struct Exporter {
     #[cfg(feature = "guest-mode")]
     inner: SpanExporter,
-    // resource: Resource,
+}
+
+impl Exporter {
+    pub fn new() -> Result<Exporter> {
+        cfg_if! {
+            if #[cfg(feature = "guest-mode")] {
+                use crate::export::ExportClient;
+                let inner = SpanExporter::builder().with_http().with_http_client(ExportClient).build()?;
+                Ok(Exporter { inner })
+            } else {
+                Ok(Exporter {})
+            }
+        }
+    }
 }
 
 impl opentelemetry_sdk::trace::SpanExporter for Exporter {
@@ -40,7 +41,7 @@ impl opentelemetry_sdk::trace::SpanExporter for Exporter {
     #[cfg(not(feature = "guest-mode"))]
     async fn export(&self, span_data: Vec<SpanData>) -> Result<(), OTelSdkError> {
         for sd in span_data {
-            wasi::on_end(&sd.into());
+            crate::generated::wasi::otel::tracing::export(&[sd.into()]);
         }
         Ok(())
     }

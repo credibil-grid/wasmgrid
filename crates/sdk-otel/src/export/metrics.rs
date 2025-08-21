@@ -2,35 +2,71 @@
 //!
 //! Convert OpenTelemetry metrics types in `wasi-otel` types.
 
+use std::time::Duration;
+
 use anyhow::Result;
 use cfg_if::cfg_if;
+#[cfg(feature = "guest-mode")]
+use opentelemetry_otlp::{MetricExporter, WithHttpConfig};
+use opentelemetry_sdk::error::{OTelSdkError, OTelSdkResult};
+use opentelemetry_sdk::metrics::Temporality;
 use opentelemetry_sdk::metrics::data::ResourceMetrics;
+use opentelemetry_sdk::metrics::exporter::PushMetricExporter;
 
-pub fn export(rm: ResourceMetrics) -> Result<()> {
-    cfg_if! {
-        if #[cfg(feature = "guest-mode")] {
-            use futures::executor::block_on;
-            use opentelemetry_otlp::{MetricExporter, WithHttpConfig};
-            use opentelemetry_sdk::metrics::exporter::PushMetricExporter;
-            use crate::export::ExportClient;
+#[cfg(not(feature = "guest-mode"))]
+use crate::generated::wasi::otel::metrics as wasi;
 
-            let exporter = MetricExporter::builder().with_http().with_http_client(ExportClient).build()?;
-            block_on(async {
-                exporter.export(&rm).await
-            })?;
-        } else {
-            wm::export(&rm.into())?;
+#[derive(Debug)]
+pub struct Exporter {
+    #[cfg(feature = "guest-mode")]
+    inner: MetricExporter,
+}
+
+impl Exporter {
+    pub fn new() -> Result<Exporter> {
+        cfg_if! {
+            if #[cfg(feature = "guest-mode")] {
+                use crate::export::ExportClient;
+                let inner = MetricExporter::builder().with_http().with_http_client(ExportClient).build()?;
+                Ok(Exporter { inner })
+            } else {
+                Ok(Exporter {})
+            }
         }
     }
+}
 
-    Ok(())
+impl PushMetricExporter for Exporter {
+    #[cfg(feature = "guest-mode")]
+    async fn export(&self, rm: &ResourceMetrics) -> Result<(), OTelSdkError> {
+        self.inner.export(rm).await
+    }
+
+    #[cfg(not(feature = "guest-mode"))]
+    async fn export(&self, rm: &ResourceMetrics) -> Result<(), OTelSdkError> {
+        wasi::export(&rm.into()).map_err(|e| {
+            OTelSdkError::InternalFailure(format!("Failed to export metrics: {}", e))
+        })?;
+        Ok(())
+    }
+
+    fn force_flush(&self) -> OTelSdkResult {
+        unimplemented!()
+    }
+
+    fn temporality(&self) -> Temporality {
+        unimplemented!()
+    }
+
+    fn shutdown_with_timeout(&self, _: Duration) -> OTelSdkResult {
+        unimplemented!()
+    }
 }
 
 cfg_if! {
     if #[cfg(not(feature = "guest-mode"))] {
         use num_traits::ToPrimitive;
         use opentelemetry_sdk::Resource;
-        use opentelemetry_sdk::metrics::Temporality;
         use opentelemetry_sdk::metrics::data::{
             AggregatedMetrics, Exemplar, ExponentialBucket, ExponentialHistogram,
             ExponentialHistogramDataPoint, Gauge, GaugeDataPoint, Histogram, HistogramDataPoint, Metric,
@@ -39,8 +75,8 @@ cfg_if! {
 
         use crate::generated::wasi::otel::metrics as wm;
 
-        impl From<ResourceMetrics> for wm::ResourceMetrics {
-            fn from(rm: ResourceMetrics) -> Self {
+        impl From<&ResourceMetrics> for wm::ResourceMetrics {
+            fn from(rm: &ResourceMetrics) -> Self {
                 Self {
                     resource: rm.resource().into(),
                     scope_metrics: rm.scope_metrics().into_iter().map(Into::into).collect(),

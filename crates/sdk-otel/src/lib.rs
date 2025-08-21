@@ -14,16 +14,19 @@ pub mod generated {
 }
 
 mod export;
+#[cfg(feature = "metrics")]
 pub mod metrics;
 pub mod tracing;
 
 use opentelemetry::ContextGuard;
 use opentelemetry_sdk::Resource;
 
+#[cfg(feature = "metrics")]
 use self::metrics::Reader;
 
 pub struct ScopeGuard {
     _tracing: ContextGuard,
+    #[cfg(feature = "metrics")]
     _metrics: Reader,
 }
 
@@ -34,6 +37,7 @@ pub fn init() -> ScopeGuard {
 
     ScopeGuard {
         _tracing: tracing::init(resource.clone()).expect("should initialize"),
+        #[cfg(feature = "metrics")]
         _metrics: metrics::init(resource).expect("should initialize"),
     }
 }

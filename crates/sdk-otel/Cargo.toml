@@ -9,13 +9,15 @@ version = "0.1.0"
 workspace = true
 
 [features]
-default = ["guest-mode"]
-guest-mode = ["dep:async-trait", "dep:bytes", "dep:futures", "dep:http", "dep:opentelemetry-http", "dep:opentelemetry-otlp"]
+default = ["host-mode", "metrics"]
+guest-mode = ["dep:async-trait", "dep:bytes", "dep:http", "dep:opentelemetry-http", "dep:opentelemetry-otlp"]
 host-mode = ["dep:num-traits"]
+metrics = []
 
 [dependencies]
 anyhow.workspace = true
 cfg-if = "1.0.3"
+futures = "0.3.31"
 opentelemetry = "0.30.0"
 opentelemetry_sdk = { version = "0.30.0", features = ["experimental_metrics_custom_reader"] }
 sdk-http.workspace = true
@@ -30,7 +32,7 @@ num-traits = { version = "0.2", optional = true }
 # guest-mode dependencies
 async-trait = { version = "0.1.89", optional = true }
 bytes = { workspace = true, optional = true }
-futures = { version = "0.3.31", optional = true }
+
 http = { workspace = true, optional = true }
 opentelemetry-http = { version = "0.30.0", default-features = false, optional = true }
 opentelemetry-otlp = { version = "0.30.0", default-features = false, features = ["http-proto"], optional = true }

@@ -2,6 +2,7 @@
 //!
 //! Convert OpenTelemetry types in `wasi-otel` types.
 
+#[cfg(feature = "metrics")]
 pub mod metrics;
 pub mod tracing;
 
