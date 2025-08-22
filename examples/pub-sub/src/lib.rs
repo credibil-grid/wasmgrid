@@ -1,13 +1,15 @@
 use anyhow::Result;
-use serde_json::json;
+use axum::routing::post;
+use axum::{Json, Router};
+use bytes::Bytes;
+use serde_json::{Value, json};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 use wasi::exports::http;
 use wasi::http::types::{IncomingRequest, ResponseOutparam};
-use wasi_bindings::messaging;
-use wasi_bindings::messaging::incoming_handler::Configuration;
-use wasi_bindings::messaging::producer;
-use wasi_bindings::messaging::types::{Client, Error, Message};
-use wasi_http_ext::{self, Router, post};
+use wit_bindings::messaging;
+use wit_bindings::messaging::incoming_handler::Configuration;
+use wit_bindings::messaging::producer;
+use wit_bindings::messaging::types::{Client, Error, Message};
 
 pub struct Http;
 
@@ -17,22 +19,18 @@ impl http::incoming_handler::Guest for Http {
             FmtSubscriber::builder().with_env_filter(EnvFilter::from_default_env()).finish();
         tracing::subscriber::set_global_default(subscriber).expect("should set subscriber");
 
-        let router = Router::new().route(
-            "/",
-            post(|request| {
-                // publish HTTP request body to NATS topic `a`
-                let client = Client::connect("nats").unwrap();
-                let message = Message::new(&request.body()?);
-                producer::send(&client, "a", message).expect("should send");
+        let router = Router::new().route("/", post(handle));
 
-                let resp = json!({"message": "message published"});
-                Ok(serde_json::to_vec(&resp)?.into())
-            }),
-        );
-
-        let out = wasi_http_ext::serve(&router, &request);
+        let out = sdk_http::serve(router, request);
         ResponseOutparam::set(response, out);
     }
+}
+
+async fn handle(body: Bytes) -> Json<Value> {
+    let client = Client::connect("nats").unwrap();
+    let message = Message::new(&body);
+    producer::send(&client, "a", message).expect("should send");
+    Json(json!({"message": "message published"}))
 }
 
 wasi::http::proxy::export!(Http);
@@ -89,4 +87,4 @@ impl messaging::incoming_handler::Guest for Messaging {
     }
 }
 
-wasi_bindings::messaging::export!(Messaging with_types_in wasi_bindings::messaging);
+wit_bindings::messaging::export!(Messaging with_types_in wit_bindings::messaging);

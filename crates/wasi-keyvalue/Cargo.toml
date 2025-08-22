@@ -1,0 +1,24 @@
+[package]
+name = "wasi-keyvalue"
+description = "Wasm Keyvalue service"
+authors.workspace = true
+edition.workspace = true
+version = "0.1.0"
+
+[lints]
+workspace = true
+
+[features]
+
+[dependencies]
+anyhow.workspace = true
+async-nats.workspace = true
+base64ct.workspace = true
+futures.workspace = true
+resources = { workspace = true, features = ["nats"] }
+runtime.workspace = true
+tracing.workspace = true
+wasmtime.workspace = true
+wasmtime-wasi.workspace = true
+
+wasi-core.workspace = true

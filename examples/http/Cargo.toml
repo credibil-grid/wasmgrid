@@ -11,9 +11,9 @@ crate-type = ["cdylib"]
 workspace = true
 
 [dependencies]
-anyhow.workspace = true
+axum = { workspace = true, features = ["json"] }
+sdk-http.workspace = true
 serde_json.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 wasi.workspace = true
-wasi-http-ext.workspace = true

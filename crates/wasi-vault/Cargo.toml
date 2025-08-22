@@ -1,0 +1,28 @@
+[package]
+name = "wasi-vault"
+description = "Wasm vault service"
+authors.workspace = true
+edition.workspace = true
+version = "0.1.0"
+
+[lints]
+workspace = true
+
+[features]
+
+[dependencies]
+anyhow.workspace = true
+azure_security_keyvault_secrets.workspace = true
+base64ct.workspace = true
+futures.workspace = true
+http.workspace = true
+resources = { workspace = true, features = ["azkeyvault"] }
+runtime.workspace = true
+tracing.workspace = true
+wasmtime.workspace = true
+wasmtime-wasi.workspace = true
+
+wasi-core.workspace = true
+
+# required for azure_identity, etc.
+openssl = { version = "0.10", optional = true, features = ["vendored"] }

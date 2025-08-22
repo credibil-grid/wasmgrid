@@ -1,0 +1,17 @@
+[package]
+name = "sdk-otel-attr"
+description = "Wasm opentelemetry service"
+authors.workspace = true
+edition.workspace = true
+version = "0.1.0"
+
+[lib]
+proc-macro = true
+
+[lints]
+workspace = true
+
+[dependencies]
+quote = "1.0.40"
+sdk-otel.workspace = true
+syn = "2.0"

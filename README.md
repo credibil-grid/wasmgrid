@@ -7,22 +7,7 @@ can support components based on the [`wasi-cloud-core`](https://github.com/WebAs
 
 ## Quick Start
 
-Add a `.env` file in the root of the project with the following values:
-
-```bash
-# tracing log level, e.g. "wasmgrid=debug,async_nats=info,azure_core=info"
-RUST_LOG="wasmgrid=debug" 
-HTTP_ADDR="0.0.0.0:8080"
-NATS_ADDR="demo.nats.io"
-MGO_URI="<MongoDB connection string>"
-KV_ADDR="<Azure Key Vault URI>"
-
-# when using Synadia Cloud:
-NATS_ADDR="tls://connect.ngs.global"
-NATS_JWT="<user JWT>"
-NATS_SEED="<user signing seed>"
-WITH_CORS="true"
-```
+Add a `.env` file in the root of the project (see `.env.example`)
 
 In order for a connection to Azure Key Vault to be made use the Azure CLI to authenticate before running examples:
 

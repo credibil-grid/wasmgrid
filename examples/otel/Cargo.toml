@@ -1,0 +1,21 @@
+[package]
+name = "otel"
+version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+
+[lib]
+crate-type = ["cdylib"]
+
+[lints]
+workspace = true
+
+[dependencies]
+axum = { workspace = true, features = ["json"] }
+opentelemetry = "0.30.0"
+sdk-http.workspace = true
+sdk-otel.workspace = true
+sdk-otel-attr.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+wasi.workspace = true
