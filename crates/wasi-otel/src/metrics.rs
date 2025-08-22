@@ -157,7 +157,7 @@ impl From<wasi::ScopeMetrics> for ScopeMetrics {
 
         Self {
             scope: Some(sm.scope.into()),
-            metrics: sm.metrics.into_iter().rev().map(Into::into).collect(),
+            metrics: sm.metrics.into_iter().map(Into::into).collect(),
             schema_url,
         }
     }
@@ -207,7 +207,6 @@ impl From<wasi::Gauge> for Gauge {
             data_points: gauge
                 .data_points
                 .into_iter()
-                .rev()
                 .map(|dp| NumberDataPoint {
                     attributes: dp.attributes.into_iter().map(Into::into).collect(),
                     start_time_unix_nano: gauge.start_time.map(Into::into).unwrap_or_default(),
@@ -227,7 +226,6 @@ impl From<wasi::Sum> for Sum {
             data_points: sum
                 .data_points
                 .into_iter()
-                .rev()
                 .map(|dp| NumberDataPoint {
                     attributes: dp.attributes.into_iter().map(Into::into).collect(),
                     start_time_unix_nano: sum.start_time.into(),
@@ -249,7 +247,6 @@ impl From<wasi::Histogram> for Histogram {
             data_points: hist
                 .data_points
                 .into_iter()
-                .rev()
                 .map(|dp| HistogramDataPoint {
                     attributes: dp.attributes.into_iter().map(Into::into).collect(),
                     start_time_unix_nano: hist.start_time.into(),
@@ -275,7 +272,6 @@ impl From<wasi::ExponentialHistogram> for ExponentialHistogram {
             data_points: hist
                 .data_points
                 .into_iter()
-                .rev()
                 .map(|dp| ExponentialHistogramDataPoint {
                     attributes: dp.attributes.into_iter().map(Into::into).collect(),
                     start_time_unix_nano: hist.start_time.into(),
@@ -309,8 +305,8 @@ impl From<wasi::Exemplar> for Exemplar {
         Self {
             filtered_attributes: ex.filtered_attributes.into_iter().map(Into::into).collect(),
             time_unix_nano: ex.time.into(),
-            span_id: ex.span_id.as_bytes().to_vec(),
-            trace_id: ex.trace_id.as_bytes().to_vec(),
+            span_id: hex::decode(ex.span_id).unwrap_or_default(),
+            trace_id: hex::decode(ex.trace_id).unwrap_or_default(),
             value: Some(ex.value.into()),
         }
     }

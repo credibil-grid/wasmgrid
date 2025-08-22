@@ -20,24 +20,12 @@ use crate::export::metrics::Exporter;
 pub(crate) fn init(resource: Resource) -> Result<Reader> {
     let exporter = Exporter::new()?;
     let reader = Reader::new(exporter);
-    let _guard = G.with(|_| ());
 
     let provider =
         SdkMeterProvider::builder().with_resource(resource).with_reader(reader.clone()).build();
     global::set_meter_provider(provider);
 
     Ok(reader)
-}
-
-thread_local! {
-    static G: Guard = Guard;
-}
-
-pub struct Guard;
-impl Drop for Guard {
-    fn drop(&mut self) {
-        println!("Metrics guard dropped, flushing metrics...");
-    }
 }
 
 #[derive(Debug, Clone)]

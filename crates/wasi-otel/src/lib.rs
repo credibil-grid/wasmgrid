@@ -25,7 +25,6 @@ mod generated {
 
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
-use std::time::{Duration, SystemTime};
 
 use anyhow::Result;
 use runtime::Linkable;
@@ -179,16 +178,10 @@ impl Hash for types::InstrumentationScope {
     }
 }
 
-impl From<types::Datetime> for SystemTime {
-    fn from(value: types::Datetime) -> Self {
-        Self::UNIX_EPOCH
-            .checked_add(Duration::new(value.seconds, value.nanoseconds))
-            .unwrap_or(Self::UNIX_EPOCH)
+impl From<types::Datetime> for u64 {
+    fn from(dt: types::Datetime) -> Self {
+        (dt.seconds * 1_000_000_000) + Self::from(dt.nanoseconds)
     }
 }
 
-impl From<types::Datetime> for u64 {
-    fn from(value: types::Datetime) -> Self {
-        value.seconds * 1_000_000_000 + Self::from(value.nanoseconds)
-    }
-}
+
