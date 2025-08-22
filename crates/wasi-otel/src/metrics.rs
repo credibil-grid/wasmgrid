@@ -19,12 +19,11 @@ use opentelemetry_proto::tonic::resource::v1::Resource;
 use opentelemetry_sdk::error::OTelSdkError;
 use prost::Message;
 
-use crate::generated::wasi::otel::metrics::{self as wm};
-use crate::generated::wasi::otel::types;
+use crate::generated::wasi::otel::{metrics as wasi, metrics, types};
 use crate::{OTEL_ADDR, Otel};
 
-impl wm::Host for Otel<'_> {
-    async fn export(&mut self, rm: wm::ResourceMetrics) -> Result<(), types::Error> {
+impl metrics::Host for Otel<'_> {
+    async fn export(&mut self, rm: wasi::ResourceMetrics) -> Result<(), wasi::Error> {
         // convert to opentelemetry export format
         let request = ExportMetricsServiceRequest::from(rm);
         let body = Message::encode_to_vec(&request);
@@ -44,13 +43,13 @@ impl wm::Host for Otel<'_> {
 }
 
 impl types::Host for Otel<'_> {
-    fn convert_error(&mut self, err: types::Error) -> anyhow::Result<types::Error> {
+    fn convert_error(&mut self, err: wasi::Error) -> anyhow::Result<wasi::Error> {
         tracing::error!("{err}");
         Ok(err)
     }
 }
 
-impl From<OTelSdkError> for types::Error {
+impl From<OTelSdkError> for wasi::Error {
     fn from(err: OTelSdkError) -> Self {
         match err {
             OTelSdkError::AlreadyShutdown => Self::AlreadyShutdown,
@@ -60,14 +59,14 @@ impl From<OTelSdkError> for types::Error {
     }
 }
 
-impl From<anyhow::Error> for types::Error {
+impl From<anyhow::Error> for wasi::Error {
     fn from(err: anyhow::Error) -> Self {
         Self::InternalFailure(err.to_string())
     }
 }
 
-impl From<wm::ResourceMetrics> for ExportMetricsServiceRequest {
-    fn from(rm: wm::ResourceMetrics) -> Self {
+impl From<wasi::ResourceMetrics> for ExportMetricsServiceRequest {
+    fn from(rm: wasi::ResourceMetrics) -> Self {
         let schema_url = rm.resource.schema_url.clone().unwrap_or_default();
 
         Self {
@@ -80,8 +79,8 @@ impl From<wm::ResourceMetrics> for ExportMetricsServiceRequest {
     }
 }
 
-impl From<wm::Resource> for Resource {
-    fn from(resource: wm::Resource) -> Self {
+impl From<wasi::Resource> for Resource {
+    fn from(resource: wasi::Resource) -> Self {
         let mut attributes = resource.attributes.into_iter().map(Into::into).collect::<Vec<_>>();
         attributes.push(KeyValue {
             key: "schema_url".to_string(),
@@ -98,8 +97,8 @@ impl From<wm::Resource> for Resource {
     }
 }
 
-impl From<wm::KeyValue> for KeyValue {
-    fn from(value: wm::KeyValue) -> Self {
+impl From<wasi::KeyValue> for KeyValue {
+    fn from(value: wasi::KeyValue) -> Self {
         Self {
             key: value.key,
             value: Some(value.value.into()),
@@ -107,14 +106,14 @@ impl From<wm::KeyValue> for KeyValue {
     }
 }
 
-impl From<wm::Value> for AnyValue {
-    fn from(value: wm::Value) -> Self {
+impl From<wasi::Value> for AnyValue {
+    fn from(value: wasi::Value) -> Self {
         let v: Value = match value {
-            wm::Value::Bool(v) => Value::BoolValue(v),
-            wm::Value::S64(v) => Value::IntValue(v),
-            wm::Value::F64(v) => Value::DoubleValue(v),
-            wm::Value::String(v) => Value::StringValue(v),
-            wm::Value::BoolArray(items) => Value::ArrayValue(ArrayValue {
+            wasi::Value::Bool(v) => Value::BoolValue(v),
+            wasi::Value::S64(v) => Value::IntValue(v),
+            wasi::Value::F64(v) => Value::DoubleValue(v),
+            wasi::Value::String(v) => Value::StringValue(v),
+            wasi::Value::BoolArray(items) => Value::ArrayValue(ArrayValue {
                 values: items
                     .into_iter()
                     .map(|v| Self {
@@ -122,7 +121,7 @@ impl From<wm::Value> for AnyValue {
                     })
                     .collect(),
             }),
-            wm::Value::S64Array(items) => Value::ArrayValue(ArrayValue {
+            wasi::Value::S64Array(items) => Value::ArrayValue(ArrayValue {
                 values: items
                     .into_iter()
                     .map(|v| Self {
@@ -130,7 +129,7 @@ impl From<wm::Value> for AnyValue {
                     })
                     .collect(),
             }),
-            wm::Value::F64Array(items) => Value::ArrayValue(ArrayValue {
+            wasi::Value::F64Array(items) => Value::ArrayValue(ArrayValue {
                 values: items
                     .into_iter()
                     .map(|v| Self {
@@ -138,7 +137,7 @@ impl From<wm::Value> for AnyValue {
                     })
                     .collect(),
             }),
-            wm::Value::StringArray(items) => Value::ArrayValue(ArrayValue {
+            wasi::Value::StringArray(items) => Value::ArrayValue(ArrayValue {
                 values: items
                     .into_iter()
                     .map(|v| Self {
@@ -152,8 +151,8 @@ impl From<wm::Value> for AnyValue {
     }
 }
 
-impl From<wm::ScopeMetrics> for ScopeMetrics {
-    fn from(sm: wm::ScopeMetrics) -> Self {
+impl From<wasi::ScopeMetrics> for ScopeMetrics {
+    fn from(sm: wasi::ScopeMetrics) -> Self {
         let schema_url = sm.scope.clone().schema_url.unwrap_or_default();
 
         Self {
@@ -164,8 +163,8 @@ impl From<wm::ScopeMetrics> for ScopeMetrics {
     }
 }
 
-impl From<wm::InstrumentationScope> for InstrumentationScope {
-    fn from(data: wm::InstrumentationScope) -> Self {
+impl From<wasi::InstrumentationScope> for InstrumentationScope {
+    fn from(data: wasi::InstrumentationScope) -> Self {
         Self {
             name: data.name,
             version: data.version.unwrap_or_default(),
@@ -175,39 +174,40 @@ impl From<wm::InstrumentationScope> for InstrumentationScope {
     }
 }
 
-impl From<wm::Metric> for Metric {
-    fn from(metric: wm::Metric) -> Self {
+impl From<wasi::Metric> for Metric {
+    fn from(metric: wasi::Metric) -> Self {
         Self {
             name: metric.name,
             description: metric.description,
             unit: metric.unit,
             metadata: vec![],
             data: Some(match metric.data {
-                wm::AggregatedMetrics::F64(data)
-                | wm::AggregatedMetrics::U64(data)
-                | wm::AggregatedMetrics::S64(data) => data.into(),
+                wasi::AggregatedMetrics::F64(data)
+                | wasi::AggregatedMetrics::U64(data)
+                | wasi::AggregatedMetrics::S64(data) => data.into(),
             }),
         }
     }
 }
 
-impl From<wm::MetricData> for MetricData {
-    fn from(data: wm::MetricData) -> Self {
+impl From<wasi::MetricData> for MetricData {
+    fn from(data: wasi::MetricData) -> Self {
         match data {
-            wm::MetricData::Gauge(gauge) => Self::Gauge(gauge.into()),
-            wm::MetricData::Sum(sum) => Self::Sum(sum.into()),
-            wm::MetricData::Histogram(hist) => Self::Histogram(hist.into()),
-            wm::MetricData::ExponentialHistogram(hist) => Self::ExponentialHistogram(hist.into()),
+            wasi::MetricData::Gauge(gauge) => Self::Gauge(gauge.into()),
+            wasi::MetricData::Sum(sum) => Self::Sum(sum.into()),
+            wasi::MetricData::Histogram(hist) => Self::Histogram(hist.into()),
+            wasi::MetricData::ExponentialHistogram(hist) => Self::ExponentialHistogram(hist.into()),
         }
     }
 }
 
-impl From<wm::Gauge> for Gauge {
-    fn from(gauge: wm::Gauge) -> Self {
+impl From<wasi::Gauge> for Gauge {
+    fn from(gauge: wasi::Gauge) -> Self {
         Self {
             data_points: gauge
                 .data_points
                 .into_iter()
+                .rev()
                 .map(|dp| NumberDataPoint {
                     attributes: dp.attributes.into_iter().map(Into::into).collect(),
                     start_time_unix_nano: gauge.start_time.map(Into::into).unwrap_or_default(),
@@ -221,12 +221,13 @@ impl From<wm::Gauge> for Gauge {
     }
 }
 
-impl From<wm::Sum> for Sum {
-    fn from(sum: wm::Sum) -> Self {
+impl From<wasi::Sum> for Sum {
+    fn from(sum: wasi::Sum) -> Self {
         Self {
             data_points: sum
                 .data_points
                 .into_iter()
+                .rev()
                 .map(|dp| NumberDataPoint {
                     attributes: dp.attributes.into_iter().map(Into::into).collect(),
                     start_time_unix_nano: sum.start_time.into(),
@@ -242,12 +243,13 @@ impl From<wm::Sum> for Sum {
     }
 }
 
-impl From<wm::Histogram> for Histogram {
-    fn from(hist: wm::Histogram) -> Self {
+impl From<wasi::Histogram> for Histogram {
+    fn from(hist: wasi::Histogram) -> Self {
         Self {
             data_points: hist
                 .data_points
                 .into_iter()
+                .rev()
                 .map(|dp| HistogramDataPoint {
                     attributes: dp.attributes.into_iter().map(Into::into).collect(),
                     start_time_unix_nano: hist.start_time.into(),
@@ -267,12 +269,13 @@ impl From<wm::Histogram> for Histogram {
     }
 }
 
-impl From<wm::ExponentialHistogram> for ExponentialHistogram {
-    fn from(hist: wm::ExponentialHistogram) -> Self {
+impl From<wasi::ExponentialHistogram> for ExponentialHistogram {
+    fn from(hist: wasi::ExponentialHistogram) -> Self {
         Self {
             data_points: hist
                 .data_points
                 .into_iter()
+                .rev()
                 .map(|dp| ExponentialHistogramDataPoint {
                     attributes: dp.attributes.into_iter().map(Into::into).collect(),
                     start_time_unix_nano: hist.start_time.into(),
@@ -301,8 +304,8 @@ impl From<wm::ExponentialHistogram> for ExponentialHistogram {
     }
 }
 
-impl From<wm::Exemplar> for Exemplar {
-    fn from(ex: wm::Exemplar) -> Self {
+impl From<wasi::Exemplar> for Exemplar {
+    fn from(ex: wasi::Exemplar) -> Self {
         Self {
             filtered_attributes: ex.filtered_attributes.into_iter().map(Into::into).collect(),
             time_unix_nano: ex.time.into(),
@@ -314,50 +317,50 @@ impl From<wm::Exemplar> for Exemplar {
 }
 
 #[allow(clippy::cast_possible_wrap)]
-impl From<wm::DataValue> for ExemplarValue {
-    fn from(dv: wm::DataValue) -> Self {
+impl From<wasi::DataValue> for ExemplarValue {
+    fn from(dv: wasi::DataValue) -> Self {
         match dv {
-            wm::DataValue::U64(v) => Self::AsInt(v as i64),
-            wm::DataValue::S64(v) => Self::AsInt(v),
-            wm::DataValue::F64(v) => Self::AsDouble(v),
+            wasi::DataValue::U64(v) => Self::AsInt(v as i64),
+            wasi::DataValue::S64(v) => Self::AsInt(v),
+            wasi::DataValue::F64(v) => Self::AsDouble(v),
         }
     }
 }
 
 #[allow(clippy::cast_possible_wrap)]
-impl From<wm::DataValue> for NumberValue {
-    fn from(dv: wm::DataValue) -> Self {
+impl From<wasi::DataValue> for NumberValue {
+    fn from(dv: wasi::DataValue) -> Self {
         match dv {
-            wm::DataValue::U64(v) => Self::AsInt(v as i64),
-            wm::DataValue::S64(v) => Self::AsInt(v),
-            wm::DataValue::F64(v) => Self::AsDouble(v),
+            wasi::DataValue::U64(v) => Self::AsInt(v as i64),
+            wasi::DataValue::S64(v) => Self::AsInt(v),
+            wasi::DataValue::F64(v) => Self::AsDouble(v),
         }
     }
 }
 
 #[allow(clippy::cast_precision_loss)]
-impl From<wm::DataValue> for f64 {
-    fn from(dv: wm::DataValue) -> Self {
+impl From<wasi::DataValue> for f64 {
+    fn from(dv: wasi::DataValue) -> Self {
         match dv {
-            wm::DataValue::U64(v) => v as Self,
-            wm::DataValue::S64(v) => v as Self,
-            wm::DataValue::F64(v) => v,
+            wasi::DataValue::U64(v) => v as Self,
+            wasi::DataValue::S64(v) => v as Self,
+            wasi::DataValue::F64(v) => v,
         }
     }
 }
 
-impl From<wm::Temporality> for AggregationTemporality {
-    fn from(temporality: wm::Temporality) -> Self {
+impl From<wasi::Temporality> for AggregationTemporality {
+    fn from(temporality: wasi::Temporality) -> Self {
         match temporality {
-            wm::Temporality::Cumulative => Self::Cumulative,
-            wm::Temporality::Delta => Self::Delta,
-            wm::Temporality::LowMemory => Self::Unspecified,
+            wasi::Temporality::Cumulative => Self::Cumulative,
+            wasi::Temporality::Delta => Self::Delta,
+            wasi::Temporality::LowMemory => Self::Unspecified,
         }
     }
 }
 
-impl From<wm::Temporality> for i32 {
-    fn from(temporality: wm::Temporality) -> Self {
+impl From<wasi::Temporality> for i32 {
+    fn from(temporality: wasi::Temporality) -> Self {
         AggregationTemporality::from(temporality) as Self
     }
 }
