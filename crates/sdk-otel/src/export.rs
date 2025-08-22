@@ -114,11 +114,11 @@ cfg_if! {
 
         impl From<SystemTime> for Datetime {
             fn from(st: SystemTime) -> Self {
-                let duration_since_epoch =
+                let since_epoch =
                     st.duration_since(UNIX_EPOCH).expect("SystemTime should be after UNIX EPOCH");
                 Self {
-                    seconds: duration_since_epoch.as_secs(),
-                    nanoseconds: duration_since_epoch.subsec_nanos(),
+                    seconds: since_epoch.as_secs(),
+                    nanoseconds: since_epoch.subsec_nanos(),
                 }
             }
         }

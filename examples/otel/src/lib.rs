@@ -22,6 +22,7 @@ impl Guest for HttpGuest {
         let meter = global::meter("my_meter");
         let counter = meter.u64_counter("my_counter").build();
         counter.add(1, &[KeyValue::new("key1", "value 1")]);
+        counter.add(1, &[KeyValue::new("key1", "value 1")]);
         counter.add(1, &[KeyValue::new("key2", "value 2")]);
 
         // basic span
