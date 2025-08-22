@@ -25,4 +25,4 @@ wasmtime-wasi.workspace = true
 wasi-core.workspace = true
 
 # required for azure_identity, etc.
-openssl = { version = "0.10", optional = true, features = ["vendored"] }
+openssl = { version = "0.10", features = ["vendored"] }
