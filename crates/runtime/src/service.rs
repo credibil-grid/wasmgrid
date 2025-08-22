@@ -7,12 +7,13 @@
 
 use anyhow::Result;
 use wasmtime::component::{InstancePre, Linker};
-use wasmtime_wasi::p2::{IoView, WasiView};
+use wasmtime_wasi::WasiView;
+// use wasmtime_wasi::p2::IoView;
 
 /// The `Linkable` trait is implemented by every service so that the runtime
 /// can link the service's dependencies prior to instantiation of a component.
 pub trait Linkable: Sync + Send {
-    type Ctx: IoView + WasiView;
+    type Ctx: WasiView;
 
     /// Link the service's dependencies prior to component instantiation.
     ///
