@@ -76,6 +76,8 @@ base64ct = { version = "1.8.0", features = ["std"] }
 bytes = "1.10.1"
 cfg-if = "1.0.3"
 chrono = "0.4.41"
+credibil-encoding = { git = "https://github.com/credibil/core.git" }
+credibil-otel = { git = "https://github.com/credibil/core.git" }
 futures = "0.3.31"
 http = "1.3.1"
 resources = { path = "crates/resources", default-features = false }
@@ -96,11 +98,7 @@ wasmtime = { version = "36.0.1", default-features = false, features = ["async", 
 wasmtime-wasi = "36.0.1"
 wasmtime-wasi-http = "36.0.1"
 wasmtime-wasi-io = "36.0.1"
-# wasmtime-wasi-threads = "35.0.0"
 wit-bindings = { path = "crates/wit-bindings" }
 
-credibil-encoding = { git = "https://github.com/credibil/core.git" }
-credibil-otel = { git = "https://github.com/credibil/core.git" }
-
-[patch."https://github.com/credibil/core.git"]
-credibil-otel = { path = "../../credibil/core/crates/otel" }
+# [patch."https://github.com/credibil/core.git"]
+# credibil-otel = { path = "../../credibil/core/crates/otel" }
