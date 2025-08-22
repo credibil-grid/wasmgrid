@@ -6,7 +6,7 @@ use anyhow::Result;
 use cfg_if::cfg_if;
 use wasmtime::component::{Component, Linker};
 use wasmtime::{Config, Engine};
-use wasmtime_wasi::p2::WasiView;
+use wasmtime_wasi::WasiView;
 
 use crate::service::{Linkable, Runnable};
 

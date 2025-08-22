@@ -14,9 +14,9 @@ mod generated {
     wasmtime::component::bindgen!({
         world: "vault",
         path: "../../wit",
-        tracing: true,
-        async: true,
-        trappable_imports: true,
+        imports: {
+            default: async | tracing | trappable,
+        },
         with: {
             "wasi:vault/vault/locker": Locker,
         },

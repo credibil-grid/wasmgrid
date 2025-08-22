@@ -14,9 +14,9 @@ mod generated {
     wasmtime::component::bindgen!({
         world: "otel",
         path: "../../wit",
-        tracing: true,
-        async: true,
-        trappable_imports: true,
+        imports: {
+            default: async | tracing | trappable,
+        },
         trappable_error_type: {
             "wasi:otel/types/error" => Error,
         }
@@ -183,5 +183,3 @@ impl From<types::Datetime> for u64 {
         (dt.seconds * 1_000_000_000) + Self::from(dt.nanoseconds)
     }
 }
-
-

@@ -14,9 +14,9 @@ mod generated {
     wasmtime::component::bindgen!({
         world: "messaging",
         path: "../../wit",
-        tracing: true,
-        async: true,
-        trappable_imports: true,
+        imports: {
+            default: async | tracing | trappable,
+        },
         with: {
             "wasi:messaging/request-reply/request-options": RequestOptions,
             "wasi:messaging/types/client": Client,

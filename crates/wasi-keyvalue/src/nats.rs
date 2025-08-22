@@ -11,9 +11,9 @@ mod generated {
     wasmtime::component::bindgen!({
         world: "keyvalue",
         path: "../../wit",
-        tracing: true,
-        async: true,
-        trappable_imports: true,
+        imports: {
+            default: async | tracing | trappable,
+        },
         with: {
             "wasi:keyvalue/store/bucket": Store,
             "wasi:keyvalue/atomics/cas": Cas,

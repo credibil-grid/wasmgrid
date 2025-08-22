@@ -13,9 +13,9 @@ mod generated {
     wasmtime::component::bindgen!({
         world: "blobstore",
         path: "../../wit",
-        tracing: true,
-        async: true,
-        trappable_imports: true,
+        imports: {
+            default: async | tracing | trappable,
+        },
         with: {
             "wasi:io": wasmtime_wasi::p2::bindings::io,
 
