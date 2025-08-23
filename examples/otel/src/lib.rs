@@ -12,7 +12,7 @@ use wasi::http::types::{IncomingRequest, ResponseOutparam};
 struct HttpGuest;
 
 impl Guest for HttpGuest {
-    #[sdk_otel_attr::instrument]
+    #[sdk_otel::instrument(name = "http_guest_handle")]
     fn handle(request: IncomingRequest, response: ResponseOutparam) {
         // inject remote (host) context
         let now = SystemTime::now();
@@ -34,6 +34,10 @@ impl Guest for HttpGuest {
             tracer.in_span("child-operation", |cx| {
                 cx.span().add_event("sub span event", vec![KeyValue::new("bar", "1")]);
             });
+
+            tracing::info_span!("info span").in_scope(|| {
+                tracing::info!("info event");
+            });
         });
 
         let out = tracing::info_span!("handle request").in_scope(|| {
@@ -49,6 +53,7 @@ impl Guest for HttpGuest {
 }
 
 // A simple "Hello, World!" endpoint that returns the client's request.
+#[sdk_otel::instrument(name = "http_guest_handle")]
 async fn handle(Json(body): Json<Value>) -> Result<Json<Value>> {
     Ok(Json(json!({
         "message": "Hello, World!",

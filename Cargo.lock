@@ -2523,7 +2523,6 @@ dependencies = [
  "opentelemetry",
  "sdk-http",
  "sdk-otel",
- "sdk-otel-attr",
  "serde_json",
  "tracing",
  "wasi 0.14.2+wasi-0.2.4",
@@ -3038,13 +3037,10 @@ name = "runtime"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "async-trait",
- "bytes",
  "cfg-if",
  "clap",
  "tokio",
  "tracing",
- "wasi 0.14.2+wasi-0.2.4",
  "wasmtime",
  "wasmtime-wasi",
 ]
@@ -3334,10 +3330,8 @@ dependencies = [
  "opentelemetry-http",
  "opentelemetry-otlp",
  "opentelemetry_sdk",
- "proc-macro2",
- "quote",
  "sdk-http",
- "syn 2.0.106",
+ "sdk-otel-attr",
  "tracing",
  "tracing-opentelemetry",
  "tracing-subscriber",
@@ -3348,9 +3342,7 @@ dependencies = [
 name = "sdk-otel-attr"
 version = "0.1.0"
 dependencies = [
- "proc-macro2",
  "quote",
- "sdk-otel",
  "syn 2.0.106",
 ]
 

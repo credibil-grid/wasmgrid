@@ -12,15 +12,16 @@ workspace = true
 default = ["host-mode", "metrics"]
 guest-mode = ["dep:async-trait", "dep:bytes", "dep:http", "dep:opentelemetry-http", "dep:opentelemetry-otlp"]
 host-mode = ["dep:num-traits"]
-metrics = []
+metrics = ["opentelemetry_sdk/experimental_metrics_custom_reader"]
 
 [dependencies]
 anyhow.workspace = true
 cfg-if = "1.0.3"
 futures = "0.3.31"
 opentelemetry = "0.30.0"
-opentelemetry_sdk = { version = "0.30.0", features = ["experimental_metrics_custom_reader"] }
+opentelemetry_sdk = "0.30.0"
 sdk-http.workspace = true
+sdk-otel-attr = { path = "../sdk-otel-attr" }
 tracing.workspace = true
 tracing-opentelemetry = "0.31.0"
 tracing-subscriber = { workspace = true, features = ["env-filter"] }

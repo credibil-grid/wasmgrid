@@ -18,8 +18,10 @@ mod export;
 pub mod metrics;
 pub mod tracing;
 
-use opentelemetry::ContextGuard;
+use opentelemetry::trace::Tracer;
+use opentelemetry::{ContextGuard, global};
 use opentelemetry_sdk::Resource;
+pub use sdk_otel_attr::instrument;
 
 pub struct ScopeGuard {
     _tracing: ContextGuard,
@@ -27,11 +29,8 @@ pub struct ScopeGuard {
     _metrics: metrics::Reader,
 }
 
-// TODO: add .in_span(|| Fn(ctx)) as alternative to guard
-// TODO: add xxx_span! macros
 pub fn init() -> ScopeGuard {
     let resource = Resource::builder().with_service_name("otel").build();
-
     ScopeGuard {
         _tracing: tracing::init(resource.clone()).expect("should initialize"),
         #[cfg(feature = "metrics")]
@@ -39,10 +38,11 @@ pub fn init() -> ScopeGuard {
     }
 }
 
-pub fn instrument<F, R>(f: F) -> R
+pub fn instrument<F, R>(name: impl Into<String>, f: F) -> R
 where
     F: FnOnce() -> R,
 {
     let _guard = init();
-    f()
+    let tracer = global::tracer("instrument");
+    tracer.in_span(name.into(), |_| f())
 }
