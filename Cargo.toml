@@ -90,15 +90,20 @@ serde_json = "1.0.143"
 tokio = { version = "1.47.1", default-features = false }
 tower = "0.5.2"
 tower-http = { version = "0.6.6", features = ["cors", "trace"] }
-tracing = "0.1.41"
-tracing-subscriber = { version = "0.3.19", features = ["env-filter", "fmt"] }
 wasi = "0.14.2"
 wasi-core = { path = "crates/wasi-core" }
 wasmtime = { version = "36.0.1", default-features = false, features = ["async", "component-model"] }
 wasmtime-wasi = "36.0.1"
 wasmtime-wasi-http = "36.0.1"
 wasmtime-wasi-io = "36.0.1"
+wit-bindgen = "0.44.0"
 wit-bindings = { path = "crates/wit-bindings" }
+
+opentelemetry = "0.30.0"
+opentelemetry_sdk = { version = "0.30.0", features = ["experimental_metrics_custom_reader"] }
+tracing = "0.1.41"
+tracing-opentelemetry = "0.31.0"
+tracing-subscriber = { version = "0.3.19", features = ["env-filter", "fmt"] }
 
 # [patch."https://github.com/credibil/core.git"]
 # credibil-otel = { path = "../../credibil/core/crates/otel" }

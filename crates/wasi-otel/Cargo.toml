@@ -15,9 +15,9 @@ anyhow.workspace = true
 credibil-otel.workspace = true
 hex = "0.4.3"
 http.workspace = true
-opentelemetry = "0.30.0"
+opentelemetry.workspace = true
 opentelemetry-proto = "0.30.0"
-opentelemetry_sdk = { version = "0.30.0", features = ["experimental_metrics_custom_reader"] }
+opentelemetry_sdk.workspace = true
 prost = "0.13.5"
 reqwest = "0.12.23"
 runtime.workspace = true
