@@ -9,33 +9,33 @@ pub enum UriLike {
 
 impl From<Uri> for UriLike {
     fn from(uri: Uri) -> Self {
-        UriLike::Uri(uri)
+        Self::Uri(uri)
     }
 }
 
 impl From<&Uri> for UriLike {
     fn from(uri: &Uri) -> Self {
-        UriLike::Uri(uri.clone())
+        Self::Uri(uri.clone())
     }
 }
 
 impl From<String> for UriLike {
     fn from(uri: String) -> Self {
-        UriLike::Str(uri)
+        Self::Str(uri)
     }
 }
 
 impl From<&str> for UriLike {
     fn from(uri: &str) -> Self {
-        UriLike::Str(uri.to_string())
+        Self::Str(uri.to_string())
     }
 }
 
 impl UriLike {
     pub fn into_uri(&self) -> Result<Uri> {
         match self {
-            UriLike::Uri(uri) => Ok(uri.clone()),
-            UriLike::Str(s) => s.parse::<Uri>().map_err(|_| anyhow!("invalid URI string")),
+            Self::Uri(uri) => Ok(uri.clone()),
+            Self::Str(s) => s.parse::<Uri>().map_err(|_| anyhow!("invalid URI string")),
         }
     }
 }

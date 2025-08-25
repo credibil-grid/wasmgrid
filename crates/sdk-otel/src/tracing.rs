@@ -54,10 +54,6 @@ impl From<wasi::SpanContext> for otel::SpanContext {
 
 impl From<wasi::TraceFlags> for otel::TraceFlags {
     fn from(value: wasi::TraceFlags) -> Self {
-        if value.contains(wasi::TraceFlags::SAMPLED) {
-            otel::TraceFlags::SAMPLED
-        } else {
-            otel::TraceFlags::default()
-        }
+        if value.contains(wasi::TraceFlags::SAMPLED) { Self::SAMPLED } else { Self::default() }
     }
 }

@@ -17,19 +17,17 @@ use opentelemetry_sdk::metrics::{
 
 use crate::export::metrics::Exporter;
 
-pub(crate) fn init(resource: Resource) -> Result<Reader> {
+pub(crate) fn init(resource: Resource) -> Result<SdkMeterProvider> {
     let exporter = Exporter::new()?;
     let reader = Reader::new(exporter);
+    let provider = SdkMeterProvider::builder().with_resource(resource).with_reader(reader).build();
+    global::set_meter_provider(provider.clone());
 
-    let provider =
-        SdkMeterProvider::builder().with_resource(resource).with_reader(reader.clone()).build();
-    global::set_meter_provider(provider);
-
-    Ok(reader)
+    Ok(provider)
 }
 
 #[derive(Debug, Clone)]
-pub struct Reader {
+struct Reader {
     reader: Arc<ManualReader>,
     exporter: Arc<Exporter>,
 }
@@ -55,7 +53,9 @@ impl MetricReader for Reader {
     }
 
     fn force_flush(&self) -> OTelSdkResult {
-        self.reader.force_flush()
+        let mut rm = ResourceMetrics::default();
+        self.reader.collect(&mut rm)?;
+        block_on(async { self.exporter.export(&rm).await })
     }
 
     fn temporality(&self, kind: InstrumentKind) -> Temporality {
@@ -64,13 +64,5 @@ impl MetricReader for Reader {
 
     fn shutdown_with_timeout(&self, timeout: Duration) -> OTelSdkResult {
         self.reader.shutdown_with_timeout(timeout)
-    }
-}
-
-impl Drop for Reader {
-    fn drop(&mut self) {
-        let mut rm = ResourceMetrics::default();
-        self.reader.collect(&mut rm).expect("should collect");
-        block_on(async { self.exporter.export(&rm).await.expect("should export") });
     }
 }

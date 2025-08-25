@@ -35,12 +35,12 @@ impl Guest for HttpGuest {
                 cx.span().add_event("sub span event", vec![KeyValue::new("bar", "1")]);
             });
 
-            tracing::info_span!("info span").in_scope(|| {
+            tracing::info_span!("child info span").in_scope(|| {
                 tracing::info!("info event");
             });
         });
 
-        let out = tracing::info_span!("handle request").in_scope(|| {
+        let out = tracing::info_span!("handler span").in_scope(|| {
             tracing::info!("received request");
             let router = Router::new().route("/", post(handle));
             sdk_http::serve(router, request)
@@ -53,8 +53,9 @@ impl Guest for HttpGuest {
 }
 
 // A simple "Hello, World!" endpoint that returns the client's request.
-// #[sdk_otel::instrument(name = "http_guest_handle")]
+#[sdk_otel::instrument(name = "handle_fn")]
 async fn handle(Json(body): Json<Value>) -> Result<Json<Value>> {
+    tracing::info!("handling request: {:?}", body);
     Ok(Json(json!({
         "message": "Hello, World!",
         "request": body

@@ -19,16 +19,17 @@ pub struct Exporter {
 }
 
 impl Exporter {
-    pub fn new() -> Result<Exporter> {
-        cfg_if! {
-            if #[cfg(feature = "guest-mode")] {
-                use crate::export::ExportClient;
-                let inner = SpanExporter::builder().with_http().with_http_client(ExportClient).build()?;
-                Ok(Exporter { inner })
-            } else {
-                Ok(Exporter {})
-            }
-        }
+    #[cfg(feature = "guest-mode")]
+    pub fn new() -> Result<Self> {
+        use crate::export::ExportClient;
+        let inner = SpanExporter::builder().with_http().with_http_client(ExportClient).build()?;
+        Ok(Self { inner })
+    }
+
+    #[allow(clippy::unnecessary_wraps)]
+    #[cfg(not(feature = "guest-mode"))]
+    pub const fn new() -> Result<Self> {
+        Ok(Self {})
     }
 }
 
@@ -102,7 +103,7 @@ cfg_if! {
 
         impl From<otel::TraceFlags> for wasi::TraceFlags {
             fn from(tf: otel::TraceFlags) -> Self {
-                if tf.is_sampled() { wasi::TraceFlags::SAMPLED } else { wasi::TraceFlags::empty() }
+                if tf.is_sampled() { Self::SAMPLED } else { Self::empty() }
             }
         }
 

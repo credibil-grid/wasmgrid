@@ -6,6 +6,8 @@
 compile_error!("features \"guest-mode\" and \"host-mode\" cannot both be enabled");
 
 pub mod generated {
+    #![allow(clippy::collection_is_never_read)]
+
     wit_bindgen::generate!({
         world: "otel",
         path: "../../wit",
@@ -21,20 +23,30 @@ pub mod tracing;
 use opentelemetry::trace::Tracer;
 use opentelemetry::{ContextGuard, global};
 use opentelemetry_sdk::Resource;
+use opentelemetry_sdk::metrics::SdkMeterProvider;
 pub use sdk_otel_attr::instrument;
 
 pub struct ScopeGuard {
     _tracing: ContextGuard,
     #[cfg(feature = "metrics")]
-    _metrics: metrics::Reader,
+    metrics: SdkMeterProvider,
 }
 
+impl Drop for ScopeGuard {
+    fn drop(&mut self) {
+        if let Err(e) = self.metrics.force_flush() {
+            ::tracing::error!("failed to flush metrics: {e}");
+        }
+    }
+}
+
+#[must_use]
 pub fn init() -> ScopeGuard {
     let resource = Resource::builder().with_service_name("otel").build();
     ScopeGuard {
         _tracing: tracing::init(resource.clone()).expect("should initialize"),
         #[cfg(feature = "metrics")]
-        _metrics: metrics::init(resource).expect("should initialize"),
+        metrics: metrics::init(resource).expect("should initialize"),
     }
 }
 
@@ -42,7 +54,13 @@ pub fn instrument<F, R>(name: impl Into<String>, f: F) -> R
 where
     F: FnOnce() -> R,
 {
-    let _guard = init();
-    let tracer = global::tracer("instrument");
-    tracer.in_span(name.into(), |_| f())
+    let span = ::tracing::Span::current();
+
+    if span.is_none() {
+        let _guard = init();
+        let tracer = global::tracer("instrument");
+        tracer.in_span(name.into(), |_| f())
+    } else {
+        span.in_scope(f)
+    }
 }

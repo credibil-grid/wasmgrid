@@ -1,6 +1,7 @@
 use anyhow::{Result, anyhow};
 use bytes::Bytes;
 use http::header::{AUTHORIZATION, CONTENT_TYPE};
+use http::uri::Authority;
 use http::{HeaderMap, HeaderName, Response};
 use percent_encoding::{AsciiSet, NON_ALPHANUMERIC, utf8_percent_encode};
 use serde::Serialize;
@@ -21,10 +22,12 @@ const UNRESERVED: &AsciiSet = &NON_ALPHANUMERIC
     .remove(b'~')
     .remove(b'/');
 
+#[derive(Default)]
 pub struct Client;
 
 impl Client {
-    pub fn new() -> Self {
+    #[must_use]
+    pub const fn new() -> Self {
         Self
     }
 
@@ -69,7 +72,7 @@ pub struct NoForm;
 #[doc(hidden)]
 pub struct HasForm<T: Serialize>(T);
 
-impl<'a> RequestBuilder<NoBody, NoJson, NoForm> {
+impl RequestBuilder<NoBody, NoJson, NoForm> {
     fn new<U: Into<UriLike>>(uri: U) -> Self {
         Self {
             method: Method::Get,
@@ -120,16 +123,19 @@ impl<'a> RequestBuilder<NoBody, NoJson, NoForm> {
 }
 
 impl<B, J, F> RequestBuilder<B, J, F> {
+    #[must_use]
     pub fn method(mut self, method: Method) -> Self {
         self.method = method;
         self
     }
 
+    #[must_use]
     pub fn header(mut self, name: impl Into<HeaderName>, value: impl Into<String>) -> Self {
         self.headers.insert(name.into(), value.into());
         self
     }
 
+    #[must_use]
     pub fn headers(mut self, headers: &HeaderMap) -> Self {
         self.headers = headers
             .iter()
@@ -143,6 +149,7 @@ impl<B, J, F> RequestBuilder<B, J, F> {
         self
     }
 
+    #[must_use]
     pub fn bearer_auth(mut self, token: &str) -> Self {
         self.headers.insert(AUTHORIZATION, format!("Bearer {token}"));
         self
@@ -194,18 +201,18 @@ impl<B, J, F> RequestBuilder<B, J, F> {
 
         let fut_resp = outgoing_handler::handle(request, None)
             .map_err(|e| anyhow!("issue making request: {e}"))?;
-        Self::process_response(fut_resp)
+        Self::process_response(&fut_resp)
     }
 
     fn prepare_request(&self, body: Option<&[u8]>) -> Result<OutgoingRequest> {
         let headers = Headers::new();
-        for (key, value) in self.headers.iter() {
+        for (key, value) in &self.headers {
             headers
                 .append(key.as_str(), value.as_bytes())
                 .map_err(|e| anyhow!("issue setting header: {e}"))?;
         }
         let request = OutgoingRequest::new(headers);
-        request.set_method(&self.method).map_err(|_| anyhow!("issue setting method"))?;
+        request.set_method(&self.method).map_err(|()| anyhow!("issue setting method"))?;
 
         // url
         let uri = self.uri.into_uri()?;
@@ -219,7 +226,7 @@ impl<B, J, F> RequestBuilder<B, J, F> {
         };
         request.set_scheme(Some(&scheme)).map_err(|()| anyhow!("issue setting scheme"))?;
         request
-            .set_authority(uri.authority().map(|a| a.as_str()))
+            .set_authority(uri.authority().map(Authority::as_str))
             .map_err(|()| anyhow!("issue setting authority"))?;
 
         // path + query
@@ -235,10 +242,10 @@ impl<B, J, F> RequestBuilder<B, J, F> {
             .set_path_with_query(Some(&path_with_query))
             .map_err(|()| anyhow!("issue setting path_with_query"))?;
 
-        let out_body = request.body().map_err(|_| anyhow!("issue getting outgoing body"))?;
+        let out_body = request.body().map_err(|()| anyhow!("issue getting outgoing body"))?;
         if let Some(mut buf) = body {
             let out_stream =
-                out_body.write().map_err(|_| anyhow!("issue getting output stream"))?;
+                out_body.write().map_err(|()| anyhow!("issue getting output stream"))?;
 
             let pollable = out_stream.subscribe();
             while !buf.is_empty() {
@@ -246,7 +253,10 @@ impl<B, J, F> RequestBuilder<B, J, F> {
                 let Ok(permit) = out_stream.check_write() else {
                     return Err(anyhow!("output stream is not writable"));
                 };
+
+                #[allow(clippy::cast_possible_truncation)]
                 let len = buf.len().min(permit as usize);
+
                 let (chunk, rest) = buf.split_at(len);
                 if out_stream.write(chunk).is_err() {
                     return Err(anyhow!("issue writing to output stream"));
@@ -268,7 +278,7 @@ impl<B, J, F> RequestBuilder<B, J, F> {
         Ok(request)
     }
 
-    fn process_response(fut_resp: FutureIncomingResponse) -> Result<Response<Bytes>> {
+    fn process_response(fut_resp: &FutureIncomingResponse) -> Result<Response<Bytes>> {
         fut_resp.subscribe().block();
         let Some(result) = fut_resp.get() else {
             return Err(anyhow!("missing response"));
@@ -288,7 +298,8 @@ impl<B, J, F> RequestBuilder<B, J, F> {
 
         // transform unsuccessful requests into an error
         let status = response.status();
-        if status < 200 || status >= 300 {
+
+        if !(200..300).contains(&status) {
             let body = String::from_utf8_lossy(&body);
             return Err(anyhow!("request unsuccessful {status}, {body}"));
         }

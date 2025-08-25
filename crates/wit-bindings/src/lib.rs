@@ -48,6 +48,8 @@ pub mod messaging {
 
 /// Bindings for the `wasi:otel` world.
 pub mod otel {
+    #![allow(clippy::collection_is_never_read)]
+
     pub use self::wasi::otel::*;
 
     wit_bindgen::generate!({

@@ -37,13 +37,13 @@ pub fn serve(
     let response = OutgoingResponse::new(headers);
     response
         .set_status_code(http_resp.status().as_u16())
-        .map_err(|_| error!("issue setting status code"))?;
+        .map_err(|()| error!("issue setting status code"))?;
 
     // write `OutgoingBody`
     let http_body = http_resp.into_body();
     let mut http_stream = http_body.into_data_stream();
-    let out_body = response.body().map_err(|_| error!("issue getting outgoing body"))?;
-    let out_stream = out_body.write().map_err(|_| error!("issue getting body stream"))?;
+    let out_body = response.body().map_err(|()| error!("issue getting outgoing body"))?;
+    let out_stream = out_body.write().map_err(|()| error!("issue getting body stream"))?;
 
     let pollable = out_stream.subscribe();
     while let Some(Ok(chunk)) = block_on(async { http_stream.next().await }) {
@@ -52,23 +52,23 @@ pub fn serve(
 
         if let Err(e) = out_stream.write(&chunk) {
             return Err(error!("issue writing to stream: {e}"));
-        };
+        }
     }
     if let Err(e) = out_stream.flush() {
         return Err(error!("issue flushing stream: {e}"));
-    };
+    }
     pollable.block();
 
     // check for errors
     if let Err(e) = out_stream.check_write() {
         return Err(error!("issue writing to stream: {e}"));
-    };
+    }
     drop(pollable);
     drop(out_stream);
 
     if let Err(e) = OutgoingBody::finish(out_body, None) {
         return Err(error!("issue finishing body: {e}"));
-    };
+    }
 
     Ok(response)
 }
@@ -95,12 +95,12 @@ impl Request {
     }
 
     fn body(&self) -> Result<Vec<u8>> {
-        let body = self.0.consume().map_err(|_| anyhow!("issue consuming request body"))?;
-        let stream = body.stream().map_err(|_| anyhow!("issue getting body stream"))?;
+        let body = self.0.consume().map_err(|()| anyhow!("issue consuming request body"))?;
+        let stream = body.stream().map_err(|()| anyhow!("issue getting body stream"))?;
 
         let mut buffer = Vec::new();
         while let Ok(bytes) = stream.blocking_read(4096)
-            && bytes.len() > 0
+            && !bytes.is_empty()
         {
             buffer.extend_from_slice(&bytes);
         }
