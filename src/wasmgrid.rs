@@ -34,7 +34,11 @@ pub async fn main() -> Result<()> {
             let Some((prefix, _)) = name.split_once('.') else {
                 return Err(anyhow!("file name does not have an extension"));
             };
-            Telemetry::new(prefix).build().context("initializing telemetry")?;
+            let mut builder = Telemetry::new(prefix);
+            if let Ok(endpoint) = env::var("OTEL_GRPC_ADDR") {
+                builder = builder.endpoint(endpoint);
+            }
+            builder.build().context("initializing telemetry")?;
 
             // run until shutdown
             start(&wasm)?.shutdown().await

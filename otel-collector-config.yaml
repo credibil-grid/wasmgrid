@@ -10,9 +10,6 @@ processors:
   batch:
 
 exporters:
-  otlp:
-    endpoint: otelcol:4317
-
   otlp/jaeger:
     endpoint: jaeger:4317
     tls:
@@ -26,8 +23,8 @@ exporters:
     resource_to_telemetry_conversion:
       enabled: true
 
-  debug:
-    verbosity: detailed
+  # debug:
+  #   verbosity: detailed
 
 service:
   pipelines:

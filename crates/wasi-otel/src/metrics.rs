@@ -22,14 +22,14 @@ use opentelemetry_sdk::error::OTelSdkError;
 use prost::Message;
 
 use crate::generated::wasi::otel::{metrics as wasi, metrics, types};
-use crate::{OTEL_ADDR, Otel};
+use crate::{DEF_HTTP_ADDR, Otel};
 
 impl metrics::Host for Otel<'_> {
     async fn export(&mut self, rm: wasi::ResourceMetrics) -> Result<(), wasi::Error> {
         // convert to opentelemetry export format
         let request = ExportMetricsServiceRequest::from(rm);
         let body = Message::encode_to_vec(&request);
-        let addr = env::var("OTEL_ADDR").unwrap_or_else(|_| OTEL_ADDR.to_string());
+        let addr = env::var("OTEL_HTTP_ADDR").unwrap_or_else(|_| DEF_HTTP_ADDR.to_string());
 
         // export to collector
         self.http_client

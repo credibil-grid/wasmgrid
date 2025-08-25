@@ -34,7 +34,7 @@ use wasmtime::component::{HasData, Linker};
 use self::generated::wasi::otel as wasi_otel;
 use self::generated::wasi::otel::types;
 
-const OTEL_ADDR: &str = "http://localhost:4318";
+const DEF_HTTP_ADDR: &str = "http://localhost:4318";
 
 pub struct Otel<'a> {
     http_client: reqwest::Client,

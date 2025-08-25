@@ -41,6 +41,7 @@ impl opentelemetry_sdk::trace::SpanExporter for Exporter {
 
     #[cfg(not(feature = "guest-mode"))]
     async fn export(&self, span_data: Vec<SpanData>) -> Result<(), OTelSdkError> {
+        println!("Exporting spans");
         for sd in span_data {
             wasi::export(&[sd.into()]);
         }

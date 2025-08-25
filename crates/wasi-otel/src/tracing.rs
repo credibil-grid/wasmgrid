@@ -19,7 +19,7 @@ use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 use crate::generated::wasi::otel as wasi_otel;
 use crate::generated::wasi::otel::tracing::{self as wt};
-use crate::{OTEL_ADDR, Otel};
+use crate::{DEF_HTTP_ADDR, Otel};
 
 impl wasi_otel::tracing::Host for Otel<'_> {
     async fn current_span_context(&mut self) -> Result<wt::SpanContext> {
@@ -34,7 +34,7 @@ impl wasi_otel::tracing::Host for Otel<'_> {
         let request = ExportTraceServiceRequest { resource_spans };
 
         let body = Message::encode_to_vec(&request);
-        let addr = env::var("OTEL_ADDR").unwrap_or_else(|_| OTEL_ADDR.to_string());
+        let addr = env::var("OTEL_HTTP_ADDR").unwrap_or_else(|_| DEF_HTTP_ADDR.to_string());
 
         // export to collector
         self.http_client
