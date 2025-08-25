@@ -36,6 +36,7 @@ pub struct Reader {
 
 impl Reader {
     /// Create a new `MetricReader`.
+    #[must_use]
     pub fn new(exporter: Exporter) -> Self {
         Self {
             reader: Arc::new(ManualReader::default()),
@@ -46,7 +47,7 @@ impl Reader {
 
 impl MetricReader for Reader {
     fn register_pipeline(&self, pipeline: Weak<Pipeline>) {
-        self.reader.register_pipeline(pipeline)
+        self.reader.register_pipeline(pipeline);
     }
 
     fn collect(&self, rm: &mut ResourceMetrics) -> OTelSdkResult {

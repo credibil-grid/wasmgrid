@@ -17,6 +17,9 @@ mod generated {
         imports: {
             default: async | tracing | trappable,
         },
+        exports: {
+            default: async | tracing | trappable,
+        },
         with: {
             "wasi:messaging/request-reply/request-options": RequestOptions,
             "wasi:messaging/types/client": Client,

@@ -53,7 +53,7 @@ impl Guest for HttpGuest {
 }
 
 // A simple "Hello, World!" endpoint that returns the client's request.
-#[sdk_otel::instrument(name = "http_guest_handle")]
+// #[sdk_otel::instrument(name = "http_guest_handle")]
 async fn handle(Json(body): Json<Value>) -> Result<Json<Value>> {
     Ok(Json(json!({
         "message": "Hello, World!",

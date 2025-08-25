@@ -1,6 +1,7 @@
 //! # WASI Tracing
 
 use std::collections::HashMap;
+use std::env;
 
 use anyhow::{Context, Result};
 use credibil_otel::init;
@@ -33,7 +34,7 @@ impl wasi_otel::tracing::Host for Otel<'_> {
         let request = ExportTraceServiceRequest { resource_spans };
 
         let body = Message::encode_to_vec(&request);
-        let addr = option_env!("OTEL_ADDR").unwrap_or(OTEL_ADDR);
+        let addr = env::var("OTEL_ADDR").unwrap_or_else(|_| OTEL_ADDR.to_string());
 
         // export to collector
         self.http_client
