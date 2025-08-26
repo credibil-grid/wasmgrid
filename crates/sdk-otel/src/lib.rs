@@ -27,6 +27,7 @@ use opentelemetry_sdk::metrics::SdkMeterProvider;
 use opentelemetry_sdk::trace::SdkTracerProvider;
 pub use sdk_otel_attr::instrument;
 
+#[derive(Default)]
 pub struct Shutdown {
     tracing: SdkTracerProvider,
     #[cfg(feature = "metrics")]
@@ -48,11 +49,21 @@ impl Drop for Shutdown {
 #[must_use]
 pub fn init() -> Shutdown {
     let resource = Resource::builder().with_service_name("otel").build();
-    let tracing = tracing::init(resource.clone()).expect("should initialize");
+    
+    let Ok(tracing) = tracing::init(resource.clone()) else {
+        ::tracing::error!("failed to initialize tracing");
+        return Shutdown::default();
+    };
+    #[cfg(feature = "metrics")]
+    let Ok(metrics) = metrics::init(resource) else {
+        ::tracing::error!("failed to initialize metrics");
+        return Shutdown::default();
+    };
+
     Shutdown {
         tracing,
         #[cfg(feature = "metrics")]
-        metrics: metrics::init(resource).expect("should initialize"),
+        metrics,
     }
 }
 

@@ -157,18 +157,33 @@ impl<B, J, F> RequestBuilder<B, J, F> {
 }
 
 impl RequestBuilder<NoBody, NoJson, NoForm> {
+    /// Send the request.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the request fails to send.
     pub fn send(&self) -> Result<Response<Bytes>> {
         self.send_bytes(None)
     }
 }
 
 impl RequestBuilder<HasBody, NoJson, NoForm> {
+    /// Send the request.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the request fails to send.
     pub fn send(&self) -> Result<Response<Bytes>> {
         self.send_bytes(Some(&self.body.0))
     }
 }
 
 impl<B: Serialize> RequestBuilder<NoBody, HasJson<B>, NoForm> {
+    /// Send the request.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the request fails to send.
     pub fn send(&mut self) -> Result<Response<Bytes>> {
         let body =
             serde_json::to_vec(&self.json.0).map_err(|e| anyhow!("issue serializing json: {e}"))?;
@@ -178,6 +193,11 @@ impl<B: Serialize> RequestBuilder<NoBody, HasJson<B>, NoForm> {
 }
 
 impl<B: Serialize> RequestBuilder<NoBody, NoJson, HasForm<B>> {
+    /// Send the request.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the request fails to send.
     pub fn send(&mut self) -> Result<Response<Bytes>> {
         let body = credibil_encoding::form_encode(&self.form.0)
             .map_err(|e| anyhow!("issue serializing form: {e}"))?;
@@ -189,7 +209,7 @@ impl<B: Serialize> RequestBuilder<NoBody, NoJson, HasForm<B>> {
 }
 
 impl<B, J, F> RequestBuilder<B, J, F> {
-    pub fn send_bytes(&self, body: Option<&[u8]>) -> Result<Response<Bytes>> {
+    fn send_bytes(&self, body: Option<&[u8]>) -> Result<Response<Bytes>> {
         let request = self.prepare_request(body)?;
 
         tracing::trace!(
@@ -312,6 +332,11 @@ impl<B, J, F> RequestBuilder<B, J, F> {
 }
 
 pub trait Decode {
+    /// Decode the response body as JSON.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the response body is not valid JSON.
     fn json<T: DeserializeOwned>(self) -> Result<T>;
 }
 

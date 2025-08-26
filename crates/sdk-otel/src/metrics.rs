@@ -53,17 +53,17 @@ impl MetricReader for Reader {
     }
 
     fn force_flush(&self) -> OTelSdkResult {
-        println!("flushing metrics");
-        let mut rm = ResourceMetrics::default();
-        self.reader.collect(&mut rm)?;
-        block_on(async { self.exporter.export(&rm).await })
+        self.reader.force_flush()
     }
 
     fn temporality(&self, kind: InstrumentKind) -> Temporality {
         self.reader.temporality(kind)
     }
 
-    fn shutdown_with_timeout(&self, timeout: Duration) -> OTelSdkResult {
-        self.reader.shutdown_with_timeout(timeout)
+    fn shutdown_with_timeout(&self, _: Duration) -> OTelSdkResult {
+        let mut rm = ResourceMetrics::default();
+        self.reader.collect(&mut rm)?;
+        block_on(async { self.exporter.export(&rm).await })
+        // self.reader.shutdown_with_timeout(timeout)
     }
 }

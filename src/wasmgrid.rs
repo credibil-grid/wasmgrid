@@ -18,6 +18,15 @@ use {wasi_http as http, wasi_otel as otel};
 const DEF_NATS_ADDR: &str = "demo.nats.io";
 const DEF_KV_ADDR: &str = "https://kv-credibil-demo.vault.azure.net";
 
+/// Main entry point for the Wasmgrid CLI.
+///
+/// # Errors
+///
+/// Returns an error if resources cannot be initialized.
+/// 
+/// # Panics
+///
+/// This function will panic if the environment variables are not set.
 #[tokio::main]
 pub async fn main() -> Result<()> {
     if cfg!(debug_assertions) {
@@ -69,7 +78,7 @@ fn start(wasm: &PathBuf) -> Result<Runtime<Ctx>> {
     let jwt = env::var("NATS_JWT").ok();
     let seed = env::var("NATS_SEED").ok();
     let kv_addr = env::var("KV_ADDR").unwrap_or_else(|_| DEF_KV_ADDR.into());
-    let mongo_uri = env::var("MONGODB_URI").expect("MONGODB_URI must be set");
+    let mongo_uri = env::var("MONGODB_URI").context("fetching MONGODB_URI env var")?;
     // TODO: add az keyvault env vars
 
     let resources = Resources::new();

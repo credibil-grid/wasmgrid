@@ -32,6 +32,11 @@ impl From<&str> for UriLike {
 }
 
 impl UriLike {
+    /// Attempt to convert the URI-like value into a `Uri`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the value cannot be converted into a valid URI.
     pub fn into_uri(&self) -> Result<Uri> {
         match self {
             Self::Uri(uri) => Ok(uri.clone()),
