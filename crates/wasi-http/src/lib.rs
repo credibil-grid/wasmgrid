@@ -80,11 +80,12 @@ impl Runnable for Service {
             tokio::spawn(async move {
                 let mut http1 = http1::Builder::new();
                 http1.keep_alive(true);
+
                 if let Err(e) = http1
                     .serve_connection(
                         io,
                         service_fn(|request| {
-                            let span = tracing::debug_span!("http-request");
+                            let span = tracing::info_span!("http-request");
                             svc.handle(request).instrument(span)
                         }),
                     )
@@ -106,7 +107,7 @@ struct Svc {
 impl Svc {
     // Forward request to the wasm Guest.
     async fn handle(&self, request: Request<Incoming>) -> Result<Response<HyperOutgoingBody>> {
-        tracing::trace!("handling request: {request:?}");
+        tracing::info!("handling request: {request:?}");
 
         // prepare wasmtime http request and response
         let mut store = Store::new(

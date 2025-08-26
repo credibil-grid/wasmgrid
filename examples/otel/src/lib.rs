@@ -31,6 +31,8 @@ impl Guest for HttpGuest {
             let span = cx.span();
             span.set_attribute(KeyValue::new("my-attribute", "my-value"));
             span.add_event("main span event", vec![KeyValue::new("foo", "1")]);
+            span.end();
+
             tracer.in_span("child-operation", |cx| {
                 cx.span().add_event("sub span event", vec![KeyValue::new("bar", "1")]);
             });
@@ -53,7 +55,7 @@ impl Guest for HttpGuest {
 }
 
 // A simple "Hello, World!" endpoint that returns the client's request.
-#[sdk_otel::instrument(name = "handle_fn")]
+// #[sdk_otel::instrument(name = "handle_fn")]
 async fn handle(Json(body): Json<Value>) -> Result<Json<Value>> {
     tracing::info!("handling request: {:?}", body);
     Ok(Json(json!({

@@ -20,31 +20,37 @@ mod export;
 pub mod metrics;
 pub mod tracing;
 
+use opentelemetry::global;
 use opentelemetry::trace::Tracer;
-use opentelemetry::{ContextGuard, global};
 use opentelemetry_sdk::Resource;
 use opentelemetry_sdk::metrics::SdkMeterProvider;
+use opentelemetry_sdk::trace::SdkTracerProvider;
 pub use sdk_otel_attr::instrument;
 
-pub struct ScopeGuard {
-    _tracing: ContextGuard,
+pub struct Shutdown {
+    tracing: SdkTracerProvider,
     #[cfg(feature = "metrics")]
     metrics: SdkMeterProvider,
 }
 
-impl Drop for ScopeGuard {
+impl Drop for Shutdown {
     fn drop(&mut self) {
-        if let Err(e) = self.metrics.force_flush() {
+        if let Err(e) = self.tracing.shutdown() {
+            ::tracing::error!("failed to flush tracing: {e}");
+        }
+        #[cfg(feature = "metrics")]
+        if let Err(e) = self.metrics.shutdown() {
             ::tracing::error!("failed to flush metrics: {e}");
         }
     }
 }
 
 #[must_use]
-pub fn init() -> ScopeGuard {
+pub fn init() -> Shutdown {
     let resource = Resource::builder().with_service_name("otel").build();
-    ScopeGuard {
-        _tracing: tracing::init(resource.clone()).expect("should initialize"),
+    let tracing = tracing::init(resource.clone()).expect("should initialize");
+    Shutdown {
+        tracing,
         #[cfg(feature = "metrics")]
         metrics: metrics::init(resource).expect("should initialize"),
     }
@@ -55,9 +61,9 @@ where
     F: FnOnce() -> R,
 {
     let span = ::tracing::Span::current();
-
     if span.is_none() {
-        let _guard = init();
+        let _shutdown = init();
+        let _ctx = tracing::context();
         let tracer = global::tracer("instrument");
         tracer.in_span(name.into(), |_| f())
     } else {

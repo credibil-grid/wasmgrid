@@ -32,7 +32,7 @@ cfg_if! {
 
                 let headers = mem::take(response.headers_mut());
                 let mut http_response =
-                    Response::builder().status(response.status()).body(response.body().clone().into())?;
+                    Response::builder().status(response.status()).body(response.body().clone())?;
                 *http_response.headers_mut() = headers;
 
                 Ok(http_response)

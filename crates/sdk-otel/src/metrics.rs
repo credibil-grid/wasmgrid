@@ -53,6 +53,7 @@ impl MetricReader for Reader {
     }
 
     fn force_flush(&self) -> OTelSdkResult {
+        println!("flushing metrics");
         let mut rm = ResourceMetrics::default();
         self.reader.collect(&mut rm)?;
         block_on(async { self.exporter.export(&rm).await })

@@ -6,9 +6,7 @@ use std::env;
 use anyhow::{Context, Result};
 use credibil_otel::init;
 use http::header::CONTENT_TYPE;
-use opentelemetry::trace::{
-    TraceContextExt, {self as otel},
-};
+use opentelemetry::trace::{self as otel, TraceContextExt};
 use opentelemetry_proto::tonic::collector::trace::v1::ExportTraceServiceRequest;
 use opentelemetry_proto::tonic::resource::v1::Resource;
 use opentelemetry_proto::tonic::trace::v1::span::{Event, Link};

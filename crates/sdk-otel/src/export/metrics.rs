@@ -25,8 +25,18 @@ pub struct Exporter {
 impl Exporter {
     #[cfg(feature = "guest-mode")]
     pub fn new() -> Result<Self> {
+        use std::env;
+
+        use opentelemetry_otlp::WithExportConfig;
+
         use crate::export::ExportClient;
-        let inner = MetricExporter::builder().with_http().with_http_client(ExportClient).build()?;
+
+        let mut builder = MetricExporter::builder().with_http().with_http_client(ExportClient);
+        if let Ok(endpoint) = env::var("OTEL_HTTP_ADDR") {
+            builder = builder.with_endpoint(format!("{endpoint}/v1/metrics"));
+        }
+        let inner = builder.build()?;
+
         Ok(Self { inner })
     }
 

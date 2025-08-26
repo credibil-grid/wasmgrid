@@ -23,7 +23,7 @@ exporters:
     resource_to_telemetry_conversion:
       enabled: true
 
-  # debug:
+  debug:
   #   verbosity: detailed
 
 service:
@@ -34,7 +34,7 @@ service:
       exporters: [otlp/jaeger, debug]
     metrics:
       receivers: [otlp]
-      exporters: [prometheusremotewrite, debug]
+      exporters: [prometheusremotewrite]
     logs:
       receivers: [otlp]
       exporters: [otlp/jaeger, debug]

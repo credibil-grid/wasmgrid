@@ -21,8 +21,16 @@ pub struct Exporter {
 impl Exporter {
     #[cfg(feature = "guest-mode")]
     pub fn new() -> Result<Self> {
+        use std::env;
+        use opentelemetry_otlp::WithExportConfig;
         use crate::export::ExportClient;
-        let inner = SpanExporter::builder().with_http().with_http_client(ExportClient).build()?;
+
+        let mut builder = SpanExporter::builder().with_http().with_http_client(ExportClient);
+        if let Ok(endpoint) = env::var("OTEL_HTTP_ADDR") {
+            builder = builder.with_endpoint(format!("{endpoint}/v1/traces"));
+        }
+        let inner = builder.build()?;
+
         Ok(Self { inner })
     }
 
@@ -41,7 +49,6 @@ impl opentelemetry_sdk::trace::SpanExporter for Exporter {
 
     #[cfg(not(feature = "guest-mode"))]
     async fn export(&self, span_data: Vec<SpanData>) -> Result<(), OTelSdkError> {
-        println!("Exporting spans");
         for sd in span_data {
             wasi::export(&[sd.into()]);
         }
