@@ -23,7 +23,7 @@ const DEF_KV_ADDR: &str = "https://kv-credibil-demo.vault.azure.net";
 /// # Errors
 ///
 /// Returns an error if resources cannot be initialized.
-/// 
+///
 /// # Panics
 ///
 /// This function will panic if the environment variables are not set.

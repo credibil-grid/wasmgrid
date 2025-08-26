@@ -49,7 +49,7 @@ impl Drop for Shutdown {
 #[must_use]
 pub fn init() -> Shutdown {
     let resource = Resource::builder().with_service_name("otel").build();
-    
+
     let Ok(tracing) = tracing::init(resource.clone()) else {
         ::tracing::error!("failed to initialize tracing");
         return Shutdown::default();

@@ -22,7 +22,9 @@ impl Exporter {
     #[cfg(feature = "guest-mode")]
     pub fn new() -> Result<Self> {
         use std::env;
+
         use opentelemetry_otlp::WithExportConfig;
+
         use crate::export::ExportClient;
 
         let mut builder = SpanExporter::builder().with_http().with_http_client(ExportClient);
