@@ -26,26 +26,19 @@ use crate::{DEF_HTTP_ADDR, Otel};
 
 impl metrics::Host for Otel<'_> {
     async fn export(&mut self, rm: wasi::ResourceMetrics) -> Result<(), wasi::Error> {
-        let http_client = self.http_client.clone();
+        // convert to opentelemetry export format
+        let request = ExportMetricsServiceRequest::from(rm);
+        let body = Message::encode_to_vec(&request);
+        let addr = env::var("OTEL_HTTP_ADDR").unwrap_or_else(|_| DEF_HTTP_ADDR.to_string());
 
-        tokio::task::spawn(async move {
-            // convert to opentelemetry export format
-            let request = ExportMetricsServiceRequest::from(rm);
-            let body = Message::encode_to_vec(&request);
-            let addr = env::var("OTEL_HTTP_ADDR").unwrap_or_else(|_| DEF_HTTP_ADDR.to_string());
-
-            // export to collector
-            if let Err(e) = http_client
-                .post(format!("{addr}/v1/metrics"))
-                .header(CONTENT_TYPE, "application/x-protobuf")
-                .body(body)
-                .send()
-                .await
-                .context("sending metrics")
-            {
-                tracing::error!("error exporting metrics: {e}");
-            }
-        });
+        // export to collector
+        self.http_client
+            .post(format!("{addr}/v1/metrics"))
+            .header(CONTENT_TYPE, "application/x-protobuf")
+            .body(body)
+            .send()
+            .await
+            .context("sending metrics")?;
 
         Ok(())
     }
