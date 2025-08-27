@@ -31,7 +31,6 @@ impl Guest for HttpGuest {
             let span = cx.span();
             span.set_attribute(KeyValue::new("my-attribute", "my-value"));
             span.add_event("main span event", vec![KeyValue::new("foo", "1")]);
-            span.end();
 
             tracer.in_span("child-operation", |cx| {
                 cx.span().add_event("sub span event", vec![KeyValue::new("bar", "1")]);

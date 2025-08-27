@@ -47,14 +47,13 @@ pub(crate) fn init(resource: Resource) -> Result<SdkTracerProvider> {
 pub(crate) fn context() -> ContextGuard {
     let host_ctx = wasi::current_span_context();
     let context: SpanContext = host_ctx.into();
+    let current = Context::current();
 
     // use current context if remote context is invalid
     if !context.is_valid() {
-        return Context::current().attach();
+        return current.attach();
     }
-
-    let guest_ctx = Context::current().with_remote_span_context(context);
-    guest_ctx.attach()
+    current.with_remote_span_context(context).attach()
 }
 
 #[derive(Debug)]
