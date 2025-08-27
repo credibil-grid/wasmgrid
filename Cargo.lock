@@ -4505,6 +4505,7 @@ dependencies = [
  "prost",
  "reqwest",
  "runtime",
+ "tokio",
  "tracing",
  "tracing-opentelemetry",
  "wasi-core",
