@@ -7,6 +7,7 @@
 
 use std::clone::Clone;
 use std::env;
+use std::fmt::{self, Debug, Formatter};
 
 use anyhow::{Result, anyhow};
 use http::uri::{PathAndQuery, Uri};
@@ -43,8 +44,8 @@ impl Linkable for Service {
     }
 }
 
-impl std::fmt::Debug for Service {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl Debug for Service {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         f.debug_struct("http").finish()
     }
 }
