@@ -6,6 +6,8 @@
 compile_error!("features \"guest-mode\" and \"host-mode\" cannot both be enabled");
 
 pub mod generated {
+    #![allow(clippy::collection_is_never_read)]
+
     wit_bindgen::generate!({
         world: "otel",
         path: "../../wit",
@@ -18,23 +20,50 @@ mod export;
 pub mod metrics;
 pub mod tracing;
 
+use opentelemetry::global;
 use opentelemetry::trace::Tracer;
-use opentelemetry::{ContextGuard, global};
 use opentelemetry_sdk::Resource;
+use opentelemetry_sdk::metrics::SdkMeterProvider;
+use opentelemetry_sdk::trace::SdkTracerProvider;
 pub use sdk_otel_attr::instrument;
 
-pub struct ScopeGuard {
-    _tracing: ContextGuard,
+#[derive(Default)]
+pub struct Shutdown {
+    tracing: SdkTracerProvider,
     #[cfg(feature = "metrics")]
-    _metrics: metrics::Reader,
+    metrics: SdkMeterProvider,
 }
 
-pub fn init() -> ScopeGuard {
-    let resource = Resource::builder().with_service_name("otel").build();
-    ScopeGuard {
-        _tracing: tracing::init(resource.clone()).expect("should initialize"),
+impl Drop for Shutdown {
+    fn drop(&mut self) {
+        if let Err(e) = self.tracing.shutdown() {
+            ::tracing::error!("failed to flush tracing: {e}");
+        }
         #[cfg(feature = "metrics")]
-        _metrics: metrics::init(resource).expect("should initialize"),
+        if let Err(e) = self.metrics.shutdown() {
+            ::tracing::error!("failed to flush metrics: {e}");
+        }
+    }
+}
+
+#[must_use]
+pub fn init() -> Shutdown {
+    let resource = Resource::builder().with_service_name("otel").build();
+
+    let Ok(tracing) = tracing::init(resource.clone()) else {
+        ::tracing::error!("failed to initialize tracing");
+        return Shutdown::default();
+    };
+    #[cfg(feature = "metrics")]
+    let Ok(metrics) = metrics::init(resource) else {
+        ::tracing::error!("failed to initialize metrics");
+        return Shutdown::default();
+    };
+
+    Shutdown {
+        tracing,
+        #[cfg(feature = "metrics")]
+        metrics,
     }
 }
 
@@ -42,7 +71,13 @@ pub fn instrument<F, R>(name: impl Into<String>, f: F) -> R
 where
     F: FnOnce() -> R,
 {
-    let _guard = init();
-    let tracer = global::tracer("instrument");
-    tracer.in_span(name.into(), |_| f())
+    let span = ::tracing::Span::current();
+    if span.is_none() {
+        let _shutdown = init();
+        let _ctx = tracing::context();
+        let tracer = global::tracer("instrument");
+        tracer.in_span(name.into(), |_| f())
+    } else {
+        span.in_scope(f)
+    }
 }

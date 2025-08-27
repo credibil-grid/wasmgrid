@@ -1,6 +1,8 @@
 //! # WASI Tracing
 
-use anyhow::{Context, Result};
+use std::env;
+
+use anyhow::{Result, anyhow};
 use http::header::CONTENT_TYPE;
 use opentelemetry_proto::tonic::collector::metrics::v1::ExportMetricsServiceRequest;
 use opentelemetry_proto::tonic::common::v1::any_value::Value;
@@ -20,14 +22,14 @@ use opentelemetry_sdk::error::OTelSdkError;
 use prost::Message;
 
 use crate::generated::wasi::otel::{metrics as wasi, metrics, types};
-use crate::{OTEL_ADDR, Otel};
+use crate::{DEF_HTTP_ADDR, Otel};
 
 impl metrics::Host for Otel<'_> {
     async fn export(&mut self, rm: wasi::ResourceMetrics) -> Result<(), wasi::Error> {
         // convert to opentelemetry export format
         let request = ExportMetricsServiceRequest::from(rm);
         let body = Message::encode_to_vec(&request);
-        let addr = option_env!("OTEL_ADDR").unwrap_or(OTEL_ADDR);
+        let addr = env::var("OTEL_HTTP_ADDR").unwrap_or_else(|_| DEF_HTTP_ADDR.to_string());
 
         // export to collector
         self.http_client
@@ -36,7 +38,7 @@ impl metrics::Host for Otel<'_> {
             .body(body)
             .send()
             .await
-            .context("sending metrics")?;
+            .map_err(|e| anyhow!("sending metrics {e}"))?;
 
         Ok(())
     }

@@ -1,13 +1,12 @@
 //! # WASI Tracing
 
 use std::collections::HashMap;
+use std::env;
 
 use anyhow::{Context, Result};
 use credibil_otel::init;
 use http::header::CONTENT_TYPE;
-use opentelemetry::trace::{
-    TraceContextExt, {self as otel},
-};
+use opentelemetry::trace::{self as otel, TraceContextExt};
 use opentelemetry_proto::tonic::collector::trace::v1::ExportTraceServiceRequest;
 use opentelemetry_proto::tonic::resource::v1::Resource;
 use opentelemetry_proto::tonic::trace::v1::span::{Event, Link};
@@ -18,7 +17,7 @@ use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 use crate::generated::wasi::otel as wasi_otel;
 use crate::generated::wasi::otel::tracing::{self as wt};
-use crate::{OTEL_ADDR, Otel};
+use crate::{DEF_HTTP_ADDR, Otel};
 
 impl wasi_otel::tracing::Host for Otel<'_> {
     async fn current_span_context(&mut self) -> Result<wt::SpanContext> {
@@ -33,7 +32,7 @@ impl wasi_otel::tracing::Host for Otel<'_> {
         let request = ExportTraceServiceRequest { resource_spans };
 
         let body = Message::encode_to_vec(&request);
-        let addr = option_env!("OTEL_ADDR").unwrap_or(OTEL_ADDR);
+        let addr = env::var("OTEL_HTTP_ADDR").unwrap_or_else(|_| DEF_HTTP_ADDR.to_string());
 
         // export to collector
         self.http_client

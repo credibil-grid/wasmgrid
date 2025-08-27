@@ -54,10 +54,10 @@ impl messaging::incoming_handler::Guest for Messaging {
 
                 // send message to topic `b`
                 let mut resp = b"topic a says: ".to_vec();
-                resp.extend(data.clone());
+                resp.extend(data);
 
                 let message = Message::new(&resp);
-                if let Some(md) = message.metadata().clone() {
+                if let Some(md) = message.metadata() {
                     message.set_metadata(&md);
                 }
 

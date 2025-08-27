@@ -91,10 +91,10 @@ tower = "0.5.2"
 tower-http = { version = "0.6.6", features = ["cors", "trace"] }
 wasi = "0.14.2"
 wasi-core = { path = "crates/wasi-core" }
-wasmtime = { version = "36.0.1", default-features = false, features = ["async", "component-model"] }
-wasmtime-wasi = "36.0.1"
-wasmtime-wasi-http = "36.0.1"
-wasmtime-wasi-io = "36.0.1"
+wasmtime = { version = "36.0.2", default-features = false, features = ["async", "component-model"] }
+wasmtime-wasi = "36.0.2"
+wasmtime-wasi-http = "36.0.2"
+wasmtime-wasi-io = "36.0.2"
 wit-bindgen = "0.44.0"
 wit-bindings = { path = "crates/wit-bindings" }
 

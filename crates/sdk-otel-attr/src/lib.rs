@@ -31,7 +31,7 @@ use syn::{ItemFn, LitStr, parse_macro_input};
 pub fn instrument(args: TokenStream, item: TokenStream) -> TokenStream {
     // macro's attributes
     let mut attrs = Attributes::default();
-    let arg_parser = meta::parser(|meta| attrs.parse(meta));
+    let arg_parser = meta::parser(|meta| attrs.parse(&meta));
     parse_macro_input!(args with arg_parser);
 
     // function the macro is decorating
@@ -67,7 +67,7 @@ struct Attributes {
 
 // See https://docs.rs/syn/latest/syn/meta/fn.parser.html
 impl Attributes {
-    fn parse(&mut self, meta: ParseNestedMeta) -> Result<()> {
+    fn parse(&mut self, meta: &ParseNestedMeta) -> Result<()> {
         if meta.path.is_ident("name") {
             self.name = Some(meta.value()?.parse()?);
             Ok(())

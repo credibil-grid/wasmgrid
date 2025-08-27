@@ -23,16 +23,27 @@ pub struct Exporter {
 }
 
 impl Exporter {
-    pub fn new() -> Result<Exporter> {
-        cfg_if! {
-            if #[cfg(feature = "guest-mode")] {
-                use crate::export::ExportClient;
-                let inner = MetricExporter::builder().with_http().with_http_client(ExportClient).build()?;
-                Ok(Exporter { inner })
-            } else {
-                Ok(Exporter {})
-            }
+    #[cfg(feature = "guest-mode")]
+    pub fn new() -> Result<Self> {
+        use std::env;
+
+        use opentelemetry_otlp::WithExportConfig;
+
+        use crate::export::ExportClient;
+
+        let mut builder = MetricExporter::builder().with_http().with_http_client(ExportClient);
+        if let Ok(endpoint) = env::var("OTEL_HTTP_ADDR") {
+            builder = builder.with_endpoint(format!("{endpoint}/v1/metrics"));
         }
+        let inner = builder.build()?;
+
+        Ok(Self { inner })
+    }
+
+    #[allow(clippy::unnecessary_wraps)]
+    #[cfg(not(feature = "guest-mode"))]
+    pub const fn new() -> Result<Self> {
+        Ok(Self {})
     }
 }
 
@@ -44,9 +55,8 @@ impl PushMetricExporter for Exporter {
 
     #[cfg(not(feature = "guest-mode"))]
     async fn export(&self, rm: &ResourceMetrics) -> Result<(), OTelSdkError> {
-        wasi::export(&rm.into()).map_err(|e| {
-            OTelSdkError::InternalFailure(format!("Failed to export metrics: {}", e))
-        })?;
+        wasi::export(&rm.into())
+            .map_err(|e| OTelSdkError::InternalFailure(format!("failed to export metrics: {e}")))?;
         Ok(())
     }
 
@@ -79,7 +89,7 @@ cfg_if! {
             fn from(rm: &ResourceMetrics) -> Self {
                 Self {
                     resource: rm.resource().into(),
-                    scope_metrics: rm.scope_metrics().into_iter().map(Into::into).collect(),
+                    scope_metrics: rm.scope_metrics().map(Into::into).collect(),
                 }
             }
         }
@@ -88,7 +98,7 @@ cfg_if! {
             fn from(resource: &Resource) -> Self {
                 Self {
                     attributes: resource.iter().map(Into::into).collect(),
-                    schema_url: resource.schema_url().map(|s| s.to_string()),
+                    schema_url: resource.schema_url().map(ToString::to_string),
                 }
             }
         }
@@ -97,7 +107,7 @@ cfg_if! {
             fn from(scope_metrics: &ScopeMetrics) -> Self {
                 Self {
                     scope: scope_metrics.scope().into(),
-                    metrics: scope_metrics.metrics().into_iter().map(Into::into).collect(),
+                    metrics: scope_metrics.metrics().map(Into::into).collect(),
                 }
             }
         }
@@ -137,7 +147,7 @@ cfg_if! {
         impl<T: ToPrimitive + Copy> From<&Gauge<T>> for wm::Gauge {
             fn from(gauge: &Gauge<T>) -> Self {
                 Self {
-                    data_points: gauge.data_points().into_iter().map(Into::into).collect(),
+                    data_points: gauge.data_points().map(Into::into).collect(),
                     start_time: gauge.start_time().map(Into::into),
                     time: gauge.time().into(),
                 }
@@ -147,9 +157,9 @@ cfg_if! {
         impl<T: ToPrimitive + Copy> From<&GaugeDataPoint<T>> for wm::GaugeDataPoint {
             fn from(data_point: &GaugeDataPoint<T>) -> Self {
                 Self {
-                    attributes: data_point.attributes().into_iter().map(Into::into).collect(),
+                    attributes: data_point.attributes().map(Into::into).collect(),
                     value: data_point.value().into(),
-                    exemplars: data_point.exemplars().into_iter().map(Into::into).collect(),
+                    exemplars: data_point.exemplars().map(Into::into).collect(),
                 }
             }
         }
@@ -159,7 +169,6 @@ cfg_if! {
                 Self {
                     filtered_attributes: exemplar
                         .filtered_attributes()
-                        .into_iter()
                         .map(Into::into)
                         .collect(),
                     time: exemplar.time().into(),
@@ -173,7 +182,7 @@ cfg_if! {
         impl<T: ToPrimitive + Copy> From<&Sum<T>> for wm::Sum {
             fn from(sum: &Sum<T>) -> Self {
                 Self {
-                    data_points: sum.data_points().into_iter().map(Into::into).collect(),
+                    data_points: sum.data_points().map(Into::into).collect(),
                     start_time: sum.start_time().into(),
                     time: sum.time().into(),
                     temporality: sum.temporality().into(),
@@ -185,9 +194,9 @@ cfg_if! {
         impl<T: ToPrimitive + Copy> From<&SumDataPoint<T>> for wm::SumDataPoint {
             fn from(data_point: &SumDataPoint<T>) -> Self {
                 Self {
-                    attributes: data_point.attributes().into_iter().map(Into::into).collect(),
+                    attributes: data_point.attributes().map(Into::into).collect(),
                     value: data_point.value().into(),
-                    exemplars: data_point.exemplars().into_iter().map(Into::into).collect(),
+                    exemplars: data_point.exemplars().map(Into::into).collect(),
                 }
             }
         }
@@ -195,7 +204,7 @@ cfg_if! {
         impl<T: ToPrimitive + Copy> From<&Histogram<T>> for wm::Histogram {
             fn from(histogram: &Histogram<T>) -> Self {
                 Self {
-                    data_points: histogram.data_points().into_iter().map(Into::into).collect(),
+                    data_points: histogram.data_points().map(Into::into).collect(),
                     start_time: histogram.start_time().into(),
                     time: histogram.time().into(),
                     temporality: histogram.temporality().into(),
@@ -206,14 +215,14 @@ cfg_if! {
         impl<T: ToPrimitive + Copy> From<&HistogramDataPoint<T>> for wm::HistogramDataPoint {
             fn from(data_point: &HistogramDataPoint<T>) -> Self {
                 Self {
-                    attributes: data_point.attributes().into_iter().map(Into::into).collect(),
+                    attributes: data_point.attributes().map(Into::into).collect(),
                     count: data_point.count(),
                     bounds: data_point.bounds().collect(),
                     bucket_counts: data_point.bucket_counts().collect(),
                     min: data_point.min().map(Into::into),
                     max: data_point.max().map(Into::into),
                     sum: data_point.sum().into(),
-                    exemplars: data_point.exemplars().into_iter().map(Into::into).collect(),
+                    exemplars: data_point.exemplars().map(Into::into).collect(),
                 }
             }
         }
@@ -221,7 +230,7 @@ cfg_if! {
         impl<T: ToPrimitive + Copy> From<&ExponentialHistogram<T>> for wm::ExponentialHistogram {
             fn from(histogram: &ExponentialHistogram<T>) -> Self {
                 Self {
-                    data_points: histogram.data_points().into_iter().map(Into::into).collect(),
+                    data_points: histogram.data_points().map(Into::into).collect(),
                     start_time: histogram.start_time().into(),
                     time: histogram.time().into(),
                     temporality: histogram.temporality().into(),
@@ -234,30 +243,24 @@ cfg_if! {
         {
             fn from(data_point: &ExponentialHistogramDataPoint<T>) -> Self {
                 Self {
-                    attributes: data_point.attributes().into_iter().map(Into::into).collect(),
-                    scale: data_point.scale().into(),
-                    zero_count: data_point.zero_count().into(),
+                    attributes: data_point.attributes().map(Into::into).collect(),
+                    scale: data_point.scale(),
+                    zero_count: data_point.zero_count(),
                     positive_bucket: data_point.positive_bucket().into(),
                     negative_bucket: data_point.negative_bucket().into(),
-                    zero_threshold: data_point.zero_threshold().into(),
+                    zero_threshold: data_point.zero_threshold(),
                     min: data_point.min().map(Into::into),
                     max: data_point.max().map(Into::into),
                     sum: data_point.sum().into(),
                     count: data_point.count() as u64,
-                    exemplars: data_point.exemplars().into_iter().map(Into::into).collect(),
+                    exemplars: data_point.exemplars().map(Into::into).collect(),
                 }
             }
         }
 
         impl<T: ToPrimitive> From<T> for wm::DataValue {
             fn from(value: T) -> Self {
-                if let Some(val) = value.to_u64() {
-                    Self::U64(val)
-                } else if let Some(val) = value.to_i64() {
-                    Self::S64(val)
-                } else {
-                    Self::F64(value.to_f64().unwrap_or_default())
-                }
+                value.to_u64().map_or_else(|| value.to_i64().map_or_else(|| Self::F64(value.to_f64().unwrap_or_default()), Self::S64), Self::U64)
             }
         }
 

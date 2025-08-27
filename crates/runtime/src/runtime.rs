@@ -33,6 +33,11 @@ impl<T: WasiView + 'static> Runtime<T> {
         config.async_support(true);
         let engine = Engine::new(&config)?;
 
+        // The most efficient solution is to enable Config::epoch_interruption
+        // in conjunction with crate::Store::epoch_deadline_async_yield_and_update.
+        // Coupled with periodic calls to crate::Engine::increment_epoch this will
+        // cause executing WebAssembly to periodically yield back according to the
+
         // file can be a serialized component or a wasm file
         cfg_if! {
             if #[cfg(feature = "compile")] {

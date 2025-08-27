@@ -23,7 +23,7 @@ pub async fn run(pre: InstancePre<Ctx>, resources: Resources) -> anyhow::Result<
     let mut store = Store::new(pre.engine(), Ctx::new(resources.clone(), pre.clone()));
     let msg_pre = MessagingPre::new(pre.clone())?;
     let msg = msg_pre.instantiate_async(&mut store).await?;
-    let config = msg.wasi_messaging_incoming_handler().call_configure(&mut store)??;
+    let config = msg.wasi_messaging_incoming_handler().call_configure(&mut store).await??;
 
     // process requests
     subscribe(config.topics, &resources, msg_pre).await
@@ -70,5 +70,5 @@ async fn call_guest(pre: MessagingPre<Ctx>, resources: Resources, message: Messa
     let res_msg = ctx.table.push(message)?;
     let mut store = Store::new(pre.engine(), ctx);
     let messaging = pre.instantiate_async(&mut store).await?;
-    messaging.wasi_messaging_incoming_handler().call_handle(&mut store, res_msg)?
+    messaging.wasi_messaging_incoming_handler().call_handle(&mut store, res_msg).await?
 }

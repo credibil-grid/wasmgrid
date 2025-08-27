@@ -18,6 +18,15 @@ use {wasi_http as http, wasi_otel as otel};
 const DEF_NATS_ADDR: &str = "demo.nats.io";
 const DEF_KV_ADDR: &str = "https://kv-credibil-demo.vault.azure.net";
 
+/// Main entry point for the Wasmgrid CLI.
+///
+/// # Errors
+///
+/// Returns an error if resources cannot be initialized.
+///
+/// # Panics
+///
+/// This function will panic if the environment variables are not set.
 #[tokio::main]
 pub async fn main() -> Result<()> {
     if cfg!(debug_assertions) {
@@ -34,7 +43,11 @@ pub async fn main() -> Result<()> {
             let Some((prefix, _)) = name.split_once('.') else {
                 return Err(anyhow!("file name does not have an extension"));
             };
-            Telemetry::new(prefix).build().context("initializing telemetry")?;
+            let mut builder = Telemetry::new(prefix);
+            if let Ok(endpoint) = env::var("OTEL_GRPC_ADDR") {
+                builder = builder.endpoint(endpoint);
+            }
+            builder.build().context("initializing telemetry")?;
 
             // run until shutdown
             start(&wasm)?.shutdown().await
@@ -65,7 +78,7 @@ fn start(wasm: &PathBuf) -> Result<Runtime<Ctx>> {
     let jwt = env::var("NATS_JWT").ok();
     let seed = env::var("NATS_SEED").ok();
     let kv_addr = env::var("KV_ADDR").unwrap_or_else(|_| DEF_KV_ADDR.into());
-    let mongo_uri = env::var("MONGODB_URI").expect("MONGODB_URI must be set");
+    let mongo_uri = env::var("MONGODB_URI").context("fetching MONGODB_URI env var")?;
     // TODO: add az keyvault env vars
 
     let resources = Resources::new();

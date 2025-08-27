@@ -10,20 +10,10 @@ processors:
   batch:
 
 exporters:
-  otlp:
-    endpoint: otelcol:4317
-    
   otlp/jaeger:
     endpoint: jaeger:4317
     tls:
       insecure: true
-
-  # prometheus:
-  #   endpoint: 0.0.0.0:8889
-  #   namespace: timetables
-  #   enable_open_metrics: true
-  #   resource_to_telemetry_conversion:
-  #     enabled: true
 
   prometheusremotewrite:
     endpoint: http://prometheus:9090/api/v1/write
@@ -34,7 +24,7 @@ exporters:
       enabled: true
 
   debug:
-    verbosity: detailed
+  #   verbosity: detailed
 
 service:
   pipelines:
@@ -44,8 +34,7 @@ service:
       exporters: [otlp/jaeger, debug]
     metrics:
       receivers: [otlp]
-      exporters: [prometheusremotewrite, debug]
+      exporters: [prometheusremotewrite]
     logs:
       receivers: [otlp]
       exporters: [otlp/jaeger, debug]
-
