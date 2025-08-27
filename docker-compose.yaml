@@ -1,20 +1,19 @@
 services:
-  # otel:
-  #   image: acrcredibil.azurecr.io/demo/wasmgrid
-  #   platform: linux/arm64
-  #   environment: 
-  #     RUST_LOG: info,otel=debug
-  #     MONGODB_URI: ${MONGODB_URI}
-  #     NATS_ADDR: ${NATS_ADDR}
-  #     OTEL_HTTP_ADDR: http://otelcol:4318
-  #     OTEL_GRPC_ADDR: http://otelcol:4317
-  #   ports:
-  #     - 8080:8080
-  #   volumes:
-  #      - ./target/wasm32-wasip2/release/otel.wasm:/app.wasm
-  #   # network_mode: host
-  #   depends_on:
-  #     - otelcol
+  otel:
+    image: acrcredibil.azurecr.io/demo/wasmgrid
+    platform: linux/arm64
+    environment: 
+      RUST_LOG: info,otel=debug
+      MONGODB_URI: ${MONGODB_URI}
+      NATS_ADDR: ${NATS_ADDR}
+      OTEL_HTTP_ADDR: http://otelcol:4318
+      OTEL_GRPC_ADDR: http://otelcol:4317
+    ports:
+      - 8080:8080
+    volumes:
+       - ./target/wasm32-wasip2/release/otel.wasm:/app.wasm
+    depends_on:
+      - otelcol
 
   otelcol:
     image: otel/opentelemetry-collector-contrib:latest
