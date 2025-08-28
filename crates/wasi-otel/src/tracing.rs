@@ -16,17 +16,17 @@ use prost::Message;
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 use crate::generated::wasi::otel as wasi_otel;
-use crate::generated::wasi::otel::tracing::{self as wt};
+use crate::generated::wasi::otel::tracing::{self as wasi};
 use crate::{DEF_HTTP_ADDR, Otel};
 
 impl wasi_otel::tracing::Host for Otel<'_> {
-    async fn current_span_context(&mut self) -> Result<wt::SpanContext> {
+    async fn context(&mut self) -> Result<wasi::SpanContext> {
         let ctx = tracing::Span::current().context();
         let span = ctx.span();
-        Ok(wt::SpanContext::from(span.span_context()))
+        Ok(wasi::SpanContext::from(span.span_context()))
     }
 
-    async fn export(&mut self, span_data: Vec<wt::SpanData>) -> Result<()> {
+    async fn export(&mut self, span_data: Vec<wasi::SpanData>) -> Result<(), wasi::Error> {
         let http_client = self.http_client.clone();
 
         // export to collector in background to avoid blocking
@@ -56,12 +56,12 @@ impl wasi_otel::tracing::Host for Otel<'_> {
 }
 
 pub fn resource_spans(
-    spans: Vec<wt::SpanData>, resource: &opentelemetry_sdk::Resource,
+    spans: Vec<wasi::SpanData>, resource: &opentelemetry_sdk::Resource,
 ) -> Vec<ResourceSpans> {
     // group spans by InstrumentationScope
     let scope_map = spans.into_iter().fold(
         HashMap::new(),
-        |mut scope_map: HashMap<wt::InstrumentationScope, Vec<wt::SpanData>>, span| {
+        |mut scope_map: HashMap<wasi::InstrumentationScope, Vec<wasi::SpanData>>, span| {
             let instrumentation = span.instrumentation_scope.clone();
             scope_map.entry(instrumentation).or_default().push(span);
             scope_map
@@ -90,8 +90,8 @@ pub fn resource_spans(
     }]
 }
 
-impl From<wt::SpanData> for Span {
-    fn from(span: wt::SpanData) -> Self {
+impl From<wasi::SpanData> for Span {
+    fn from(span: wasi::SpanData) -> Self {
         let trace_state = span.span_context.trace_state;
         let trace_state =
             trace_state.iter().map(|(k, v)| format!("{k}={v}")).collect::<Vec<_>>().join(",");
@@ -117,7 +117,7 @@ impl From<wt::SpanData> for Span {
     }
 }
 
-impl From<&otel::SpanContext> for wt::SpanContext {
+impl From<&otel::SpanContext> for wasi::SpanContext {
     fn from(ctx: &otel::SpanContext) -> Self {
         Self {
             trace_id: ctx.trace_id().to_string(),
@@ -140,15 +140,15 @@ impl From<&otel::SpanContext> for wt::SpanContext {
     }
 }
 
-impl From<otel::TraceFlags> for wt::TraceFlags {
+impl From<otel::TraceFlags> for wasi::TraceFlags {
     fn from(value: otel::TraceFlags) -> Self {
         if value.is_sampled() { Self::SAMPLED } else { Self::empty() }
     }
 }
 
-impl From<wt::TraceFlags> for u32 {
-    fn from(value: wt::TraceFlags) -> Self {
-        if value.contains(wt::TraceFlags::SAMPLED) {
+impl From<wasi::TraceFlags> for u32 {
+    fn from(value: wasi::TraceFlags) -> Self {
+        if value.contains(wasi::TraceFlags::SAMPLED) {
             Self::from(otel::TraceFlags::SAMPLED.to_u8())
         } else {
             Self::from(otel::TraceFlags::NOT_SAMPLED.to_u8())
@@ -156,8 +156,8 @@ impl From<wt::TraceFlags> for u32 {
     }
 }
 
-impl From<wt::Event> for Event {
-    fn from(event: wt::Event) -> Self {
+impl From<wasi::Event> for Event {
+    fn from(event: wasi::Event) -> Self {
         Self {
             time_unix_nano: event.time.into(),
             name: event.name,
@@ -167,8 +167,8 @@ impl From<wt::Event> for Event {
     }
 }
 
-impl From<wt::Link> for Link {
-    fn from(link: wt::Link) -> Self {
+impl From<wasi::Link> for Link {
+    fn from(link: wasi::Link) -> Self {
         let attrs = link.attributes.into_iter().map(Into::into).collect();
 
         let trace_state = link.span_context.trace_state;
@@ -186,15 +186,15 @@ impl From<wt::Link> for Link {
     }
 }
 
-impl From<wt::Status> for Status {
-    fn from(value: wt::Status) -> Self {
+impl From<wasi::Status> for Status {
+    fn from(value: wasi::Status) -> Self {
         match value {
-            wt::Status::Unset => Self::default(),
-            wt::Status::Error(description) => Self {
+            wasi::Status::Unset => Self::default(),
+            wasi::Status::Error(description) => Self {
                 code: StatusCode::Error.into(),
                 message: description,
             },
-            wt::Status::Ok => Self {
+            wasi::Status::Ok => Self {
                 code: StatusCode::Ok.into(),
                 message: String::new(),
             },

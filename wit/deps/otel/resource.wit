@@ -1,0 +1,6 @@
+interface %resource {
+    use types.{key, value, key-value, %resource as telemetry-resource};
+
+    /// Returns the telemetry resource used by the host.
+    %resource: func() -> telemetry-resource;
+}

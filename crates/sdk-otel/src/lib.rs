@@ -21,12 +21,13 @@ pub mod metrics;
 #[cfg(feature = "tracing")]
 pub mod tracing;
 
+use cfg_if::cfg_if;
+
 cfg_if! {
     if #[cfg(feature = "metrics" )] {
         use opentelemetry_sdk::metrics::SdkMeterProvider;
     }
 }
-
 cfg_if! {
     if #[cfg(feature = "tracing" )] {
         use opentelemetry::global;
@@ -34,12 +35,12 @@ cfg_if! {
         use opentelemetry_sdk::trace::SdkTracerProvider;
     }
 }
-
-use cfg_if::cfg_if;
-
 cfg_if! {
     if #[cfg(any(feature = "tracing", feature = "metrics"))] {
         use opentelemetry_sdk::Resource;
+        use opentelemetry::{KeyValue, Value};
+        use self::generated::wasi::otel::resource;
+        use self::generated::wasi::otel::types;
         pub use sdk_otel_attr::instrument;
     }
 }
@@ -67,8 +68,8 @@ impl Drop for Shutdown {
 
 #[cfg(any(feature = "metrics", feature = "tracing"))]
 #[must_use]
-pub fn init(name: impl Into<String>) -> Shutdown {
-    let resource = Resource::builder().with_service_name(name.into()).build();
+pub fn init() -> Shutdown {
+    let resource: Resource = resource::resource().into();
 
     #[cfg(feature = "tracing")]
     let Ok(tracing) = tracing::init(resource.clone()) else {
@@ -96,11 +97,10 @@ where
 {
     let span = ::tracing::Span::current();
     if span.is_none() {
-        let name = name.into();
-        let _shutdown = init(&name);
+        let _shutdown = init();
         let _ctx = tracing::context();
         let tracer = global::tracer("instrument");
-        tracer.in_span(name, |_| f())
+        tracer.in_span(name.into(), |_| f())
     } else {
         span.in_scope(f)
     }
@@ -113,4 +113,44 @@ where
 {
     let _shutdown = init();
     f()
+}
+
+cfg_if! {
+    if #[cfg(any(feature = "tracing", feature = "metrics"))]{
+        impl From<types::Resource> for Resource {
+            fn from(value: types::Resource) -> Self {
+                let attrs = value.attributes.into_iter().map(Into::into).collect::<Vec<_>>();
+                let builder = Self::builder();
+
+                if let Some(schema_url) = value.schema_url {
+                    builder.with_schema_url(attrs, schema_url).build()
+                } else {
+                    builder.with_attributes(attrs).build()
+                }
+            }
+        }
+
+        impl From<types::KeyValue> for KeyValue {
+            fn from(value: types::KeyValue) -> Self {
+                Self::new(value.key, value.value)
+            }
+        }
+
+        impl From<types::Value> for Value {
+            fn from(value: types::Value) -> Self {
+                match value {
+                    types::Value::Bool(v) => Self::Bool(v),
+                    types::Value::S64(v) => Self::I64(v),
+                    types::Value::F64(v) => Self::F64(v),
+                    types::Value::String(v) => Self::String(v.into()),
+                    types::Value::BoolArray(items) => Self::Array(opentelemetry::Array::Bool(items)),
+                    types::Value::S64Array(items) => Self::Array(opentelemetry::Array::I64(items)),
+                    types::Value::F64Array(items) => Self::Array(opentelemetry::Array::F64(items)),
+                    types::Value::StringArray(items) => Self::Array(opentelemetry::Array::String(
+                        items.into_iter().map(Into::into).collect(),
+                    )),
+                }
+            }
+        }
+    }
 }

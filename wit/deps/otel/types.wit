@@ -1,6 +1,6 @@
 interface types {
     use wasi:clocks/wall-clock@0.2.6.{datetime};
-    
+
     /// A key-value pair describing an attribute.
     record key-value {
         /// The attribute name.
@@ -32,6 +32,16 @@ interface types {
         s64-array(list<s64>),
     }
 
+    /// The host resource describing the entity producing telemetry.
+    record %resource {
+        /// Specifies the resource attributes to associate with emitted telemetry.
+        attributes: list<key-value>,
+
+        /// Schema URL used by this library.
+        /// https://github.com/open-telemetry/opentelemetry-specification/blob/v1.9.0/specification/schemas/overview.md#schema-url
+        schema-url: option<string>,
+    }
+
     /// Describes the instrumentation scope that produced a span.
     record instrumentation-scope {
         /// Name of the instrumentation scope.
@@ -48,7 +58,7 @@ interface types {
         attributes: list<key-value>,
     }
 
-       /// The set of errors which may be raised by functions in this package
+    /// The set of errors which may be raised by functions in this package
     variant error {
         /// Shutdown has already been invoked.
         already-shutdown,

@@ -27,6 +27,9 @@ use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 
 use anyhow::Result;
+use credibil_otel::init;
+use opentelemetry::{Array, Key, Value};
+use opentelemetry_sdk::Resource;
 use runtime::Linkable;
 use wasi_core::Ctx;
 use wasmtime::component::{HasData, Linker};
@@ -64,7 +67,53 @@ impl Linkable for Service {
     fn add_to_linker(&self, linker: &mut Linker<Self::Ctx>) -> Result<()> {
         wasi_otel::tracing::add_to_linker::<_, Data>(linker, Otel::new)?;
         wasi_otel::metrics::add_to_linker::<_, Data>(linker, Otel::new)?;
-        wasi_otel::types::add_to_linker::<_, Data>(linker, Otel::new)
+        wasi_otel::types::add_to_linker::<_, Data>(linker, Otel::new)?;
+        wasi_otel::resource::add_to_linker::<_, Data>(linker, Otel::new)
+    }
+}
+
+impl wasi_otel::resource::Host for Otel<'_> {
+    async fn resource(&mut self) -> Result<types::Resource> {
+        Ok(init::resource().into())
+    }
+}
+
+impl From<&Resource> for types::Resource {
+    fn from(resource: &Resource) -> Self {
+        Self {
+            attributes: resource.iter().map(Into::into).collect(),
+            schema_url: resource.schema_url().map(Into::into),
+        }
+    }
+}
+
+impl From<(&Key, &Value)> for types::KeyValue {
+    fn from((key, value): (&Key, &Value)) -> Self {
+        Self {
+            key: key.to_string(),
+            value: value.clone().into(),
+        }
+    }
+}
+
+impl From<Value> for types::Value {
+    fn from(value: Value) -> Self {
+        match value {
+            Value::Bool(v) => Self::Bool(v),
+            Value::I64(v) => Self::S64(v),
+            Value::F64(v) => Self::F64(v),
+            Value::String(v) => Self::String(v.to_string()),
+            Value::Array(v) => match v {
+                Array::Bool(items) => Self::BoolArray(items),
+                Array::I64(items) => Self::S64Array(items),
+                Array::F64(items) => Self::F64Array(items),
+                Array::String(items) => {
+                    Self::StringArray(items.into_iter().map(Into::into).collect())
+                }
+                _ => unimplemented!(),
+            },
+            _ => unimplemented!(),
+        }
     }
 }
 

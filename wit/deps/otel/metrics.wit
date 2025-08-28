@@ -1,6 +1,6 @@
 interface metrics {
     use wasi:clocks/wall-clock@0.2.6.{datetime};
-    use types.{error, key, value, key-value, instrumentation-scope};
+    use types.{key, value, key-value, instrumentation-scope, %resource, error};
 
     /// Gathers and returns all metric data related to the [MetricReader] from the
     /// SDK and stores it in the provided [ResourceMetrics] reference.
@@ -12,17 +12,9 @@ interface metrics {
     record resource-metrics {
         /// The entity that collected the metrics.
         %resource: %resource,
-        
+
         /// The collection of metrics with unique [InstrumentationScope]s.
         scope-metrics: list<scope-metrics>,
-    }
-
-    record %resource {
-        /// The `trace-id` for this `span-context`.
-        attributes: list<key-value>,
-
-        /// The `span-id` for this `span-context`.
-        schema-url: option<string>,
     }
 
     record scope-metrics {
@@ -315,7 +307,7 @@ interface metrics {
         /// Identifies a group of instruments that record increasing values synchronously
         /// with the code path they are measuring.
         counter,
-        
+
         /// A group of instruments that record increasing and decreasing values
         /// synchronously with the code path they are measuring.
         up-down-counter,

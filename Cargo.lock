@@ -4446,7 +4446,6 @@ dependencies = [
  "anyhow",
  "http 1.3.1",
  "hyper",
- "opentelemetry",
  "resources",
  "runtime",
  "tokio",

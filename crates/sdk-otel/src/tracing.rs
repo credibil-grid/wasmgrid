@@ -43,7 +43,7 @@ pub(crate) fn init(resource: Resource) -> Result<SdkTracerProvider> {
 
 // propagate (inject) host context
 pub(crate) fn context() -> ContextGuard {
-    let host_ctx = wasi::current_span_context();
+    let host_ctx = wasi::context();
     let context: SpanContext = host_ctx.into();
     let current = Context::current();
 

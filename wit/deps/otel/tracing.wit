@@ -1,12 +1,12 @@
 interface tracing {
     use wasi:clocks/wall-clock@0.2.6.{datetime};
-    use types.{key, value, key-value, instrumentation-scope};
+    use types.{key, value, key-value, instrumentation-scope, error};
 
     /// Returns the current span context of the host.
-    current-span-context: func() -> span-context;
+    context: func() -> span-context;
 
-    /// Called when spans are exported.
-    %export: func(span: list<span-data>);
+    /// Called by the guest to export spans.
+    %export: func(span: list<span-data>) -> result<_, error>;
 
     /// The data associated with a span.
     record span-data {
