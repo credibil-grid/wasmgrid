@@ -2,8 +2,8 @@
 //!
 //! WASM component (guest) OpenTelemetry SDK.
 
-#[cfg(all(feature = "guest-mode", feature = "host-mode"))]
-compile_error!("features \"guest-mode\" and \"host-mode\" cannot both be enabled");
+// #[cfg(all(feature = "guest-export", feature = "host-export"))]
+// compile_error!("features \"guest-export\" and \"host-export\" cannot both be enabled");
 
 pub mod generated {
     #![allow(clippy::collection_is_never_read)]
@@ -18,17 +18,35 @@ pub mod generated {
 mod export;
 #[cfg(feature = "metrics")]
 pub mod metrics;
+#[cfg(feature = "tracing")]
 pub mod tracing;
 
-use opentelemetry::global;
-use opentelemetry::trace::Tracer;
-use opentelemetry_sdk::Resource;
-use opentelemetry_sdk::metrics::SdkMeterProvider;
-use opentelemetry_sdk::trace::SdkTracerProvider;
-pub use sdk_otel_attr::instrument;
+cfg_if! {
+    if #[cfg(feature = "metrics" )] {
+        use opentelemetry_sdk::metrics::SdkMeterProvider;
+    }
+}
+
+cfg_if! {
+    if #[cfg(feature = "tracing" )] {
+        use opentelemetry::global;
+        use opentelemetry::trace::Tracer;
+        use opentelemetry_sdk::trace::SdkTracerProvider;
+    }
+}
+
+use cfg_if::cfg_if;
+
+cfg_if! {
+    if #[cfg(any(feature = "tracing", feature = "metrics"))] {
+        use opentelemetry_sdk::Resource;
+        pub use sdk_otel_attr::instrument;
+    }
+}
 
 #[derive(Default)]
 pub struct Shutdown {
+    #[cfg(feature = "tracing")]
     tracing: SdkTracerProvider,
     #[cfg(feature = "metrics")]
     metrics: SdkMeterProvider,
@@ -36,6 +54,7 @@ pub struct Shutdown {
 
 impl Drop for Shutdown {
     fn drop(&mut self) {
+        #[cfg(feature = "tracing")]
         if let Err(e) = self.tracing.shutdown() {
             ::tracing::error!("failed to flush tracing: {e}");
         }
@@ -46,10 +65,12 @@ impl Drop for Shutdown {
     }
 }
 
+#[cfg(any(feature = "metrics", feature = "tracing"))]
 #[must_use]
-pub fn init() -> Shutdown {
-    let resource = Resource::builder().with_service_name("otel").build();
+pub fn init(name: impl Into<String>) -> Shutdown {
+    let resource = Resource::builder().with_service_name(name.into()).build();
 
+    #[cfg(feature = "tracing")]
     let Ok(tracing) = tracing::init(resource.clone()) else {
         ::tracing::error!("failed to initialize tracing");
         return Shutdown::default();
@@ -61,23 +82,35 @@ pub fn init() -> Shutdown {
     };
 
     Shutdown {
+        #[cfg(feature = "tracing")]
         tracing,
         #[cfg(feature = "metrics")]
         metrics,
     }
 }
 
+#[cfg(feature = "tracing")]
 pub fn instrument<F, R>(name: impl Into<String>, f: F) -> R
 where
     F: FnOnce() -> R,
 {
     let span = ::tracing::Span::current();
     if span.is_none() {
-        let _shutdown = init();
+        let name = name.into();
+        let _shutdown = init(&name);
         let _ctx = tracing::context();
         let tracer = global::tracer("instrument");
-        tracer.in_span(name.into(), |_| f())
+        tracer.in_span(name, |_| f())
     } else {
         span.in_scope(f)
     }
+}
+
+#[cfg(all(not(feature = "tracing"), feature = "metrics"))]
+pub fn instrument<F, R>(_name: impl Into<String>, f: F) -> R
+where
+    F: FnOnce() -> R,
+{
+    let _shutdown = init();
+    f()
 }

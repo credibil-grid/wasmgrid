@@ -64,6 +64,5 @@ impl MetricReader for Reader {
         let mut rm = ResourceMetrics::default();
         self.reader.collect(&mut rm)?;
         block_on(async { self.exporter.export(&rm).await })
-        // self.reader.shutdown_with_timeout(timeout)
     }
 }

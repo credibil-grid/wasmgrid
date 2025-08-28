@@ -27,21 +27,29 @@ impl wasi_otel::tracing::Host for Otel<'_> {
     }
 
     async fn export(&mut self, span_data: Vec<wt::SpanData>) -> Result<()> {
-        // convert to opentelemetry export format
-        let resource_spans = resource_spans(span_data, init::resource());
-        let request = ExportTraceServiceRequest { resource_spans };
+        let http_client = self.http_client.clone();
 
-        let body = Message::encode_to_vec(&request);
-        let addr = env::var("OTEL_HTTP_ADDR").unwrap_or_else(|_| DEF_HTTP_ADDR.to_string());
+        // export to collector in background to avoid blocking
+        tokio::spawn(async move {
+            // convert to opentelemetry export format
+            let resource_spans = resource_spans(span_data, init::resource());
+            let request = ExportTraceServiceRequest { resource_spans };
 
-        // export to collector
-        self.http_client
-            .post(format!("{addr}/v1/traces"))
-            .header(CONTENT_TYPE, "application/x-protobuf")
-            .body(body)
-            .send()
-            .await
-            .context("sending traces")?;
+            let body = Message::encode_to_vec(&request);
+            let addr = env::var("OTEL_HTTP_ADDR").unwrap_or_else(|_| DEF_HTTP_ADDR.to_string());
+
+            // export to collector
+            if let Err(e) = http_client
+                .post(format!("{addr}/v1/traces"))
+                .header(CONTENT_TYPE, "application/x-protobuf")
+                .body(body)
+                .send()
+                .await
+                .context("sending traces")
+            {
+                tracing::error!("failed to send traces: {e}");
+            }
+        });
 
         Ok(())
     }

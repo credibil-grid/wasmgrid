@@ -4,12 +4,13 @@
 
 #[cfg(feature = "metrics")]
 pub mod metrics;
+#[cfg(feature = "tracing")]
 pub mod tracing;
 
 use cfg_if::cfg_if;
 
 cfg_if! {
-    if #[cfg(feature = "guest-mode")] {
+    if #[cfg(all(feature = "guest-export", any(feature = "metrics", feature = "tracing")))] {
         use std::mem;
         use anyhow::Result;
         use async_trait::async_trait;

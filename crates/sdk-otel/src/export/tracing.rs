@@ -4,22 +4,22 @@
 
 use anyhow::Result;
 use cfg_if::cfg_if;
-#[cfg(feature = "guest-mode")]
+#[cfg(feature = "guest-export")]
 use opentelemetry_otlp::{SpanExporter, WithHttpConfig};
 use opentelemetry_sdk::error::OTelSdkError;
 use opentelemetry_sdk::trace::SpanData;
 
-#[cfg(not(feature = "guest-mode"))]
+#[cfg(not(feature = "guest-export"))]
 use crate::generated::wasi::otel::tracing as wasi;
 
 #[derive(Debug)]
 pub struct Exporter {
-    #[cfg(feature = "guest-mode")]
+    #[cfg(feature = "guest-export")]
     inner: SpanExporter,
 }
 
 impl Exporter {
-    #[cfg(feature = "guest-mode")]
+    #[cfg(feature = "guest-export")]
     pub fn new() -> Result<Self> {
         use std::env;
 
@@ -37,19 +37,19 @@ impl Exporter {
     }
 
     #[allow(clippy::unnecessary_wraps)]
-    #[cfg(not(feature = "guest-mode"))]
+    #[cfg(not(feature = "guest-export"))]
     pub const fn new() -> Result<Self> {
         Ok(Self {})
     }
 }
 
 impl opentelemetry_sdk::trace::SpanExporter for Exporter {
-    #[cfg(feature = "guest-mode")]
+    #[cfg(feature = "guest-export")]
     async fn export(&self, span_data: Vec<SpanData>) -> Result<(), OTelSdkError> {
         self.inner.export(span_data).await
     }
 
-    #[cfg(not(feature = "guest-mode"))]
+    #[cfg(not(feature = "guest-export"))]
     async fn export(&self, span_data: Vec<SpanData>) -> Result<(), OTelSdkError> {
         for sd in span_data {
             wasi::export(&[sd.into()]);
@@ -57,14 +57,14 @@ impl opentelemetry_sdk::trace::SpanExporter for Exporter {
         Ok(())
     }
 
-    #[cfg(feature = "guest-mode")]
+    #[cfg(feature = "guest-export")]
     fn set_resource(&mut self, resource: &opentelemetry_sdk::Resource) {
         self.inner.set_resource(resource);
     }
 }
 
 cfg_if! {
-    if #[cfg(not(feature = "guest-mode"))] {
+    if #[cfg(not(feature = "guest-export"))] {
         use opentelemetry::trace as otel;
 
         impl From<SpanData> for wasi::SpanData {

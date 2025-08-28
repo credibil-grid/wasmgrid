@@ -20,8 +20,6 @@ use tracing_subscriber::{EnvFilter, Registry};
 use crate::export::tracing::Exporter;
 use crate::generated::wasi::otel::tracing as wasi;
 
-// TODO: add xxx_span! macros
-// TODO: handle initialization error
 pub(crate) fn init(resource: Resource) -> Result<SdkTracerProvider> {
     let exporter = Exporter::new()?;
     let processor = Processor::new(exporter);

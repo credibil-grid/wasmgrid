@@ -6,24 +6,24 @@ use std::time::Duration;
 
 use anyhow::Result;
 use cfg_if::cfg_if;
-#[cfg(feature = "guest-mode")]
+#[cfg(feature = "guest-export")]
 use opentelemetry_otlp::{MetricExporter, WithHttpConfig};
 use opentelemetry_sdk::error::{OTelSdkError, OTelSdkResult};
 use opentelemetry_sdk::metrics::Temporality;
 use opentelemetry_sdk::metrics::data::ResourceMetrics;
 use opentelemetry_sdk::metrics::exporter::PushMetricExporter;
 
-#[cfg(not(feature = "guest-mode"))]
+#[cfg(not(feature = "guest-export"))]
 use crate::generated::wasi::otel::metrics as wasi;
 
 #[derive(Debug)]
 pub struct Exporter {
-    #[cfg(feature = "guest-mode")]
+    #[cfg(feature = "guest-export")]
     inner: MetricExporter,
 }
 
 impl Exporter {
-    #[cfg(feature = "guest-mode")]
+    #[cfg(feature = "guest-export")]
     pub fn new() -> Result<Self> {
         use std::env;
 
@@ -41,19 +41,19 @@ impl Exporter {
     }
 
     #[allow(clippy::unnecessary_wraps)]
-    #[cfg(not(feature = "guest-mode"))]
+    #[cfg(not(feature = "guest-export"))]
     pub const fn new() -> Result<Self> {
         Ok(Self {})
     }
 }
 
 impl PushMetricExporter for Exporter {
-    #[cfg(feature = "guest-mode")]
+    #[cfg(feature = "guest-export")]
     async fn export(&self, rm: &ResourceMetrics) -> Result<(), OTelSdkError> {
         self.inner.export(rm).await
     }
 
-    #[cfg(not(feature = "guest-mode"))]
+    #[cfg(not(feature = "guest-export"))]
     async fn export(&self, rm: &ResourceMetrics) -> Result<(), OTelSdkError> {
         wasi::export(&rm.into())
             .map_err(|e| OTelSdkError::InternalFailure(format!("failed to export metrics: {e}")))?;
@@ -61,20 +61,38 @@ impl PushMetricExporter for Exporter {
     }
 
     fn force_flush(&self) -> OTelSdkResult {
-        unimplemented!()
+        cfg_if! {
+            if #[cfg(feature = "guest-export")] {
+                self.inner.force_flush()
+            } else {
+                Ok(())
+            }
+        }
     }
 
     fn temporality(&self) -> Temporality {
-        unimplemented!()
+        cfg_if! {
+            if #[cfg(feature = "guest-export")] {
+                self.inner.temporality()
+            } else {
+                Temporality::Cumulative
+            }
+        }
     }
 
+    #[cfg(feature = "guest-export")]
+    fn shutdown_with_timeout(&self, duration: Duration) -> OTelSdkResult {
+        self.inner.shutdown_with_timeout(duration)
+    }
+
+    #[cfg(not(feature = "guest-export"))]
     fn shutdown_with_timeout(&self, _: Duration) -> OTelSdkResult {
-        unimplemented!()
+        Ok(())
     }
 }
 
 cfg_if! {
-    if #[cfg(not(feature = "guest-mode"))] {
+    if #[cfg(not(feature = "guest-export"))] {
         use num_traits::ToPrimitive;
         use opentelemetry_sdk::Resource;
         use opentelemetry_sdk::metrics::data::{
