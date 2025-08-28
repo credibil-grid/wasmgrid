@@ -28,4 +28,5 @@ COPY --from=builder --chown=wasm:wasm /target/${TARGETARCH}-unknown-linux-musl/r
 
 USER wasm:wasm
 EXPOSE 8080
-CMD ["/app/wasmgrid", "run", "/app.wasm"]
+ENTRYPOINT ["/app/wasmgrid", "run"]
+CMD ["/app.wasm"]
