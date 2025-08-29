@@ -26,7 +26,7 @@ opentelemetry = "0.30.0"
 opentelemetry_sdk = "0.30.0"
 sdk-http.workspace = true
 sdk-otel-attr = { path = "../sdk-otel-attr" }
-wit-bindgen = "0.44.0"
+wit-bindgen = "0.45.0"
 
 # tracing
 tracing.workspace = true

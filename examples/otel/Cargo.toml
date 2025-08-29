@@ -19,4 +19,4 @@ serde_json.workspace = true
 tracing.workspace = true
 wasi.workspace = true
 
-sdk-otel = { path = "../../crates/sdk-otel", default-features = false, features = ["guest-export", "metrics", "tracing"] }
+sdk-otel = { workspace = true, features = ["guest-export", "metrics", "tracing"] }
