@@ -10,8 +10,9 @@ services:
       OTEL_GRPC_ADDR: http://otelcol:4317
     ports:
       - 8080:8080
+    command: ["/otel.wasm"]
     volumes:
-       - ./target/wasm32-wasip2/release/otel.wasm:/app.wasm
+       - ./target/wasm32-wasip2/release/otel.wasm:/otel.wasm
     depends_on:
       - otelcol
 

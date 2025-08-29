@@ -20,7 +20,7 @@ use resources::Resources;
 use runtime::{Linkable, Runnable};
 use tokio::net::TcpListener;
 use tokio::sync::oneshot;
-use tracing::Instrument;
+use tracing::{Instrument, info_span};
 use wasi_core::Ctx;
 use wasmtime::Store;
 use wasmtime::component::{InstancePre, Linker};
@@ -86,8 +86,7 @@ impl Runnable for Service {
                     .serve_connection(
                         io,
                         service_fn(|request| {
-                            let span = tracing::info_span!("http-request");
-                            svc.handle(request).instrument(span)
+                            svc.handle(request).instrument(info_span!("http-request"))
                         }),
                     )
                     .await

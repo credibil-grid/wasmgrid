@@ -51,10 +51,8 @@ impl opentelemetry_sdk::trace::SpanExporter for Exporter {
 
     #[cfg(not(feature = "guest-export"))]
     async fn export(&self, span_data: Vec<SpanData>) -> Result<(), OTelSdkError> {
-        for sd in span_data {
-            wasi::export(&[sd.into()]);
-        }
-        Ok(())
+        let spans = span_data.into_iter().map(Into::into).collect::<Vec<_>>();
+        wasi::export(&spans).map_err(|e| OTelSdkError::InternalFailure(e.to_string()))
     }
 
     #[cfg(feature = "guest-export")]
@@ -66,6 +64,15 @@ impl opentelemetry_sdk::trace::SpanExporter for Exporter {
 cfg_if! {
     if #[cfg(not(feature = "guest-export"))] {
         use opentelemetry::trace as otel;
+
+        // impl From<Vec<SpanData>> for Vec<wasi::SpanData> {
+        //     fn from(span_data: Vec<SpanData>) -> Self {
+
+        //             // span_data.into_iter().map(Into::into).collect()
+        //             todo!()
+
+        //     }
+        // }
 
         impl From<SpanData> for wasi::SpanData {
             fn from(sd: SpanData) -> Self {

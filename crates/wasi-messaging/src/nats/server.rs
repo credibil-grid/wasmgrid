@@ -1,6 +1,7 @@
 use async_nats::Message;
 use futures::stream::{self, StreamExt};
 use resources::Resources;
+use tracing::{Instrument, info_span};
 use wasi_core::Ctx;
 use wasmtime::Store;
 use wasmtime::component::InstancePre;
@@ -54,11 +55,15 @@ pub async fn subscribe(
     while let Some(msg) = messages.next().await {
         let pre = pre.clone();
         let res = resources.clone();
-        tokio::spawn(async move {
-            if let Err(e) = call_guest(pre, res, msg).await {
-                tracing::error!("error processing message {e}");
+
+        tokio::spawn(
+            async move {
+                if let Err(e) = call_guest(pre, res, msg).await {
+                    tracing::error!("error processing message {e}");
+                }
             }
-        });
+            .instrument(info_span!("message")),
+        );
     }
 
     Ok(())

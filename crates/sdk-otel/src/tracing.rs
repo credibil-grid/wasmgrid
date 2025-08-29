@@ -8,7 +8,7 @@ use futures::executor::block_on;
 use opentelemetry::trace::{SpanContext, TraceContextExt, TracerProvider};
 use opentelemetry::{Context, ContextGuard, global, trace as otel};
 use opentelemetry_sdk::Resource;
-use opentelemetry_sdk::error::OTelSdkResult;
+use opentelemetry_sdk::error::{OTelSdkError, OTelSdkResult};
 use opentelemetry_sdk::trace::{SdkTracerProvider, Span, SpanData, SpanExporter, SpanProcessor};
 use tracing_opentelemetry::layer as tracing_layer;
 use tracing_subscriber::fmt::format::FmtSpan;
@@ -78,7 +78,7 @@ impl SpanProcessor for Processor {
         if !span.span_context.is_sampled() {
             return;
         }
-        self.spans.lock().unwrap().push(span);
+        self.spans.lock().expect("should lock").push(span);
     }
 
     fn force_flush(&self) -> OTelSdkResult {
@@ -86,9 +86,13 @@ impl SpanProcessor for Processor {
     }
 
     fn shutdown_with_timeout(&self, _: Duration) -> OTelSdkResult {
-        for span in self.spans.lock().unwrap().drain(..) {
-            block_on(async { self.exporter.export(vec![span]).await })?;
+        let spans =
+            self.spans.lock().map_err(|e| OTelSdkError::InternalFailure(e.to_string()))?.to_vec();
+        if spans.is_empty() {
+            return Ok(());
         }
+
+        block_on(async { self.exporter.export(spans).await })?;
         Ok(())
     }
 
