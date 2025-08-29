@@ -6,13 +6,14 @@ use opentelemetry::trace::{TraceContextExt, Tracer};
 use opentelemetry::{KeyValue, global};
 use sdk_http::Result;
 use serde_json::{Value, json};
+use tracing::Level;
 use wasi::exports::http::incoming_handler::Guest;
 use wasi::http::types::{IncomingRequest, ResponseOutparam};
 
 struct HttpGuest;
 
 impl Guest for HttpGuest {
-    #[sdk_otel::instrument(name = "http_guest_handle")]
+    #[sdk_otel::instrument(name = "http_guest_handle",level = Level::DEBUG)]
     fn handle(request: IncomingRequest, response: ResponseOutparam) {
         // inject remote (host) context
         let now = SystemTime::now();
@@ -54,7 +55,7 @@ impl Guest for HttpGuest {
 }
 
 // A simple "Hello, World!" endpoint that returns the client's request.
-// #[sdk_otel::instrument(name = "handle_fn")]
+#[sdk_otel::instrument(name = "handle_fn")]
 async fn handle(Json(body): Json<Value>) -> Result<Json<Value>> {
     tracing::info!("handling request: {:?}", body);
     Ok(Json(json!({

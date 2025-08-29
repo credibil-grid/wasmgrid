@@ -4,7 +4,7 @@ use proc_macro::TokenStream;
 use quote::quote;
 use syn::meta::{self, ParseNestedMeta};
 use syn::parse::Result;
-use syn::{ItemFn, LitStr, parse_macro_input};
+use syn::{Expr, ItemFn, LitStr, parse_macro_input};
 
 /// Instruments a function using the `[sdk_otel::instrument]` function.
 ///
@@ -41,17 +41,30 @@ pub fn instrument(args: TokenStream, item: TokenStream) -> TokenStream {
     } else {
         quote! {}
     };
+
+    // function signature
     let name = item.sig.ident.clone();
     let inputs = item.sig.inputs.clone();
     let output = item.sig.output.clone();
     let block = item.block;
+
+    // macro attributes
     let span_name = attrs.name.unwrap_or_else(|| LitStr::new(&name.to_string(), name.span()));
+    let level =
+        attrs.level.map_or_else(|| quote! { ::tracing::Level::INFO }, |level| quote! {#level});
 
     // recreate function with the instrument macro wrapping it's block
     let new_fn = quote! {
         #[allow(non_snake_case)]
         #async_fn fn #name(#inputs) #output {
-            ::sdk_otel::instrument(#span_name, || {
+            let _guard = if tracing::Span::current().is_none() {
+                let _shutdown = ::sdk_otel::init();
+                let _context = ::sdk_otel::tracing::context();
+                Some((_shutdown, _context))
+            } else {
+                None
+            };
+            tracing::span!(#level, #span_name).in_scope(|| {
                 #block
             })
         }
@@ -63,6 +76,7 @@ pub fn instrument(args: TokenStream, item: TokenStream) -> TokenStream {
 #[derive(Default)]
 struct Attributes {
     name: Option<LitStr>,
+    level: Option<Expr>,
 }
 
 // See https://docs.rs/syn/latest/syn/meta/fn.parser.html
@@ -70,6 +84,9 @@ impl Attributes {
     fn parse(&mut self, meta: &ParseNestedMeta) -> Result<()> {
         if meta.path.is_ident("name") {
             self.name = Some(meta.value()?.parse()?);
+            Ok(())
+        } else if meta.path.is_ident("level") {
+            self.level = Some(meta.value()?.parse()?);
             Ok(())
         } else {
             Err(meta.error("unsupported property"))
