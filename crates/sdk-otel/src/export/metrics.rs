@@ -50,7 +50,6 @@ impl Exporter {
 impl PushMetricExporter for Exporter {
     #[cfg(feature = "guest-export")]
     async fn export(&self, rm: &ResourceMetrics) -> Result<(), OTelSdkError> {
-        println!("export: {rm:?}");
         self.inner.export(rm).await
     }
 
