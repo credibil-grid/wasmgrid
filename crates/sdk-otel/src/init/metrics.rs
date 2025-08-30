@@ -17,12 +17,11 @@ use opentelemetry_sdk::metrics::{
 
 use crate::export::metrics::Exporter;
 
-pub(crate) fn init(resource: Resource) -> Result<SdkMeterProvider> {
+pub fn init(resource: Resource) -> Result<SdkMeterProvider> {
     let exporter = Exporter::new()?;
     let reader = Reader::new(exporter);
     let provider = SdkMeterProvider::builder().with_resource(resource).with_reader(reader).build();
     global::set_meter_provider(provider.clone());
-
     Ok(provider)
 }
 
@@ -33,9 +32,8 @@ struct Reader {
 }
 
 impl Reader {
-    /// Create a new `MetricReader`.
     #[must_use]
-    pub fn new(exporter: Exporter) -> Self {
+    fn new(exporter: Exporter) -> Self {
         Self {
             reader: Arc::new(ManualReader::default()),
             exporter: Arc::new(exporter),

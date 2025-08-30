@@ -9,12 +9,9 @@ version = "0.1.0"
 workspace = true
 
 [features]
-default = ["guest-export", "metrics", "tracing"]
-# Export signals directly from the WASM guest. This option is used when both
-# `guest-export` and `host-export` are enabled.
+default = ["metrics", "tracing"]
+# Export signals directly from the WASM guest rather than the host.
 guest-export = ["dep:async-trait", "dep:bytes", "dep:http", "dep:opentelemetry-http", "dep:opentelemetry-otlp"]
-# Export signals via the WASM host.
-# host-export = ["dep:num-traits"]
 metrics = ["opentelemetry_sdk/experimental_metrics_custom_reader"]
 tracing = ["dep:tracing-opentelemetry", "dep:tracing-subscriber"]
 
@@ -30,7 +27,7 @@ wit-bindgen = "0.45.0"
 
 # tracing
 tracing.workspace = true
-tracing-opentelemetry = { version = "0.31.0", optional = true }
+tracing-opentelemetry = { version = "0.31.0", optional = true, features = ["metrics_gauge_unstable"] }
 tracing-subscriber = { workspace = true, features = ["env-filter"], optional = true }
 
 # host-export dependencies

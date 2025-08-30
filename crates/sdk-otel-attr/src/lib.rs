@@ -58,9 +58,8 @@ pub fn instrument(args: TokenStream, item: TokenStream) -> TokenStream {
         #[allow(non_snake_case)]
         #async_fn fn #name(#inputs) #output {
             let _guard = if tracing::Span::current().is_none() {
-                let _shutdown = ::sdk_otel::init();
-                let _context = ::sdk_otel::tracing::context();
-                Some((_shutdown, _context))
+                let shutdown = ::sdk_otel::init();
+                Some(shutdown)
             } else {
                 None
             };

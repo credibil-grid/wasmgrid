@@ -5,39 +5,21 @@ use std::time::Duration;
 
 use anyhow::Result;
 use futures::executor::block_on;
-use opentelemetry::trace::{SpanContext, TraceContextExt, TracerProvider};
+use opentelemetry::trace::{SpanContext, TraceContextExt};
 use opentelemetry::{Context, ContextGuard, global, trace as otel};
 use opentelemetry_sdk::Resource;
 use opentelemetry_sdk::error::{OTelSdkError, OTelSdkResult};
 use opentelemetry_sdk::trace::{SdkTracerProvider, Span, SpanData, SpanExporter, SpanProcessor};
-use tracing_opentelemetry::layer as tracing_layer;
-use tracing_subscriber::fmt::format::FmtSpan;
-use tracing_subscriber::fmt::layer as format_layer;
-use tracing_subscriber::layer::SubscriberExt;
-use tracing_subscriber::util::SubscriberInitExt;
-use tracing_subscriber::{EnvFilter, Registry};
 
 use crate::export::tracing::Exporter;
 use crate::generated::wasi::otel::tracing as wasi;
 
-pub(crate) fn init(resource: Resource) -> Result<SdkTracerProvider> {
+pub fn init(resource: Resource) -> Result<SdkTracerProvider> {
     let exporter = Exporter::new()?;
     let processor = Processor::new(exporter);
     let provider =
         SdkTracerProvider::builder().with_resource(resource).with_span_processor(processor).build();
-
-    // tracing layers
-    let filter = EnvFilter::from_default_env()
-        .add_directive("hyper=off".parse()?)
-        .add_directive("h2=off".parse()?)
-        .add_directive("tonic=off".parse()?);
-    let format = format_layer().with_span_events(FmtSpan::NEW | FmtSpan::CLOSE);
-    let tracer = provider.tracer("global");
-    let tracing = tracing_layer().with_tracer(tracer);
-
-    Registry::default().with(filter).with(format).with(tracing).try_init()?;
     global::set_tracer_provider(provider.clone());
-
     Ok(provider)
 }
 
@@ -62,9 +44,8 @@ struct Processor {
 }
 
 impl Processor {
-    /// Create a new span processor.
     #[must_use]
-    pub fn new(exporter: Exporter) -> Self {
+    fn new(exporter: Exporter) -> Self {
         Self {
             exporter,
             spans: Arc::new(Mutex::new(Vec::new())),

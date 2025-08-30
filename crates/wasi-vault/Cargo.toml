@@ -27,6 +27,5 @@ wasi-core.workspace = true
 # required for azure_identity, etc.
 openssl = { version = "0.10", features = ["vendored"] }
 
-
 [package.metadata.cargo-machete]
 ignored = ["openssl"]

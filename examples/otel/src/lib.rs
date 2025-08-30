@@ -1,5 +1,3 @@
-use std::time::SystemTime;
-
 use axum::routing::post;
 use axum::{Json, Router};
 use opentelemetry::trace::{TraceContextExt, Tracer};
@@ -15,18 +13,16 @@ struct HttpGuest;
 impl Guest for HttpGuest {
     #[sdk_otel::instrument(name = "http_guest_handle",level = Level::DEBUG)]
     fn handle(request: IncomingRequest, response: ResponseOutparam) {
-        // inject remote (host) context
-        let now = SystemTime::now();
+        // tracing metrics
+        tracing::info!(monotonic_counter.tracing_counter = 1, key1 = "value 1");
+        tracing::info!(gauge.tracing_gauge = 1);
 
-        tracing::debug!("telemetry initialized {:?}", now.elapsed().unwrap());
-
+        // otel metrics
         let meter = global::meter("my_meter");
-        let counter = meter.u64_counter("my_counter").build();
+        let counter = meter.u64_counter("otel_counter").build();
         counter.add(1, &[KeyValue::new("key1", "value 1")]);
-        counter.add(1, &[KeyValue::new("key1", "value 1")]);
-        counter.add(1, &[KeyValue::new("key2", "value 2")]);
 
-        // basic span
+        // otel span
         let tracer = global::tracer("basic");
         tracer.in_span("main-operation", |cx| {
             let span = cx.span();
@@ -37,6 +33,7 @@ impl Guest for HttpGuest {
                 cx.span().add_event("sub span event", vec![KeyValue::new("bar", "1")]);
             });
 
+            // tracing span within otel span
             tracing::info_span!("child info span").in_scope(|| {
                 tracing::info!("info event");
             });
@@ -47,8 +44,6 @@ impl Guest for HttpGuest {
             let router = Router::new().route("/", post(handle));
             sdk_http::serve(router, request)
         });
-
-        tracing::info!("request processed {:?}", now.elapsed().unwrap());
 
         ResponseOutparam::set(response, out);
     }
