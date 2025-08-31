@@ -33,22 +33,16 @@ mod generated {
 
 use anyhow::Result;
 use resources::Resources;
-use runtime::{Linkable, Runnable};
-use wasi_core::Ctx;
+use runtime::{Interface, RunState, Runnable};
 use wasmtime::component::{InstancePre, Linker};
 
+#[derive(Debug)]
 pub struct Service;
 
-impl std::fmt::Debug for Service {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("messaging").finish()
-    }
-}
+impl Interface for Service {
+    type State = RunState;
 
-impl Linkable for Service {
-    type Ctx = Ctx;
-
-    fn add_to_linker(&self, linker: &mut Linker<Self::Ctx>) -> Result<()> {
+    fn add_to_linker(&self, linker: &mut Linker<Self::State>) -> Result<()> {
         host::add_to_linker(linker)?;
         tracing::trace!("added to linker");
         Ok(())
@@ -58,7 +52,7 @@ impl Linkable for Service {
 impl Runnable for Service {
     type Resources = Resources;
 
-    async fn run(&self, pre: InstancePre<Self::Ctx>, resources: Self::Resources) -> Result<()> {
+    async fn run(&self, pre: InstancePre<Self::State>, resources: Self::Resources) -> Result<()> {
         server::run(pre, resources).await
     }
 }

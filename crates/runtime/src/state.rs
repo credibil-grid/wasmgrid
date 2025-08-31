@@ -1,29 +1,28 @@
 //! # WebAssembly Runtime
 
 pub use resources::Resources;
-use runtime::{Errout, Stdout};
 use wasmtime::StoreLimits;
-use wasmtime::component::InstancePre;
 use wasmtime_wasi::{ResourceTable, WasiCtx, WasiCtxBuilder, WasiCtxView, WasiView};
 use wasmtime_wasi_http::{WasiHttpCtx, WasiHttpView};
 
-/// Ctx implements messaging host interfaces. In addition, it holds the
-/// host-defined state used by the wasm runtime [`Store`].
+use crate::trace::{Errout, Stdout};
+
+/// Ctx contains host states used by the wasm runtime [`Store`].
 #[allow(clippy::struct_field_names)]
 #[allow(dead_code)]
-pub struct Ctx {
-    pub table: ResourceTable,
+pub struct RunState {
     pub wasi_ctx: WasiCtx,
-    pub limits: StoreLimits,
+    pub table: ResourceTable,
     pub http_ctx: WasiHttpCtx,
-    pub instance_pre: InstancePre<Ctx>,
+    // pub instance_pre: InstancePre<RunState>,
     pub resources: Resources,
+    pub limits: StoreLimits,
 }
 
-impl Ctx {
-    /// Create a new Ctx instance.
+impl RunState {
+    /// Create a new [`RunState`] instance.
     #[must_use]
-    pub fn new(resources: Resources, instance_pre: InstancePre<Self>) -> Self {
+    pub fn new(resources: Resources) -> Self {
         let mut ctx = WasiCtxBuilder::new();
         ctx.inherit_args();
         ctx.inherit_env();
@@ -34,16 +33,15 @@ impl Ctx {
         Self {
             table: ResourceTable::default(),
             wasi_ctx: ctx.build(),
-            limits: StoreLimits::default(),
             http_ctx: WasiHttpCtx::new(),
-            instance_pre,
+            limits: StoreLimits::default(),
             resources,
         }
     }
 }
 
-// Implement the [`wasmtime_wasi::ctx::WasiView`] trait for Ctx.
-impl WasiView for Ctx {
+// Implement the [`wasmtime_wasi::ctx::WasiView`] trait for RunState.
+impl WasiView for RunState {
     fn ctx(&mut self) -> WasiCtxView<'_> {
         WasiCtxView {
             ctx: &mut self.wasi_ctx,
@@ -52,7 +50,7 @@ impl WasiView for Ctx {
     }
 }
 
-impl WasiHttpView for Ctx {
+impl WasiHttpView for RunState {
     fn ctx(&mut self) -> &mut WasiHttpCtx {
         &mut self.http_ctx
     }

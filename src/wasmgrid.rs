@@ -6,10 +6,9 @@ use std::path::PathBuf;
 use anyhow::{Context, Result, anyhow};
 use credibil_otel::Telemetry;
 use dotenv::dotenv;
-use runtime::{Cli, Command, Parser, Runtime};
+use runtime::{Cli, RunState, Parser, Resources, Runtime};
 use tracing::instrument;
 use wasi_blobstore::mongodb as blobstore;
-use wasi_core::{Ctx, Resources};
 use wasi_keyvalue::nats as keyvalue;
 use wasi_messaging::nats as messaging;
 use wasi_vault::az_keyvault as vault;
@@ -17,6 +16,24 @@ use {wasi_http as http, wasi_otel as otel};
 
 const DEF_NATS_ADDR: &str = "demo.nats.io";
 const DEF_KV_ADDR: &str = "https://kv-credibil-demo.vault.azure.net";
+
+mod generate {
+    // runtime_macros::runtime!({
+    // resources: {
+    //     "nats": nats,
+    //     "mongo": mongodb,
+    //     "azkeyvault": az_keyvault,
+    // },
+    // services: {
+    //     "wasi:messaging": messaging::Service,
+    //     "wasi:http": http::Service,
+    //     "wasi:otel": otel::Service,
+    //     "wasi:blobstore": blobstore::Service,
+    //     "wasi:keyvalue": wasi_keyvalue::nats::Service,
+    //     "wasi:vault": vault::Service,
+    // }
+    // });
+}
 
 /// Main entry point for the Wasmgrid CLI.
 ///
@@ -33,34 +50,29 @@ pub async fn main() -> Result<()> {
         dotenv().ok();
     }
 
-    match Cli::parse().command {
-        Command::Run { wasm } => {
-            // telemetry
-            let Some(file) = wasm.file_name() else {
-                return Err(anyhow!("file name not specified"));
-            };
-            let name: &str = file.to_str().unwrap_or_default();
-            let Some((prefix, _)) = name.split_once('.') else {
-                return Err(anyhow!("file name does not have an extension"));
-            };
-            let mut builder = Telemetry::new(prefix);
-            if let Ok(endpoint) = env::var("OTEL_GRPC_ADDR") {
-                builder = builder.endpoint(endpoint);
-            }
-            builder.build().context("initializing telemetry")?;
+    let wasm = Cli::parse().wasm;
 
-            // run until shutdown
-            start(&wasm)?.shutdown().await
-        }
-
-        #[cfg(feature = "compile")]
-        runtime::Command::Compile { wasm, output } => runtime::compile(&wasm, output),
+    // telemetry
+    let Some(file) = wasm.file_name() else {
+        return Err(anyhow!("file name not specified"));
+    };
+    let name: &str = file.to_str().unwrap_or_default();
+    let Some((prefix, _)) = name.split_once('.') else {
+        return Err(anyhow!("file name does not have an extension"));
+    };
+    let mut builder = Telemetry::new(prefix);
+    if let Ok(endpoint) = env::var("OTEL_GRPC_ADDR") {
+        builder = builder.endpoint(endpoint);
     }
+    builder.build().context("initializing telemetry")?;
+
+    // run until shutdown
+    start(&wasm)?.shutdown().await
 }
 
 // Start the runtime for the specified wasm file.
 #[instrument]
-fn start(wasm: &PathBuf) -> Result<Runtime<Ctx>> {
+fn start(wasm: &PathBuf) -> Result<Runtime<RunState>> {
     tracing::info!("starting runtime");
 
     let mut rt = Runtime::from_file(wasm)?;

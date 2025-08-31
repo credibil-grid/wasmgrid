@@ -22,8 +22,6 @@ tracing.workspace = true
 wasmtime.workspace = true
 wasmtime-wasi.workspace = true
 
-wasi-core.workspace = true
-
 # required for azure_identity, etc.
 openssl = { version = "0.10", features = ["vendored"] }
 

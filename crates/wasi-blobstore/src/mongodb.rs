@@ -18,7 +18,6 @@ mod generated {
         },
         with: {
             "wasi:io": wasmtime_wasi::p2::bindings::io,
-
             "wasi:blobstore/types/incoming-value": IncomingValue,
             "wasi:blobstore/types/outgoing-value": OutgoingValue,
             "wasi:blobstore/container/container": Container,
@@ -39,9 +38,8 @@ use chrono::Utc;
 use futures::StreamExt;
 use mongodb::{Collection, bson};
 use resources::Resources;
-use runtime::Linkable;
+use runtime::{Interface, RunState};
 use serde::{Deserialize, Serialize};
-use wasi_core::Ctx;
 use wasmtime::component::{HasData, Linker, Resource, ResourceTable};
 use wasmtime_wasi::p2::bindings::io::streams::{InputStream, OutputStream};
 use wasmtime_wasi::p2::pipe::{MemoryInputPipe, MemoryOutputPipe};
@@ -61,7 +59,7 @@ pub struct Blobstore<'a> {
 }
 
 impl Blobstore<'_> {
-    const fn new(c: &mut Ctx) -> Blobstore<'_> {
+    const fn new(c: &mut RunState) -> Blobstore<'_> {
         Blobstore {
             resources: &c.resources,
             table: &mut c.table,
@@ -76,12 +74,12 @@ impl HasData for Data {
 
 pub struct Service;
 
-impl Linkable for Service {
-    type Ctx = Ctx;
+impl Interface for Service {
+    type State = RunState;
 
     // Add all the `wasi-keyvalue` world's interfaces to a [`Linker`], and
     // instantiate the `Blobstore` for the component.
-    fn add_to_linker(&self, l: &mut Linker<Self::Ctx>) -> anyhow::Result<()> {
+    fn add_to_linker(&self, l: &mut Linker<Self::State>) -> anyhow::Result<()> {
         blobstore::add_to_linker::<_, Data>(l, Blobstore::new)?;
         container::add_to_linker::<_, Data>(l, Blobstore::new)?;
         types::add_to_linker::<_, Data>(l, Blobstore::new)

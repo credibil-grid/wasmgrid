@@ -1,8 +1,8 @@
 use async_nats::Message;
 use futures::stream::{self, StreamExt};
 use resources::Resources;
+use runtime::RunState;
 use tracing::{Instrument, info_span};
-use wasi_core::Ctx;
 use wasmtime::Store;
 use wasmtime::component::InstancePre;
 
@@ -11,7 +11,7 @@ use super::generated::exports::wasi::messaging::incoming_handler::Error;
 
 pub type Result<T, E = Error> = anyhow::Result<T, E>;
 
-pub async fn run(pre: InstancePre<Ctx>, resources: Resources) -> anyhow::Result<()> {
+pub async fn run(pre: InstancePre<RunState>, resources: Resources) -> anyhow::Result<()> {
     // bail if server is not required
     let component_type = pre.component().component_type();
     let mut exports = component_type.exports(pre.engine());
@@ -21,7 +21,7 @@ pub async fn run(pre: InstancePre<Ctx>, resources: Resources) -> anyhow::Result<
     }
 
     // get guest configuration
-    let mut store = Store::new(pre.engine(), Ctx::new(resources.clone(), pre.clone()));
+    let mut store = Store::new(pre.engine(), RunState::new(resources.clone()));
     let msg_pre = MessagingPre::new(pre.clone())?;
     let msg = msg_pre.instantiate_async(&mut store).await?;
     let config = msg.wasi_messaging_incoming_handler().call_configure(&mut store).await??;
@@ -31,7 +31,7 @@ pub async fn run(pre: InstancePre<Ctx>, resources: Resources) -> anyhow::Result<
 }
 
 pub async fn subscribe(
-    channels: Vec<String>, resources: &Resources, pre: MessagingPre<Ctx>,
+    channels: Vec<String>, resources: &Resources, pre: MessagingPre<RunState>,
 ) -> anyhow::Result<()> {
     tracing::trace!("subscribing to messaging channels: {channels:?}");
 
@@ -70,10 +70,10 @@ pub async fn subscribe(
 }
 
 // Forward message to the wasm component.
-async fn call_guest(pre: MessagingPre<Ctx>, resources: Resources, message: Message) -> Result<()> {
-    let mut ctx = Ctx::new(resources, pre.instance_pre().clone());
-    let res_msg = ctx.table.push(message)?;
-    let mut store = Store::new(pre.engine(), ctx);
+async fn call_guest(pre: MessagingPre<RunState>, resources: Resources, message: Message) -> Result<()> {
+    let mut state = RunState::new(resources);
+    let res_msg = state.table.push(message)?;
+    let mut store = Store::new(pre.engine(), state);
     let messaging = pre.instantiate_async(&mut store).await?;
     messaging.wasi_messaging_incoming_handler().call_handle(&mut store, res_msg).await?
 }

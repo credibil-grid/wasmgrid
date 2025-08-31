@@ -30,8 +30,8 @@ use anyhow::Result;
 use credibil_otel::init;
 use opentelemetry::{Array, Key, Value};
 use opentelemetry_sdk::Resource;
-use runtime::Linkable;
-use wasi_core::Ctx;
+use runtime::Interface;
+use runtime::RunState;
 use wasmtime::component::{HasData, Linker};
 
 use self::generated::wasi::otel as wasi_otel;
@@ -45,7 +45,7 @@ pub struct Otel<'a> {
 }
 
 impl Otel<'_> {
-    fn new(_: &mut Ctx) -> Otel<'_> {
+    fn new(_: &mut RunState) -> Otel<'_> {
         Otel {
             http_client: reqwest::Client::new(),
             _phantom: PhantomData,
@@ -60,11 +60,11 @@ impl HasData for Data {
 
 pub struct Service;
 
-impl Linkable for Service {
-    type Ctx = Ctx;
+impl Interface for Service {
+    type State= RunState;
 
     // Add the `wasi-otel` world's interfaces to a [`Linker`]
-    fn add_to_linker(&self, linker: &mut Linker<Self::Ctx>) -> Result<()> {
+    fn add_to_linker(&self, linker: &mut Linker<Self::State>) -> Result<()> {
         wasi_otel::tracing::add_to_linker::<_, Data>(linker, Otel::new)?;
         wasi_otel::metrics::add_to_linker::<_, Data>(linker, Otel::new)?;
         wasi_otel::types::add_to_linker::<_, Data>(linker, Otel::new)?;

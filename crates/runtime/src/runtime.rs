@@ -8,7 +8,7 @@ use wasmtime::component::{Component, Linker};
 use wasmtime::{Config, Engine};
 use wasmtime_wasi::WasiView;
 
-use crate::service::{Linkable, Runnable};
+use crate::service::{Interface, Runnable};
 
 /// Runtime for a wasm component.
 pub struct Runtime<T: 'static> {
@@ -90,17 +90,17 @@ impl<T: WasiView + 'static> Runtime<T> {
     /// # Errors
     ///
     /// Returns an error if the service cannot be added to the linker.
-    pub fn link(&mut self, service: &impl Linkable<Ctx = T>) -> Result<()> {
+    pub fn link(&mut self, service: &impl Interface<State = T>) -> Result<()> {
         service.add_to_linker(&mut self.linker)
     }
 
-    /// Initiate the service on it's own thread.
+    /// Instantiate a service on it's own thread.
     ///
     /// # Errors
     ///
     /// TODO: document errors
     pub fn run<R: Send + 'static>(
-        &mut self, service: impl Runnable<Ctx = T, Resources = R> + 'static + std::fmt::Debug,
+        &mut self, service: impl Runnable<State = T, Resources = R> + 'static + std::fmt::Debug,
         resources: R,
     ) -> Result<()> {
         let instance_pre = self.linker.instantiate_pre(&self.component)?;

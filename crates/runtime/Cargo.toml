@@ -19,3 +19,6 @@ tokio = { workspace = true, features = ["signal"] }
 tracing.workspace = true
 wasmtime = { workspace = true, features = ["runtime"] }
 wasmtime-wasi.workspace = true
+
+resources.workspace = true
+wasmtime-wasi-http.workspace = true

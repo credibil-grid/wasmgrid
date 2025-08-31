@@ -24,5 +24,4 @@ runtime.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 tracing-opentelemetry = "0.31.0"
-wasi-core.workspace = true
 wasmtime.workspace = true

@@ -3,7 +3,7 @@ use std::time::Duration;
 use anyhow::anyhow;
 use async_nats::{Client, HeaderMap, Subject};
 use resources::Resources;
-use wasi_core::Ctx;
+use runtime::RunState;
 use wasmtime::component::{HasData, Linker, Resource};
 use wasmtime_wasi::{ResourceTable, ResourceTableError};
 
@@ -19,7 +19,7 @@ pub struct Messaging<'a> {
 }
 
 impl Messaging<'_> {
-    const fn new(c: &mut Ctx) -> Messaging<'_> {
+    const fn new(c: &mut RunState) -> Messaging<'_> {
         Messaging {
             table: &mut c.table,
             resources: &c.resources,
@@ -33,7 +33,7 @@ impl HasData for Data {
 }
 
 /// Add all the `messaging` world's interfaces to a [`Linker`].
-pub fn add_to_linker(l: &mut Linker<Ctx>) -> anyhow::Result<()> {
+pub fn add_to_linker(l: &mut Linker<RunState>) -> anyhow::Result<()> {
     producer::add_to_linker::<_, Data>(l, Messaging::new)?;
     request_reply::add_to_linker::<_, Data>(l, Messaging::new)?;
     types::add_to_linker::<_, Data>(l, Messaging::new)

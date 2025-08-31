@@ -3060,10 +3060,22 @@ dependencies = [
  "anyhow",
  "cfg-if",
  "clap",
+ "resources",
  "tokio",
  "tracing",
  "wasmtime",
  "wasmtime-wasi",
+ "wasmtime-wasi-http",
+]
+
+[[package]]
+name = "runtime-macros"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.106",
+ "tracing",
 ]
 
 [[package]]
@@ -4424,20 +4436,8 @@ dependencies = [
  "time",
  "tokio",
  "tracing",
- "wasi-core",
  "wasmtime",
  "wasmtime-wasi",
-]
-
-[[package]]
-name = "wasi-core"
-version = "0.1.0"
-dependencies = [
- "resources",
- "runtime",
- "wasmtime",
- "wasmtime-wasi",
- "wasmtime-wasi-http",
 ]
 
 [[package]]
@@ -4451,7 +4451,6 @@ dependencies = [
  "runtime",
  "tokio",
  "tracing",
- "wasi-core",
  "wasmtime",
  "wasmtime-wasi-http",
 ]
@@ -4467,7 +4466,6 @@ dependencies = [
  "resources",
  "runtime",
  "tracing",
- "wasi-core",
  "wasmtime",
  "wasmtime-wasi",
 ]
@@ -4486,7 +4484,6 @@ dependencies = [
  "time",
  "tokio",
  "tracing",
- "wasi-core",
  "wasmtime",
  "wasmtime-wasi",
 ]
@@ -4508,7 +4505,6 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-opentelemetry",
- "wasi-core",
  "wasmtime",
 ]
 
@@ -4525,7 +4521,6 @@ dependencies = [
  "resources",
  "runtime",
  "tracing",
- "wasi-core",
  "wasmtime",
  "wasmtime-wasi",
 ]
@@ -4654,10 +4649,10 @@ dependencies = [
  "credibil-otel",
  "dotenv",
  "runtime",
+ "runtime-macros",
  "tokio",
  "tracing",
  "wasi-blobstore",
- "wasi-core",
  "wasi-http",
  "wasi-keyvalue",
  "wasi-messaging",

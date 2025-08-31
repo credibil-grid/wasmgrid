@@ -32,8 +32,7 @@ use base64ct::{Base64UrlUnpadded, Encoding};
 use futures::TryStreamExt;
 use http::StatusCode;
 use resources::Resources;
-use runtime::Linkable;
-use wasi_core::Ctx;
+use runtime::{Interface, RunState};
 use wasmtime::component::{HasData, Linker, Resource, ResourceTableError};
 use wasmtime_wasi::ResourceTable;
 
@@ -48,7 +47,7 @@ pub struct Vault<'a> {
 }
 
 impl Vault<'_> {
-    const fn new(c: &mut Ctx) -> Vault<'_> {
+    const fn new(c: &mut RunState) -> Vault<'_> {
         Vault {
             resources: &c.resources,
             table: &mut c.table,
@@ -63,12 +62,12 @@ impl HasData for Data {
 
 pub struct Service;
 
-impl Linkable for Service {
-    type Ctx = Ctx;
+impl Interface for Service {
+    type State = RunState;
 
     // Add all the `wasi-vault` world's interfaces to a [`Linker`], and
     // instantiate the `Vault` for the component.
-    fn add_to_linker(&self, linker: &mut Linker<Self::Ctx>) -> anyhow::Result<()> {
+    fn add_to_linker(&self, linker: &mut Linker<Self::State>) -> anyhow::Result<()> {
         vault::add_to_linker::<_, Data>(linker, Vault::new)
     }
 }

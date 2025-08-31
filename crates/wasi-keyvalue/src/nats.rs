@@ -32,8 +32,7 @@ use async_nats::jetstream::kv::{Config, Store};
 use base64ct::{Base64UrlUnpadded, Encoding};
 use futures::TryStreamExt;
 use resources::Resources;
-use runtime::Linkable;
-use wasi_core::Ctx;
+use runtime::{Interface, RunState};
 use wasmtime::component::{HasData, Linker, Resource, ResourceTableError};
 use wasmtime_wasi::ResourceTable;
 
@@ -58,7 +57,7 @@ pub struct Keyvalue<'a> {
 }
 
 impl Keyvalue<'_> {
-    const fn new(c: &mut Ctx) -> Keyvalue<'_> {
+    const fn new(c: &mut RunState) -> Keyvalue<'_> {
         Keyvalue {
             resources: &c.resources,
             table: &mut c.table,
@@ -73,12 +72,12 @@ impl HasData for Data {
 
 pub struct Service;
 
-impl Linkable for Service {
-    type Ctx = Ctx;
+impl Interface for Service {
+    type State = RunState;
 
     // Add all the `wasi-keyvalue` world's interfaces to a [`Linker`], and
     // instantiate the `Keyvalue` for the component.
-    fn add_to_linker(&self, linker: &mut Linker<Self::Ctx>) -> anyhow::Result<()> {
+    fn add_to_linker(&self, linker: &mut Linker<Self::State>) -> anyhow::Result<()> {
         store::add_to_linker::<_, Data>(linker, Keyvalue::new)?;
         atomics::add_to_linker::<_, Data>(linker, Keyvalue::new)?;
         batch::add_to_linker::<_, Data>(linker, Keyvalue::new)

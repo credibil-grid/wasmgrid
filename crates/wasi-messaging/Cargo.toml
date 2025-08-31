@@ -22,8 +22,6 @@ tracing.workspace = true
 wasmtime.workspace = true
 wasmtime-wasi.workspace = true
 
-wasi-core.workspace = true
-
 [dev-dependencies]
 async-nats = "0.42.0"
 ecdsa = "0.16.9"
