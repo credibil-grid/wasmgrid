@@ -270,6 +270,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "azkeyvault"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "azure_core",
+ "azure_identity",
+ "azure_security_keyvault_secrets",
+ "runtime",
+ "tracing",
+]
+
+[[package]]
 name = "azure_core"
 version = "0.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
