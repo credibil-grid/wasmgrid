@@ -33,7 +33,7 @@ mod generated {
 
 use anyhow::Result;
 use resources::Resources;
-use runtime::{Interface, RunState, Runnable};
+use runtime::{Interface, RunState, Instantiator};
 use wasmtime::component::{InstancePre, Linker};
 
 #[derive(Debug)]
@@ -49,7 +49,7 @@ impl Interface for Service {
     }
 }
 
-impl Runnable for Service {
+impl Instantiator for Service {
     type Resources = Resources;
 
     async fn run(&self, pre: InstancePre<Self::State>, resources: Self::Resources) -> Result<()> {

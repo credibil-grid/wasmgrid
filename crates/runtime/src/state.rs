@@ -1,7 +1,7 @@
 //! # WebAssembly Runtime
 
 pub use resources::Resources;
-use wasmtime::StoreLimits;
+// use wasmtime::StoreLimits;
 use wasmtime_wasi::{ResourceTable, WasiCtx, WasiCtxBuilder, WasiCtxView, WasiView};
 use wasmtime_wasi_http::{WasiHttpCtx, WasiHttpView};
 
@@ -14,9 +14,8 @@ pub struct RunState {
     pub wasi_ctx: WasiCtx,
     pub table: ResourceTable,
     pub http_ctx: WasiHttpCtx,
-    // pub instance_pre: InstancePre<RunState>,
     pub resources: Resources,
-    pub limits: StoreLimits,
+    // pub limits: StoreLimits,
 }
 
 impl RunState {
@@ -34,8 +33,8 @@ impl RunState {
             table: ResourceTable::default(),
             wasi_ctx: ctx.build(),
             http_ctx: WasiHttpCtx::new(),
-            limits: StoreLimits::default(),
             resources,
+            // limits: StoreLimits::default(),
         }
     }
 }

@@ -25,9 +25,9 @@ pub trait Interface: Sync + Send {
     fn add_to_linker(&self, linker: &mut Linker<Self::State>) -> Result<()>;
 }
 
-/// The `Runnable` trait is implemented by services that can instantiate
+/// The `Instantiator` trait is implemented by services that can instantiate
 /// components. For example, an http service or a messaging service.
-pub trait Runnable: Interface {
+pub trait Instantiator: Interface {
     type Resources;
 
     /// Run the service.

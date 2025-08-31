@@ -16,7 +16,7 @@ use hyper::server::conn::http1;
 use hyper::service::service_fn;
 use hyper::{Request, Response};
 use resources::Resources;
-use runtime::{Interface, RunState, Runnable};
+use runtime::{Interface, RunState, Instantiator};
 use tokio::net::TcpListener;
 use tokio::sync::oneshot;
 use tracing::{Instrument, info_span};
@@ -43,7 +43,7 @@ impl Interface for Service {
     }
 }
 
-impl Runnable for Service {
+impl Instantiator for Service {
     type Resources = Resources;
 
     /// Provide http proxy service the specified wasm component.
@@ -60,7 +60,7 @@ impl Runnable for Service {
         let listener = TcpListener::bind(&addr).await?;
         tracing::info!("http server listening on: {}", listener.local_addr()?);
 
-        let svc = Svc {
+        let handler = Handler {
             proxy_pre: ProxyPre::new(pre.clone())?,
             resources,
         };
@@ -69,7 +69,7 @@ impl Runnable for Service {
         loop {
             let (stream, _) = listener.accept().await?;
             let io = TokioIo::new(stream);
-            let svc = svc.clone();
+            let handler = handler.clone();
 
             tokio::spawn(async move {
                 let mut http1 = http1::Builder::new();
@@ -79,7 +79,7 @@ impl Runnable for Service {
                     .serve_connection(
                         io,
                         service_fn(|request| {
-                            svc.handle(request).instrument(info_span!("http-request"))
+                            handler.handle(request).instrument(info_span!("http-request"))
                         }),
                     )
                     .await
@@ -92,19 +92,19 @@ impl Runnable for Service {
 }
 
 #[derive(Clone)]
-struct Svc {
+struct Handler {
     proxy_pre: ProxyPre<RunState>,
     resources: Resources,
 }
 
-impl Svc {
+impl Handler {
     // Forward request to the wasm Guest.
     async fn handle(&self, request: Request<Incoming>) -> Result<Response<HyperOutgoingBody>> {
         tracing::info!("handling request: {request:?}");
 
         // prepare wasmtime http request and response
         let mut store = Store::new(self.proxy_pre.engine(), RunState::new(self.resources.clone()));
-        store.limiter(|t| &mut t.limits);
+        // store.limiter(|t| &mut t.limits);
 
         let (request, scheme) = prepare_request(request)?;
         tracing::trace!("sending request: {request:#?}");

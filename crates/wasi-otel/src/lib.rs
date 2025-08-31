@@ -30,14 +30,31 @@ use anyhow::Result;
 use credibil_otel::init;
 use opentelemetry::{Array, Key, Value};
 use opentelemetry_sdk::Resource;
-use runtime::Interface;
-use runtime::RunState;
+use runtime::{Interface, RunState};
 use wasmtime::component::{HasData, Linker};
 
 use self::generated::wasi::otel as wasi_otel;
 use self::generated::wasi::otel::types;
 
 const DEF_HTTP_ADDR: &str = "http://localhost:4318";
+
+struct Data;
+impl HasData for Data {
+    type Data<'a> = Otel<'a>;
+}
+
+pub struct Service;
+
+impl Interface for Service {
+    type State = RunState;
+
+    fn add_to_linker(&self, linker: &mut Linker<Self::State>) -> Result<()> {
+        wasi_otel::tracing::add_to_linker::<_, Data>(linker, Otel::new)?;
+        wasi_otel::metrics::add_to_linker::<_, Data>(linker, Otel::new)?;
+        wasi_otel::types::add_to_linker::<_, Data>(linker, Otel::new)?;
+        wasi_otel::resource::add_to_linker::<_, Data>(linker, Otel::new)
+    }
+}
 
 pub struct Otel<'a> {
     http_client: reqwest::Client,
@@ -50,25 +67,6 @@ impl Otel<'_> {
             http_client: reqwest::Client::new(),
             _phantom: PhantomData,
         }
-    }
-}
-
-struct Data;
-impl HasData for Data {
-    type Data<'a> = Otel<'a>;
-}
-
-pub struct Service;
-
-impl Interface for Service {
-    type State= RunState;
-
-    // Add the `wasi-otel` world's interfaces to a [`Linker`]
-    fn add_to_linker(&self, linker: &mut Linker<Self::State>) -> Result<()> {
-        wasi_otel::tracing::add_to_linker::<_, Data>(linker, Otel::new)?;
-        wasi_otel::metrics::add_to_linker::<_, Data>(linker, Otel::new)?;
-        wasi_otel::types::add_to_linker::<_, Data>(linker, Otel::new)?;
-        wasi_otel::resource::add_to_linker::<_, Data>(linker, Otel::new)
     }
 }
 

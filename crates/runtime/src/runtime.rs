@@ -1,5 +1,6 @@
 //! # WebAssembly Runtime
 
+use std::fmt::Debug;
 use std::path::PathBuf;
 
 use anyhow::Result;
@@ -8,7 +9,7 @@ use wasmtime::component::{Component, Linker};
 use wasmtime::{Config, Engine};
 use wasmtime_wasi::WasiView;
 
-use crate::service::{Interface, Runnable};
+use crate::service::{Instantiator, Interface};
 
 /// Runtime for a wasm component.
 pub struct Runtime<T: 'static> {
@@ -33,10 +34,10 @@ impl<T: WasiView + 'static> Runtime<T> {
         config.async_support(true);
         let engine = Engine::new(&config)?;
 
-        // The most efficient solution is to enable Config::epoch_interruption
-        // in conjunction with crate::Store::epoch_deadline_async_yield_and_update.
-        // Coupled with periodic calls to crate::Engine::increment_epoch this will
-        // cause executing WebAssembly to periodically yield back according to the
+        // TODO: cause executing WebAssembly to periodically yield
+        //  1. enable `Config::epoch_interruption`
+        //  2. Set `Store::epoch_deadline_async_yield_and_update`
+        //  3. Call `Engine::increment_epoch` periodically
 
         // file can be a serialized component or a wasm file
         cfg_if! {
@@ -99,10 +100,11 @@ impl<T: WasiView + 'static> Runtime<T> {
     /// # Errors
     ///
     /// TODO: document errors
-    pub fn run<R: Send + 'static>(
-        &mut self, service: impl Runnable<State = T, Resources = R> + 'static + std::fmt::Debug,
-        resources: R,
-    ) -> Result<()> {
+    pub fn run<S, R>(&mut self, service: S, resources: R) -> Result<()>
+    where
+        S: Instantiator<State = T, Resources = R> + Debug + 'static,
+        R: Send + 'static,
+    {
         let instance_pre = self.linker.instantiate_pre(&self.component)?;
         tokio::spawn(async move {
             tracing::debug!("starting {service:?} service");
