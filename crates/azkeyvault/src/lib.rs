@@ -1,3 +1,4 @@
+use std::any::Any;
 use std::env;
 use std::sync::Arc;
 
@@ -12,14 +13,12 @@ pub struct AzKeyVault {
 }
 
 impl Resource for AzKeyVault {
-    type Resource = SecretClient;
-
     fn identifier(&self) -> &'static str {
         "azkeyvault"
     }
 
-    fn resource(&self) -> &Self::Resource {
-        &self.secret_client
+    fn as_any(&self) -> &dyn Any {
+        self.secret_client.as_ref()
     }
 }
 

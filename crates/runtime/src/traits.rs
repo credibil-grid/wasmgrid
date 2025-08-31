@@ -5,6 +5,8 @@
 //! Each service is a module that provides a concrete implementation in support
 //! of a specific set of WASI interfaces.
 
+use std::any::Any;
+
 use anyhow::Result;
 use wasmtime::component::{InstancePre, Linker};
 use wasmtime_wasi::WasiView;
@@ -34,4 +36,12 @@ pub trait Instantiator: Interface {
     fn run(
         &self, pre: InstancePre<Self::State>, resources: Self::Resources,
     ) -> impl Future<Output = Result<()>> + Send;
+}
+
+pub trait Resource: Send + Sync {
+    /// A static identifier for the resource.
+    fn identifier(&self) -> &'static str;
+
+    /// Get a reference to the underlying resource.
+    fn as_any(&self) -> &dyn Any;
 }

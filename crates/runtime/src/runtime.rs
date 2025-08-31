@@ -9,7 +9,7 @@ use wasmtime::component::{Component, Linker};
 use wasmtime::{Config, Engine};
 use wasmtime_wasi::WasiView;
 
-use crate::service::{Instantiator, Interface};
+use crate::traits::{Instantiator, Interface};
 
 /// Runtime for a wasm component.
 pub struct Runtime<T: 'static> {
