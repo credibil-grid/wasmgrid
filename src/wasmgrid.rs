@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use anyhow::{Context, Result, anyhow};
 use credibil_otel::Telemetry;
 use dotenv::dotenv;
-use runtime::{Cli, RunState, Parser, Resources, Runtime};
+use runtime::{Cli, Parser, Resources, RunState, Runtime};
 use tracing::instrument;
 use wasi_blobstore::mongodb as blobstore;
 use wasi_keyvalue::nats as keyvalue;
@@ -85,7 +85,7 @@ fn start(wasm: &PathBuf) -> Result<Runtime<RunState>> {
     rt.link(&messaging::Service).context("linking messaging")?;
     rt.link(&vault::Service).context("linking vault")?;
 
-    // external resources
+    // resources
     let nats_addr = env::var("NATS_ADDR").unwrap_or_else(|_| DEF_NATS_ADDR.into());
     let jwt = env::var("NATS_JWT").ok();
     let seed = env::var("NATS_SEED").ok();

@@ -70,7 +70,9 @@ pub async fn subscribe(
 }
 
 // Forward message to the wasm component.
-async fn call_guest(pre: MessagingPre<RunState>, resources: Resources, message: Message) -> Result<()> {
+async fn call_guest(
+    pre: MessagingPre<RunState>, resources: Resources, message: Message,
+) -> Result<()> {
     let mut state = RunState::new(resources);
     let res_msg = state.table.push(message)?;
     let mut store = Store::new(pre.engine(), state);

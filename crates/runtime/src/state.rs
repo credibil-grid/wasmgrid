@@ -15,7 +15,6 @@ pub struct RunState {
     pub table: ResourceTable,
     pub http_ctx: WasiHttpCtx,
     pub resources: Resources,
-    // pub limits: StoreLimits,
 }
 
 impl RunState {
@@ -34,7 +33,6 @@ impl RunState {
             wasi_ctx: ctx.build(),
             http_ctx: WasiHttpCtx::new(),
             resources,
-            // limits: StoreLimits::default(),
         }
     }
 }

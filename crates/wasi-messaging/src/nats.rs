@@ -33,7 +33,7 @@ mod generated {
 
 use anyhow::Result;
 use resources::Resources;
-use runtime::{Interface, RunState, Instantiator};
+use runtime::{Instantiator, Interface, RunState};
 use wasmtime::component::{InstancePre, Linker};
 
 #[derive(Debug)]

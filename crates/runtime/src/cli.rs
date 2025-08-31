@@ -11,7 +11,6 @@ pub struct Cli {
     /// serialized (pre-compiled) wasmtime `Component` or standard
     /// WASI component
     pub wasm: PathBuf,
-
     // #[command(subcommand)]
     // pub command: Command,
 }

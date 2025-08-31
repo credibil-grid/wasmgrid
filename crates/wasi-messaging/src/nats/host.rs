@@ -27,18 +27,6 @@ impl Messaging<'_> {
     }
 }
 
-struct Data;
-impl HasData for Data {
-    type Data<'a> = Messaging<'a>;
-}
-
-/// Add all the `messaging` world's interfaces to a [`Linker`].
-pub fn add_to_linker(l: &mut Linker<RunState>) -> anyhow::Result<()> {
-    producer::add_to_linker::<_, Data>(l, Messaging::new)?;
-    request_reply::add_to_linker::<_, Data>(l, Messaging::new)?;
-    types::add_to_linker::<_, Data>(l, Messaging::new)
-}
-
 impl types::Host for Messaging<'_> {
     fn convert_error(&mut self, err: Error) -> anyhow::Result<Error> {
         Ok(err)
@@ -372,4 +360,16 @@ impl From<anyhow::Error> for Error {
     fn from(err: anyhow::Error) -> Self {
         Self::Other(err.to_string())
     }
+}
+
+/// Add all the `messaging` world's interfaces to a [`Linker`].
+pub fn add_to_linker(l: &mut Linker<RunState>) -> anyhow::Result<()> {
+    producer::add_to_linker::<_, Data>(l, Messaging::new)?;
+    request_reply::add_to_linker::<_, Data>(l, Messaging::new)?;
+    types::add_to_linker::<_, Data>(l, Messaging::new)
+}
+
+struct Data;
+impl HasData for Data {
+    type Data<'a> = Messaging<'a>;
 }

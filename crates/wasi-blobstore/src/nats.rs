@@ -36,10 +36,9 @@ use async_nats::jetstream::object_store::{Config, ObjectStore};
 use bytes::{Bytes, BytesMut};
 use futures::StreamExt;
 use resources::Resources;
-use runtime::Interface;
+use runtime::{Interface, RunState};
 use time::OffsetDateTime;
 use tokio::io::AsyncReadExt;
-use runtime::RunState;
 use wasmtime::component::{HasData, Linker, Resource, ResourceTable};
 use wasmtime_wasi::p2::bindings::io::streams::{InputStream, OutputStream};
 use wasmtime_wasi::p2::pipe::{MemoryInputPipe, MemoryOutputPipe};
@@ -64,25 +63,6 @@ impl Blobstore<'_> {
             resources: &c.resources,
             table: &mut c.table,
         }
-    }
-}
-
-struct Data;
-impl HasData for Data {
-    type Data<'a> = Blobstore<'a>;
-}
-
-pub struct Service;
-
-impl Interface for Service {
-    type State= RunState;
-
-    // Add all the `wasi-keyvalue` world's interfaces to a [`Linker`], and
-    // instantiate the `Blobstore` for the component.
-    fn add_to_linker(&self, l: &mut Linker<Self::State>) -> anyhow::Result<()> {
-        blobstore::add_to_linker::<_, Data>(l, Blobstore::new)?;
-        container::add_to_linker::<_, Data>(l, Blobstore::new)?;
-        types::add_to_linker::<_, Data>(l, Blobstore::new)
     }
 }
 
@@ -356,4 +336,23 @@ impl types::HostOutgoingValue for Blobstore<'_> {
     async fn drop(&mut self, value_ref: Resource<OutgoingValue>) -> Result<()> {
         Ok(self.table.delete(value_ref).map(|_| ())?)
     }
+}
+
+pub struct Service;
+
+impl Interface for Service {
+    type State = RunState;
+
+    // Add all the `wasi-keyvalue` world's interfaces to a [`Linker`], and
+    // instantiate the `Blobstore` for the component.
+    fn add_to_linker(&self, l: &mut Linker<Self::State>) -> anyhow::Result<()> {
+        blobstore::add_to_linker::<_, Data>(l, Blobstore::new)?;
+        container::add_to_linker::<_, Data>(l, Blobstore::new)?;
+        types::add_to_linker::<_, Data>(l, Blobstore::new)
+    }
+}
+
+struct Data;
+impl HasData for Data {
+    type Data<'a> = Blobstore<'a>;
 }

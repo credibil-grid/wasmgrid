@@ -65,25 +65,6 @@ impl Keyvalue<'_> {
     }
 }
 
-struct Data;
-impl HasData for Data {
-    type Data<'a> = Keyvalue<'a>;
-}
-
-pub struct Service;
-
-impl Interface for Service {
-    type State = RunState;
-
-    // Add all the `wasi-keyvalue` world's interfaces to a [`Linker`], and
-    // instantiate the `Keyvalue` for the component.
-    fn add_to_linker(&self, linker: &mut Linker<Self::State>) -> anyhow::Result<()> {
-        store::add_to_linker::<_, Data>(linker, Keyvalue::new)?;
-        atomics::add_to_linker::<_, Data>(linker, Keyvalue::new)?;
-        batch::add_to_linker::<_, Data>(linker, Keyvalue::new)
-    }
-}
-
 // Implement the [`wasi_keyvalue::KeyValueView`]` trait for  Keyvalue<'_>.
 impl store::Host for Keyvalue<'_> {
     // Open bucket specified by identifier, save to state and return as a resource.
@@ -327,4 +308,23 @@ impl From<anyhow::Error> for Error {
     fn from(err: anyhow::Error) -> Self {
         Self::Other(err.to_string())
     }
+}
+
+pub struct Service;
+
+impl Interface for Service {
+    type State = RunState;
+
+    // Add all the `wasi-keyvalue` world's interfaces to a [`Linker`], and
+    // instantiate the `Keyvalue` for the component.
+    fn add_to_linker(&self, linker: &mut Linker<Self::State>) -> anyhow::Result<()> {
+        store::add_to_linker::<_, Data>(linker, Keyvalue::new)?;
+        atomics::add_to_linker::<_, Data>(linker, Keyvalue::new)?;
+        batch::add_to_linker::<_, Data>(linker, Keyvalue::new)
+    }
+}
+
+struct Data;
+impl HasData for Data {
+    type Data<'a> = Keyvalue<'a>;
 }

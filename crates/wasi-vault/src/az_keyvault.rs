@@ -55,23 +55,6 @@ impl Vault<'_> {
     }
 }
 
-struct Data;
-impl HasData for Data {
-    type Data<'a> = Vault<'a>;
-}
-
-pub struct Service;
-
-impl Interface for Service {
-    type State = RunState;
-
-    // Add all the `wasi-vault` world's interfaces to a [`Linker`], and
-    // instantiate the `Vault` for the component.
-    fn add_to_linker(&self, linker: &mut Linker<Self::State>) -> anyhow::Result<()> {
-        vault::add_to_linker::<_, Data>(linker, Vault::new)
-    }
-}
-
 pub struct Locker {
     identifier: String,
 }
@@ -206,4 +189,21 @@ impl From<anyhow::Error> for Error {
     fn from(err: anyhow::Error) -> Self {
         Self::Other(err.to_string())
     }
+}
+
+pub struct Service;
+
+impl Interface for Service {
+    type State = RunState;
+
+    // Add all the `wasi-vault` world's interfaces to a [`Linker`], and
+    // instantiate the `Vault` for the component.
+    fn add_to_linker(&self, linker: &mut Linker<Self::State>) -> anyhow::Result<()> {
+        vault::add_to_linker::<_, Data>(linker, Vault::new)
+    }
+}
+
+struct Data;
+impl HasData for Data {
+    type Data<'a> = Vault<'a>;
 }

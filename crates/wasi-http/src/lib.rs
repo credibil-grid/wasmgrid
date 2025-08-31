@@ -16,7 +16,7 @@ use hyper::server::conn::http1;
 use hyper::service::service_fn;
 use hyper::{Request, Response};
 use resources::Resources;
-use runtime::{Interface, RunState, Instantiator};
+use runtime::{Instantiator, Interface, RunState};
 use tokio::net::TcpListener;
 use tokio::sync::oneshot;
 use tracing::{Instrument, info_span};
@@ -29,19 +29,6 @@ use wasmtime_wasi_http::body::HyperOutgoingBody;
 use wasmtime_wasi_http::io::TokioIo;
 
 const DEF_HTTP_ADDR: &str = "0.0.0.0:8080";
-
-#[derive(Debug)]
-pub struct Service;
-
-impl Interface for Service {
-    type State = RunState;
-
-    fn add_to_linker(&self, linker: &mut Linker<Self::State>) -> Result<()> {
-        wasmtime_wasi_http::add_only_http_to_linker_async(linker)?;
-        tracing::trace!("added to linker");
-        Ok(())
-    }
-}
 
 impl Instantiator for Service {
     type Resources = Resources;
@@ -179,4 +166,17 @@ fn prepare_request(mut request: Request<Incoming>) -> Result<(Request<Incoming>,
     };
 
     Ok((request, scheme))
+}
+
+#[derive(Debug)]
+pub struct Service;
+
+impl Interface for Service {
+    type State = RunState;
+
+    fn add_to_linker(&self, linker: &mut Linker<Self::State>) -> Result<()> {
+        wasmtime_wasi_http::add_only_http_to_linker_async(linker)?;
+        tracing::trace!("added to linker");
+        Ok(())
+    }
 }

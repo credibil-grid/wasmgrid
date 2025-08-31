@@ -67,25 +67,6 @@ impl Blobstore<'_> {
     }
 }
 
-struct Data;
-impl HasData for Data {
-    type Data<'a> = Blobstore<'a>;
-}
-
-pub struct Service;
-
-impl Interface for Service {
-    type State = RunState;
-
-    // Add all the `wasi-keyvalue` world's interfaces to a [`Linker`], and
-    // instantiate the `Blobstore` for the component.
-    fn add_to_linker(&self, l: &mut Linker<Self::State>) -> anyhow::Result<()> {
-        blobstore::add_to_linker::<_, Data>(l, Blobstore::new)?;
-        container::add_to_linker::<_, Data>(l, Blobstore::new)?;
-        types::add_to_linker::<_, Data>(l, Blobstore::new)
-    }
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Blob {
     name: String,
@@ -369,4 +350,23 @@ impl types::HostOutgoingValue for Blobstore<'_> {
     async fn drop(&mut self, value_ref: Resource<OutgoingValue>) -> Result<()> {
         Ok(self.table.delete(value_ref).map(|_| ())?)
     }
+}
+
+pub struct Service;
+
+impl Interface for Service {
+    type State = RunState;
+
+    // Add all the `wasi-keyvalue` world's interfaces to a [`Linker`], and
+    // instantiate the `Blobstore` for the component.
+    fn add_to_linker(&self, l: &mut Linker<Self::State>) -> anyhow::Result<()> {
+        blobstore::add_to_linker::<_, Data>(l, Blobstore::new)?;
+        container::add_to_linker::<_, Data>(l, Blobstore::new)?;
+        types::add_to_linker::<_, Data>(l, Blobstore::new)
+    }
+}
+
+struct Data;
+impl HasData for Data {
+    type Data<'a> = Blobstore<'a>;
 }
