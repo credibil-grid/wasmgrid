@@ -27,8 +27,11 @@ compile = ["runtime/compile"] # adds cranelift (+ ~4Mb)
 
 [dependencies]
 anyhow.workspace = true
+azkeyvault = { path = "crates/azkeyvault" }
 credibil-otel.workspace = true
 dotenv = "0.15.0"
+mongodb = { path = "crates/mongodb" }
+nats = { path = "crates/nats" }
 runtime.workspace = true
 tokio.workspace = true
 tracing.workspace = true
@@ -39,10 +42,7 @@ wasi-messaging-nats = { path = "crates/wasi-messaging-nats" }
 wasi-otel = { path = "crates/wasi-otel" }
 wasi-vault-az = { path = "crates/wasi-vault-az" }
 
-azkeyvault = { path = "crates/azkeyvault" }
-mongodb = { path = "crates/mongodb" }
-nats = { path = "crates/nats" }
-runtime-macros = { path = "crates/runtime-macros" }
+# runtime-macros = { path = "crates/runtime-macros" }
 
 [profile.release]
 lto = true
@@ -91,14 +91,15 @@ sdk-http = { path = "crates/sdk-http" }
 sdk-otel = { path = "crates/sdk-otel", default-features = false }
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.143"
+time = "0.3.42"
 tokio = { version = "1.47.1", default-features = false }
 tower = "0.5.2"
 tower-http = { version = "0.6.6", features = ["cors", "trace"] }
 tracing = "0.1.41"
+mongodb = { version = "3.2.5" }
 tracing-opentelemetry = "0.31.0"
 tracing-subscriber = { version = "0.3.20", features = ["env-filter", "fmt"] }
 wasi = "0.14.3"
-wasi-core = { path = "crates/wasi-core" }
 wasmtime = { version = "36.0.2", default-features = false, features = ["async", "component-model"] }
 wasmtime-wasi = "36.0.2"
 wasmtime-wasi-http = "36.0.2"

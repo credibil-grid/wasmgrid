@@ -4649,7 +4649,6 @@ dependencies = [
  "mongodb 0.1.0",
  "nats",
  "runtime",
- "runtime-macros",
  "tokio",
  "tracing",
  "wasi-blobstore-mdb",

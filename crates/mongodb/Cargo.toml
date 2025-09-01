@@ -9,6 +9,6 @@ workspace = true
 
 [dependencies]
 anyhow.workspace = true
-mongodb = "3.2.5"
+mongodb.workspace = true
 runtime.workspace = true
 tracing.workspace = true

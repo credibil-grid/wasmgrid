@@ -16,36 +16,6 @@ use {
     wasi_messaging_nats as messaging, wasi_otel as otel, wasi_vault_az as vault,
 };
 
-mod generate {
-    // runtime_macros::runtime!({
-    //     resources: {
-    //         nats: Nats,
-    //         mongo: MongoDb,
-    //         azkeyvault: AzKeyVault,
-    //     },
-
-    //     services: [
-    //         "wasi_http::Service": {
-    //             run: true
-    //         },
-    //         "wasi_otel::Service",
-    //         "wasi_blobstore_mdb::Service": {
-    //              resources: [mongo]
-    //         },
-    //         "wasi_keyvalue_nats::Service": {
-    //              resources: [nats]
-    //         },
-    //         "wasi_messaging_nats::Service": {
-    //              resources: [nats],
-    //              run: true
-    //         },
-    //         "wasi_vault::Service": {
-    //              resources: [azkeyvault]
-    //         }
-    //     ]
-    // });
-}
-
 /// Main entry point for the Wasmgrid CLI.
 ///
 /// # Errors
@@ -93,29 +63,33 @@ async fn start(wasm: &PathBuf) -> Result<Runtime> {
         return Err(anyhow!("failed to create clients"));
     };
 
+    // add resources to services
     let mut rt = Runtime::from_file(wasm)?;
 
-    // add resources to services
     let http = http::Service::default();
     http.add_to_linker(&mut rt.linker).context("linking http")?;
 
     let otel = otel::Service::default();
     otel.add_to_linker(&mut rt.linker).context("linking otel")?;
 
+    // blobstore::Service::new()
+    //    .add_resource(mongodb_client)
+    //    .add_to_linker(&mut rt.linker)?;
+
     let mut blobstore = blobstore::Service::default();
-    blobstore.add_resource(mongodb_client).context("adding resource")?;
+    blobstore.add_resource(mongodb_client).context("adding mongodb")?;
     blobstore.add_to_linker(&mut rt.linker).context("linking blobstore")?;
 
     let mut keyvalue = keyvalue::Service::default();
-    keyvalue.add_resource(nats_client.clone()).context("adding resource")?;
+    keyvalue.add_resource(nats_client.clone()).context("adding nats")?;
     keyvalue.add_to_linker(&mut rt.linker).context("linking keyvalue")?;
 
     let mut messaging = messaging::Service::default();
-    messaging.add_resource(nats_client).context("adding resource")?;
+    messaging.add_resource(nats_client).context("adding nats")?;
     messaging.add_to_linker(&mut rt.linker).context("linking messaging")?;
 
     let mut vault = vault::Service::default();
-    vault.add_resource(secret_client).context("adding resource")?;
+    vault.add_resource(secret_client).context("adding azkeyvault")?;
     vault.add_to_linker(&mut rt.linker).context("linking vault")?;
 
     // run servers
@@ -124,3 +98,32 @@ async fn start(wasm: &PathBuf) -> Result<Runtime> {
 
     Ok(rt)
 }
+
+// mod generate {
+// runtime_macros::runtime!({
+//     resources: {
+//         nats: Nats,
+//         mongo: MongoDb,
+//         azkeyvault: AzKeyVault,
+//     },
+//     services: [
+//         "wasi_http::Service": {
+//             run: true
+//         },
+//         "wasi_otel::Service",
+//         "wasi_blobstore_mdb::Service": {
+//              resources: [mongo]
+//         },
+//         "wasi_keyvalue_nats::Service": {
+//              resources: [nats]
+//         },
+//         "wasi_messaging_nats::Service": {
+//              resources: [nats],
+//              run: true
+//         },
+//         "wasi_vault::Service": {
+//              resources: [azkeyvault]
+//         }
+//     ]
+// });
+// }

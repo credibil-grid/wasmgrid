@@ -12,16 +12,15 @@ workspace = true
 
 [dependencies]
 anyhow.workspace = true
-async-nats = { version = "0.42.0" }
+async-nats.workspace = true
 futures.workspace = true
 runtime.workspace = true
-time = "0.3.42"
+time.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 wasmtime.workspace = true
 wasmtime-wasi.workspace = true
 
 [dev-dependencies]
-async-nats = "0.42.0"
 ecdsa = "0.16.9"
 k256 = "0.13.4"

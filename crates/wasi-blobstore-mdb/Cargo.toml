@@ -15,7 +15,7 @@ anyhow.workspace = true
 bytes.workspace = true
 chrono.workspace = true
 futures.workspace = true
-mongodb = { version = "3.2.5" }
+mongodb.workspace = true
 runtime.workspace = true
 serde.workspace = true
 serde_json.workspace = true
