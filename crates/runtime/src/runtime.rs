@@ -9,7 +9,7 @@ use wasmtime::component::{Component, Linker};
 use wasmtime::{Config, Engine};
 
 use crate::state::RunState;
-use crate::traits::{AddToLinker, Run};
+use crate::traits::Run;
 
 /// Runtime for a wasm component.
 pub struct Runtime {
@@ -84,16 +84,6 @@ impl Runtime {
     pub fn from_binary(binary: &PathBuf) -> Result<Self> {
         tracing::trace!("initializing from serialized component");
         Self::from_file(binary)
-    }
-
-    /// Add each service's dependency linker.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the service cannot be added to the linker.
-    pub fn add_to_linker(&mut self, service: &impl AddToLinker) -> Result<&mut Self> {
-        service.add_to_linker(&mut self.linker)?;
-        Ok(self)
     }
 
     /// Instantiate a service on it's own thread.

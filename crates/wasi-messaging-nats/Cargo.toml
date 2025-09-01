@@ -15,7 +15,7 @@ anyhow.workspace = true
 async-nats = { version = "0.42.0" }
 futures.workspace = true
 runtime.workspace = true
-time = "0.3.41"
+time = "0.3.42"
 tokio.workspace = true
 tracing.workspace = true
 wasmtime.workspace = true

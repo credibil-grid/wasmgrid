@@ -96,7 +96,7 @@ tower = "0.5.2"
 tower-http = { version = "0.6.6", features = ["cors", "trace"] }
 tracing = "0.1.41"
 tracing-opentelemetry = "0.31.0"
-tracing-subscriber = { version = "0.3.19", features = ["env-filter", "fmt"] }
+tracing-subscriber = { version = "0.3.20", features = ["env-filter", "fmt"] }
 wasi = "0.14.3"
 wasi-core = { path = "crates/wasi-core" }
 wasmtime = { version = "36.0.2", default-features = false, features = ["async", "component-model"] }
