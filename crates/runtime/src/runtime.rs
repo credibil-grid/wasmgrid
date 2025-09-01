@@ -7,17 +7,17 @@ use anyhow::Result;
 use cfg_if::cfg_if;
 use wasmtime::component::{Component, Linker};
 use wasmtime::{Config, Engine};
-use wasmtime_wasi::WasiView;
 
-use crate::traits::{Instantiator, Interface};
+use crate::state::RunState;
+use crate::traits::{AddToLinker, Run};
 
 /// Runtime for a wasm component.
-pub struct Runtime<T: 'static> {
+pub struct Runtime {
     pub component: Component,
-    pub linker: Linker<T>,
+    pub linker: Linker<RunState>,
 }
 
-impl<T: WasiView + 'static> Runtime<T> {
+impl Runtime {
     /// Create a new Runtime instance from the provided file reference.
     ///
     /// The file can either be a serialized (pre-compiled) wasmtime `Component`
@@ -54,7 +54,7 @@ impl<T: WasiView + 'static> Runtime<T> {
         }
 
         // resolve dependencies
-        let mut linker: Linker<T> = Linker::new(&engine);
+        let mut linker: Linker<RunState> = Linker::new(&engine);
         wasmtime_wasi::p2::add_to_linker_async(&mut linker)?;
 
         tracing::trace!("initialized");
@@ -91,7 +91,7 @@ impl<T: WasiView + 'static> Runtime<T> {
     /// # Errors
     ///
     /// Returns an error if the service cannot be added to the linker.
-    pub fn link(&mut self, service: &impl Interface<State = T>) -> Result<()> {
+    pub fn add_to_linker(&mut self, service: &impl AddToLinker) -> Result<()> {
         service.add_to_linker(&mut self.linker)
     }
 
@@ -100,15 +100,14 @@ impl<T: WasiView + 'static> Runtime<T> {
     /// # Errors
     ///
     /// TODO: document errors
-    pub fn run<S, R>(&mut self, service: S, resources: R) -> Result<()>
+    pub fn run<S>(&mut self, service: S) -> Result<()>
     where
-        S: Instantiator<State = T, Resources = R> + Debug + 'static,
-        R: Send + 'static,
+        S: Run + Debug + Send + 'static,
     {
         let instance_pre = self.linker.instantiate_pre(&self.component)?;
         tokio::spawn(async move {
             tracing::debug!("starting {service:?} service");
-            if let Err(e) = service.run(instance_pre, resources).await {
+            if let Err(e) = service.run(instance_pre).await {
                 tracing::error!("error running {service:?} service: {e}");
             }
         });

@@ -1,10 +1,8 @@
-//! # WASI Blobstore Service for MongoDB
+//! # WASI Blobstore Service using MongoDB
 //!
-//! This module implements a runtime service for `wasi:sql`
-//! (<https://github.com/WebAssembly/wasi-sql>).
+//! This module implements a runtime services for `wasi:blobstore`
+//! (<https://github.com/WebAssembly/wasi-blobstore>).
 
-/// Wrap generation of wit bindings to simplify exports.
-/// See <https://docs.rs/wasmtime/latest/wasmtime/component/macro.bindgen.html>
 mod generated {
     #![allow(clippy::trait_duplication_in_bounds)]
 
@@ -30,6 +28,8 @@ mod generated {
 }
 
 use std::cmp::min;
+use std::marker::PhantomData;
+use std::sync::OnceLock;
 
 use anyhow::{Result, anyhow};
 use bson::{Bson, Document, doc};
@@ -37,8 +37,7 @@ use bytes::Bytes;
 use chrono::Utc;
 use futures::StreamExt;
 use mongodb::{Collection, bson};
-use resources::Resources;
-use runtime::{Interface, RunState};
+use runtime::{AddResource, AddToLinker, RunState};
 use serde::{Deserialize, Serialize};
 use wasmtime::component::{HasData, Linker, Resource, ResourceTable};
 use wasmtime_wasi::p2::bindings::io::streams::{InputStream, OutputStream};
@@ -53,19 +52,7 @@ pub type IncomingValue = Bytes;
 pub type OutgoingValue = MemoryOutputPipe;
 pub type StreamObjectNames = Vec<String>;
 
-pub struct Blobstore<'a> {
-    resources: &'a Resources,
-    table: &'a mut ResourceTable,
-}
-
-impl Blobstore<'_> {
-    const fn new(c: &mut RunState) -> Blobstore<'_> {
-        Blobstore {
-            resources: &c.resources,
-            table: &mut c.table,
-        }
-    }
-}
+static MONGODB_CLIENT: OnceLock<mongodb::Client> = OnceLock::new();
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Blob {
@@ -75,10 +62,48 @@ pub struct Blob {
     created_at: u64,
 }
 
+#[derive(Default)]
+pub struct Service {
+    _priv: PhantomData<()>,
+}
+
+impl AddResource<mongodb::Client> for Service {
+    fn add_resource(&mut self, resource: mongodb::Client) -> Result<()> {
+        MONGODB_CLIENT.set(resource).map_err(|_| anyhow!("client already set"))
+    }
+}
+
+impl AddToLinker for Service {
+    fn add_to_linker(&self, l: &mut Linker<RunState>) -> anyhow::Result<()> {
+        blobstore::add_to_linker::<_, Data>(l, Blobstore::new)?;
+        container::add_to_linker::<_, Data>(l, Blobstore::new)?;
+        types::add_to_linker::<_, Data>(l, Blobstore::new)
+    }
+}
+
+struct Data;
+impl HasData for Data {
+    type Data<'a> = Blobstore<'a>;
+}
+
+pub struct Blobstore<'a> {
+    table: &'a mut ResourceTable,
+}
+
+impl Blobstore<'_> {
+    const fn new(c: &mut RunState) -> Blobstore<'_> {
+        Blobstore { table: &mut c.table }
+    }
+}
+
+fn mongodb() -> Result<&'static mongodb::Client> {
+    MONGODB_CLIENT.get().ok_or_else(|| anyhow!("MongoDB client not initialized."))
+}
+
 // Implement the [`wasi_sql::ReadWriteView`]` trait for Blobstore<'_>.
 impl blobstore::Host for Blobstore<'_> {
     async fn create_container(&mut self, name: String) -> Result<Resource<Container>> {
-        let Some(db) = self.resources.mongo()?.default_database() else {
+        let Some(db) = mongodb()?.default_database() else {
             return Err(anyhow!("No default database found"));
         };
         let collection = db.collection::<Blob>(&name);
@@ -86,7 +111,7 @@ impl blobstore::Host for Blobstore<'_> {
     }
 
     async fn get_container(&mut self, name: String) -> Result<Resource<Container>> {
-        let Some(db) = self.resources.mongo()?.default_database() else {
+        let Some(db) = mongodb()?.default_database() else {
             return Err(anyhow!("No default database found"));
         };
         let collection = db.collection::<Blob>(&name);
@@ -94,7 +119,7 @@ impl blobstore::Host for Blobstore<'_> {
     }
 
     async fn delete_container(&mut self, name: String) -> Result<()> {
-        let Some(db) = self.resources.mongo()?.default_database() else {
+        let Some(db) = mongodb()?.default_database() else {
             return Err(anyhow!("No default database found"));
         };
         db.collection::<Blob>(&name)
@@ -350,23 +375,4 @@ impl types::HostOutgoingValue for Blobstore<'_> {
     async fn drop(&mut self, value_ref: Resource<OutgoingValue>) -> Result<()> {
         Ok(self.table.delete(value_ref).map(|_| ())?)
     }
-}
-
-pub struct Service;
-
-impl Interface for Service {
-    type State = RunState;
-
-    // Add all the `wasi-keyvalue` world's interfaces to a [`Linker`], and
-    // instantiate the `Blobstore` for the component.
-    fn add_to_linker(&self, l: &mut Linker<Self::State>) -> anyhow::Result<()> {
-        blobstore::add_to_linker::<_, Data>(l, Blobstore::new)?;
-        container::add_to_linker::<_, Data>(l, Blobstore::new)?;
-        types::add_to_linker::<_, Data>(l, Blobstore::new)
-    }
-}
-
-struct Data;
-impl HasData for Data {
-    type Data<'a> = Blobstore<'a>;
 }

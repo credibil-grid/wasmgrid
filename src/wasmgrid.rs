@@ -6,13 +6,12 @@ use std::path::PathBuf;
 use anyhow::{Context, Result, anyhow};
 use credibil_otel::Telemetry;
 use dotenv::dotenv;
-use runtime::{Cli, Parser, Resources, RunState, Runtime};
+use runtime::{Cli, Parser, Runtime};
 use tracing::instrument;
-use wasi_blobstore::mongodb as blobstore;
-use wasi_keyvalue::nats as keyvalue;
-use wasi_messaging::nats as messaging;
-use wasi_vault::az_keyvault as vault;
-use {wasi_http as http, wasi_otel as otel};
+use {
+    wasi_blobstore_mdb as blobstore, wasi_http as http, wasi_keyvalue_nats as keyvalue,
+    wasi_messaging_nats as messaging, wasi_otel as otel, wasi_vault_az as vault,
+};
 
 const DEF_NATS_ADDR: &str = "demo.nats.io";
 const DEF_KV_ADDR: &str = "https://kv-credibil-demo.vault.azure.net";
@@ -72,35 +71,42 @@ pub async fn main() -> Result<()> {
 
 // Start the runtime for the specified wasm file.
 #[instrument]
-fn start(wasm: &PathBuf) -> Result<Runtime<RunState>> {
+fn start(wasm: &PathBuf) -> Result<Runtime> {
     tracing::info!("starting runtime");
 
-    let mut rt = Runtime::from_file(wasm)?;
+    // mongodb
+    let mongo_uri = env::var("MONGODB_URI").context("fetching MONGODB_URI env var")?;
+    // let mongodb_client= mongodb::Client;
 
-    // services
-    rt.link(&otel::Service).context("linking otel")?;
-    rt.link(&http::Service).context("linking http")?;
-    rt.link(&blobstore::Service).context("linking blobstore")?;
-    rt.link(&keyvalue::Service).context("linking keyvalue")?;
-    rt.link(&messaging::Service).context("linking messaging")?;
-    rt.link(&vault::Service).context("linking vault")?;
-
-    // resources
+    // nats
     let nats_addr = env::var("NATS_ADDR").unwrap_or_else(|_| DEF_NATS_ADDR.into());
     let jwt = env::var("NATS_JWT").ok();
     let seed = env::var("NATS_SEED").ok();
     let kv_addr = env::var("KV_ADDR").unwrap_or_else(|_| DEF_KV_ADDR.into());
-    let mongo_uri = env::var("MONGODB_URI").context("fetching MONGODB_URI env var")?;
-    // TODO: add az keyvault env vars
+    // let nats_client= async_nats::Client;
 
-    let resources = Resources::new();
-    resources.with_nats(nats_addr, jwt, seed);
-    resources.with_mongo(mongo_uri);
-    resources.with_azkeyvault(kv_addr);
+    let http = http::Service::default();
+    let otel = otel::Service::default();
+    let blobstore = blobstore::Service::default();
+    // blobstore.add_resource(mongodb_client).context("adding resource")?;
+    let keyvalue = keyvalue::Service::default();
+    // keyvalue.add_resource(nats_client).context("adding resource")?;
+    let messaging = messaging::Service::default();
+    // messaging.add_resource(nats_client).context("adding resource")?;
+    let vault = vault::Service::default();
+    // vault.add_resource(secret_client).context("adding resource")?;
+
+    let mut rt = Runtime::from_file(wasm)?;
+    rt.add_to_linker(&otel).context("linking otel")?;
+    rt.add_to_linker(&blobstore).context("linking blobstore")?;
+    rt.add_to_linker(&keyvalue).context("linking keyvalue")?;
+    rt.add_to_linker(&http).context("linking http")?;
+    rt.add_to_linker(&messaging).context("linking messaging")?;
+    rt.add_to_linker(&vault).context("linking vault")?;
 
     // servers
-    rt.run(http::Service, resources.clone())?;
-    rt.run(messaging::Service, resources)?;
+    rt.run(http)?;
+    rt.run(messaging)?;
 
     Ok(rt)
 }

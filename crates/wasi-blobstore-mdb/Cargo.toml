@@ -1,6 +1,6 @@
 [package]
-name = "wasi-blobstore"
-description = "Wasm blobstore service"
+name = "wasi-blobstore-mdb"
+description = "WASI blobstore service using MongoDB"
 authors.workspace = true
 edition.workspace = true
 version = "0.1.0"

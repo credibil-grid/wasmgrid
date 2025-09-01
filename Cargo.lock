@@ -4432,7 +4432,28 @@ dependencies = [
 ]
 
 [[package]]
-name = "wasi-blobstore"
+name = "wasi-blobstore-mdb"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-nats",
+ "bytes",
+ "chrono",
+ "futures",
+ "mongodb",
+ "resources",
+ "runtime",
+ "serde",
+ "serde_json",
+ "time",
+ "tokio",
+ "tracing",
+ "wasmtime",
+ "wasmtime-wasi",
+]
+
+[[package]]
+name = "wasi-blobstore-nats"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -4468,7 +4489,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "wasi-keyvalue"
+name = "wasi-keyvalue-nats"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -4483,7 +4504,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "wasi-messaging"
+name = "wasi-messaging-nats"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -4521,7 +4542,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "wasi-vault"
+name = "wasi-vault-az"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -4660,16 +4681,17 @@ dependencies = [
  "anyhow",
  "credibil-otel",
  "dotenv",
+ "reqwest",
  "runtime",
  "runtime-macros",
  "tokio",
  "tracing",
- "wasi-blobstore",
+ "wasi-blobstore-mdb",
  "wasi-http",
- "wasi-keyvalue",
- "wasi-messaging",
+ "wasi-keyvalue-nats",
+ "wasi-messaging-nats",
  "wasi-otel",
- "wasi-vault",
+ "wasi-vault-az",
 ]
 
 [[package]]

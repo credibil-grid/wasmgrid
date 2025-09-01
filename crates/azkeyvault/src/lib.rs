@@ -6,7 +6,6 @@ use anyhow::{Result, anyhow};
 use azure_core::credentials::{Secret, TokenCredential};
 use azure_identity::{ClientSecretCredential, DefaultAzureCredential};
 use azure_security_keyvault_secrets::SecretClient;
-use runtime::Resource;
 
 pub struct AzKeyVault {
     secret_client: Arc<SecretClient>,

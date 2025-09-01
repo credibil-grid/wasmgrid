@@ -1,6 +1,6 @@
 [package]
-name = "wasi-keyvalue"
-description = "Wasm Keyvalue service"
+name = "wasi-messaging-nats"
+description = "Wasm messaging service using NATS"
 authors.workspace = true
 edition.workspace = true
 version = "0.1.0"
@@ -12,11 +12,17 @@ workspace = true
 
 [dependencies]
 anyhow.workspace = true
-async-nats.workspace = true
-base64ct.workspace = true
+async-nats = { version = "0.42.0" }
 futures.workspace = true
 resources = { workspace = true, features = ["nats"] }
 runtime.workspace = true
+time = "0.3.41"
+tokio.workspace = true
 tracing.workspace = true
 wasmtime.workspace = true
 wasmtime-wasi.workspace = true
+
+[dev-dependencies]
+async-nats = "0.42.0"
+ecdsa = "0.16.9"
+k256 = "0.13.4"

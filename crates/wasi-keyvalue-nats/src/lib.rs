@@ -1,4 +1,7 @@
-//! # WASI Keyvalue NATS
+//! # WASI Keyvalue Service using NATS
+//!
+//! This module implements a runtime service for `wasi:keyvalue`
+//! (<https://github.com/WebAssembly/wasi-keyvalue>).
 
 mod generated {
     #![allow(clippy::trait_duplication_in_bounds)]
@@ -24,6 +27,8 @@ mod generated {
     });
 }
 
+use std::marker::PhantomData;
+use std::sync::OnceLock;
 use std::time::Duration;
 
 use anyhow::anyhow;
@@ -31,8 +36,7 @@ use async_nats::jetstream;
 use async_nats::jetstream::kv::{Config, Store};
 use base64ct::{Base64UrlUnpadded, Encoding};
 use futures::TryStreamExt;
-use resources::Resources;
-use runtime::{Interface, RunState};
+use runtime::{AddResource, AddToLinker, RunState};
 use wasmtime::component::{HasData, Linker, Resource, ResourceTableError};
 use wasmtime_wasi::ResourceTable;
 
@@ -51,25 +55,51 @@ pub struct Cas {
     pub current: Option<Vec<u8>>,
 }
 
+static NATS_CLIENT: OnceLock<async_nats::Client> = OnceLock::new();
+
+#[derive(Default)]
+pub struct Service {
+    _priv: PhantomData<()>,
+}
+
+impl AddResource<async_nats::Client> for Service {
+    fn add_resource(&mut self, resource: async_nats::Client) -> anyhow::Result<()> {
+        NATS_CLIENT.set(resource).map_err(|_| anyhow!("client already set"))
+    }
+}
+
+impl AddToLinker for Service {
+    fn add_to_linker(&self, l: &mut Linker<RunState>) -> anyhow::Result<()> {
+        store::add_to_linker::<_, Data>(l, Keyvalue::new)?;
+        atomics::add_to_linker::<_, Data>(l, Keyvalue::new)?;
+        batch::add_to_linker::<_, Data>(l, Keyvalue::new)
+    }
+}
+
+struct Data;
+impl HasData for Data {
+    type Data<'a> = Keyvalue<'a>;
+}
+
 pub struct Keyvalue<'a> {
-    resources: &'a Resources,
     table: &'a mut ResourceTable,
 }
 
 impl Keyvalue<'_> {
     const fn new(c: &mut RunState) -> Keyvalue<'_> {
-        Keyvalue {
-            resources: &c.resources,
-            table: &mut c.table,
-        }
+        Keyvalue { table: &mut c.table }
     }
+}
+
+fn nats() -> anyhow::Result<&'static async_nats::Client> {
+    NATS_CLIENT.get().ok_or_else(|| anyhow!("NATS client not initialized."))
 }
 
 // Implement the [`wasi_keyvalue::KeyValueView`]` trait for  Keyvalue<'_>.
 impl store::Host for Keyvalue<'_> {
     // Open bucket specified by identifier, save to state and return as a resource.
     async fn open(&mut self, identifier: String) -> Result<Resource<Store>> {
-        let jetstream = jetstream::new(self.resources.nats()?.clone());
+        let jetstream = jetstream::new(nats()?.clone());
 
         let bucket_id = Base64UrlUnpadded::encode_string(identifier.as_bytes());
         let bucket = if let Ok(bucket) = jetstream.get_key_value(&bucket_id).await {
@@ -308,23 +338,4 @@ impl From<anyhow::Error> for Error {
     fn from(err: anyhow::Error) -> Self {
         Self::Other(err.to_string())
     }
-}
-
-pub struct Service;
-
-impl Interface for Service {
-    type State = RunState;
-
-    // Add all the `wasi-keyvalue` world's interfaces to a [`Linker`], and
-    // instantiate the `Keyvalue` for the component.
-    fn add_to_linker(&self, linker: &mut Linker<Self::State>) -> anyhow::Result<()> {
-        store::add_to_linker::<_, Data>(linker, Keyvalue::new)?;
-        atomics::add_to_linker::<_, Data>(linker, Keyvalue::new)?;
-        batch::add_to_linker::<_, Data>(linker, Keyvalue::new)
-    }
-}
-
-struct Data;
-impl HasData for Data {
-    type Data<'a> = Keyvalue<'a>;
 }

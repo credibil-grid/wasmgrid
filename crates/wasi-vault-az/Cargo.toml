@@ -1,6 +1,6 @@
 [package]
-name = "wasi-vault"
-description = "Wasm vault service"
+name = "wasi-vault-az"
+description = "WASI vault service using Azure Key Vault"
 authors.workspace = true
 edition.workspace = true
 version = "0.1.0"

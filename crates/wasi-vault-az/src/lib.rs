@@ -26,13 +26,16 @@ mod generated {
     });
 }
 
-use anyhow::Context;
+use std::marker::PhantomData;
+use std::sync::OnceLock;
+
+use anyhow::{Context, anyhow};
+use azure_security_keyvault_secrets::SecretClient;
 use azure_security_keyvault_secrets::models::{Secret, SetSecretParameters};
 use base64ct::{Base64UrlUnpadded, Encoding};
 use futures::TryStreamExt;
 use http::StatusCode;
-use resources::Resources;
-use runtime::{Interface, RunState};
+use runtime::{AddResource, AddToLinker, RunState};
 use wasmtime::component::{HasData, Linker, Resource, ResourceTableError};
 use wasmtime_wasi::ResourceTable;
 
@@ -41,22 +44,46 @@ use self::generated::wasi::vault::vault::Error;
 
 pub type Result<T, E = Error> = anyhow::Result<T, E>;
 
+static AZ_CLIENT: OnceLock<SecretClient> = OnceLock::new();
+
+pub struct Locker {
+    identifier: String,
+}
+
+#[derive(Default)]
+pub struct Service {
+    _priv: PhantomData<()>,
+}
+
+impl AddResource<SecretClient> for Service {
+    fn add_resource(&mut self, resource: SecretClient) -> anyhow::Result<()> {
+        AZ_CLIENT.set(resource).map_err(|_| anyhow!("client already set"))
+    }
+}
+
+impl AddToLinker for Service {
+    fn add_to_linker(&self, linker: &mut Linker<RunState>) -> anyhow::Result<()> {
+        vault::add_to_linker::<_, Data>(linker, Vault::new)
+    }
+}
+
+struct Data;
+impl HasData for Data {
+    type Data<'a> = Vault<'a>;
+}
+
 pub struct Vault<'a> {
-    resources: &'a Resources,
     table: &'a mut ResourceTable,
 }
 
 impl Vault<'_> {
     const fn new(c: &mut RunState) -> Vault<'_> {
-        Vault {
-            resources: &c.resources,
-            table: &mut c.table,
-        }
+        Vault { table: &mut c.table }
     }
 }
 
-pub struct Locker {
-    identifier: String,
+fn azkeyvault() -> anyhow::Result<&'static SecretClient> {
+    AZ_CLIENT.get().ok_or_else(|| anyhow!("Secret client not initialized."))
 }
 
 // Implement the [`wasi_vault::Host`]` trait for  Vault<'_>.
@@ -84,7 +111,7 @@ impl vault::HostLocker for Vault<'_> {
         tracing::debug!("getting secret named: {secret_name}");
         let secret_id = Base64UrlUnpadded::encode_string(secret_name.as_bytes());
 
-        let kv = self.resources.azkeyvault().context("connecting to Azure KeyVault")?;
+        let kv = azkeyvault().context("connecting to Azure KeyVault")?;
         let result = kv.get_secret(&secret_id, "", None).await;
         let response = match result {
             Ok(resp) => resp,
@@ -123,7 +150,7 @@ impl vault::HostLocker for Vault<'_> {
         };
         let content = params.try_into().context("issue converting params to content")?;
 
-        let kv = self.resources.azkeyvault().context("connecting to Azure KeyVault")?;
+        let kv = azkeyvault().context("connecting to Azure KeyVault")?;
         kv.set_secret(&secret_id, content, None).await.context("issue setting secret")?;
 
         Ok(())
@@ -137,7 +164,7 @@ impl vault::HostLocker for Vault<'_> {
         tracing::debug!("deleting secret named: {secret_name}");
         let secret_id = Base64UrlUnpadded::encode_string(secret_name.as_bytes());
 
-        let kv = self.resources.azkeyvault().context("connecting to Azure KeyVault")?;
+        let kv = azkeyvault().context("connecting to Azure KeyVault")?;
         kv.delete_secret(&secret_id, None).await.context("issue deleting secret")?;
 
         Ok(())
@@ -155,7 +182,7 @@ impl vault::HostLocker for Vault<'_> {
         tracing::debug!("listing secrets for: {identifier}");
 
         // get all secret properties from Azure KeyVault
-        let kv = self.resources.azkeyvault().context("connecting to Azure KeyVault")?;
+        let kv = azkeyvault().context("connecting to Azure KeyVault")?;
         let iter = kv.list_secret_properties(None).context("issue listing secrets")?;
 
         // filter and collect secret IDs for this 'locker'
@@ -189,21 +216,4 @@ impl From<anyhow::Error> for Error {
     fn from(err: anyhow::Error) -> Self {
         Self::Other(err.to_string())
     }
-}
-
-pub struct Service;
-
-impl Interface for Service {
-    type State = RunState;
-
-    // Add all the `wasi-vault` world's interfaces to a [`Linker`], and
-    // instantiate the `Vault` for the component.
-    fn add_to_linker(&self, linker: &mut Linker<Self::State>) -> anyhow::Result<()> {
-        vault::add_to_linker::<_, Data>(linker, Vault::new)
-    }
-}
-
-struct Data;
-impl HasData for Data {
-    type Data<'a> = Vault<'a>;
 }

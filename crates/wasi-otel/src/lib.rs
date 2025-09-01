@@ -25,12 +25,13 @@ mod generated {
 
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
+use std::sync::OnceLock;
 
 use anyhow::Result;
 use credibil_otel::init;
 use opentelemetry::{Array, Key, Value};
 use opentelemetry_sdk::Resource;
-use runtime::{Interface, RunState};
+use runtime::{AddToLinker, RunState};
 use wasmtime::component::{HasData, Linker};
 
 use self::generated::wasi::otel as wasi_otel;
@@ -38,15 +39,43 @@ use self::generated::wasi::otel::types;
 
 const DEF_HTTP_ADDR: &str = "http://localhost:4318";
 
-pub struct Otel<'a> {
-    http_client: reqwest::Client,
+static HTTP_CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
+
+pub struct Service {
+    _priv: PhantomData<()>,
+}
+
+impl Default for Service {
+    fn default() -> Self {
+        let client = reqwest::Client::new();
+        let _ = HTTP_CLIENT.set(client);
+        Self { _priv: PhantomData }
+    }
+}
+
+impl AddToLinker for Service {
+    fn add_to_linker(&self, linker: &mut Linker<RunState>) -> Result<()> {
+        wasi_otel::tracing::add_to_linker::<_, Data>(linker, Otel::new)?;
+        wasi_otel::metrics::add_to_linker::<_, Data>(linker, Otel::new)?;
+        wasi_otel::types::add_to_linker::<_, Data>(linker, Otel::new)?;
+        wasi_otel::resource::add_to_linker::<_, Data>(linker, Otel::new)
+    }
+}
+
+struct Data;
+impl HasData for Data {
+    type Data<'a> = Otel<'a>;
+}
+
+struct Otel<'a> {
+    http_client: &'a reqwest::Client,
     _phantom: PhantomData<&'a ()>,
 }
 
 impl Otel<'_> {
-    fn new(_: &mut RunState) -> Otel<'_> {
+    fn new(_: &mut RunState) -> Self {
         Otel {
-            http_client: reqwest::Client::new(),
+            http_client: HTTP_CLIENT.wait(),
             _phantom: PhantomData,
         }
     }
@@ -211,22 +240,4 @@ impl From<types::Datetime> for u64 {
     fn from(dt: types::Datetime) -> Self {
         (dt.seconds * 1_000_000_000) + Self::from(dt.nanoseconds)
     }
-}
-
-pub struct Service;
-
-impl Interface for Service {
-    type State = RunState;
-
-    fn add_to_linker(&self, linker: &mut Linker<Self::State>) -> Result<()> {
-        wasi_otel::tracing::add_to_linker::<_, Data>(linker, Otel::new)?;
-        wasi_otel::metrics::add_to_linker::<_, Data>(linker, Otel::new)?;
-        wasi_otel::types::add_to_linker::<_, Data>(linker, Otel::new)?;
-        wasi_otel::resource::add_to_linker::<_, Data>(linker, Otel::new)
-    }
-}
-
-struct Data;
-impl HasData for Data {
-    type Data<'a> = Otel<'a>;
 }

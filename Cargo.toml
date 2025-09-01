@@ -32,13 +32,14 @@ dotenv = "0.15.0"
 runtime.workspace = true
 tokio.workspace = true
 tracing.workspace = true
-wasi-blobstore = { path = "crates/wasi-blobstore" }
+wasi-blobstore-mdb = { path = "crates/wasi-blobstore-mdb" }
 wasi-http = { path = "crates/wasi-http" }
-wasi-keyvalue = { path = "crates/wasi-keyvalue" }
-wasi-messaging = { path = "crates/wasi-messaging" }
+wasi-keyvalue-nats = { path = "crates/wasi-keyvalue-nats" }
+wasi-messaging-nats = { path = "crates/wasi-messaging-nats" }
 wasi-otel = { path = "crates/wasi-otel" }
-wasi-vault = { path = "crates/wasi-vault" }
+wasi-vault-az = { path = "crates/wasi-vault-az" }
 
+reqwest = "0.12.23"
 runtime-macros = { path = "crates/runtime-macros" }
 
 [profile.release]

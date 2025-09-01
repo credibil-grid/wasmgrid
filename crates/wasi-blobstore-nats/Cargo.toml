@@ -1,6 +1,6 @@
 [package]
-name = "wasi-messaging"
-description = "Wasm messaging service"
+name = "wasi-blobstore-nats"
+description = "WASI blobstore service using NATS"
 authors.workspace = true
 edition.workspace = true
 version = "0.1.0"
@@ -12,17 +12,17 @@ workspace = true
 
 [dependencies]
 anyhow.workspace = true
-async-nats = { version = "0.42.0" }
+async-nats.workspace = true
+bytes.workspace = true
+chrono.workspace = true
 futures.workspace = true
-resources = { workspace = true, features = ["nats"] }
+mongodb = { version = "3.2.5" }
+resources = { workspace = true, features = ["mongodb", "nats"] }
 runtime.workspace = true
+serde.workspace = true
+serde_json.workspace = true
 time = "0.3.41"
 tokio.workspace = true
 tracing.workspace = true
 wasmtime.workspace = true
 wasmtime-wasi.workspace = true
-
-[dev-dependencies]
-async-nats = "0.42.0"
-ecdsa = "0.16.9"
-k256 = "0.13.4"

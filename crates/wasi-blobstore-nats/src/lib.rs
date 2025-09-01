@@ -1,10 +1,8 @@
 //! # WASI Blobstore Service for NATS
 //!
-//! This module implements a runtime service for `wasi:sql`
-//! (<https://github.com/WebAssembly/wasi-sql>).
+//! This module implements a runtime service for `wasi:blobstore`
+//! (<https://github.com/WebAssembly/wasi-blobstore>).
 
-/// Wrap generation of wit bindings to simplify exports.
-/// See <https://docs.rs/wasmtime/latest/wasmtime/component/macro.bindgen.html>
 mod generated {
     #![allow(clippy::trait_duplication_in_bounds)]
 
@@ -30,13 +28,15 @@ mod generated {
     });
 }
 
+use std::marker::PhantomData;
+use std::sync::OnceLock;
+
 use anyhow::{Result, anyhow};
 use async_nats::jetstream;
 use async_nats::jetstream::object_store::{Config, ObjectStore};
 use bytes::{Bytes, BytesMut};
 use futures::StreamExt;
-use resources::Resources;
-use runtime::{Interface, RunState};
+use runtime::{AddResource, AddToLinker, RunState};
 use time::OffsetDateTime;
 use tokio::io::AsyncReadExt;
 use wasmtime::component::{HasData, Linker, Resource, ResourceTable};
@@ -52,24 +52,50 @@ pub type IncomingValue = Bytes;
 pub type OutgoingValue = MemoryOutputPipe;
 pub type StreamObjectNames = Vec<String>;
 
+static NATS_CLIENT: OnceLock<async_nats::Client> = OnceLock::new();
+
+#[derive(Default)]
+pub struct Service {
+    _priv: PhantomData<()>,
+}
+
+impl AddResource<async_nats::Client> for Service {
+    fn add_resource(&mut self, resource: async_nats::Client) -> Result<()> {
+        NATS_CLIENT.set(resource).map_err(|_| anyhow!("client already set"))
+    }
+}
+
+impl AddToLinker for Service {
+    fn add_to_linker(&self, l: &mut Linker<RunState>) -> anyhow::Result<()> {
+        blobstore::add_to_linker::<_, Data>(l, Blobstore::new)?;
+        container::add_to_linker::<_, Data>(l, Blobstore::new)?;
+        types::add_to_linker::<_, Data>(l, Blobstore::new)
+    }
+}
+
+struct Data;
+impl HasData for Data {
+    type Data<'a> = Blobstore<'a>;
+}
+
 pub struct Blobstore<'a> {
-    resources: &'a Resources,
     table: &'a mut ResourceTable,
 }
 
 impl Blobstore<'_> {
     const fn new(c: &mut RunState) -> Blobstore<'_> {
-        Blobstore {
-            resources: &c.resources,
-            table: &mut c.table,
-        }
+        Blobstore { table: &mut c.table }
     }
+}
+
+fn nats() -> Result<&'static async_nats::Client> {
+    NATS_CLIENT.get().ok_or_else(|| anyhow!("NATS client not initialized."))
 }
 
 // Implement the [`wasi_sql::ReadWriteView`]` trait for Blobstore<'_>.
 impl blobstore::Host for Blobstore<'_> {
     async fn create_container(&mut self, name: String) -> Result<Resource<Container>> {
-        let jetstream = jetstream::new(self.resources.nats()?.clone());
+        let jetstream = jetstream::new(nats()?.clone());
         let store = jetstream
             .create_object_store(Config {
                 bucket: name,
@@ -81,7 +107,7 @@ impl blobstore::Host for Blobstore<'_> {
     }
 
     async fn get_container(&mut self, name: String) -> Result<Resource<Container>> {
-        let jetstream = jetstream::new(self.resources.nats()?.clone());
+        let jetstream = jetstream::new(nats()?.clone());
         let store = jetstream
             .get_object_store(&name)
             .await
@@ -91,7 +117,7 @@ impl blobstore::Host for Blobstore<'_> {
     }
 
     async fn delete_container(&mut self, name: String) -> Result<()> {
-        let jetstream = jetstream::new(self.resources.nats()?.clone());
+        let jetstream = jetstream::new(nats()?.clone());
         jetstream
             .delete_object_store(&name)
             .await
@@ -101,7 +127,7 @@ impl blobstore::Host for Blobstore<'_> {
     }
 
     async fn container_exists(&mut self, name: String) -> Result<bool> {
-        let jetstream = jetstream::new(self.resources.nats()?.clone());
+        let jetstream = jetstream::new(nats()?.clone());
         let exists = jetstream.get_object_store(&name).await.is_ok();
 
         Ok(exists)
@@ -336,23 +362,4 @@ impl types::HostOutgoingValue for Blobstore<'_> {
     async fn drop(&mut self, value_ref: Resource<OutgoingValue>) -> Result<()> {
         Ok(self.table.delete(value_ref).map(|_| ())?)
     }
-}
-
-pub struct Service;
-
-impl Interface for Service {
-    type State = RunState;
-
-    // Add all the `wasi-keyvalue` world's interfaces to a [`Linker`], and
-    // instantiate the `Blobstore` for the component.
-    fn add_to_linker(&self, l: &mut Linker<Self::State>) -> anyhow::Result<()> {
-        blobstore::add_to_linker::<_, Data>(l, Blobstore::new)?;
-        container::add_to_linker::<_, Data>(l, Blobstore::new)?;
-        types::add_to_linker::<_, Data>(l, Blobstore::new)
-    }
-}
-
-struct Data;
-impl HasData for Data {
-    type Data<'a> = Blobstore<'a>;
 }

@@ -1,12 +1,11 @@
-//! # WebAssembly Runtime
-
 //! # WASI Http Service
 //!
 //! This module implements a runtime service for `wasi:http`
-//! (<https://github.com/WebAssembly/sdk-http>).
+//! (<https://github.com/WebAssembly/wasi-http>).
 
 use std::clone::Clone;
 use std::env;
+use std::marker::PhantomData;
 
 use anyhow::{Result, anyhow};
 use http::uri::{PathAndQuery, Uri};
@@ -15,8 +14,7 @@ use hyper::header::{FORWARDED, HOST};
 use hyper::server::conn::http1;
 use hyper::service::service_fn;
 use hyper::{Request, Response};
-use resources::Resources;
-use runtime::{Instantiator, Interface, RunState};
+use runtime::{AddToLinker, Run, RunState};
 use tokio::net::TcpListener;
 use tokio::sync::oneshot;
 use tracing::{Instrument, info_span};
@@ -30,11 +28,22 @@ use wasmtime_wasi_http::io::TokioIo;
 
 const DEF_HTTP_ADDR: &str = "0.0.0.0:8080";
 
-impl Instantiator for Service {
-    type Resources = Resources;
+#[derive(Default, Debug)]
+pub struct Service {
+    _priv: PhantomData<()>,
+}
 
+impl AddToLinker for Service {
+    fn add_to_linker(&self, linker: &mut Linker<RunState>) -> Result<()> {
+        wasmtime_wasi_http::add_only_http_to_linker_async(linker)?;
+        tracing::trace!("added to linker");
+        Ok(())
+    }
+}
+
+impl Run for Service {
     /// Provide http proxy service the specified wasm component.
-    async fn run(&self, pre: InstancePre<Self::State>, resources: Self::Resources) -> Result<()> {
+    async fn run(&self, pre: InstancePre<RunState>) -> Result<()> {
         // bail if server is not required
         let component_type = pre.component().component_type();
         let mut exports = component_type.imports(pre.engine());
@@ -49,7 +58,6 @@ impl Instantiator for Service {
 
         let handler = Handler {
             proxy_pre: ProxyPre::new(pre.clone())?,
-            resources,
         };
 
         // listen for requests until terminated
@@ -81,7 +89,6 @@ impl Instantiator for Service {
 #[derive(Clone)]
 struct Handler {
     proxy_pre: ProxyPre<RunState>,
-    resources: Resources,
 }
 
 impl Handler {
@@ -90,8 +97,7 @@ impl Handler {
         tracing::info!("handling request: {request:?}");
 
         // prepare wasmtime http request and response
-        let mut store = Store::new(self.proxy_pre.engine(), RunState::new(self.resources.clone()));
-        // store.limiter(|t| &mut t.limits);
+        let mut store = Store::new(self.proxy_pre.engine(), RunState::new());
 
         let (request, scheme) = prepare_request(request)?;
         tracing::trace!("sending request: {request:#?}");
@@ -166,17 +172,4 @@ fn prepare_request(mut request: Request<Incoming>) -> Result<(Request<Incoming>,
     };
 
     Ok((request, scheme))
-}
-
-#[derive(Debug)]
-pub struct Service;
-
-impl Interface for Service {
-    type State = RunState;
-
-    fn add_to_linker(&self, linker: &mut Linker<Self::State>) -> Result<()> {
-        wasmtime_wasi_http::add_only_http_to_linker_async(linker)?;
-        tracing::trace!("added to linker");
-        Ok(())
-    }
 }

@@ -2,30 +2,15 @@ use std::time::Duration;
 
 use anyhow::anyhow;
 use async_nats::{Client, HeaderMap, Subject};
-use resources::Resources;
-use runtime::RunState;
-use wasmtime::component::{HasData, Linker, Resource};
-use wasmtime_wasi::{ResourceTable, ResourceTableError};
+use wasmtime::component::Resource;
+use wasmtime_wasi::ResourceTableError;
 
 use super::generated::wasi::messaging::request_reply::RequestOptions;
 use super::generated::wasi::messaging::types::{Error, HostMessage, Message, Metadata, Topic};
 use super::generated::wasi::messaging::{producer, request_reply, types};
+use crate::Messaging;
 
 pub type Result<T, E = Error> = anyhow::Result<T, E>;
-
-pub struct Messaging<'a> {
-    table: &'a mut ResourceTable,
-    resources: &'a Resources,
-}
-
-impl Messaging<'_> {
-    const fn new(c: &mut RunState) -> Messaging<'_> {
-        Messaging {
-            table: &mut c.table,
-            resources: &c.resources,
-        }
-    }
-}
 
 impl types::Host for Messaging<'_> {
     fn convert_error(&mut self, err: Error) -> anyhow::Result<Error> {
@@ -213,7 +198,7 @@ impl HostMessage for Messaging<'_> {
 impl types::HostClient for Messaging<'_> {
     async fn connect(&mut self, name: String) -> Result<Resource<Client>> {
         tracing::trace!("HostClient::connect {name}");
-        let client = self.resources.nats()?;
+        let client = crate::nats()?;
         let resource = self.table.push(client.clone())?;
         Ok(resource)
     }
@@ -299,7 +284,7 @@ impl request_reply::Host for Messaging<'_> {
 
         if let Some(reply_subject) = &reply_to_msg.reply {
             let response_msg = self.table.get(&response)?;
-            let client = self.resources.nats()?;
+            let client = crate::nats()?;
             client
                 .publish_with_headers(
                     reply_subject.clone(),
@@ -360,16 +345,4 @@ impl From<anyhow::Error> for Error {
     fn from(err: anyhow::Error) -> Self {
         Self::Other(err.to_string())
     }
-}
-
-/// Add all the `messaging` world's interfaces to a [`Linker`].
-pub fn add_to_linker(l: &mut Linker<RunState>) -> anyhow::Result<()> {
-    producer::add_to_linker::<_, Data>(l, Messaging::new)?;
-    request_reply::add_to_linker::<_, Data>(l, Messaging::new)?;
-    types::add_to_linker::<_, Data>(l, Messaging::new)
-}
-
-struct Data;
-impl HasData for Data {
-    type Data<'a> = Messaging<'a>;
 }
