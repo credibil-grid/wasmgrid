@@ -1,11 +1,7 @@
 //! # Wasmgrid CLI
 
-use std::env;
-use std::path::PathBuf;
-
 use anyhow::{Context, Result, anyhow};
 use azkeyvault::AzKeyVault;
-use credibil_otel::Telemetry;
 use dotenv::dotenv;
 use mongodb::MongoDb;
 use nats::Nats;
@@ -32,28 +28,14 @@ pub async fn main() -> Result<()> {
     }
 
     let wasm = Cli::parse().wasm;
+    let rt = Runtime::from_file(&wasm)?;
 
-    // telemetry
-    let Some(file) = wasm.file_name() else {
-        return Err(anyhow!("file name not specified"));
-    };
-    let name: &str = file.to_str().unwrap_or_default();
-    let Some((prefix, _)) = name.split_once('.') else {
-        return Err(anyhow!("file name does not have an extension"));
-    };
-    let mut builder = Telemetry::new(prefix);
-    if let Ok(endpoint) = env::var("OTEL_GRPC_ADDR") {
-        builder = builder.endpoint(endpoint);
-    }
-    builder.build().context("initializing telemetry")?;
-
-    // run until shutdown
-    start(&wasm).await?.shutdown().await
+    start(rt).await?.shutdown().await
 }
 
 // Start the runtime for the specified wasm file.
 #[instrument]
-async fn start(wasm: &PathBuf) -> Result<Runtime> {
+async fn start(rt: Runtime) -> Result<Runtime> {
     tracing::info!("starting runtime");
 
     // create resources (in parallel)
@@ -64,7 +46,7 @@ async fn start(wasm: &PathBuf) -> Result<Runtime> {
     };
 
     // add resources to services
-    let mut rt = Runtime::from_file(wasm)?;
+    let mut rt = rt;
 
     let http = http::Service::default();
     http.add_to_linker(&mut rt.linker).context("linking http")?;

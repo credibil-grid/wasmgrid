@@ -23,7 +23,7 @@ impl ResourceBuilder<Client> for Nats {
         }
     }
 
-    fn attribute(&mut self, key: &str, value: &str) -> &mut Self {
+    fn attribute(mut self, key: &str, value: &str) -> Self {
         self.attributes.insert(key.to_string(), value.to_string());
         self
     }

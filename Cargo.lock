@@ -3052,6 +3052,7 @@ dependencies = [
  "anyhow",
  "cfg-if",
  "clap",
+ "credibil-otel",
  "tokio",
  "tracing",
  "wasmtime",
@@ -4644,7 +4645,6 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "azkeyvault",
- "credibil-otel",
  "dotenv",
  "mongodb 0.1.0",
  "nats",

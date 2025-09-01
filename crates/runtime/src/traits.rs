@@ -55,11 +55,13 @@ pub trait Run {
     fn run(&self, pre: InstancePre<RunState>) -> impl Future<Output = Result<()>> + Send;
 }
 
-pub trait ResourceBuilder<T> {
+pub trait ResourceBuilder<T>: Sized {
     fn new() -> Self;
 
     /// Set a resource on the resource builder.
-    fn attribute(&mut self, _key: &str, _value: &str) -> &mut Self {
+    #[allow(unused)]
+    #[must_use]
+    fn attribute(mut self, _key: &str, _value: &str) -> Self {
         self
     }
 

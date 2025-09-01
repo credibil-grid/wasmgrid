@@ -54,11 +54,11 @@ impl Default for Service {
 }
 
 impl AddToLinker for Service {
-    fn add_to_linker(&self, linker: &mut Linker<RunState>) -> Result<()> {
-        wasi_otel::tracing::add_to_linker::<_, Data>(linker, Otel::new)?;
-        wasi_otel::metrics::add_to_linker::<_, Data>(linker, Otel::new)?;
-        wasi_otel::types::add_to_linker::<_, Data>(linker, Otel::new)?;
-        wasi_otel::resource::add_to_linker::<_, Data>(linker, Otel::new)
+    fn add_to_linker(&self, l: &mut Linker<RunState>) -> Result<()> {
+        wasi_otel::tracing::add_to_linker::<_, Data>(l, Otel::new)?;
+        wasi_otel::metrics::add_to_linker::<_, Data>(l, Otel::new)?;
+        wasi_otel::types::add_to_linker::<_, Data>(l, Otel::new)?;
+        wasi_otel::resource::add_to_linker::<_, Data>(l, Otel::new)
     }
 }
 

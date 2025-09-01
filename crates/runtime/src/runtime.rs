@@ -1,10 +1,12 @@
 //! # WebAssembly Runtime
 
+use std::env;
 use std::fmt::Debug;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
-use anyhow::Result;
+use anyhow::{Context, Result, anyhow};
 use cfg_if::cfg_if;
+use credibil_otel::Telemetry;
 use wasmtime::component::{Component, Linker};
 use wasmtime::{Config, Engine};
 
@@ -15,6 +17,12 @@ use crate::traits::Run;
 pub struct Runtime {
     pub component: Component,
     pub linker: Linker<RunState>,
+}
+
+impl Debug for Runtime {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Runtime").finish()
+    }
 }
 
 impl Runtime {
@@ -29,6 +37,8 @@ impl Runtime {
     /// be created, or the service cannot be started.
     pub fn from_file(file: &PathBuf) -> Result<Self> {
         tracing::trace!("initializing from file");
+
+        Self::init_telemetry(file)?;
 
         let mut config = Config::new();
         config.async_support(true);
@@ -112,5 +122,19 @@ impl Runtime {
     /// Returns an error if there is an issue processing the shutdown signal.
     pub async fn shutdown(&self) -> Result<()> {
         Ok(tokio::signal::ctrl_c().await?)
+    }
+
+    fn init_telemetry(file: &Path) -> Result<()> {
+        let file_name = file.file_name().and_then(|s| s.to_str()).unwrap_or("unknown");
+        let Some((prefix, _)) = file_name.split_once('.') else {
+            return Err(anyhow!("file name does not have an extension"));
+        };
+
+        // initialize telemetry
+        let mut builder = Telemetry::new(prefix);
+        if let Ok(endpoint) = env::var("OTEL_GRPC_ADDR") {
+            builder = builder.endpoint(endpoint);
+        }
+        builder.build().context("initializing telemetry")
     }
 }
