@@ -16,7 +16,6 @@ azure_security_keyvault_secrets.workspace = true
 base64ct.workspace = true
 futures.workspace = true
 http.workspace = true
-resources = { workspace = true, features = ["azkeyvault"] }
 runtime.workspace = true
 tracing.workspace = true
 wasmtime.workspace = true

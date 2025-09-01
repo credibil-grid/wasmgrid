@@ -1,7 +1,5 @@
 //! # WebAssembly Runtime
 
-pub use resources::Resources;
-// use wasmtime::StoreLimits;
 use wasmtime_wasi::{ResourceTable, WasiCtx, WasiCtxBuilder, WasiCtxView, WasiView};
 use wasmtime_wasi_http::{WasiHttpCtx, WasiHttpView};
 

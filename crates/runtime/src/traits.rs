@@ -5,8 +5,6 @@
 //! Each service is a module that provides a concrete implementation in support
 //! of a specific set of WASI interfaces.
 
-use std::any::Any;
-
 use anyhow::Result;
 use wasmtime::component::{InstancePre, Linker};
 
@@ -57,10 +55,16 @@ pub trait Run {
     fn run(&self, pre: InstancePre<RunState>) -> impl Future<Output = Result<()>> + Send;
 }
 
-// pub trait Resource: Send + Sync {
-//     /// A static identifier for the resource.
-//     fn identifier(&self) -> &'static str;
+pub trait Resource<T> {
+    /// Set an attribute on the resource.
+    fn with_attribute(&mut self, _key: &str, _value: &str) {
+        // default implementation does nothing
+    }
 
-//     /// Get a reference to the underlying resource.
-//     fn as_any(&self) -> &dyn Any;
-// }
+    /// Get a reference to the requested resource.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the resource is not available.
+    fn connect(&self) -> impl Future<Output = Result<T>> + Send;
+}

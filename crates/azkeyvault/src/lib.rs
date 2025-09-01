@@ -1,4 +1,7 @@
-use std::any::Any;
+//! Azure Key Vault Secrets Client.
+//!
+
+use std::collections::HashMap;
 use std::env;
 use std::sync::Arc;
 
@@ -6,28 +9,23 @@ use anyhow::{Result, anyhow};
 use azure_core::credentials::{Secret, TokenCredential};
 use azure_identity::{ClientSecretCredential, DefaultAzureCredential};
 use azure_security_keyvault_secrets::SecretClient;
+use runtime::Resource;
 
+const DEF_KV_ADDR: &str = "https://kv-credibil-demo.vault.azure.net";
+
+#[derive(Default)]
 pub struct AzKeyVault {
-    secret_client: Arc<SecretClient>,
+    attributes: HashMap<String, String>,
 }
 
-impl Resource for AzKeyVault {
-    fn identifier(&self) -> &'static str {
-        "azkeyvault"
+impl Resource<SecretClient> for AzKeyVault {
+    fn with_attribute(&mut self, key: &str, value: &str) {
+        self.attributes.insert(key.to_string(), value.to_string());
     }
 
-    fn as_any(&self) -> &dyn Any {
-        self.secret_client.as_ref()
-    }
-}
+    async fn connect(&self) -> Result<SecretClient> {
+        let addr = env::var("KV_ADDR").unwrap_or_else(|_| DEF_KV_ADDR.into());
 
-impl AzKeyVault {
-    /// Create a new Azure Key Vault secrets client.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the client could not be created.
-    pub fn new(addr: &'static str) -> Result<Self> {
         let credential: Arc<dyn TokenCredential> = if cfg!(debug_assertions) {
             DefaultAzureCredential::new()
                 .map_err(|e| anyhow!("could not create credential: {e}"))?
@@ -39,24 +37,10 @@ impl AzKeyVault {
             ClientSecretCredential::new(&tenant_id, client_id, secret, None)?
         };
 
-        let client = SecretClient::new(addr, credential, None)
+        let client = SecretClient::new(&addr, credential, None)
             .map_err(|e| anyhow!("failed to connect to azure keyvault: {e}"))?;
         tracing::info!("connected to azure keyvault");
 
-        Ok(Self {
-            secret_client: Arc::new(client),
-        })
+        Ok(client)
     }
 }
-
-// fn timeout<T>(once_lock: &OnceLock<T>, limit: u64) -> Result<&T> {
-//     let duration = Duration::from_millis(limit / 10);
-//     for _ in 0..10 {
-//         if let Some(client) = once_lock.get() {
-//             return Ok(client);
-//         }
-//         sleep(duration);
-//     }
-//     tracing::error!("failed to get resource");
-//     Err(anyhow!("failed to get resource"))
-// }

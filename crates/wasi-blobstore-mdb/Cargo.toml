@@ -17,7 +17,6 @@ bytes.workspace = true
 chrono.workspace = true
 futures.workspace = true
 mongodb = { version = "3.2.5" }
-resources = { workspace = true, features = ["mongodb", "nats"] }
 runtime.workspace = true
 serde.workspace = true
 serde_json.workspace = true
