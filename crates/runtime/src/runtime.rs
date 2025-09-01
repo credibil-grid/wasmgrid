@@ -91,8 +91,9 @@ impl Runtime {
     /// # Errors
     ///
     /// Returns an error if the service cannot be added to the linker.
-    pub fn add_to_linker(&mut self, service: &impl AddToLinker) -> Result<()> {
-        service.add_to_linker(&mut self.linker)
+    pub fn add_to_linker(&mut self, service: &impl AddToLinker) -> Result<&mut Self> {
+        service.add_to_linker(&mut self.linker)?;
+        Ok(self)
     }
 
     /// Instantiate a service on it's own thread.

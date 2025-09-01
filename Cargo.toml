@@ -42,8 +42,6 @@ wasi-vault-az = { path = "crates/wasi-vault-az" }
 azkeyvault = { path = "crates/azkeyvault" }
 mongodb = { path = "crates/mongodb" }
 nats = { path = "crates/nats" }
-
-reqwest = "0.12.23"
 runtime-macros = { path = "crates/runtime-macros" }
 
 [profile.release]

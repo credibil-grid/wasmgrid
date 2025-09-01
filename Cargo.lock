@@ -3092,7 +3092,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.106",
- "tracing",
 ]
 
 [[package]]
@@ -4441,7 +4440,6 @@ name = "wasi-blobstore-mdb"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "async-nats",
  "bytes",
  "chrono",
  "futures",
@@ -4449,8 +4447,6 @@ dependencies = [
  "runtime",
  "serde",
  "serde_json",
- "time",
- "tokio",
  "tracing",
  "wasmtime",
  "wasmtime-wasi",
@@ -4463,12 +4459,8 @@ dependencies = [
  "anyhow",
  "async-nats",
  "bytes",
- "chrono",
  "futures",
- "mongodb 3.2.5",
  "runtime",
- "serde",
- "serde_json",
  "time",
  "tokio",
  "tracing",
@@ -4683,7 +4675,6 @@ dependencies = [
  "dotenv",
  "mongodb 0.1.0",
  "nats",
- "reqwest",
  "runtime",
  "runtime-macros",
  "tokio",

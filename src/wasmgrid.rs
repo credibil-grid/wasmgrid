@@ -9,7 +9,7 @@ use credibil_otel::Telemetry;
 use dotenv::dotenv;
 use mongodb::MongoDb;
 use nats::Nats;
-use runtime::{AddResource, Cli, Parser, Resource, Runtime};
+use runtime::{AddResource, Cli, Parser, ResourceBuilder, Runtime};
 use tracing::instrument;
 use {
     wasi_blobstore_mdb as blobstore, wasi_http as http, wasi_keyvalue_nats as keyvalue,
@@ -74,39 +74,37 @@ pub async fn main() -> Result<()> {
 async fn start(wasm: &PathBuf) -> Result<Runtime> {
     tracing::info!("starting runtime");
 
-    // let azkv = AzKeyVault::default();
-    // let secret_client = azkv.connect().await?;
+    // create resources (in parallel)
+    let (Ok(secret_client), Ok(mongodb_client), Ok(nats_client)) =
+        tokio::join!(AzKeyVault::new(), MongoDb::new(), Nats::new())
+    else {
+        return Err(anyhow!("failed to create clients"));
+    };
 
-    let mdb = MongoDb::default();
-    let mongodb_client = mdb.connect().await?;
-
-    // let nats = Nats::default();
-    // let nats_client = nats.connect().await?;
-
+    // add resources to services
     let http = http::Service::default();
     let otel = otel::Service::default();
-
     let mut blobstore = blobstore::Service::default();
     blobstore.add_resource(mongodb_client).context("adding resource")?;
+    let mut keyvalue = keyvalue::Service::default();
+    keyvalue.add_resource(nats_client.clone()).context("adding resource")?;
+    let mut messaging = messaging::Service::default();
+    messaging.add_resource(nats_client).context("adding resource")?;
+    let mut vault = vault::Service::default();
+    vault.add_resource(secret_client).context("adding resource")?;
 
-    // let mut keyvalue = keyvalue::Service::default();
-    // keyvalue.add_resource(nats_client.clone()).context("adding resource")?;
-    // let mut messaging = messaging::Service::default();
-    // messaging.add_resource(nats_client).context("adding resource")?;
-    // let mut vault = vault::Service::default();
-    // vault.add_resource(secret_client).context("adding resource")?;
-
+    // register services with linker
     let mut rt = Runtime::from_file(wasm)?;
     rt.add_to_linker(&http).context("linking http")?;
     rt.add_to_linker(&otel).context("linking otel")?;
     rt.add_to_linker(&blobstore).context("linking blobstore")?;
-    // rt.add_to_linker(&keyvalue).context("linking keyvalue")?;
-    // rt.add_to_linker(&messaging).context("linking messaging")?;
-    // rt.add_to_linker(&vault).context("linking vault")?;
+    rt.add_to_linker(&keyvalue).context("linking keyvalue")?;
+    rt.add_to_linker(&messaging).context("linking messaging")?;
+    rt.add_to_linker(&vault).context("linking vault")?;
 
-    // servers
+    // runservers
     rt.run(http)?;
-    // rt.run(messaging)?;
+    rt.run(messaging)?;
 
     Ok(rt)
 }

@@ -55,10 +55,12 @@ pub trait Run {
     fn run(&self, pre: InstancePre<RunState>) -> impl Future<Output = Result<()>> + Send;
 }
 
-pub trait Resource<T> {
-    /// Set an attribute on the resource.
-    fn with_attribute(&mut self, _key: &str, _value: &str) {
-        // default implementation does nothing
+pub trait ResourceBuilder<T> {
+    fn new() -> Self;
+
+    /// Set a resource on the resource builder.
+    fn attribute(&mut self, _key: &str, _value: &str) -> &mut Self {
+        self
     }
 
     /// Get a reference to the requested resource.
@@ -66,5 +68,21 @@ pub trait Resource<T> {
     /// # Errors
     ///
     /// Returns an error if the resource is not available.
-    fn connect(&self) -> impl Future<Output = Result<T>> + Send;
+    fn connect(self) -> impl Future<Output = Result<T>> + Send;
 }
+
+// pub trait Service<T> {
+//     fn new() -> Self;
+
+//     /// Set a resource on the service.
+//     fn resource(&mut self, _key: &str, _value: &str) -> &mut Self {
+//         self
+//     }
+
+//     /// Register the service with the runtime Linker.
+//     ///
+//     /// # Errors
+//     ///
+//     /// Returns an linking error(s) from the service's generated bindings.
+//     fn add_to_linker(&self, linker: &mut Linker<RunState>) -> Result<()>;
+// }

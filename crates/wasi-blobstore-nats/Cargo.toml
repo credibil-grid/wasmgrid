@@ -14,12 +14,8 @@ workspace = true
 anyhow.workspace = true
 async-nats.workspace = true
 bytes.workspace = true
-chrono.workspace = true
 futures.workspace = true
-mongodb = { version = "3.2.5" }
 runtime.workspace = true
-serde.workspace = true
-serde_json.workspace = true
 time = "0.3.41"
 tokio.workspace = true
 tracing.workspace = true

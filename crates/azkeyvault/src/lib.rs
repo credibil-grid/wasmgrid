@@ -1,15 +1,15 @@
 //! Azure Key Vault Secrets Client.
-//!
 
 use std::collections::HashMap;
 use std::env;
+use std::pin::Pin;
 use std::sync::Arc;
 
 use anyhow::{Result, anyhow};
 use azure_core::credentials::{Secret, TokenCredential};
 use azure_identity::{ClientSecretCredential, DefaultAzureCredential};
 use azure_security_keyvault_secrets::SecretClient;
-use runtime::Resource;
+use runtime::ResourceBuilder;
 
 const DEF_KV_ADDR: &str = "https://kv-credibil-demo.vault.azure.net";
 
@@ -18,12 +18,19 @@ pub struct AzKeyVault {
     attributes: HashMap<String, String>,
 }
 
-impl Resource<SecretClient> for AzKeyVault {
-    fn with_attribute(&mut self, key: &str, value: &str) {
-        self.attributes.insert(key.to_string(), value.to_string());
+impl ResourceBuilder<SecretClient> for AzKeyVault {
+    fn new() -> Self {
+        Self {
+            attributes: HashMap::new(),
+        }
     }
 
-    async fn connect(&self) -> Result<SecretClient> {
+    fn attribute(&mut self, key: &str, value: &str) -> &mut Self {
+        self.attributes.insert(key.to_string(), value.to_string());
+        self
+    }
+
+    async fn connect(self) -> Result<SecretClient> {
         let addr = env::var("KV_ADDR").unwrap_or_else(|_| DEF_KV_ADDR.into());
 
         let credential: Arc<dyn TokenCredential> = if cfg!(debug_assertions) {
@@ -42,5 +49,14 @@ impl Resource<SecretClient> for AzKeyVault {
         tracing::info!("connected to azure keyvault");
 
         Ok(client)
+    }
+}
+
+impl IntoFuture for AzKeyVault {
+    type IntoFuture = Pin<Box<dyn Future<Output = Self::Output> + Send + 'static>>;
+    type Output = Result<SecretClient>;
+
+    fn into_future(self) -> Self::IntoFuture {
+        Box::pin(self.connect())
     }
 }
