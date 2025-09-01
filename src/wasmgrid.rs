@@ -1,11 +1,11 @@
 //! # Wasmgrid CLI
 
-use anyhow::{Context, Result, anyhow};
+use anyhow::{Result, anyhow};
 use azkeyvault::AzKeyVault;
 use dotenv::dotenv;
 use mongodb::MongoDb;
 use nats::Nats;
-use runtime::{AddResource, AddToLinker, Cli, Parser, ResourceBuilder, Runtime};
+use runtime::{AddResource, Cli, Command, Parser, ResourceBuilder, Runtime, ServiceBuilder};
 use tracing::instrument;
 use {
     wasi_blobstore_mdb as blobstore, wasi_http as http, wasi_keyvalue_nats as keyvalue,
@@ -27,61 +27,46 @@ pub async fn main() -> Result<()> {
         dotenv().ok();
     }
 
-    let wasm = Cli::parse().wasm;
-    let rt = Runtime::from_file(&wasm)?;
+    let cli = Cli::parse();
+    match cli.command {
+        Command::Run { wasm } => {
+            let rt = Runtime::from_file(&wasm)?;
+            start(rt).await?.shutdown().await
+        }
 
-    start(rt).await?.shutdown().await
+        #[cfg(feature = "compile")]
+        Command::Compile { wasm, output } => {
+            runtime::compile(&wasm, output).map_err(|e| anyhow!(e))
+        }
+    }
 }
 
 // Start the runtime for the specified wasm file.
 #[instrument]
 async fn start(rt: Runtime) -> Result<Runtime> {
-    tracing::info!("starting runtime");
-
     // create resources (in parallel)
-    let (Ok(secret_client), Ok(mongodb_client), Ok(nats_client)) =
-        tokio::join!(AzKeyVault::new(), MongoDb::new(), Nats::new())
+    let (Ok(mongodb_client), Ok(secret_client), Ok(nats_client)) =
+        tokio::join!(MongoDb::new(), AzKeyVault::new(), Nats::new())
     else {
         return Err(anyhow!("failed to create clients"));
     };
 
     // add resources to services
     let mut rt = rt;
+    otel::Service::new().add_to_linker(&mut rt.linker)?;
+    blobstore::Service::new().resource(mongodb_client)?.add_to_linker(&mut rt.linker)?;
+    keyvalue::Service::new().resource(nats_client.clone())?.add_to_linker(&mut rt.linker)?;
+    vault::Service::new().resource(secret_client)?.add_to_linker(&mut rt.linker)?;
+    let http = http::Service::new().add_to_linker(&mut rt.linker)?;
+    let messaging =
+        messaging::Service::new().resource(nats_client)?.add_to_linker(&mut rt.linker)?;
 
-    let http = http::Service::default();
-    http.add_to_linker(&mut rt.linker).context("linking http")?;
-
-    let otel = otel::Service::default();
-    otel.add_to_linker(&mut rt.linker).context("linking otel")?;
-
-    // blobstore::Service::new()
-    //    .add_resource(mongodb_client)
-    //    .add_to_linker(&mut rt.linker)?;
-
-    let mut blobstore = blobstore::Service::default();
-    blobstore.add_resource(mongodb_client).context("adding mongodb")?;
-    blobstore.add_to_linker(&mut rt.linker).context("linking blobstore")?;
-
-    let mut keyvalue = keyvalue::Service::default();
-    keyvalue.add_resource(nats_client.clone()).context("adding nats")?;
-    keyvalue.add_to_linker(&mut rt.linker).context("linking keyvalue")?;
-
-    let mut messaging = messaging::Service::default();
-    messaging.add_resource(nats_client).context("adding nats")?;
-    messaging.add_to_linker(&mut rt.linker).context("linking messaging")?;
-
-    let mut vault = vault::Service::default();
-    vault.add_resource(secret_client).context("adding azkeyvault")?;
-    vault.add_to_linker(&mut rt.linker).context("linking vault")?;
-
-    // run servers
     rt.run(http)?;
     rt.run(messaging)?;
 
     Ok(rt)
 }
 
-// mod generate {
 // runtime_macros::runtime!({
 //     resources: {
 //         nats: Nats,
@@ -108,4 +93,3 @@ async fn start(rt: Runtime) -> Result<Runtime> {
 //         }
 //     ]
 // });
-// }

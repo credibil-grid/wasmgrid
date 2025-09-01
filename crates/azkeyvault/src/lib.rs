@@ -10,10 +10,10 @@ use azure_core::credentials::{Secret, TokenCredential};
 use azure_identity::{ClientSecretCredential, DefaultAzureCredential};
 use azure_security_keyvault_secrets::SecretClient;
 use runtime::ResourceBuilder;
+use tracing::instrument;
 
 const DEF_KV_ADDR: &str = "https://kv-credibil-demo.vault.azure.net";
 
-#[derive(Default)]
 pub struct AzKeyVault {
     attributes: HashMap<String, String>,
 }
@@ -30,6 +30,7 @@ impl ResourceBuilder<SecretClient> for AzKeyVault {
         self
     }
 
+    #[instrument(name = "AzKeyVault::connect", skip(self))]
     async fn connect(self) -> Result<SecretClient> {
         let addr = env::var("KV_ADDR").unwrap_or_else(|_| DEF_KV_ADDR.into());
 

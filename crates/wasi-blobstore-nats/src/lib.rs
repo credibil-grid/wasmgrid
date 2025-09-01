@@ -28,7 +28,6 @@ mod generated {
     });
 }
 
-use std::marker::PhantomData;
 use std::sync::OnceLock;
 
 use anyhow::{Result, anyhow};
@@ -36,7 +35,7 @@ use async_nats::jetstream;
 use async_nats::jetstream::object_store::{Config, ObjectStore};
 use bytes::{Bytes, BytesMut};
 use futures::StreamExt;
-use runtime::{AddResource, AddToLinker, RunState};
+use runtime::{AddResource, RunState, ServiceBuilder};
 use time::OffsetDateTime;
 use tokio::io::AsyncReadExt;
 use wasmtime::component::{HasData, Linker, Resource, ResourceTable};
@@ -54,22 +53,25 @@ pub type StreamObjectNames = Vec<String>;
 
 static NATS_CLIENT: OnceLock<async_nats::Client> = OnceLock::new();
 
-#[derive(Default)]
-pub struct Service {
-    _priv: PhantomData<()>,
-}
+pub struct Service;
 
-impl AddResource<async_nats::Client> for Service {
-    fn add_resource(&mut self, resource: async_nats::Client) -> Result<()> {
-        NATS_CLIENT.set(resource).map_err(|_| anyhow!("client already set"))
+impl ServiceBuilder for Service {
+    fn new() -> Self {
+        Self
+    }
+
+    fn add_to_linker(self, l: &mut Linker<RunState>) -> anyhow::Result<Self> {
+        blobstore::add_to_linker::<_, Data>(l, Blobstore::new)?;
+        container::add_to_linker::<_, Data>(l, Blobstore::new)?;
+        types::add_to_linker::<_, Data>(l, Blobstore::new)?;
+        Ok(self)
     }
 }
 
-impl AddToLinker for Service {
-    fn add_to_linker(&self, l: &mut Linker<RunState>) -> anyhow::Result<()> {
-        blobstore::add_to_linker::<_, Data>(l, Blobstore::new)?;
-        container::add_to_linker::<_, Data>(l, Blobstore::new)?;
-        types::add_to_linker::<_, Data>(l, Blobstore::new)
+impl AddResource<async_nats::Client> for Service {
+    fn resource(self, resource: async_nats::Client) -> Result<Self> {
+        NATS_CLIENT.set(resource).map_err(|_| anyhow!("client already set"))?;
+        Ok(self)
     }
 }
 

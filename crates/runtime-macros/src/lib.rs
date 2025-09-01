@@ -1,5 +1,7 @@
 //! # Wasmgrid Runtime Macros
 
+#![allow(dead_code)]
+
 mod runtime;
 
 use proc_macro::TokenStream;

@@ -34,11 +34,10 @@ mod generated {
     });
 }
 
-use std::marker::PhantomData;
 use std::sync::OnceLock;
 
 use anyhow::{Result, anyhow};
-use runtime::{AddResource, AddToLinker, Run, RunState};
+use runtime::{AddResource, Run, RunState, ServiceBuilder};
 use wasmtime::component::{HasData, InstancePre, Linker};
 use wasmtime_wasi::ResourceTable;
 
@@ -46,23 +45,27 @@ use self::generated::wasi::messaging::{producer, request_reply, types};
 
 static NATS_CLIENT: OnceLock<async_nats::Client> = OnceLock::new();
 
-#[derive(Default, Debug)]
-pub struct Service {
-    _priv: PhantomData<()>,
-}
+#[derive(Debug)]
+pub struct Service;
 
-impl AddResource<async_nats::Client> for Service {
-    fn add_resource(&mut self, resource: async_nats::Client) -> anyhow::Result<()> {
-        NATS_CLIENT.set(resource).map_err(|_| anyhow!("client already set"))
+impl ServiceBuilder for Service {
+    fn new() -> Self {
+        Self
     }
-}
 
-impl AddToLinker for Service {
-    fn add_to_linker(&self, l: &mut Linker<RunState>) -> anyhow::Result<()> {
+    fn add_to_linker(self, l: &mut Linker<RunState>) -> anyhow::Result<Self> {
         // host::add_to_linker::<_, Data>(l, Messaging::new)?;
         producer::add_to_linker::<_, Data>(l, Messaging::new)?;
         request_reply::add_to_linker::<_, Data>(l, Messaging::new)?;
-        types::add_to_linker::<_, Data>(l, Messaging::new)
+        types::add_to_linker::<_, Data>(l, Messaging::new)?;
+        Ok(self)
+    }
+}
+
+impl AddResource<async_nats::Client> for Service {
+    fn resource(self, resource: async_nats::Client) -> anyhow::Result<Self> {
+        NATS_CLIENT.set(resource).map_err(|_| anyhow!("client already set"))?;
+        Ok(self)
     }
 }
 

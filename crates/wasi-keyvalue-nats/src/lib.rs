@@ -27,7 +27,6 @@ mod generated {
     });
 }
 
-use std::marker::PhantomData;
 use std::sync::OnceLock;
 use std::time::Duration;
 
@@ -36,7 +35,7 @@ use async_nats::jetstream;
 use async_nats::jetstream::kv::{Config, Store};
 use base64ct::{Base64UrlUnpadded, Encoding};
 use futures::TryStreamExt;
-use runtime::{AddResource, AddToLinker, RunState};
+use runtime::{AddResource, RunState, ServiceBuilder};
 use wasmtime::component::{HasData, Linker, Resource, ResourceTableError};
 use wasmtime_wasi::ResourceTable;
 
@@ -57,22 +56,25 @@ pub struct Cas {
 
 static NATS_CLIENT: OnceLock<async_nats::Client> = OnceLock::new();
 
-#[derive(Default)]
-pub struct Service {
-    _priv: PhantomData<()>,
-}
+pub struct Service;
 
-impl AddResource<async_nats::Client> for Service {
-    fn add_resource(&mut self, resource: async_nats::Client) -> anyhow::Result<()> {
-        NATS_CLIENT.set(resource).map_err(|_| anyhow!("client already set"))
+impl ServiceBuilder for Service {
+    fn new() -> Self {
+        Self
+    }
+
+    fn add_to_linker(self, l: &mut Linker<RunState>) -> anyhow::Result<Self> {
+        store::add_to_linker::<_, Data>(l, Keyvalue::new)?;
+        atomics::add_to_linker::<_, Data>(l, Keyvalue::new)?;
+        batch::add_to_linker::<_, Data>(l, Keyvalue::new)?;
+        Ok(self)
     }
 }
 
-impl AddToLinker for Service {
-    fn add_to_linker(&self, l: &mut Linker<RunState>) -> anyhow::Result<()> {
-        store::add_to_linker::<_, Data>(l, Keyvalue::new)?;
-        atomics::add_to_linker::<_, Data>(l, Keyvalue::new)?;
-        batch::add_to_linker::<_, Data>(l, Keyvalue::new)
+impl AddResource<async_nats::Client> for Service {
+    fn resource(self, resource: async_nats::Client) -> anyhow::Result<Self> {
+        NATS_CLIENT.set(resource).map_err(|_| anyhow!("client already set"))?;
+        Ok(self)
     }
 }
 

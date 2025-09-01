@@ -7,8 +7,8 @@ use std::pin::Pin;
 use anyhow::{Context, Result, anyhow};
 use mongodb::Client;
 use runtime::ResourceBuilder;
+use tracing::instrument;
 
-#[derive(Default)]
 pub struct MongoDb {
     attributes: HashMap<String, String>,
 }
@@ -25,6 +25,7 @@ impl ResourceBuilder<Client> for MongoDb {
         self
     }
 
+    #[instrument(name = "MongoDb::connect", skip(self))]
     async fn connect(self) -> Result<Client> {
         let uri = env::var("MONGODB_URI").context("fetching MONGODB_URI env var")?;
 

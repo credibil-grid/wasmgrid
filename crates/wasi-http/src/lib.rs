@@ -5,7 +5,6 @@
 
 use std::clone::Clone;
 use std::env;
-use std::marker::PhantomData;
 
 use anyhow::{Result, anyhow};
 use http::uri::{PathAndQuery, Uri};
@@ -14,7 +13,7 @@ use hyper::header::{FORWARDED, HOST};
 use hyper::server::conn::http1;
 use hyper::service::service_fn;
 use hyper::{Request, Response};
-use runtime::{AddToLinker, Run, RunState};
+use runtime::{Run, RunState, ServiceBuilder};
 use tokio::net::TcpListener;
 use tokio::sync::oneshot;
 use tracing::{Instrument, info_span};
@@ -28,16 +27,18 @@ use wasmtime_wasi_http::io::TokioIo;
 
 const DEF_HTTP_ADDR: &str = "0.0.0.0:8080";
 
-#[derive(Default, Debug)]
-pub struct Service {
-    _priv: PhantomData<()>,
-}
+#[derive(Debug)]
+pub struct Service;
 
-impl AddToLinker for Service {
-    fn add_to_linker(&self, linker: &mut Linker<RunState>) -> Result<()> {
+impl ServiceBuilder for Service {
+    fn new() -> Self {
+        Self
+    }
+
+    fn add_to_linker(self, linker: &mut Linker<RunState>) -> Result<Self> {
         wasmtime_wasi_http::add_only_http_to_linker_async(linker)?;
         tracing::trace!("added to linker");
-        Ok(())
+        Ok(self)
     }
 }
 

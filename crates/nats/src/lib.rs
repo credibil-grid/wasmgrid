@@ -8,10 +8,10 @@ use std::sync::Arc;
 use anyhow::{Result, anyhow};
 use async_nats::{AuthError, Client, ConnectOptions};
 use runtime::ResourceBuilder;
+use tracing::instrument;
 
 const DEF_NATS_ADDR: &str = "demo.nats.io";
 
-#[derive(Default)]
 pub struct Nats {
     attributes: HashMap<String, String>,
 }
@@ -28,6 +28,7 @@ impl ResourceBuilder<Client> for Nats {
         self
     }
 
+    #[instrument(name = "Nats::connect", skip(self))]
     async fn connect(self) -> Result<Client> {
         let addr = env::var("NATS_ADDR").unwrap_or_else(|_| DEF_NATS_ADDR.into());
         let jwt = env::var("NATS_JWT").ok();

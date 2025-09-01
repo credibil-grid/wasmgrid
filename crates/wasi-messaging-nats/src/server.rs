@@ -33,13 +33,7 @@ pub async fn subscribe(channels: Vec<String>, pre: MessagingPre<RunState>) -> an
     tracing::trace!("subscribing to messaging channels: {channels:?}");
 
     let mut subscribers = vec![];
-    let client = match crate::nats() {
-        Ok(client) => client,
-        Err(e) => {
-            tracing::error!("failed to get nats client for subscribing: {e}");
-            return Err(e);
-        }
-    };
+    let client = crate::nats()?;
 
     for ch in channels {
         tracing::debug!("subscribing to {ch}");

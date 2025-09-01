@@ -31,7 +31,7 @@ use anyhow::Result;
 use credibil_otel::init;
 use opentelemetry::{Array, Key, Value};
 use opentelemetry_sdk::Resource;
-use runtime::{AddToLinker, RunState};
+use runtime::{RunState, ServiceBuilder};
 use wasmtime::component::{HasData, Linker};
 
 use self::generated::wasi::otel as wasi_otel;
@@ -41,24 +41,21 @@ const DEF_HTTP_ADDR: &str = "http://localhost:4318";
 
 static HTTP_CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
 
-pub struct Service {
-    _priv: PhantomData<()>,
-}
+pub struct Service;
 
-impl Default for Service {
-    fn default() -> Self {
+impl ServiceBuilder for Service {
+    fn new() -> Self {
         let client = reqwest::Client::new();
         let _ = HTTP_CLIENT.set(client);
-        Self { _priv: PhantomData }
+        Self
     }
-}
 
-impl AddToLinker for Service {
-    fn add_to_linker(&self, l: &mut Linker<RunState>) -> Result<()> {
+    fn add_to_linker(self, l: &mut Linker<RunState>) -> Result<Self> {
         wasi_otel::tracing::add_to_linker::<_, Data>(l, Otel::new)?;
         wasi_otel::metrics::add_to_linker::<_, Data>(l, Otel::new)?;
         wasi_otel::types::add_to_linker::<_, Data>(l, Otel::new)?;
-        wasi_otel::resource::add_to_linker::<_, Data>(l, Otel::new)
+        wasi_otel::resource::add_to_linker::<_, Data>(l, Otel::new)?;
+        Ok(self)
     }
 }
 
