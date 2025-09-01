@@ -60,9 +60,9 @@ services:
   #   depends_on:
   #     - nats
 
-  # nats:
-  #   image: nats:latest
-  #   platform: linux/arm64
-  #   ports:
-  #     - 4222:4222
-  #   command: ["-js"]
+  nats:
+    image: nats:latest
+    platform: linux/arm64
+    ports:
+      - 4222:4222
+    command: ["-js"]

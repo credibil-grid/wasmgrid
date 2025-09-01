@@ -1,22 +1,31 @@
 //! # WebAssembly Runtime
 
-use std::path::PathBuf;
+use std::env;
+use std::fmt::Debug;
+use std::path::{Path, PathBuf};
 
-use anyhow::Result;
+use anyhow::{Context, Result, anyhow};
 use cfg_if::cfg_if;
+use credibil_otel::Telemetry;
 use wasmtime::component::{Component, Linker};
 use wasmtime::{Config, Engine};
-use wasmtime_wasi::WasiView;
 
-use crate::service::{Linkable, Runnable};
+use crate::state::RunState;
+use crate::traits::Run;
 
 /// Runtime for a wasm component.
-pub struct Runtime<T: 'static> {
+pub struct Runtime {
     pub component: Component,
-    pub linker: Linker<T>,
+    pub linker: Linker<RunState>,
 }
 
-impl<T: WasiView + 'static> Runtime<T> {
+impl Debug for Runtime {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Runtime").finish()
+    }
+}
+
+impl Runtime {
     /// Create a new Runtime instance from the provided file reference.
     ///
     /// The file can either be a serialized (pre-compiled) wasmtime `Component`
@@ -29,14 +38,16 @@ impl<T: WasiView + 'static> Runtime<T> {
     pub fn from_file(file: &PathBuf) -> Result<Self> {
         tracing::trace!("initializing from file");
 
+        Self::init_telemetry(file)?;
+
         let mut config = Config::new();
         config.async_support(true);
         let engine = Engine::new(&config)?;
 
-        // The most efficient solution is to enable Config::epoch_interruption
-        // in conjunction with crate::Store::epoch_deadline_async_yield_and_update.
-        // Coupled with periodic calls to crate::Engine::increment_epoch this will
-        // cause executing WebAssembly to periodically yield back according to the
+        // TODO: cause executing WebAssembly to periodically yield
+        //  1. enable `Config::epoch_interruption`
+        //  2. Set `Store::epoch_deadline_async_yield_and_update`
+        //  3. Call `Engine::increment_epoch` periodically
 
         // file can be a serialized component or a wasm file
         cfg_if! {
@@ -53,7 +64,7 @@ impl<T: WasiView + 'static> Runtime<T> {
         }
 
         // resolve dependencies
-        let mut linker: Linker<T> = Linker::new(&engine);
+        let mut linker: Linker<RunState> = Linker::new(&engine);
         wasmtime_wasi::p2::add_to_linker_async(&mut linker)?;
 
         tracing::trace!("initialized");
@@ -85,28 +96,19 @@ impl<T: WasiView + 'static> Runtime<T> {
         Self::from_file(binary)
     }
 
-    /// Add each service's dependency linker.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the service cannot be added to the linker.
-    pub fn link(&mut self, service: &impl Linkable<Ctx = T>) -> Result<()> {
-        service.add_to_linker(&mut self.linker)
-    }
-
-    /// Initiate the service on it's own thread.
+    /// Instantiate a service on it's own thread.
     ///
     /// # Errors
     ///
     /// TODO: document errors
-    pub fn run<R: Send + 'static>(
-        &mut self, service: impl Runnable<Ctx = T, Resources = R> + 'static + std::fmt::Debug,
-        resources: R,
-    ) -> Result<()> {
+    pub fn run<S>(&mut self, service: S) -> Result<()>
+    where
+        S: Run + Debug + Send + 'static,
+    {
         let instance_pre = self.linker.instantiate_pre(&self.component)?;
         tokio::spawn(async move {
             tracing::debug!("starting {service:?} service");
-            if let Err(e) = service.run(instance_pre, resources).await {
+            if let Err(e) = service.run(instance_pre).await {
                 tracing::error!("error running {service:?} service: {e}");
             }
         });
@@ -120,5 +122,19 @@ impl<T: WasiView + 'static> Runtime<T> {
     /// Returns an error if there is an issue processing the shutdown signal.
     pub async fn shutdown(&self) -> Result<()> {
         Ok(tokio::signal::ctrl_c().await?)
+    }
+
+    fn init_telemetry(file: &Path) -> Result<()> {
+        let file_name = file.file_name().and_then(|s| s.to_str()).unwrap_or("unknown");
+        let Some((prefix, _)) = file_name.split_once('.') else {
+            return Err(anyhow!("file name does not have an extension"));
+        };
+
+        // initialize telemetry
+        let mut builder = Telemetry::new(prefix);
+        if let Ok(endpoint) = env::var("OTEL_GRPC_ADDR") {
+            builder = builder.endpoint(endpoint);
+        }
+        builder.build().context("initializing telemetry")
     }
 }

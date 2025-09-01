@@ -15,7 +15,9 @@ compile = ["wasmtime/cranelift"]
 anyhow.workspace = true
 cfg-if.workspace = true
 clap = { version = "4.5.46", features = ["derive"] }
+credibil-otel.workspace = true
 tokio = { workspace = true, features = ["signal"] }
 tracing.workspace = true
 wasmtime = { workspace = true, features = ["runtime"] }
 wasmtime-wasi.workspace = true
+wasmtime-wasi-http.workspace = true

@@ -7,6 +7,8 @@ mod error;
 mod router;
 mod uri;
 
+pub use axum;
+
 pub use self::client::*;
 pub use self::error::*;
 pub use self::router::serve;

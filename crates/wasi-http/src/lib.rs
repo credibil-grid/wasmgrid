@@ -1,13 +1,10 @@
-//! # WebAssembly Runtime
-
 //! # WASI Http Service
 //!
 //! This module implements a runtime service for `wasi:http`
-//! (<https://github.com/WebAssembly/sdk-http>).
+//! (<https://github.com/WebAssembly/wasi-http>).
 
 use std::clone::Clone;
 use std::env;
-use std::fmt::{self, Debug, Formatter};
 
 use anyhow::{Result, anyhow};
 use http::uri::{PathAndQuery, Uri};
@@ -16,12 +13,10 @@ use hyper::header::{FORWARDED, HOST};
 use hyper::server::conn::http1;
 use hyper::service::service_fn;
 use hyper::{Request, Response};
-use resources::Resources;
-use runtime::{Linkable, Runnable};
+use runtime::{Run, RunState, ServiceBuilder};
 use tokio::net::TcpListener;
 use tokio::sync::oneshot;
 use tracing::{Instrument, info_span};
-use wasi_core::Ctx;
 use wasmtime::Store;
 use wasmtime::component::{InstancePre, Linker};
 use wasmtime_wasi_http::WasiHttpView;
@@ -32,29 +27,24 @@ use wasmtime_wasi_http::io::TokioIo;
 
 const DEF_HTTP_ADDR: &str = "0.0.0.0:8080";
 
+#[derive(Debug)]
 pub struct Service;
 
-impl Linkable for Service {
-    type Ctx = Ctx;
+impl ServiceBuilder for Service {
+    fn new() -> Self {
+        Self
+    }
 
-    fn add_to_linker(&self, linker: &mut Linker<Self::Ctx>) -> Result<()> {
+    fn add_to_linker(self, linker: &mut Linker<RunState>) -> Result<Self> {
         wasmtime_wasi_http::add_only_http_to_linker_async(linker)?;
         tracing::trace!("added to linker");
-        Ok(())
+        Ok(self)
     }
 }
 
-impl Debug for Service {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        f.debug_struct("http").finish()
-    }
-}
-
-impl Runnable for Service {
-    type Resources = Resources;
-
+impl Run for Service {
     /// Provide http proxy service the specified wasm component.
-    async fn run(&self, pre: InstancePre<Self::Ctx>, resources: Self::Resources) -> Result<()> {
+    async fn run(&self, pre: InstancePre<RunState>) -> Result<()> {
         // bail if server is not required
         let component_type = pre.component().component_type();
         let mut exports = component_type.imports(pre.engine());
@@ -67,16 +57,15 @@ impl Runnable for Service {
         let listener = TcpListener::bind(&addr).await?;
         tracing::info!("http server listening on: {}", listener.local_addr()?);
 
-        let svc = Svc {
+        let handler = Handler {
             proxy_pre: ProxyPre::new(pre.clone())?,
-            resources: resources.clone(),
         };
 
         // listen for requests until terminated
         loop {
             let (stream, _) = listener.accept().await?;
             let io = TokioIo::new(stream);
-            let svc = svc.clone();
+            let handler = handler.clone();
 
             tokio::spawn(async move {
                 let mut http1 = http1::Builder::new();
@@ -86,7 +75,7 @@ impl Runnable for Service {
                     .serve_connection(
                         io,
                         service_fn(|request| {
-                            svc.handle(request).instrument(info_span!("http-request"))
+                            handler.handle(request).instrument(info_span!("http-request"))
                         }),
                     )
                     .await
@@ -99,22 +88,17 @@ impl Runnable for Service {
 }
 
 #[derive(Clone)]
-struct Svc {
-    proxy_pre: ProxyPre<Ctx>,
-    resources: Resources,
+struct Handler {
+    proxy_pre: ProxyPre<RunState>,
 }
 
-impl Svc {
+impl Handler {
     // Forward request to the wasm Guest.
     async fn handle(&self, request: Request<Incoming>) -> Result<Response<HyperOutgoingBody>> {
         tracing::info!("handling request: {request:?}");
 
         // prepare wasmtime http request and response
-        let mut store = Store::new(
-            self.proxy_pre.engine(),
-            Ctx::new(self.resources.clone(), self.proxy_pre.instance_pre().clone()),
-        );
-        store.limiter(|t| &mut t.limits);
+        let mut store = Store::new(self.proxy_pre.engine(), RunState::new());
 
         let (request, scheme) = prepare_request(request)?;
         tracing::trace!("sending request: {request:#?}");

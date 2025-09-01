@@ -2,11 +2,16 @@
 
 use std::path::PathBuf;
 
-pub use clap::{Parser, Subcommand};
+pub use clap::Parser;
+use clap::Subcommand;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
 pub struct Cli {
+    /// The path to the wasm file to run. The file can either be a
+    /// serialized (pre-compiled) wasmtime `Component` or standard
+    /// WASI component
+    // pub wasm: PathBuf,
     #[command(subcommand)]
     pub command: Command,
 }
@@ -16,8 +21,8 @@ pub enum Command {
     /// Run the specified wasm guest.
     Run {
         /// The path to the wasm file to run. The file can either be a
-        /// serialized (pre-compiled) wasmtime `Component` or a standard
-        /// `wasm32-wasip2` wasm file.
+        /// serialized (pre-compiled) wasmtime `Component` or standard
+        /// WASI component
         wasm: PathBuf,
     },
     /// Compile the specified wasm32-wasip2 component.

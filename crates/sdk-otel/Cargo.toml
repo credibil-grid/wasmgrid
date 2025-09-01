@@ -17,17 +17,17 @@ tracing = ["dep:tracing-opentelemetry", "dep:tracing-subscriber"]
 
 [dependencies]
 anyhow.workspace = true
-cfg-if = "1.0.3"
-futures = "0.3.31"
-opentelemetry = "0.30.0"
-opentelemetry_sdk = "0.30.0"
+cfg-if.workspace = true
+futures.workspace = true
+opentelemetry.workspace = true
+opentelemetry_sdk.workspace = true
 sdk-http.workspace = true
 sdk-otel-attr = { path = "../sdk-otel-attr" }
-wit-bindgen = "0.45.0"
+wit-bindgen.workspace = true
 
 # tracing
 tracing.workspace = true
-tracing-opentelemetry = { version = "0.31.0", optional = true, features = ["metrics_gauge_unstable"] }
+tracing-opentelemetry = { workspace = true, features = ["metrics_gauge_unstable"], optional = true }
 tracing-subscriber = { workspace = true, features = ["env-filter"], optional = true }
 
 # host-export dependencies

@@ -25,13 +25,13 @@ mod generated {
 
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
+use std::sync::OnceLock;
 
 use anyhow::Result;
 use credibil_otel::init;
 use opentelemetry::{Array, Key, Value};
 use opentelemetry_sdk::Resource;
-use runtime::Linkable;
-use wasi_core::Ctx;
+use runtime::{RunState, ServiceBuilder};
 use wasmtime::component::{HasData, Linker};
 
 use self::generated::wasi::otel as wasi_otel;
@@ -39,17 +39,23 @@ use self::generated::wasi::otel::types;
 
 const DEF_HTTP_ADDR: &str = "http://localhost:4318";
 
-pub struct Otel<'a> {
-    http_client: reqwest::Client,
-    _phantom: PhantomData<&'a ()>,
-}
+static HTTP_CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
 
-impl Otel<'_> {
-    fn new(_: &mut Ctx) -> Otel<'_> {
-        Otel {
-            http_client: reqwest::Client::new(),
-            _phantom: PhantomData,
-        }
+pub struct Service;
+
+impl ServiceBuilder for Service {
+    fn new() -> Self {
+        let client = reqwest::Client::new();
+        let _ = HTTP_CLIENT.set(client);
+        Self
+    }
+
+    fn add_to_linker(self, l: &mut Linker<RunState>) -> Result<Self> {
+        wasi_otel::tracing::add_to_linker::<_, Data>(l, Otel::new)?;
+        wasi_otel::metrics::add_to_linker::<_, Data>(l, Otel::new)?;
+        wasi_otel::types::add_to_linker::<_, Data>(l, Otel::new)?;
+        wasi_otel::resource::add_to_linker::<_, Data>(l, Otel::new)?;
+        Ok(self)
     }
 }
 
@@ -58,17 +64,17 @@ impl HasData for Data {
     type Data<'a> = Otel<'a>;
 }
 
-pub struct Service;
+struct Otel<'a> {
+    http_client: &'a reqwest::Client,
+    _phantom: PhantomData<&'a ()>,
+}
 
-impl Linkable for Service {
-    type Ctx = Ctx;
-
-    // Add the `wasi-otel` world's interfaces to a [`Linker`]
-    fn add_to_linker(&self, linker: &mut Linker<Self::Ctx>) -> Result<()> {
-        wasi_otel::tracing::add_to_linker::<_, Data>(linker, Otel::new)?;
-        wasi_otel::metrics::add_to_linker::<_, Data>(linker, Otel::new)?;
-        wasi_otel::types::add_to_linker::<_, Data>(linker, Otel::new)?;
-        wasi_otel::resource::add_to_linker::<_, Data>(linker, Otel::new)
+impl Otel<'_> {
+    fn new(_: &mut RunState) -> Self {
+        Otel {
+            http_client: HTTP_CLIENT.wait(),
+            _phantom: PhantomData,
+        }
     }
 }
 

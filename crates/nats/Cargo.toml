@@ -1,6 +1,5 @@
 [package]
-name = "wasi-http"
-description = "Wasm http service"
+name = "nats"
 authors.workspace = true
 edition.workspace = true
 version = "0.1.0"
@@ -8,14 +7,9 @@ version = "0.1.0"
 [lints]
 workspace = true
 
-[features]
-
 [dependencies]
 anyhow.workspace = true
-http.workspace = true
-hyper = "1.7.0"
+async-nats.workspace = true
+nkeys = { version = "0.4.5" }
 runtime.workspace = true
-tokio.workspace = true
 tracing.workspace = true
-wasmtime.workspace = true
-wasmtime-wasi-http.workspace = true

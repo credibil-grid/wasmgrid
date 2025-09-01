@@ -1,6 +1,6 @@
 [package]
-name = "wasi-http"
-description = "Wasm http service"
+name = "wasi-blobstore-nats"
+description = "WASI blobstore service using NATS"
 authors.workspace = true
 edition.workspace = true
 version = "0.1.0"
@@ -12,10 +12,12 @@ workspace = true
 
 [dependencies]
 anyhow.workspace = true
-http.workspace = true
-hyper = "1.7.0"
+async-nats.workspace = true
+bytes.workspace = true
+futures.workspace = true
 runtime.workspace = true
+time.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 wasmtime.workspace = true
-wasmtime-wasi-http.workspace = true
+wasmtime-wasi.workspace = true
