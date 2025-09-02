@@ -38,7 +38,7 @@ pub fn init() -> Result<Shutdown> {
     #[cfg(feature = "tracing")]
     let tracing_provider = tracing::init(resource.clone())?;
     #[cfg(feature = "metrics")]
-    let metrics_provider = metrics::init(resource)?;
+    let meter_provider = metrics::init(resource)?;
 
     // create subscriber layers
     let filter_layer = EnvFilter::from_default_env()
@@ -47,7 +47,7 @@ pub fn init() -> Result<Shutdown> {
         .add_directive("tonic=off".parse()?);
     // let format = format_layer().with_span_events(FmtSpan::NEW | FmtSpan::CLOSE);
     let tracing_layer = tracing_layer().with_tracer(tracing_provider.tracer("global"));
-    let metrics_layer = MetricsLayer::new(metrics_provider.clone());
+    let metrics_layer = MetricsLayer::new(meter_provider.clone());
 
     // set global default subscriber
     Registry::default().with(filter_layer).with(tracing_layer).with(metrics_layer).try_init()?;
@@ -56,7 +56,7 @@ pub fn init() -> Result<Shutdown> {
         #[cfg(feature = "tracing")]
         tracing: tracing_provider,
         #[cfg(feature = "metrics")]
-        metrics: metrics_provider,
+        metrics: meter_provider,
         #[cfg(feature = "tracing")]
         _context: Some(tracing::context()),
     })

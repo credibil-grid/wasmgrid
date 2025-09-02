@@ -10,7 +10,7 @@ Run the example guest:
 
 ```bash
 # compile and run
-cargo run -- ./target/wasm32-wasip2/release/http.wasm
+cargo run -- run ./target/wasm32-wasip2/release/http.wasm
 
 # pre-compile
 cargo run -- compile  ./target/wasm32-wasip2/release/http.wasm --output ./http.bin
