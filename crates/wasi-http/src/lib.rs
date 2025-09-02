@@ -44,14 +44,12 @@ impl ServiceBuilder for Service {
 }
 
 impl Run for Service {
-    type Future = BoxFuture<'static, Result<()>>;
-
     fn register(self, rt: &mut Runtime) {
         rt.register(self);
     }
 
     /// Provide http proxy service the specified wasm component.
-    fn run(&self, pre: InstancePre<RunState>) -> Self::Future {
+    fn run(&self, pre: InstancePre<RunState>) -> BoxFuture<'static, Result<()>> {
         Self::run(pre).boxed()
     }
 }

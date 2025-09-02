@@ -7,7 +7,6 @@ use std::path::{Path, PathBuf};
 use anyhow::{Context, Result, anyhow};
 use cfg_if::cfg_if;
 use credibil_otel::Telemetry;
-use futures::future::BoxFuture;
 use wasmtime::component::{Component, Linker};
 use wasmtime::{Config, Engine};
 
@@ -18,7 +17,7 @@ use crate::traits::Run;
 pub struct Runtime {
     pub component: Component,
     pub linker: Linker<RunState>,
-    services: Vec<Box<dyn Run<Future = BoxFuture<'static, Result<()>>>>>,
+    services: Vec<Box<dyn Run>>,
 }
 
 impl Debug for Runtime {
@@ -103,10 +102,7 @@ impl Runtime {
     }
 
     /// Register a runnable service with the runtime.
-    pub fn register<S>(&mut self, service: S)
-    where
-        S: Run<Future = BoxFuture<'static, Result<()>>> + 'static,
-    {
+    pub fn register<S: Run + 'static>(&mut self, service: S) {
         self.services.push(Box::new(service));
     }
 

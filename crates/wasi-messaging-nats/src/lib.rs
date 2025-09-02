@@ -71,13 +71,11 @@ impl AddResource<async_nats::Client> for Service {
 }
 
 impl Run for Service {
-    type Future = BoxFuture<'static, Result<()>>;
-
     fn register(self, rt: &mut Runtime) {
         rt.register(self);
     }
 
-    fn run(&self, pre: InstancePre<RunState>) -> Self::Future {
+    fn run(&self, pre: InstancePre<RunState>) -> BoxFuture<'static, Result<()>> {
         server::run(pre).boxed()
     }
 }

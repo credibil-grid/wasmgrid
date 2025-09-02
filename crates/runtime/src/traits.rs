@@ -8,6 +8,7 @@
 use std::fmt::Debug;
 
 use anyhow::Result;
+use futures::future::BoxFuture;
 use wasmtime::component::{InstancePre, Linker};
 
 use crate::runtime::Runtime;
@@ -73,11 +74,9 @@ pub trait AddResource<T>: Sized {
 /// The `Run` trait is implemented by services that instantiate (or run)
 /// components. For example, an `http` or `messaging` service.
 pub trait Run: Debug + Send + Sync {
-    type Future: Future<Output = Result<()>>;
-
     /// Register the service as runnable with the runtime.
     fn register(self, rt: &mut Runtime);
 
     /// Run the service.
-    fn run(&self, pre: InstancePre<RunState>) -> Self::Future;
+    fn run(&self, pre: InstancePre<RunState>) -> BoxFuture<'static, Result<()>>;
 }
