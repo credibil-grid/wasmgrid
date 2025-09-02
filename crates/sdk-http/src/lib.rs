@@ -1,6 +1,6 @@
 //! # HTTP SDK
 //!
-//! WASM component (guest) HTTP SDK.
+//! Wasm component (guest) HTTP SDK.
 
 mod client;
 mod error;

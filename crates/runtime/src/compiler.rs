@@ -18,7 +18,7 @@ use wasmtime::{Config, Engine};
 ///
 /// # Errors
 ///
-/// Returns an error if the WASM component cannot be loaded from the specified
+/// Returns an error if the wasm component cannot be loaded from the specified
 /// path, cannot be compiled, or cannot be serialized to the specified output
 /// directory.
 pub fn compile(wasm: &PathBuf, output: Option<PathBuf>) -> Result<()> {

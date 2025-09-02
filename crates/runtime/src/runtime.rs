@@ -118,7 +118,7 @@ impl Runtime {
     /// # Errors
     ///
     /// Returns an error if there is an issue processing the shutdown signal.
-    pub async fn run(self) -> Result<()> {
+    pub async fn serve(self) -> Result<()> {
         let instance_pre = self.linker.instantiate_pre(&self.component)?;
 
         for service in self.services {

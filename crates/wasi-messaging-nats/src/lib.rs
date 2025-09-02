@@ -37,6 +37,7 @@ mod generated {
 use std::sync::OnceLock;
 
 use anyhow::{Result, anyhow};
+use futures::future::{BoxFuture, FutureExt};
 use runtime::{AddResource, Run, RunState, Runtime, ServiceBuilder};
 use wasmtime::component::{HasData, InstancePre, Linker};
 use wasmtime_wasi::ResourceTable;
@@ -68,8 +69,6 @@ impl AddResource<async_nats::Client> for Service {
         Ok(self)
     }
 }
-
-use futures::future::{BoxFuture, FutureExt};
 
 impl Run for Service {
     type Future = BoxFuture<'static, Result<()>>;

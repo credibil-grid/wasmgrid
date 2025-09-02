@@ -1,6 +1,6 @@
 //! # OpenTelemetry SDK
 //!
-//! WASM component (guest) OpenTelemetry SDK.
+//! Wasm component (guest) OpenTelemetry SDK.
 
 mod generated {
     #![allow(clippy::collection_is_never_read)]

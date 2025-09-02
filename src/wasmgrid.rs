@@ -1,5 +1,7 @@
 //! # Wasmgrid CLI
 
+use std::path::PathBuf;
+
 use anyhow::{Result, anyhow};
 use azkeyvault::AzKeyVault;
 use dotenv::dotenv;
@@ -16,30 +18,23 @@ use tracing::instrument;
 ///
 /// # Panics
 ///
-/// This function will panic if the environment variables are not set.
+/// Panics if the runtime cannot be initialized.
 #[tokio::main]
 pub async fn main() -> Result<()> {
     if cfg!(debug_assertions) {
         dotenv().ok();
     }
 
-    let cli = Cli::parse();
-    match cli.command {
-        Command::Run { wasm } => {
-            let rt = Runtime::from_file(&wasm)?;
-            init(rt).await?.run().await
-        }
-
+    match Cli::parse().command {
+        Command::Run { wasm } => init_runtime(wasm).await,
         #[cfg(feature = "compile")]
-        Command::Compile { wasm, output } => {
-            runtime::compile(&wasm, output).map_err(|e| anyhow!(e))
-        }
+        Command::Compile { wasm, output } => runtime::compile(&wasm, output),
     }
 }
 
 // Start the runtime for the specified wasm file.
-#[instrument(skip(rt))]
-async fn init(rt: Runtime) -> Result<Runtime> {
+#[instrument(skip(wasm))]
+async fn init_runtime(wasm: PathBuf) -> Result<()> {
     // create resources (in parallel)
     let (Ok(mongodb_client), Ok(secret_client), Ok(nats_client)) =
         tokio::join!(MongoDb::new(), AzKeyVault::new(), Nats::new())
@@ -47,9 +42,10 @@ async fn init(rt: Runtime) -> Result<Runtime> {
         return Err(anyhow!("failed to create clients"));
     };
 
-    // initialize services
-    let mut rt = rt;
+    // create runtime for wasm component
+    let mut rt = Runtime::from_file(&wasm)?;
 
+    // initialize services
     wasi_otel::Service::new().add_to_linker(&mut rt.linker)?;
     wasi_blobstore_mdb::Service::new().resource(mongodb_client)?.add_to_linker(&mut rt.linker)?;
     wasi_keyvalue_nats::Service::new()
@@ -62,9 +58,11 @@ async fn init(rt: Runtime) -> Result<Runtime> {
         .add_to_linker(&mut rt.linker)?
         .register(&mut rt);
 
-    Ok(rt)
+    // run and wait for shutdown
+    rt.serve().await
 }
 
+// Candidate macro or configuration
 // runtime_macros::runtime!({
 //     resources: {
 //         mongo: MongoDb,
