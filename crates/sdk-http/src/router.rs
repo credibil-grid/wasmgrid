@@ -126,10 +126,9 @@ impl TryFrom<Request> for HttpRequest<Body> {
 
         let mut http_req = HttpRequest::builder().method(method.as_str()).uri(uri).body(body)?;
         for (key, value) in headers.entries() {
-            http_req.headers_mut().insert(
-                HeaderName::from_str(&key).unwrap(),
-                HeaderValue::from_bytes(&value).unwrap(),
-            );
+            let Ok(name) = HeaderName::from_str(&key) else { continue };
+            let Ok(value) = HeaderValue::from_bytes(&value) else { continue };
+            http_req.headers_mut().insert(name, value);
         }
 
         Ok(http_req)

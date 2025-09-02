@@ -60,7 +60,9 @@ impl SpanProcessor for Processor {
         if !span.span_context.is_sampled() {
             return;
         }
-        self.spans.lock().expect("should lock").push(span);
+        if let Ok(mut guard) = self.spans.lock() {
+            guard.push(span);
+        }
     }
 
     fn force_flush(&self) -> OTelSdkResult {

@@ -12,6 +12,7 @@ workspace = true
 
 [dependencies]
 anyhow.workspace = true
+futures.workspace = true
 http.workspace = true
 hyper = "1.7.0"
 runtime.workspace = true

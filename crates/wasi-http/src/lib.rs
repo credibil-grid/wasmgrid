@@ -7,13 +7,14 @@ use std::clone::Clone;
 use std::env;
 
 use anyhow::{Result, anyhow};
+use futures::future::{BoxFuture, FutureExt};
 use http::uri::{PathAndQuery, Uri};
 use hyper::body::Incoming;
 use hyper::header::{FORWARDED, HOST};
 use hyper::server::conn::http1;
 use hyper::service::service_fn;
 use hyper::{Request, Response};
-use runtime::{Run, RunState, ServiceBuilder};
+use runtime::{Run, RunState, Runtime, ServiceBuilder};
 use tokio::net::TcpListener;
 use tokio::sync::oneshot;
 use tracing::{Instrument, info_span};
@@ -43,8 +44,21 @@ impl ServiceBuilder for Service {
 }
 
 impl Run for Service {
+    type Future = BoxFuture<'static, Result<()>>;
+
+    fn register(self, rt: &mut Runtime) {
+        rt.register(self);
+    }
+
     /// Provide http proxy service the specified wasm component.
-    async fn run(&self, pre: InstancePre<RunState>) -> Result<()> {
+    fn run(&self, pre: InstancePre<RunState>) -> Self::Future {
+        Self::run(pre).boxed()
+    }
+}
+
+impl Service {
+    /// Provide http proxy service the specified wasm component.
+    async fn run(pre: InstancePre<RunState>) -> Result<()> {
         // bail if server is not required
         let component_type = pre.component().component_type();
         let mut exports = component_type.imports(pre.engine());

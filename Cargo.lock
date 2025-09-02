@@ -3053,6 +3053,7 @@ dependencies = [
  "cfg-if",
  "clap",
  "credibil-otel",
+ "futures",
  "tokio",
  "tracing",
  "wasmtime",
@@ -4447,6 +4448,7 @@ name = "wasi-http"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "futures",
  "http 1.3.1",
  "hyper",
  "runtime",

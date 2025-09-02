@@ -1,12 +1,13 @@
 //! # WebAssembly Runtime
 
 use std::env;
-use std::fmt::Debug;
+use std::fmt::{self, Debug, Formatter};
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result, anyhow};
 use cfg_if::cfg_if;
 use credibil_otel::Telemetry;
+use futures::future::BoxFuture;
 use wasmtime::component::{Component, Linker};
 use wasmtime::{Config, Engine};
 
@@ -17,10 +18,11 @@ use crate::traits::Run;
 pub struct Runtime {
     pub component: Component,
     pub linker: Linker<RunState>,
+    services: Vec<Box<dyn Run<Future = BoxFuture<'static, Result<()>>>>>,
 }
 
 impl Debug for Runtime {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         f.debug_struct("Runtime").finish()
     }
 }
@@ -68,7 +70,11 @@ impl Runtime {
         wasmtime_wasi::p2::add_to_linker_async(&mut linker)?;
 
         tracing::trace!("initialized");
-        Ok(Self { component, linker })
+        Ok(Self {
+            component,
+            linker,
+            services: vec![],
+        })
     }
 
     /// Create a new Runtime instance from a pre-compiled wasm component
@@ -96,33 +102,46 @@ impl Runtime {
         Self::from_file(binary)
     }
 
-    /// Instantiate a service on it's own thread.
-    ///
-    /// # Errors
-    ///
-    /// TODO: document errors
-    pub fn run<S>(&mut self, service: S) -> Result<()>
+    /// Register a runnable service with the runtime.
+    pub fn register<S>(&mut self, service: S)
     where
-        S: Run + Debug + Send + 'static,
+        S: Run<Future = BoxFuture<'static, Result<()>>> + 'static,
     {
-        let instance_pre = self.linker.instantiate_pre(&self.component)?;
-        tokio::spawn(async move {
-            tracing::debug!("starting {service:?} service");
-            if let Err(e) = service.run(instance_pre).await {
-                tracing::error!("error running {service:?} service: {e}");
-            }
-        });
-        Ok(())
+        self.services.push(Box::new(service));
     }
 
-    /// Wait for a shutdown signal from the OS.
+    /// Start the runtime, instantiating each registered service on its own
+    /// thread.
+    ///
+    /// Will block until a shutdown signal is received the OS.
     ///
     /// # Errors
     ///
     /// Returns an error if there is an issue processing the shutdown signal.
-    pub async fn shutdown(&self) -> Result<()> {
+    pub async fn serve(self) -> Result<()> {
+        let instance_pre = self.linker.instantiate_pre(&self.component)?;
+
+        for service in self.services {
+            let instance_pre = instance_pre.clone();
+            tokio::spawn(async move {
+                tracing::debug!("starting {service:?} service");
+                if let Err(e) = service.run(instance_pre).await {
+                    tracing::error!("error running {service:?} service: {e}");
+                }
+            });
+        }
+
         Ok(tokio::signal::ctrl_c().await?)
     }
+
+    // /// Wait for a shutdown signal from the OS.
+    // ///
+    // /// # Errors
+    // ///
+    // /// Returns an error if there is an issue processing the shutdown signal.
+    // pub async fn shutdown() -> Result<()> {
+    //     Ok(tokio::signal::ctrl_c().await?)
+    // }
 
     fn init_telemetry(file: &Path) -> Result<()> {
         let file_name = file.file_name().and_then(|s| s.to_str()).unwrap_or("unknown");

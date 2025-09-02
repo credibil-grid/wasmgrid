@@ -33,7 +33,7 @@ docker build --platform=linux/arm64 -t acrcredibil.azurecr.io/demo/wasmgrid .
 docker compose up
 ```
 
-### Compiling a WASM component
+### Compiling a wasm component
 
 ```bash
 docker run \
