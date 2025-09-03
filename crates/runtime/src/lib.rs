@@ -5,7 +5,6 @@ mod cli;
 mod compiler;
 mod runtime;
 mod state;
-mod trace;
 mod traits;
 
 pub use self::cli::*;
@@ -13,5 +12,4 @@ pub use self::cli::*;
 pub use self::compiler::*;
 pub use self::runtime::*;
 pub use self::state::*;
-pub use self::trace::*;
 pub use self::traits::*;

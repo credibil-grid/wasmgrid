@@ -61,7 +61,6 @@ impl runtime::Service for Otel {
         async {
             let client = reqwest::Client::new();
             let _ = HTTP_CLIENT.set(client);
-            ::tracing::info!("starting otel service");
             Ok(())
         }
         .boxed()

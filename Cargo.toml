@@ -13,11 +13,6 @@ name = "wasmgrid"
 path = "src/wasmgrid.rs"
 doc = false
 
-# [[bin]]
-# name = "runtime"
-# path = "src/runtime.rs"
-# doc = false
-
 [lints]
 workspace = true
 
@@ -33,15 +28,12 @@ mongodb = { path = "crates/mongodb" }
 nats = { path = "crates/nats" }
 runtime.workspace = true
 tokio.workspace = true
-tracing.workspace = true
 wasi-blobstore-mdb = { path = "crates/wasi-blobstore-mdb" }
 wasi-http = { path = "crates/wasi-http" }
 wasi-keyvalue-nats = { path = "crates/wasi-keyvalue-nats" }
 wasi-messaging-nats = { path = "crates/wasi-messaging-nats" }
 wasi-otel = { path = "crates/wasi-otel" }
 wasi-vault-az = { path = "crates/wasi-vault-az" }
-
-# runtime-macros = { path = "crates/runtime-macros" }
 
 [profile.release]
 lto = true

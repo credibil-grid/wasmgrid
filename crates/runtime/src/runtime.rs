@@ -1,13 +1,13 @@
 //! # WebAssembly Runtime
 
 use std::env;
-use std::fmt::{self, Debug, Formatter};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
-use anyhow::{Context, Result, anyhow};
+use anyhow::{Context, Result};
 use cfg_if::cfg_if;
 use credibil_otel::Telemetry;
 use futures::future::{BoxFuture, FutureExt};
+use tracing::instrument;
 use wasmtime::component::{Component, Linker};
 use wasmtime::{Config, Engine};
 
@@ -18,12 +18,6 @@ use crate::traits::Service;
 pub struct Runtime {
     wasm: PathBuf,
     services: Vec<Box<dyn Service>>,
-}
-
-impl Debug for Runtime {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Runtime").finish()
-    }
 }
 
 impl Runtime {
@@ -58,9 +52,15 @@ impl Runtime {
     ///
     /// Returns an error if there is an issue processing the shutdown signal.
     pub async fn serve(self) -> Result<()> {
-        init_telemetry(&self.wasm)?;
-        tracing::trace!("initializing");
+        self.init_tracing()?;
+        self.init_runtime()?;
 
+        // wait for shutdown signal
+        Ok(tokio::signal::ctrl_c().await?)
+    }
+
+    #[instrument(name = "runtime", skip(self))]
+    fn init_runtime(self) -> Result<()> {
         let mut config = Config::new();
         config.async_support(true);
         let engine = Engine::new(&config)?;
@@ -84,21 +84,16 @@ impl Runtime {
             }
         }
 
-        // resolve dependencies
+        // register services with runtime's Linker
         let mut linker: Linker<RunState> = Linker::new(&engine);
         wasmtime_wasi::p2::add_to_linker_async(&mut linker)?;
-
         for service in &self.services {
             service.add_to_linker(&mut linker)?;
         }
 
         // start services
         let instance_pre = linker.instantiate_pre(&component)?;
-
         for service in self.services {
-            // TODO: figure out why this tracing isn't working
-            tracing::info!("starting {service:?}");
-
             let instance_pre = instance_pre.clone();
             tokio::spawn(async move {
                 if let Err(e) = service.start(instance_pre).await {
@@ -107,8 +102,21 @@ impl Runtime {
             });
         }
 
-        // wait for shutdown signal
-        Ok(tokio::signal::ctrl_c().await?)
+        tracing::info!("runtime intialized");
+
+        Ok(())
+    }
+
+    fn init_tracing(&self) -> Result<()> {
+        let file_name = self.wasm.file_name().and_then(|s| s.to_str()).unwrap_or("unknown");
+        let (prefix, _) = file_name.rsplit_once('.').unwrap_or((file_name, ""));
+
+        // initialize telemetry
+        let mut builder = Telemetry::new(prefix);
+        if let Ok(endpoint) = env::var("OTEL_GRPC_ADDR") {
+            builder = builder.endpoint(endpoint);
+        }
+        builder.build().context("initializing telemetry")
     }
 }
 
@@ -120,42 +128,3 @@ impl IntoFuture for Runtime {
         self.serve().boxed()
     }
 }
-
-fn init_telemetry(file: &Path) -> Result<()> {
-    let file_name = file.file_name().and_then(|s| s.to_str()).unwrap_or("unknown");
-    let Some((prefix, _)) = file_name.split_once('.') else {
-        return Err(anyhow!("file name does not have an extension"));
-    };
-
-    // initialize telemetry
-    let mut builder = Telemetry::new(prefix);
-    if let Ok(endpoint) = env::var("OTEL_GRPC_ADDR") {
-        builder = builder.endpoint(endpoint);
-    }
-    builder.build().context("initializing telemetry")
-}
-
-// /// Create a new Runtime instance from a pre-compiled wasm component
-// /// serialized as bytes.
-// ///
-// /// # Errors
-// ///
-// /// Returns an error if the component cannot be loaded, the linker cannot
-// /// be created, or the service cannot be started.
-// #[cfg(feature = "compile")]
-// pub fn from_wasm(wasm: &PathBuf) -> Result<Self> {
-//     tracing::trace!("initializing from wasm file");
-//     Self::from_file(wasm)
-// }
-
-// /// Create a new Runtime instance from a pre-compiled wasm component
-// /// serialized as a file.
-// ///
-// /// # Errors
-// ///
-// /// Returns an error if the component cannot be loaded, the linker cannot
-// /// be created, or the service cannot be started.
-// pub fn from_binary(binary: &PathBuf) -> Result<Self> {
-//     tracing::trace!("initializing from serialized component");
-//     Self::from_file(binary)
-// }

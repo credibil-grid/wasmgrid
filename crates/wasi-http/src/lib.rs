@@ -95,7 +95,7 @@ struct Handler {
 impl Handler {
     // Forward request to the wasm Guest.
     async fn handle(&self, request: Request<Incoming>) -> Result<Response<HyperOutgoingBody>> {
-        tracing::info!("handling request: {request:?}");
+        tracing::debug!("handling request: {request:?}");
 
         // prepare wasmtime http request and response
         let mut store = Store::new(self.proxy_pre.engine(), RunState::new());
@@ -114,11 +114,11 @@ impl Handler {
 
         match receiver.await {
             Ok(Ok(resp)) => {
-                tracing::trace!("request success: {resp:?}");
+                tracing::debug!("request success: {resp:?}");
                 Ok(resp)
             }
             Ok(Err(e)) => {
-                tracing::trace!("request error: {e:?}");
+                tracing::debug!("request error: {e:?}");
                 Err(e.into())
             }
             Err(_) => {
@@ -126,7 +126,7 @@ impl Handler {
                     Err(e) => e,
                     Ok(()) => anyhow!("task failed without error"),
                 };
-                tracing::trace!("request error: {e:?}");
+                tracing::debug!("request error: {e:?}");
                 Err(anyhow!("guest did not invoke `response-outparam::set`: {e}"))
             }
         }

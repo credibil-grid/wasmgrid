@@ -45,12 +45,17 @@ pub fn init() -> Result<Shutdown> {
         .add_directive("hyper=off".parse()?)
         .add_directive("h2=off".parse()?)
         .add_directive("tonic=off".parse()?);
-    // let format = format_layer().with_span_events(FmtSpan::NEW | FmtSpan::CLOSE);
+    let fmt_layer = tracing_subscriber::fmt::layer();
     let tracing_layer = tracing_layer().with_tracer(tracing_provider.tracer("global"));
     let metrics_layer = MetricsLayer::new(meter_provider.clone());
 
     // set global default subscriber
-    Registry::default().with(filter_layer).with(tracing_layer).with(metrics_layer).try_init()?;
+    Registry::default()
+        .with(filter_layer)
+        .with(fmt_layer)
+        .with(tracing_layer)
+        .with(metrics_layer)
+        .try_init()?;
 
     Ok(Shutdown {
         #[cfg(feature = "tracing")]

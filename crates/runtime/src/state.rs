@@ -1,13 +1,11 @@
 //! # WebAssembly Runtime
 
+use tokio::io;
 use wasmtime_wasi::{ResourceTable, WasiCtx, WasiCtxBuilder, WasiCtxView, WasiView};
 use wasmtime_wasi_http::{WasiHttpCtx, WasiHttpView};
 
-use crate::trace::{Errout, Stdout};
-
-/// Ctx contains host states used by the wasm runtime [`Store`].
-// #[allow(clippy::struct_field_names)]
-// #[allow(dead_code)]
+/// `RunState` is used to share host state between the Wasm runtime and hosts
+/// each time they are instantiated.
 pub struct RunState {
     pub wasi_ctx: WasiCtx,
     pub table: ResourceTable,
@@ -28,8 +26,8 @@ impl RunState {
         ctx.inherit_args();
         ctx.inherit_env();
         ctx.inherit_stdin();
-        ctx.stdout(Stdout {});
-        ctx.stderr(Errout {});
+        ctx.stdout(io::stdout());
+        ctx.stderr(io::stderr());
 
         Self {
             table: ResourceTable::default(),
@@ -39,7 +37,6 @@ impl RunState {
     }
 }
 
-// Implement the [`wasmtime_wasi::ctx::WasiView`] trait for RunState.
 impl WasiView for RunState {
     fn ctx(&mut self) -> WasiCtxView<'_> {
         WasiCtxView {
