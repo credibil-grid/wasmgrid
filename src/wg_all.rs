@@ -1,5 +1,3 @@
-//! # Wasmgrid CLI
-
 use std::path::PathBuf;
 
 use anyhow::{Result, anyhow};

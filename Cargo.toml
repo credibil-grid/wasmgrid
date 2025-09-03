@@ -2,15 +2,21 @@
 [package]
 name = "wasmgrid"
 description = "WASI Component runtime"
-default-run = "wasmgrid"
 authors.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 version = "0.1.0"
 
+default-run = "wg-all"
+
 [[bin]]
-name = "wasmgrid"
-path = "src/wasmgrid.rs"
+name = "wg-all"
+path = "src/wg_all.rs"
+doc = false
+
+[[bin]]
+name = "wg-http"
+path = "src/wg_http.rs"
 doc = false
 
 [lints]
