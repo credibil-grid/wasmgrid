@@ -34,7 +34,7 @@ use azure_security_keyvault_secrets::models::{Secret, SetSecretParameters};
 use base64ct::{Base64UrlUnpadded, Encoding};
 use futures::TryStreamExt;
 use http::StatusCode;
-use runtime::{AddResource, RunState, ServiceBuilder};
+use runtime::{AddResource, RunState};
 use wasmtime::component::{HasData, Linker, Resource, ResourceTableError};
 use wasmtime_wasi::ResourceTable;
 
@@ -49,16 +49,13 @@ pub struct Locker {
     identifier: String,
 }
 
+#[derive(Debug)]
 pub struct Service;
 
-impl ServiceBuilder for Service {
-    fn new() -> Self {
-        Self
-    }
-
-    fn add_to_linker(self, linker: &mut Linker<RunState>) -> anyhow::Result<Self> {
+impl runtime::Service for Service {
+    fn add_to_linker(&self, linker: &mut Linker<RunState>) -> anyhow::Result<()> {
         vault::add_to_linker::<_, Data>(linker, Vault::new)?;
-        Ok(self)
+        Ok(())
     }
 }
 

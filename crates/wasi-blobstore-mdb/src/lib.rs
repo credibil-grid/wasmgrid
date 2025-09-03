@@ -36,7 +36,7 @@ use bytes::Bytes;
 use chrono::Utc;
 use futures::StreamExt;
 use mongodb::{Collection, bson};
-use runtime::{AddResource, RunState, ServiceBuilder};
+use runtime::{AddResource, RunState};
 use serde::{Deserialize, Serialize};
 use wasmtime::component::{HasData, Linker, Resource, ResourceTable};
 use wasmtime_wasi::p2::bindings::io::streams::{InputStream, OutputStream};
@@ -61,18 +61,15 @@ pub struct Blob {
     created_at: u64,
 }
 
+#[derive(Debug)]
 pub struct Service;
 
-impl ServiceBuilder for Service {
-    fn new() -> Self {
-        Self
-    }
-
-    fn add_to_linker(self, l: &mut Linker<RunState>) -> anyhow::Result<Self> {
+impl runtime::Service for Service {
+    fn add_to_linker(&self, l: &mut Linker<RunState>) -> Result<()> {
         blobstore::add_to_linker::<_, Data>(l, Blobstore::new)?;
         container::add_to_linker::<_, Data>(l, Blobstore::new)?;
         types::add_to_linker::<_, Data>(l, Blobstore::new)?;
-        Ok(self)
+        Ok(())
     }
 }
 

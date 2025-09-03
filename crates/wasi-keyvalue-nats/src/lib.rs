@@ -35,7 +35,7 @@ use async_nats::jetstream;
 use async_nats::jetstream::kv::{Config, Store};
 use base64ct::{Base64UrlUnpadded, Encoding};
 use futures::TryStreamExt;
-use runtime::{AddResource, RunState, ServiceBuilder};
+use runtime::{AddResource, RunState};
 use wasmtime::component::{HasData, Linker, Resource, ResourceTableError};
 use wasmtime_wasi::ResourceTable;
 
@@ -45,29 +45,22 @@ use self::generated::wasi::keyvalue::{atomics, batch, store};
 
 pub type Result<T, E = Error> = anyhow::Result<T, E>;
 
-/// Compare and Swap (CAS) handle.
 pub struct Cas {
-    /// Key of the stored value.
     pub key: String,
-
-    /// Current value.
     pub current: Option<Vec<u8>>,
 }
 
 static NATS_CLIENT: OnceLock<async_nats::Client> = OnceLock::new();
 
+#[derive(Debug)]
 pub struct Service;
 
-impl ServiceBuilder for Service {
-    fn new() -> Self {
-        Self
-    }
-
-    fn add_to_linker(self, l: &mut Linker<RunState>) -> anyhow::Result<Self> {
+impl runtime::Service for Service {
+    fn add_to_linker(&self, l: &mut Linker<RunState>) -> anyhow::Result<()> {
         store::add_to_linker::<_, Data>(l, Keyvalue::new)?;
         atomics::add_to_linker::<_, Data>(l, Keyvalue::new)?;
         batch::add_to_linker::<_, Data>(l, Keyvalue::new)?;
-        Ok(self)
+        Ok(())
     }
 }
 
