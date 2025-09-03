@@ -29,9 +29,11 @@ use std::sync::OnceLock;
 
 use anyhow::Result;
 use credibil_otel::init;
+use futures::FutureExt;
+use futures::future::BoxFuture;
 use opentelemetry::{Array, Key, Value};
 use opentelemetry_sdk::Resource;
-use runtime::{RunState, ServiceBuilder};
+use runtime::RunState;
 use wasmtime::component::{HasData, Linker};
 
 use self::generated::wasi::otel as wasi_otel;
@@ -41,44 +43,51 @@ const DEF_HTTP_ADDR: &str = "http://localhost:4318";
 
 static HTTP_CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
 
-pub struct Service;
+#[derive(Debug)]
+pub struct Otel;
 
-impl ServiceBuilder for Service {
-    fn new() -> Self {
-        let client = reqwest::Client::new();
-        let _ = HTTP_CLIENT.set(client);
-        Self
+impl runtime::Service for Otel {
+    fn add_to_linker(&self, l: &mut Linker<RunState>) -> Result<()> {
+        wasi_otel::tracing::add_to_linker::<_, Data>(l, Host::new)?;
+        wasi_otel::metrics::add_to_linker::<_, Data>(l, Host::new)?;
+        wasi_otel::types::add_to_linker::<_, Data>(l, Host::new)?;
+        wasi_otel::resource::add_to_linker::<_, Data>(l, Host::new)?;
+        Ok(())
     }
 
-    fn add_to_linker(self, l: &mut Linker<RunState>) -> Result<Self> {
-        wasi_otel::tracing::add_to_linker::<_, Data>(l, Otel::new)?;
-        wasi_otel::metrics::add_to_linker::<_, Data>(l, Otel::new)?;
-        wasi_otel::types::add_to_linker::<_, Data>(l, Otel::new)?;
-        wasi_otel::resource::add_to_linker::<_, Data>(l, Otel::new)?;
-        Ok(self)
+    fn start(
+        &self, _: wasmtime::component::InstancePre<RunState>,
+    ) -> BoxFuture<'static, Result<()>> {
+        async {
+            let client = reqwest::Client::new();
+            let _ = HTTP_CLIENT.set(client);
+            ::tracing::info!("starting otel service");
+            Ok(())
+        }
+        .boxed()
     }
 }
 
 struct Data;
 impl HasData for Data {
-    type Data<'a> = Otel<'a>;
+    type Data<'a> = Host<'a>;
 }
 
-struct Otel<'a> {
+struct Host<'a> {
     http_client: &'a reqwest::Client,
     _phantom: PhantomData<&'a ()>,
 }
 
-impl Otel<'_> {
+impl Host<'_> {
     fn new(_: &mut RunState) -> Self {
-        Otel {
+        Host {
             http_client: HTTP_CLIENT.wait(),
             _phantom: PhantomData,
         }
     }
 }
 
-impl wasi_otel::resource::Host for Otel<'_> {
+impl wasi_otel::resource::Host for Host<'_> {
     async fn resource(&mut self) -> Result<types::Resource> {
         Ok(init::resource().into())
     }

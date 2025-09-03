@@ -36,7 +36,7 @@ use bytes::Bytes;
 use chrono::Utc;
 use futures::StreamExt;
 use mongodb::{Collection, bson};
-use runtime::{AddResource, RunState, ServiceBuilder};
+use runtime::{AddResource, RunState};
 use serde::{Deserialize, Serialize};
 use wasmtime::component::{HasData, Linker, Resource, ResourceTable};
 use wasmtime_wasi::p2::bindings::io::streams::{InputStream, OutputStream};
@@ -61,22 +61,19 @@ pub struct Blob {
     created_at: u64,
 }
 
-pub struct Service;
+#[derive(Debug)]
+pub struct Blobstore;
 
-impl ServiceBuilder for Service {
-    fn new() -> Self {
-        Self
-    }
-
-    fn add_to_linker(self, l: &mut Linker<RunState>) -> anyhow::Result<Self> {
-        blobstore::add_to_linker::<_, Data>(l, Blobstore::new)?;
-        container::add_to_linker::<_, Data>(l, Blobstore::new)?;
-        types::add_to_linker::<_, Data>(l, Blobstore::new)?;
-        Ok(self)
+impl runtime::Service for Blobstore {
+    fn add_to_linker(&self, l: &mut Linker<RunState>) -> Result<()> {
+        blobstore::add_to_linker::<_, Data>(l, Host::new)?;
+        container::add_to_linker::<_, Data>(l, Host::new)?;
+        types::add_to_linker::<_, Data>(l, Host::new)?;
+        Ok(())
     }
 }
 
-impl AddResource<mongodb::Client> for Service {
+impl AddResource<mongodb::Client> for Blobstore {
     fn resource(self, resource: mongodb::Client) -> Result<Self> {
         MONGODB_CLIENT.set(resource).map_err(|_| anyhow!("client already set"))?;
         Ok(self)
@@ -85,16 +82,16 @@ impl AddResource<mongodb::Client> for Service {
 
 struct Data;
 impl HasData for Data {
-    type Data<'a> = Blobstore<'a>;
+    type Data<'a> = Host<'a>;
 }
 
-pub struct Blobstore<'a> {
+pub struct Host<'a> {
     table: &'a mut ResourceTable,
 }
 
-impl Blobstore<'_> {
-    const fn new(c: &mut RunState) -> Blobstore<'_> {
-        Blobstore { table: &mut c.table }
+impl Host<'_> {
+    const fn new(c: &mut RunState) -> Host<'_> {
+        Host { table: &mut c.table }
     }
 }
 
@@ -102,8 +99,8 @@ fn mongodb() -> Result<&'static mongodb::Client> {
     MONGODB_CLIENT.get().ok_or_else(|| anyhow!("MongoDB client not initialized."))
 }
 
-// Implement the [`wasi_sql::ReadWriteView`]` trait for Blobstore<'_>.
-impl blobstore::Host for Blobstore<'_> {
+// Implement the [`wasi_sql::ReadWriteView`]` trait for Host<'_>.
+impl blobstore::Host for Host<'_> {
     async fn create_container(&mut self, name: String) -> Result<Resource<Container>> {
         let Some(db) = mongodb()?.default_database() else {
             return Err(anyhow!("No default database found"));
@@ -143,9 +140,9 @@ impl blobstore::Host for Blobstore<'_> {
     }
 }
 
-impl container::Host for Blobstore<'_> {}
+impl container::Host for Host<'_> {}
 
-impl container::HostContainer for Blobstore<'_> {
+impl container::HostContainer for Host<'_> {
     async fn name(&mut self, coll_ref: Resource<Container>) -> Result<String> {
         let Ok(collection) = self.table.get(&coll_ref) else {
             return Err(anyhow!("Container not found"));
@@ -293,7 +290,7 @@ impl container::HostContainer for Blobstore<'_> {
     }
 }
 
-impl container::HostStreamObjectNames for Blobstore<'_> {
+impl container::HostStreamObjectNames for Host<'_> {
     async fn read_stream_object_names(
         &mut self, names_ref: Resource<StreamObjectNames>, len: u64,
     ) -> Result<(Vec<String>, bool)> {
@@ -320,14 +317,14 @@ impl container::HostStreamObjectNames for Blobstore<'_> {
     }
 }
 
-impl types::Host for Blobstore<'_> {
+impl types::Host for Host<'_> {
     fn convert_error(&mut self, err: anyhow::Error) -> Result<String> {
         tracing::error!("{err}");
         Ok(err.to_string())
     }
 }
 
-impl types::HostIncomingValue for Blobstore<'_> {
+impl types::HostIncomingValue for Host<'_> {
     async fn incoming_value_consume_sync(
         &mut self, value_ref: Resource<IncomingValue>,
     ) -> Result<IncomingValueSyncBody> {
@@ -355,7 +352,7 @@ impl types::HostIncomingValue for Blobstore<'_> {
     }
 }
 
-impl types::HostOutgoingValue for Blobstore<'_> {
+impl types::HostOutgoingValue for Host<'_> {
     async fn new_outgoing_value(&mut self) -> Result<Resource<OutgoingValue>> {
         // HACK: 1 MiB is the maximum capacity for in-mem outgoing values.
         Ok(self.table.push(OutgoingValue::new(1_048_576))?)

@@ -8,17 +8,17 @@ use wasmtime_wasi::ResourceTableError;
 use super::generated::wasi::messaging::request_reply::RequestOptions;
 use super::generated::wasi::messaging::types::{Error, HostMessage, Message, Metadata, Topic};
 use super::generated::wasi::messaging::{producer, request_reply, types};
-use crate::Messaging;
+use crate::Host;
 
 pub type Result<T, E = Error> = anyhow::Result<T, E>;
 
-impl types::Host for Messaging<'_> {
+impl types::Host for Host<'_> {
     fn convert_error(&mut self, err: Error) -> anyhow::Result<Error> {
         Ok(err)
     }
 }
 
-impl HostMessage for Messaging<'_> {
+impl HostMessage for Host<'_> {
     /// Create a new message with the given payload.
     async fn new(&mut self, data: Vec<u8>) -> anyhow::Result<Resource<Message>> {
         tracing::trace!("HostMessage::new with {} bytes", data.len());
@@ -195,7 +195,7 @@ impl HostMessage for Messaging<'_> {
     }
 }
 
-impl types::HostClient for Messaging<'_> {
+impl types::HostClient for Host<'_> {
     async fn connect(&mut self, name: String) -> Result<Resource<Client>> {
         tracing::trace!("HostClient::connect {name}");
         let client = crate::nats()?;
@@ -217,7 +217,7 @@ impl types::HostClient for Messaging<'_> {
 }
 
 /// The producer interface is used to send messages to a channel/topic.
-impl producer::Host for Messaging<'_> {
+impl producer::Host for Host<'_> {
     /// Sends the message using the given client.
     async fn send(
         &mut self, res_client: Resource<Client>, topic: Topic, this: Resource<Message>,
@@ -242,7 +242,7 @@ impl producer::Host for Messaging<'_> {
 }
 
 /// The request-reply interface is used to send a request and receive a reply.
-impl request_reply::Host for Messaging<'_> {
+impl request_reply::Host for Host<'_> {
     /// Performs a request-reply operation using the given client and options
     /// (if any).
     async fn request(
@@ -299,7 +299,7 @@ impl request_reply::Host for Messaging<'_> {
     }
 }
 
-impl request_reply::HostRequestOptions for Messaging<'_> {
+impl request_reply::HostRequestOptions for Host<'_> {
     /// Creates a new request options resource with no options set.
     async fn new(&mut self) -> anyhow::Result<Resource<RequestOptions>> {
         tracing::trace!("request_reply::HostRequestOptions::new");

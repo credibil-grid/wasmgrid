@@ -7,7 +7,7 @@ use azkeyvault::AzKeyVault;
 use dotenv::dotenv;
 use mongodb::MongoDb;
 use nats::Nats;
-use runtime::{AddResource, Cli, Command, Parser, ResourceBuilder, Run, Runtime, ServiceBuilder};
+use runtime::{AddResource, Cli, Command, Parser, ResourceBuilder, Runtime};
 use tracing::instrument;
 
 /// Main entry point for the Wasmgrid CLI.
@@ -24,7 +24,6 @@ pub async fn main() -> Result<()> {
     if cfg!(debug_assertions) {
         dotenv().ok();
     }
-
     match Cli::parse().command {
         Command::Run { wasm } => init_runtime(wasm).await,
         #[cfg(feature = "compile")]
@@ -36,43 +35,18 @@ pub async fn main() -> Result<()> {
 #[instrument(skip(wasm))]
 async fn init_runtime(wasm: PathBuf) -> Result<()> {
     // create resources (in parallel)
-    let (Ok(mongodb_client), Ok(secret_client), Ok(nats_client)) =
+    let (Ok(mongodb), Ok(az_secret), Ok(nats)) =
         tokio::join!(MongoDb::new(), AzKeyVault::new(), Nats::new())
     else {
         return Err(anyhow!("failed to create clients"));
     };
 
-    // create runtime for wasm component
-    let mut rt = Runtime::from_file(&wasm)?;
-
-    // initialize services
-    wasi_otel::Service::new().add_to_linker(&mut rt.linker)?;
-    wasi_blobstore_mdb::Service::new().resource(mongodb_client)?.add_to_linker(&mut rt.linker)?;
-    wasi_keyvalue_nats::Service::new()
-        .resource(nats_client.clone())?
-        .add_to_linker(&mut rt.linker)?;
-    wasi_vault_az::Service::new().resource(secret_client)?.add_to_linker(&mut rt.linker)?;
-    wasi_http::Service::new().add_to_linker(&mut rt.linker)?.register(&mut rt);
-    wasi_messaging_nats::Service::new()
-        .resource(nats_client)?
-        .add_to_linker(&mut rt.linker)?
-        .register(&mut rt);
-
-    // run and wait for shutdown
-    rt.serve().await
+    Runtime::new(wasm)
+        .register(wasi_otel::Otel)
+        .register(wasi_http::Http)
+        .register(wasi_blobstore_mdb::Blobstore.resource(mongodb)?)
+        .register(wasi_keyvalue_nats::KeyValue.resource(nats.clone())?)
+        .register(wasi_vault_az::Vault.resource(az_secret)?)
+        .register(wasi_messaging_nats::Messaging.resource(nats)?)
+        .await
 }
-
-// Candidate macro or configuration
-// runtime_macros::runtime!({
-//     resources: {
-//         mongo: MongoDb,
-//     },
-//     services: [
-//         "wasi_http::Service": {
-//             run: true
-//         },
-//         "wasi_blobstore_mdb::Service": {
-//              resources: [mongo]
-//         }
-//     ]
-// });

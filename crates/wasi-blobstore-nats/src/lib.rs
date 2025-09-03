@@ -35,7 +35,7 @@ use async_nats::jetstream;
 use async_nats::jetstream::object_store::{Config, ObjectStore};
 use bytes::{Bytes, BytesMut};
 use futures::StreamExt;
-use runtime::{AddResource, RunState, ServiceBuilder};
+use runtime::{AddResource, RunState};
 use time::OffsetDateTime;
 use tokio::io::AsyncReadExt;
 use wasmtime::component::{HasData, Linker, Resource, ResourceTable};
@@ -53,18 +53,15 @@ pub type StreamObjectNames = Vec<String>;
 
 static NATS_CLIENT: OnceLock<async_nats::Client> = OnceLock::new();
 
+#[derive(Debug)]
 pub struct Service;
 
-impl ServiceBuilder for Service {
-    fn new() -> Self {
-        Self
-    }
-
-    fn add_to_linker(self, l: &mut Linker<RunState>) -> anyhow::Result<Self> {
+impl runtime::Service for Service {
+    fn add_to_linker(&self, l: &mut Linker<RunState>) -> Result<()> {
         blobstore::add_to_linker::<_, Data>(l, Blobstore::new)?;
         container::add_to_linker::<_, Data>(l, Blobstore::new)?;
         types::add_to_linker::<_, Data>(l, Blobstore::new)?;
-        Ok(self)
+        Ok(())
     }
 }
 

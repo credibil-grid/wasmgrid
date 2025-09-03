@@ -14,7 +14,7 @@ compile = ["wasmtime/cranelift"]
 [dependencies]
 anyhow.workspace = true
 cfg-if.workspace = true
-clap = { version = "4.5.46", features = ["derive"] }
+clap = { version = "4.5.47", features = ["derive"] }
 credibil-otel.workspace = true
 futures.workspace = true
 tokio = { workspace = true, features = ["signal"] }

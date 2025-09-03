@@ -22,9 +22,9 @@ use opentelemetry_sdk::error::OTelSdkError;
 use prost::Message;
 
 use crate::generated::wasi::otel::{metrics as wasi, metrics, types};
-use crate::{DEF_HTTP_ADDR, Otel};
+use crate::{DEF_HTTP_ADDR, Host};
 
-impl metrics::Host for Otel<'_> {
+impl metrics::Host for Host<'_> {
     async fn export(&mut self, rm: wasi::ResourceMetrics) -> Result<(), wasi::Error> {
         let http_client = self.http_client.clone();
 
@@ -51,7 +51,7 @@ impl metrics::Host for Otel<'_> {
     }
 }
 
-impl types::Host for Otel<'_> {
+impl types::Host for Host<'_> {
     fn convert_error(&mut self, err: wasi::Error) -> anyhow::Result<wasi::Error> {
         tracing::error!("{err}");
         Ok(err)

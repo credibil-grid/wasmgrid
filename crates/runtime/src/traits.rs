@@ -8,9 +8,10 @@
 use std::fmt::Debug;
 
 use anyhow::Result;
+use futures::FutureExt;
+use futures::future::BoxFuture;
 use wasmtime::component::{InstancePre, Linker};
 
-use crate::runtime::Runtime;
 use crate::state::RunState;
 
 pub trait ResourceBuilder<T>: Sized {
@@ -29,23 +30,6 @@ pub trait ResourceBuilder<T>: Sized {
     ///
     /// Returns an error if the resource is not available.
     fn connect(self) -> impl Future<Output = Result<T>> + Send;
-}
-
-/// The `ServiceBuilder` trait is required to be implemented by a service so
-/// that the runtime can link the service's dependencies prior to instantiation
-/// of a component.
-pub trait ServiceBuilder: Sized + Sync + Send {
-    fn new() -> Self;
-
-    /// Link the service's dependencies prior to component instantiation.
-    ///
-    /// This method optionally allows the service to access the runtime
-    /// linker's context (`Self::State`).
-    ///
-    /// # Errors
-    ///
-    /// Returns an linking error(s) from the service's generated bindings.
-    fn add_to_linker(self, linker: &mut Linker<RunState>) -> Result<Self>;
 }
 
 /// `AddResource` is implemented by services that require external resources.
@@ -70,14 +54,25 @@ pub trait AddResource<T>: Sized {
     fn resource(self, resource: T) -> Result<Self>;
 }
 
-/// The `Run` trait is implemented by services that instantiate (or run)
-/// components. For example, an `http` or `messaging` service.
-pub trait Run: Debug + Send + Sync {
-    type Future: Future<Output = Result<()>>;
+/// Services implement this trait so that the runtime can link their dependencies
+/// and, optionally, run them in the context of the runtime.
+pub trait Service: Debug + Sync + Send {
+    /// Link the service's dependencies prior to component instantiation.
+    ///
+    /// This method optionally allows the service to access the runtime
+    /// linker's context (`Self::State`).
+    ///
+    /// # Errors
+    ///
+    /// Returns an linking error(s) from the service's generated bindings.
+    fn add_to_linker(&self, linker: &mut Linker<RunState>) -> Result<()>;
 
-    /// Register the service as runnable with the runtime.
-    fn register(self, rt: &mut Runtime);
-
-    /// Run the service.
-    fn run(&self, pre: InstancePre<RunState>) -> Self::Future;
+    /// Start the service.
+    ///
+    /// This is typically implemented by services that instantiate (or run)
+    /// wasm components.
+    #[allow(unused_variables)]
+    fn start(&self, pre: InstancePre<RunState>) -> BoxFuture<'static, Result<()>> {
+        async { Ok(()) }.boxed()
+    }
 }

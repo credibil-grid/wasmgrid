@@ -14,7 +14,7 @@ use hyper::header::{FORWARDED, HOST};
 use hyper::server::conn::http1;
 use hyper::service::service_fn;
 use hyper::{Request, Response};
-use runtime::{Run, RunState, Runtime, ServiceBuilder};
+use runtime::RunState;
 use tokio::net::TcpListener;
 use tokio::sync::oneshot;
 use tracing::{Instrument, info_span};
@@ -29,34 +29,20 @@ use wasmtime_wasi_http::io::TokioIo;
 const DEF_HTTP_ADDR: &str = "0.0.0.0:8080";
 
 #[derive(Debug)]
-pub struct Service;
+pub struct Http;
 
-impl ServiceBuilder for Service {
-    fn new() -> Self {
-        Self
-    }
-
-    fn add_to_linker(self, linker: &mut Linker<RunState>) -> Result<Self> {
-        wasmtime_wasi_http::add_only_http_to_linker_async(linker)?;
-        tracing::trace!("added to linker");
-        Ok(self)
-    }
-}
-
-impl Run for Service {
-    type Future = BoxFuture<'static, Result<()>>;
-
-    fn register(self, rt: &mut Runtime) {
-        rt.register(self);
+impl runtime::Service for Http {
+    fn add_to_linker(&self, l: &mut Linker<RunState>) -> Result<()> {
+        wasmtime_wasi_http::add_only_http_to_linker_async(l)
     }
 
     /// Provide http proxy service the specified wasm component.
-    fn run(&self, pre: InstancePre<RunState>) -> Self::Future {
+    fn start(&self, pre: InstancePre<RunState>) -> BoxFuture<'static, Result<()>> {
         Self::run(pre).boxed()
     }
 }
 
-impl Service {
+impl Http {
     /// Provide http proxy service the specified wasm component.
     async fn run(pre: InstancePre<RunState>) -> Result<()> {
         // bail if server is not required
