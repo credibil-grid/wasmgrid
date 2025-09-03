@@ -68,11 +68,11 @@ pub trait Service: Debug + Sync + Send {
     fn add_to_linker(&self, linker: &mut Linker<RunState>) -> Result<()>;
 
     /// Start the service.
-    /// 
+    ///
     /// This is typically implemented by services that instantiate (or run)
-    /// wasm components. 
+    /// wasm components.
     #[allow(unused_variables)]
     fn start(&self, pre: InstancePre<RunState>) -> BoxFuture<'static, Result<()>> {
-        async move { Ok(()) }.boxed()
+        async { Ok(()) }.boxed()
     }
 }

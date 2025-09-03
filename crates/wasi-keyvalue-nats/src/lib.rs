@@ -1,4 +1,4 @@
-//! # WASI Keyvalue Service using NATS
+//! # WASI Host Service using NATS
 //!
 //! This module implements a runtime service for `wasi:keyvalue`
 //! (<https://github.com/WebAssembly/wasi-keyvalue>).
@@ -53,18 +53,18 @@ pub struct Cas {
 static NATS_CLIENT: OnceLock<async_nats::Client> = OnceLock::new();
 
 #[derive(Debug)]
-pub struct Service;
+pub struct KeyValue;
 
-impl runtime::Service for Service {
+impl runtime::Service for KeyValue {
     fn add_to_linker(&self, l: &mut Linker<RunState>) -> anyhow::Result<()> {
-        store::add_to_linker::<_, Data>(l, Keyvalue::new)?;
-        atomics::add_to_linker::<_, Data>(l, Keyvalue::new)?;
-        batch::add_to_linker::<_, Data>(l, Keyvalue::new)?;
+        store::add_to_linker::<_, Data>(l, Host::new)?;
+        atomics::add_to_linker::<_, Data>(l, Host::new)?;
+        batch::add_to_linker::<_, Data>(l, Host::new)?;
         Ok(())
     }
 }
 
-impl AddResource<async_nats::Client> for Service {
+impl AddResource<async_nats::Client> for KeyValue {
     fn resource(self, resource: async_nats::Client) -> anyhow::Result<Self> {
         NATS_CLIENT.set(resource).map_err(|_| anyhow!("client already set"))?;
         Ok(self)
@@ -73,16 +73,16 @@ impl AddResource<async_nats::Client> for Service {
 
 struct Data;
 impl HasData for Data {
-    type Data<'a> = Keyvalue<'a>;
+    type Data<'a> = Host<'a>;
 }
 
-pub struct Keyvalue<'a> {
+pub struct Host<'a> {
     table: &'a mut ResourceTable,
 }
 
-impl Keyvalue<'_> {
-    const fn new(c: &mut RunState) -> Keyvalue<'_> {
-        Keyvalue { table: &mut c.table }
+impl Host<'_> {
+    const fn new(c: &mut RunState) -> Host<'_> {
+        Host { table: &mut c.table }
     }
 }
 
@@ -90,8 +90,8 @@ fn nats() -> anyhow::Result<&'static async_nats::Client> {
     NATS_CLIENT.get().ok_or_else(|| anyhow!("NATS client not initialized."))
 }
 
-// Implement the [`wasi_keyvalue::KeyValueView`]` trait for  Keyvalue<'_>.
-impl store::Host for Keyvalue<'_> {
+// Implement the [`wasi_keyvalue::KeyValueView`]` trait for  Host<'_>.
+impl store::Host for Host<'_> {
     // Open bucket specified by identifier, save to state and return as a resource.
     async fn open(&mut self, identifier: String) -> Result<Resource<Store>> {
         let jetstream = jetstream::new(nats()?.clone());
@@ -122,7 +122,7 @@ impl store::Host for Keyvalue<'_> {
     }
 }
 
-impl store::HostBucket for Keyvalue<'_> {
+impl store::HostBucket for Host<'_> {
     async fn get(&mut self, store_ref: Resource<Store>, key: String) -> Result<Option<Vec<u8>>> {
         let Ok(bucket) = self.table.get(&store_ref) else {
             return Err(Error::NoSuchStore);
@@ -192,7 +192,7 @@ impl store::HostBucket for Keyvalue<'_> {
     }
 }
 
-impl atomics::HostCas for Keyvalue<'_> {
+impl atomics::HostCas for Host<'_> {
     /// Construct a new CAS operation. Implementors can map the underlying functionality
     /// (transactions, versions, etc) as desired.
     async fn new(&mut self, store_ref: Resource<Store>, key: String) -> Result<Resource<Cas>> {
@@ -225,7 +225,7 @@ impl atomics::HostCas for Keyvalue<'_> {
     }
 }
 
-impl atomics::Host for Keyvalue<'_> {
+impl atomics::Host for Host<'_> {
     /// Atomically increment the value associated with the key in the store by
     /// the given delta. It returns the new value.
     ///
@@ -269,7 +269,7 @@ impl atomics::Host for Keyvalue<'_> {
     }
 }
 
-impl batch::Host for Keyvalue<'_> {
+impl batch::Host for Host<'_> {
     async fn get_many(
         &mut self, store_ref: Resource<Store>, keys: Vec<String>,
     ) -> Result<Vec<Option<(String, Vec<u8>)>>> {

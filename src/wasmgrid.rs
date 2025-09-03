@@ -42,11 +42,11 @@ async fn init_runtime(wasm: PathBuf) -> Result<()> {
     };
 
     Runtime::new(wasm)
-        .register(wasi_otel::Service)
+        .register(wasi_otel::Otel)
         .register(wasi_http::Http)
-        .register(wasi_blobstore_mdb::Service.resource(mongodb)?)
-        .register(wasi_keyvalue_nats::Service.resource(nats.clone())?)
-        .register(wasi_vault_az::Service.resource(az_secret)?)
-        .register(wasi_messaging_nats::Service.resource(nats)?)
+        .register(wasi_blobstore_mdb::Blobstore.resource(mongodb)?)
+        .register(wasi_keyvalue_nats::KeyValue.resource(nats.clone())?)
+        .register(wasi_vault_az::Vault.resource(az_secret)?)
+        .register(wasi_messaging_nats::Messaging.resource(nats)?)
         .await
 }

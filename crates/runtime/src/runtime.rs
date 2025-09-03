@@ -96,9 +96,11 @@ impl Runtime {
         let instance_pre = linker.instantiate_pre(&component)?;
 
         for service in self.services {
+            // TODO: figure out why this tracing isn't working
+            tracing::info!("starting {service:?}");
+
             let instance_pre = instance_pre.clone();
             tokio::spawn(async move {
-                tracing::debug!("starting {service:?} service");
                 if let Err(e) = service.start(instance_pre).await {
                     tracing::error!("error running {service:?} service: {e}");
                 }

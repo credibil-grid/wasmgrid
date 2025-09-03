@@ -47,13 +47,13 @@ use self::generated::wasi::messaging::{producer, request_reply, types};
 static NATS_CLIENT: OnceLock<async_nats::Client> = OnceLock::new();
 
 #[derive(Debug)]
-pub struct Service;
+pub struct Messaging;
 
-impl runtime::Service for Service {
+impl runtime::Service for Messaging {
     fn add_to_linker(&self, l: &mut Linker<RunState>) -> anyhow::Result<()> {
-        producer::add_to_linker::<_, Data>(l, Messaging::new)?;
-        request_reply::add_to_linker::<_, Data>(l, Messaging::new)?;
-        types::add_to_linker::<_, Data>(l, Messaging::new)?;
+        producer::add_to_linker::<_, Data>(l, Host::new)?;
+        request_reply::add_to_linker::<_, Data>(l, Host::new)?;
+        types::add_to_linker::<_, Data>(l, Host::new)?;
         Ok(())
     }
 
@@ -62,20 +62,20 @@ impl runtime::Service for Service {
     }
 }
 
-impl AddResource<async_nats::Client> for Service {
+impl AddResource<async_nats::Client> for Messaging {
     fn resource(self, resource: async_nats::Client) -> anyhow::Result<Self> {
         NATS_CLIENT.set(resource).map_err(|_| anyhow!("client already set"))?;
         Ok(self)
     }
 }
 
-pub struct Messaging<'a> {
+pub struct Host<'a> {
     table: &'a mut ResourceTable,
 }
 
-impl Messaging<'_> {
-    const fn new(c: &mut RunState) -> Messaging<'_> {
-        Messaging { table: &mut c.table }
+impl Host<'_> {
+    const fn new(c: &mut RunState) -> Host<'_> {
+        Host { table: &mut c.table }
     }
 }
 
@@ -85,7 +85,7 @@ fn nats() -> anyhow::Result<&'static async_nats::Client> {
 
 struct Data;
 impl HasData for Data {
-    type Data<'a> = Messaging<'a>;
+    type Data<'a> = Host<'a>;
 }
 
 #[derive(Default)]

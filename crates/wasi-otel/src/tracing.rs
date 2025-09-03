@@ -17,9 +17,9 @@ use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 use crate::generated::wasi::otel as wasi_otel;
 use crate::generated::wasi::otel::tracing::{self as wasi};
-use crate::{DEF_HTTP_ADDR, Otel};
+use crate::{DEF_HTTP_ADDR, Host};
 
-impl wasi_otel::tracing::Host for Otel<'_> {
+impl wasi_otel::tracing::Host for Host<'_> {
     async fn context(&mut self) -> Result<wasi::SpanContext> {
         let ctx = tracing::Span::current().context();
         let span = ctx.span();

@@ -50,16 +50,15 @@ pub struct Locker {
 }
 
 #[derive(Debug)]
-pub struct Service;
+pub struct Vault;
 
-impl runtime::Service for Service {
+impl runtime::Service for Vault {
     fn add_to_linker(&self, linker: &mut Linker<RunState>) -> anyhow::Result<()> {
-        vault::add_to_linker::<_, Data>(linker, Vault::new)?;
-        Ok(())
+        vault::add_to_linker::<_, Data>(linker, Host::new)
     }
 }
 
-impl AddResource<SecretClient> for Service {
+impl AddResource<SecretClient> for Vault {
     fn resource(self, resource: SecretClient) -> anyhow::Result<Self> {
         AZ_CLIENT.set(resource).map_err(|_| anyhow!("client already set"))?;
         Ok(self)
@@ -68,16 +67,16 @@ impl AddResource<SecretClient> for Service {
 
 struct Data;
 impl HasData for Data {
-    type Data<'a> = Vault<'a>;
+    type Data<'a> = Host<'a>;
 }
 
-pub struct Vault<'a> {
+pub struct Host<'a> {
     table: &'a mut ResourceTable,
 }
 
-impl Vault<'_> {
-    const fn new(c: &mut RunState) -> Vault<'_> {
-        Vault { table: &mut c.table }
+impl Host<'_> {
+    const fn new(c: &mut RunState) -> Host<'_> {
+        Host { table: &mut c.table }
     }
 }
 
@@ -85,8 +84,8 @@ fn azkeyvault() -> anyhow::Result<&'static SecretClient> {
     AZ_CLIENT.get().ok_or_else(|| anyhow!("Secret client not initialized."))
 }
 
-// Implement the [`wasi_vault::Host`]` trait for  Vault<'_>.
-impl vault::Host for Vault<'_> {
+// Implement the [`wasi_vault::Host`]` trait for  Host<'_>.
+impl vault::Host for Host<'_> {
     // Open locker specified by identifier, save to state and return as a resource.
     async fn open(&mut self, identifier: String) -> Result<Resource<Locker>> {
         let locker = Locker { identifier };
@@ -99,7 +98,7 @@ impl vault::Host for Vault<'_> {
     }
 }
 
-impl vault::HostLocker for Vault<'_> {
+impl vault::HostLocker for Host<'_> {
     async fn get(
         &mut self, locker_ref: Resource<Locker>, secret_id: String,
     ) -> Result<Option<Vec<u8>>> {
