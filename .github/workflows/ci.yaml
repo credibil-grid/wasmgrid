@@ -1,0 +1,11 @@
+name: CI
+
+on:
+  push:
+    # paths:
+    #   - '**/src/**'
+    #   - '**/tests/**'
+
+jobs:
+  ci:
+    uses: credibil/pipeline/.github/workflows/ci.yaml@main
