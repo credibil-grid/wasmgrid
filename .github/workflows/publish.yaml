@@ -1,0 +1,8 @@
+name: Publish Release
+
+on:
+  workflow_dispatch:
+
+jobs:
+  publish:
+    uses: credibil/pipeline/.github/workflows/publish.yaml@main

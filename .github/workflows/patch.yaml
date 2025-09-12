@@ -1,0 +1,8 @@
+name: Create Patch
+
+on:
+  workflow_dispatch:
+
+jobs:
+  patch:
+    uses: credibil/pipeline/.github/workflows/patch.yaml@main
