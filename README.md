@@ -1,5 +1,12 @@
 # Wasm Grid Runtime
 
+## Archive Notice
+
+> [!IMPORTANT]  
+> This repository is no longer maintained and has been archived.
+> Development and support has moved to [Credibil Tempo](https://github.com/credibil/tempo).
+
+## About
 An interim runtime for running WASI WebAssembly components.
 
 This wasm runtime is a stop-gap solution until production-grade runtimes such as [`wasmtime`](https://github.com/bytecodealliance/wasmtime)
